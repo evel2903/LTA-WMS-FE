@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnp.*
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Env
+.env
+.env.*.local
+
+# Lockfiles — this project uses Yarn (packageManager: yarn@4)
+package-lock.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Test / cache
+coverage
+.vitest
