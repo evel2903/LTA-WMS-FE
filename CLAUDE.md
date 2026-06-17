@@ -25,6 +25,10 @@ yarn format       # prettier write
 
 When deps aren't installed via yarn, `npx tsc -b --noEmit` still works for a quick typecheck.
 
+## Git
+
+**Never commit or push automatically.** Run `git commit`/`git push` only when the user explicitly asks. Finishing a task means leaving the changes ready for review, not committing them. Never amend/rebase/force-push without an explicit request.
+
 ## Layered architecture (the core rule)
 
 Each module under `src/Modules/<Name>/` has four layers; **dependencies point inward**:

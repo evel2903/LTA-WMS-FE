@@ -59,13 +59,20 @@ If a task seems to require breaking a layer rule, stop and surface it instead of
 - Do not run `yarn build` to "verify" unless a build issue is in scope; typecheck + lint is the gate.
 - State what you ran and the actual result. If a check fails or was skipped, say so — never claim success unverified.
 
-## 6. Completion criteria (all must be true)
+## 6. Git (mandatory)
+
+- **NEVER commit automatically.** Only run `git commit` / `git push` when the user explicitly asks ("commit", "tiến hành commit", etc.).
+- Leave changes staged/unstaged for the user; do not stage-and-commit as part of "finishing" a task.
+- Never amend, rebase, force-push, or revert without an explicit request.
+
+## 7. Completion criteria (all must be true)
 
 - [ ] Change confined to the correct module/layer; no inward-dependency or layer violation.
 - [ ] No tokens stored, no `Authorization` header, `withCredentials` intact, refresh still single-flight.
 - [ ] Naming, aliases, `import type`, route/query-key conventions followed.
 - [ ] `yarn typecheck` and `yarn lint` pass; results reported.
 - [ ] No unrelated/incidental edits; no new deps without justification.
+- [ ] Did NOT commit unless the user explicitly asked.
 
 ## Reference map
 
