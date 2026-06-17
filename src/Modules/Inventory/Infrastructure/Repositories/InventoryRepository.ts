@@ -1,7 +1,7 @@
 import { httpClient, type HttpClient } from '@shared/Services/Http/ApiClient';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventoryItem } from '@modules/Inventory/Domain/Entities/InventoryItem';
-import type { IInventoryRepository } from '@modules/Inventory/Domain/Interfaces/IInventoryRepository';
+import type { IInventoryRepository } from '@modules/Inventory/Application/Interfaces/IInventoryRepository';
 import type {
   AdjustQuantityInput,
   InventoryListFilter,

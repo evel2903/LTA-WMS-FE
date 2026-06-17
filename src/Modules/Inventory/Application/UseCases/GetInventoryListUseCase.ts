@@ -1,6 +1,6 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventoryItem } from '@modules/Inventory/Domain/Entities/InventoryItem';
-import type { IInventoryRepository } from '@modules/Inventory/Domain/Interfaces/IInventoryRepository';
+import type { IInventoryRepository } from '@modules/Inventory/Application/Interfaces/IInventoryRepository';
 import type { InventoryListFilter } from '@modules/Inventory/Domain/Types/InventoryQuery';
 import { DEFAULT_PAGE_SIZE } from '@modules/Inventory/Domain/Constants/InventoryConstants';
 

@@ -15,9 +15,9 @@ On any conflict, defer to `CLAUDE.md`; this file is its enforcement form.
 
 Dependencies point inward: `Domain ← Application ← Infrastructure ← Presentation`.
 
-- **Domain**: pure TypeScript only. MUST NOT import `react`, `react-dom`, `axios`, `zustand`, `@tanstack/*`, or any UI lib. No I/O.
-- **Application**: use cases are classes (`*UseCase.ts`) depending only on Domain ports. React adapters are hooks (`useXxx.ts`) that wire a use case to TanStack Query / Zustand.
-- **Infrastructure**: all HTTP lives here. Repositories implement a Domain port (`IXxxRepository`) and take an injectable `HttpClient` (default = singleton `httpClient`). DTO↔Domain conversion happens ONLY in `*Mapper.ts`.
+- **Domain**: pure TypeScript only — `Entities`, `Types`, `Constants`. NO ports/interfaces here. MUST NOT import `react`, `react-dom`, `axios`, `zustand`, `@tanstack/*`, or any UI lib. No I/O.
+- **Application**: owns the **ports** in `Application/Interfaces/` (`IXxxRepository` for entity access, `IXxxService`/`IXxxGateway` for non-CRUD/RPC). Use cases are classes (`*UseCase.ts`) depending only on those ports + Domain. React adapters are hooks (`useXxx.ts`) that wire a use case to TanStack Query / Zustand. Mirrors LTA-WMS-BE (`Modules/*/Application/Interfaces/`).
+- **Infrastructure**: all HTTP lives here. Repositories implement an **Application port** (`@modules/<M>/Application/Interfaces/IXxxRepository`) and take an injectable `HttpClient` (default = singleton `httpClient`). DTO↔Domain conversion happens ONLY in `*Mapper.ts`. Never define a port here.
 - **Presentation**: UI logic only. MUST NOT call `httpClient`/axios, contain business rules, or import from `Infrastructure/Dtos`.
 - State: server state → TanStack Query; client state → Zustand (**module-local only, never a global store**); forms → React Hook Form + Zod.
 - Data flow is always: `DTO → Mapper → Domain Entity → UseCase → Query/Command hook → Component`.

@@ -6,9 +6,11 @@ import type {
 } from '@modules/Inventory/Domain/Types/InventoryQuery';
 
 /**
- * Domain port for inventory persistence. The Application layer programs
- * against this; Infrastructure implements it. Dependency inversion: the
- * arrow points from outer layers inward to this contract.
+ * Application port for inventory persistence. Use cases program against this
+ * abstraction; Infrastructure implements it. Placed in Application/Interfaces
+ * to mirror the backend's Clean Architecture per module (ports live with the
+ * use cases that consume them). Dependency inversion: Infrastructure depends
+ * inward on this contract.
  */
 export interface IInventoryRepository {
   list(filter: InventoryListFilter): Promise<PaginatedResponse<InventoryItem>>;

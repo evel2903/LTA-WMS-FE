@@ -1,6 +1,6 @@
 import type { Credentials } from '@modules/Auth/Domain/Entities/AuthSession';
 import type { User } from '@modules/Auth/Domain/Entities/User';
-import type { IAuthRepository } from '@modules/Auth/Domain/Interfaces/IAuthRepository';
+import type { IAuthRepository } from '@modules/Auth/Application/Interfaces/IAuthRepository';
 
 /**
  * Encapsulates the business operation "sign a user in". Framework-free and

@@ -1,7 +1,7 @@
 import { AUTH_REQUEST_CONFIG, httpClient, type HttpClient } from '@shared/Services/Http/ApiClient';
 import type { Credentials, RegisterInput } from '@modules/Auth/Domain/Entities/AuthSession';
 import type { User } from '@modules/Auth/Domain/Entities/User';
-import type { IAuthRepository } from '@modules/Auth/Domain/Interfaces/IAuthRepository';
+import type { IAuthRepository } from '@modules/Auth/Application/Interfaces/IAuthRepository';
 import { AUTH_ENDPOINTS } from '@modules/Auth/Infrastructure/Api/AuthEndpoints';
 import { AuthMapper } from '@modules/Auth/Infrastructure/Mappers/AuthMapper';
 import type { AuthUserDataDto, MeDto } from '@modules/Auth/Infrastructure/Dtos/AuthDtos';

@@ -14,18 +14,19 @@ composition root lives in `App/`; each business capability is a self-contained
 module under `Modules/` with four internal layers:
 
 ```
-Domain          Pure business model. No React/Axios/Zustand/UI imports.
+Domain          Pure business model: Entities, Types, Constants. No ports here.
   └─ depended on by ▼
-Application     Use cases, query/command hooks, module-local Zustand stores.
+Application     Ports (Interfaces/), use cases, query/command hooks, module-local Zustand stores.
   └─ depended on by ▼
-Infrastructure  Repositories (implement Domain ports), DTOs, Mappers, endpoints.
+Infrastructure  Repositories (implement Application ports), DTOs, Mappers, endpoints.
 Presentation    Pages, Components, Forms, Routes — UI logic only.
 ```
 
 **Dependency rule:** dependencies point **inward**. `Domain` knows nothing of
-the outer layers. `Infrastructure` implements interfaces (`ports`) that
-`Domain` defines. `Presentation` talks to `Application`, never to
-`Infrastructure` or HTTP directly.
+the outer layers. Ports (`IXxxRepository`) are declared in `Application/Interfaces/`
+and implemented by `Infrastructure` — mirroring the backend's Clean Architecture
+per module. `Presentation` talks to `Application`, never to `Infrastructure` or
+HTTP directly.
 
 ```
 DTO  ──(Mapper)──►  Domain Entity  ──►  UseCase  ──►  Query/Command Hook  ──►  Component
@@ -74,8 +75,8 @@ src/
 │
 └── Modules/
     ├── Auth/                         # ✅ fully implemented
-    │   ├── Domain/{Entities,Interfaces,Types,Constants}
-    │   ├── Application/{UseCases,Queries,Commands,Stores}
+    │   ├── Domain/{Entities,Types,Constants}            # pure model — no ports
+    │   ├── Application/{Interfaces,UseCases,Queries,Commands,Stores}  # Interfaces = ports
     │   ├── Infrastructure/{Api,Repositories,Mappers,Dtos}
     │   └── Presentation/{Pages,Components,Forms,Routes}
     ├── Inventory/                    # ✅ fully implemented (reference module)

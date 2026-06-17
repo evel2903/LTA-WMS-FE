@@ -1,5 +1,5 @@
 import type { InventoryItem } from '@modules/Inventory/Domain/Entities/InventoryItem';
-import type { IInventoryRepository } from '@modules/Inventory/Domain/Interfaces/IInventoryRepository';
+import type { IInventoryRepository } from '@modules/Inventory/Application/Interfaces/IInventoryRepository';
 import type { AdjustQuantityInput } from '@modules/Inventory/Domain/Types/InventoryQuery';
 
 /** Business operation: adjust on-hand quantity, enforcing invariants up front. */

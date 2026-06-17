@@ -30,20 +30,23 @@ When deps aren't installed via yarn, `npx tsc -b --noEmit` still works for a qui
 Each module under `src/Modules/<Name>/` has four layers; **dependencies point inward**:
 
 ```
-Domain          Pure model. NO react/axios/zustand/@tanstack/UI imports. EVER.
-  ▲ Application      Use cases (classes) + query/command hooks + module-local Zustand.
-  ▲ Infrastructure   Repositories implement Domain ports; DTOs; Mappers; endpoints.
+Domain          Pure model: Entities, Types, Constants. NO interfaces/ports here.
+                NO react/axios/zustand/@tanstack/UI imports. EVER.
+  ▲ Application      Ports (Interfaces/) + use cases (classes) + query/command hooks + module-local Zustand.
+  ▲ Infrastructure   Repositories implement Application ports; DTOs; Mappers; endpoints.
   ▲ Presentation     Pages, Components, Forms, Routes — UI logic ONLY.
 ```
 
 Data flow: **DTO → Mapper → Domain Entity → UseCase → Query/Command hook → Component.**
 
+**Ports live in `Application/Interfaces/`, NOT in Domain** — this mirrors the backend's Clean Architecture per module (verified in LTA-WMS-BE: `Modules/*/Application/Interfaces/I*Repository.ts`, with Domain holding only Entities + ValueObjects). Hexagonal style: the use case owns the contract it depends on; Infrastructure implements it. The interface may import Domain entities (Application → Domain is the correct direction).
+
 Non-negotiables (ESLint `no-restricted-imports` guards the Domain boundary):
 - Components contain UI logic only. Business logic lives in Application use cases.
 - All HTTP lives in Infrastructure repositories. Never call axios/`httpClient` from a component or page.
-- Domain never imports a framework. If you need React/Axios/Zustand, you're in the wrong layer.
+- Domain never imports a framework, and holds no ports/interfaces. If you need React/Axios/Zustand, you're in the wrong layer.
 - Server state → **TanStack Query**. Client state → **Zustand (module-local, never global)**. Forms → **RHF + Zod**.
-- Repositories implement a Domain **port** (`IXxxRepository`) and take an injectable `HttpClient` (constructor default = singleton `httpClient`) so they're testable.
+- Repositories implement an **Application port** (`Application/Interfaces/IXxxRepository.ts`) and take an injectable `HttpClient` (constructor default = singleton `httpClient`) so they're testable. Use `IXxxRepository` for entity access; `IXxxService`/`IXxxGateway` for non-CRUD/RPC capabilities — both live in `Application/Interfaces/`.
 - A `UseXxxUseCase.ts` (PascalCase) is a class; the `useXxx.ts` hook is its React adapter that wires it to Query/Zustand.
 
 ## Naming (enforced by review)
