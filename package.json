@@ -39,6 +39,9 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-query-devtools": "^5.90.3",
+    "@testing-library/dom": "10",
+    "@testing-library/react": "16",
+    "@testing-library/user-event": "14",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
@@ -48,6 +51,7 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "husky": "^9.1.7",
+    "jsdom": "25",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.0",
     "typescript": "~5.7.2",
