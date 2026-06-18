@@ -30,6 +30,8 @@ interface CatalogListViewProps<TRow> {
   totalPages: number;
   onPageChange: (page: number) => void;
   errorMessage?: string;
+  /** Entity-specific empty-state copy (e.g. "No Owners yet."). */
+  emptyLabel?: string;
   /** Whether the user may create — surfaces a read-only hint when false. */
   canCreate?: boolean;
   /** Filter toolbar (inputs, selects) rendered above the table. */
@@ -69,6 +71,7 @@ export function CatalogListView<TRow>({
   totalPages,
   onPageChange,
   errorMessage,
+  emptyLabel,
   canCreate = true,
   toolbar,
   headerAction,
@@ -115,7 +118,7 @@ export function CatalogListView<TRow>({
           {state === 'loading' ? (
             <p className="text-muted-foreground py-10 text-sm">Loading {title.toLowerCase()}...</p>
           ) : state === 'empty' ? (
-            <p className="text-muted-foreground py-10 text-sm">No records found.</p>
+            <p className="text-muted-foreground py-10 text-sm">{emptyLabel ?? 'No records found.'}</p>
           ) : (
             <Table>
               <TableHeader>

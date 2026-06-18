@@ -7,6 +7,7 @@ import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { conflictMessage } from '@modules/MasterData/Application/Commands/CatalogConflictError';
 import { useCatalogMutations } from '@modules/MasterData/Application/Commands/UseCatalogMutations';
 import { useOwners } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type { Owner } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
@@ -16,6 +17,7 @@ import {
   type CatalogListState,
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
+import { OwnerPolicyView } from '@modules/MasterData/Presentation/Components/OwnerPolicyView';
 import { OwnerForm } from '@modules/MasterData/Presentation/Forms/OwnerForm';
 
 type StatusFilter = 'All' | MasterDataStatus;
@@ -81,6 +83,7 @@ export function OwnerMasterPage() {
         totalPages={query.data?.totalPages ?? 1}
         onPageChange={setPage}
         canCreate={canEdit}
+        emptyLabel={CATALOG_EMPTY_LABELS.owners}
         errorMessage={apiError?.message ?? (query.error ? 'Unable to load owners.' : undefined)}
         toolbar={
           <>
@@ -153,6 +156,10 @@ export function OwnerMasterPage() {
           )}
           {selected && (
             <>
+              <OwnerPolicyView
+                billingPolicy={selected.billingPolicy}
+                visibilityScope={selected.visibilityScope}
+              />
               <AuditMetadata
                 createdAt={selected.createdAt}
                 updatedAt={selected.updatedAt}

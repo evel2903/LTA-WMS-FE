@@ -2,8 +2,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
+import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
+import { OwnerPolicyView } from '@modules/MasterData/Presentation/Components/OwnerPolicyView';
 import {
   CatalogListView,
   type CatalogColumn,
@@ -42,6 +44,32 @@ describe('Catalog components', () => {
   it('renders the empty state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="empty" />);
     expect(html).toContain('No records');
+  });
+
+  it('renders an entity-specific empty label when supplied', () => {
+    const html = renderToStaticMarkup(
+      <CatalogListView {...baseProps} state="empty" emptyLabel="No Owners yet." />,
+    );
+    expect(html).toContain('No Owners yet.');
+    expect(html).not.toContain('No records found.');
+  });
+
+  it('exposes distinct, entity-specific empty copy per page (Owner/UOM/SKU)', () => {
+    expect(CATALOG_EMPTY_LABELS.owners).toBe('No Owners yet.');
+    expect(CATALOG_EMPTY_LABELS.uoms).toBe('No UOMs yet.');
+    expect(CATALOG_EMPTY_LABELS.skus).toBe('No SKUs yet.');
+
+    const labels = Object.values(CATALOG_EMPTY_LABELS);
+    expect(new Set(labels).size).toBe(labels.length);
+
+    // Each label actually surfaces through the shared list view's empty state.
+    for (const label of labels) {
+      const html = renderToStaticMarkup(
+        <CatalogListView {...baseProps} state="empty" emptyLabel={label} />,
+      );
+      expect(html).toContain(label);
+      expect(html).not.toContain('No records found.');
+    }
   });
 
   it('renders the error state with the supplied message', () => {
@@ -113,6 +141,33 @@ describe('Catalog components', () => {
     expect(html).toContain('2026-06-19T00:00:00.000Z');
     expect(html).toContain('alice');
     expect(html).toContain('-');
+  });
+
+  it('renders BillingPolicy and VisibilityScope as read-only JSON when present', () => {
+    const html = renderToStaticMarkup(
+      <OwnerPolicyView
+        billingPolicy={{ model: 'monthly', rate: 12 }}
+        visibilityScope={{ warehouses: ['wh-1', 'wh-2'] }}
+      />,
+    );
+    expect(html).toContain('Billing policy');
+    expect(html).toContain('Visibility scope');
+    // The actual JSON contents must be rendered, not just the labels.
+    expect(html).toContain('monthly');
+    expect(html).toContain('&quot;rate&quot;: 12');
+    expect(html).toContain('wh-2');
+    // It is a read-only display: no input/textarea controls.
+    expect(html).not.toContain('<input');
+    expect(html).not.toContain('<textarea');
+  });
+
+  it('shows a placeholder when an owner has no policy / scope data', () => {
+    const html = renderToStaticMarkup(
+      <OwnerPolicyView billingPolicy={undefined} visibilityScope={null} />,
+    );
+    expect(html).toContain('Billing policy');
+    expect(html).toContain('Visibility scope');
+    expect(html).toContain('Not set');
   });
 
   it('registers the catalog routes and route constants', () => {

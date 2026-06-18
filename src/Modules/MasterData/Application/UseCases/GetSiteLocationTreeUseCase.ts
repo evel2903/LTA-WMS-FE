@@ -89,9 +89,15 @@ export class GetSiteLocationTreeUseCase {
             warehouseId: warehouse.id,
           });
           locationsByWarehouse.set(warehouse.id, filterLocationsByStatus(locations, filter.status));
-        } catch {
+        } catch (error) {
           // A single warehouse failing (e.g. a 403 scope error) must not collapse
-          // the whole tree; degrade that warehouse to no locations instead.
+          // the whole tree; degrade that warehouse to no locations instead. Log the
+          // failure so the degrade is observable rather than silently swallowed.
+          console.warn(
+            'GetSiteLocationTreeUseCase: failed to load location tree for warehouse',
+            warehouse.id,
+            error,
+          );
           locationsByWarehouse.set(warehouse.id, []);
         }
       }),
