@@ -7,6 +7,7 @@ import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { conflictMessage } from '@modules/MasterData/Application/Commands/CatalogConflictError';
 import { useCatalogMutations } from '@modules/MasterData/Application/Commands/UseCatalogMutations';
 import { useUoms } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type { Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
@@ -86,6 +87,7 @@ export function UomMasterPage() {
         totalPages={query.data?.totalPages ?? 1}
         onPageChange={setPage}
         canCreate={canEdit}
+        emptyLabel={CATALOG_EMPTY_LABELS.uoms}
         errorMessage={apiError?.message ?? (query.error ? 'Unable to load units of measure.' : undefined)}
         toolbar={
           <>

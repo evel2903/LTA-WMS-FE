@@ -7,6 +7,13 @@ export const SKU_STATUSES: readonly SkuStatus[] = ['Draft', 'Active', 'Blocked',
 
 export const MASTER_DATA_STATUSES: readonly MasterDataStatus[] = ['Active', 'Inactive'];
 
+/** Entity-specific empty-state copy per AC5 ("No SKUs/Owners/UOMs yet."). */
+export const CATALOG_EMPTY_LABELS = {
+  owners: 'No Owners yet.',
+  uoms: 'No UOMs yet.',
+  skus: 'No SKUs yet.',
+} as const;
+
 export interface SkuControlFlag {
   key: SkuControlFlagKey;
   label: string;

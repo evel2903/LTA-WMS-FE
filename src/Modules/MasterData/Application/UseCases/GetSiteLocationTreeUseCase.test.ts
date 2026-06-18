@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { GetSiteLocationTreeUseCase } from '@modules/MasterData/Application/UseCases/GetSiteLocationTreeUseCase';
 import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
@@ -178,6 +178,10 @@ class FakeRepository implements IMasterDataRepository {
 }
 
 describe('GetSiteLocationTreeUseCase', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('builds Site -> Warehouse -> Zone -> Location hierarchy', async () => {
     const useCase = new GetSiteLocationTreeUseCase(new FakeRepository());
 
@@ -276,5 +280,51 @@ describe('GetSiteLocationTreeUseCase', () => {
     // wh-1 keeps its location; wh-2 degrades to no locations instead of
     // collapsing the entire tree.
     expect(warehouses[0]?.children[0]?.children.map((node) => node.id)).toEqual(['loc-1']);
+  });
+
+  it('warns with the failing warehouse id while still building the rest of the tree', async () => {
+    const warehouseTwo: Warehouse = {
+      ...warehouse,
+      id: 'wh-2',
+      warehouseCode: 'WH-02',
+      warehouseName: 'Second Warehouse',
+    };
+    const loadError = new Error('forbidden scope for wh-2');
+
+    class PartialFailureRepository extends FakeRepository {
+      override listWarehouses() {
+        return Promise.resolve({
+          items: [warehouse, warehouseTwo],
+          page: 1,
+          pageSize: 100,
+          totalItems: 2,
+          totalPages: 1,
+        });
+      }
+
+      override getLocationTree(filter: LocationTreeFilter): Promise<LocationTree[]> {
+        if (filter.warehouseId === 'wh-2') {
+          return Promise.reject(loadError);
+        }
+        return Promise.resolve([{ ...location, children: [] }]);
+      }
+    }
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const useCase = new GetSiteLocationTreeUseCase(new PartialFailureRepository());
+
+    const tree = await useCase.execute();
+
+    // The silent swallow is gone: the degrade is logged with the offending
+    // warehouse id AND the underlying error, so the failure is observable.
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warnArgs = warnSpy.mock.calls[0] ?? [];
+    expect(warnArgs).toContain('wh-2');
+    expect(warnArgs).toContain(loadError);
+    // The healthy warehouse must not log anything and the tree still builds both.
+    const warehouses = tree[0]?.children ?? [];
+    expect(warehouses.map((node) => node.id)).toEqual(['wh-1', 'wh-2']);
+    expect(warehouses[0]?.children[0]?.children.map((node) => node.id)).toEqual(['loc-1']);
+    expect(warehouses[1]?.children).toHaveLength(0);
   });
 });

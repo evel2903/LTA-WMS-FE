@@ -11,7 +11,10 @@ import {
   useActiveUoms,
   useSkus,
 } from '@modules/MasterData/Application/Queries/CatalogQueries';
-import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import {
+  CATALOG_EMPTY_LABELS,
+  SKU_STATUSES,
+} from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type { Sku, SkuStatus } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import type { CreateSkuInput } from '@modules/MasterData/Domain/Types/CatalogQuery';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
@@ -123,6 +126,7 @@ export function SkuMasterPage() {
           totalPages={query.data?.totalPages ?? 1}
           onPageChange={setPage}
           canCreate={canEdit}
+          emptyLabel={CATALOG_EMPTY_LABELS.skus}
           errorMessage={apiError?.message ?? (query.error ? 'Unable to load SKUs.' : undefined)}
           toolbar={
             <>
