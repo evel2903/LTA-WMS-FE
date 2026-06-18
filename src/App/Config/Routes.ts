@@ -15,6 +15,11 @@ export const ROUTES = {
   FOUNDATION: {
     ROOT: '/foundation',
     LOCATIONS: '/foundation/locations',
+    MASTER_DATA: {
+      OWNERS: '/foundation/master-data/owners',
+      UOMS: '/foundation/master-data/uoms',
+      SKUS: '/foundation/master-data/skus',
+    },
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },

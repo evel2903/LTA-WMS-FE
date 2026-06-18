@@ -11,6 +11,7 @@ import { useAuthBootstrap } from '@modules/Auth/Application/UseCases/UseAuthBoot
 import { useSessionExpiry } from '@modules/Auth/Application/UseCases/UseSessionExpiry';
 import { authRoutes } from '@modules/Auth/Presentation/Routes/AuthRoutes';
 import { inventoryRoutes } from '@modules/Inventory/Presentation/Routes/InventoryRoutes';
+import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
 
 const DashboardPage = lazy(() =>
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
           ...inventoryRoutes,
           ...masterDataRoutes,
+          ...catalogRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },
