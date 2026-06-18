@@ -1,0 +1,114 @@
+import { useState } from 'react';
+
+import { Button } from '@shared/Components/Ui/Button';
+import { CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Domain/Constants/PrecedenceOrder';
+import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
+import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
+
+interface ProfileRulesPanelProps {
+  /** Rules currently attached to the selected profile (`GET :id/rules`). */
+  profileRules: WarehouseProfileRule[];
+  /** The rule-definition catalog, used to label attached rules + offer attachable ones. */
+  ruleDefinitions: RuleDefinition[];
+  canEdit?: boolean;
+  pendingAdd?: boolean;
+  pendingRemove?: boolean;
+  /** Attach a rule definition to the profile (`POST :id/rules`). */
+  onAdd: (ruleDefinitionId: string) => void;
+  /** Detach an attached profile-rule (`DELETE :id/rules/:ruleId`). */
+  onRemove: (profileRuleId: string) => void;
+}
+
+/**
+ * Profile-rule assignment surface (Finding #2): lists the rules attached to the
+ * selected profile and lets the admin attach an available rule or detach an
+ * attached one — driving the `:id/rules` endpoints that were previously plumbed
+ * but unused. FE does not decide precedence here; this is plain membership
+ * management.
+ */
+export function ProfileRulesPanel({
+  profileRules,
+  ruleDefinitions,
+  canEdit = true,
+  pendingAdd = false,
+  pendingRemove = false,
+  onAdd,
+  onRemove,
+}: ProfileRulesPanelProps) {
+  const [selectedRuleId, setSelectedRuleId] = useState('');
+
+  const definitionById = (id: string) => ruleDefinitions.find((rule) => rule.id === id) ?? null;
+  const attachedIds = new Set(profileRules.map((rule) => rule.ruleDefinitionId));
+  const attachable = ruleDefinitions.filter((rule) => !attachedIds.has(rule.id));
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-medium">Rules</p>
+
+      {profileRules.length === 0 ? (
+        <p className="text-muted-foreground text-sm">No rules attached.</p>
+      ) : (
+        <ul className="space-y-1 text-sm">
+          {profileRules.map((profileRule) => {
+            const def = definitionById(profileRule.ruleDefinitionId);
+            return (
+              <li
+                key={profileRule.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+              >
+                <span className="space-x-2">
+                  <span className="font-medium">{def?.ruleCode ?? profileRule.ruleDefinitionId}</span>
+                  {def && <span className="text-muted-foreground">{def.ruleName}</span>}
+                  {def && (
+                    <span className="text-muted-foreground text-xs">
+                      ({CONTROL_MODE_LABELS[def.controlMode]})
+                    </span>
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!canEdit || pendingRemove}
+                  onClick={() => onRemove(profileRule.id)}
+                >
+                  Remove
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="grid flex-1 gap-1 text-sm">
+          Attach rule
+          <select
+            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            disabled={!canEdit || attachable.length === 0}
+            value={selectedRuleId}
+            onChange={(event) => setSelectedRuleId(event.target.value)}
+          >
+            <option value="">Select a rule…</option>
+            {attachable.map((rule) => (
+              <option key={rule.id} value={rule.id}>
+                {rule.ruleCode} — {rule.ruleName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          type="button"
+          disabled={!canEdit || pendingAdd || !selectedRuleId}
+          onClick={() => {
+            if (!selectedRuleId) return;
+            onAdd(selectedRuleId);
+            setSelectedRuleId('');
+          }}
+        >
+          Add rule
+        </Button>
+      </div>
+    </div>
+  );
+}
