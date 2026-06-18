@@ -1,0 +1,117 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import type { SiteLocationTree } from '@modules/MasterData/Domain/Types/MasterDataTree';
+import { LocationProfileConstraintsPanel } from '@modules/MasterData/Presentation/Components/LocationProfileConstraintsPanel';
+import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
+
+function DetailRow({ label, value }: { label: string; value: string | number | boolean | null | undefined }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 text-sm">
+      <div className="text-muted-foreground">{label}</div>
+      <div className="col-span-2 break-words">{value === null || value === undefined ? '-' : String(value)}</div>
+    </div>
+  );
+}
+
+function renderEntityDetails(node: SiteLocationTree) {
+  switch (node.type) {
+    case 'site':
+      return (
+        <>
+          <DetailRow label="Code" value={node.entity.siteCode} />
+          <DetailRow label="Name" value={node.entity.siteName} />
+        </>
+      );
+    case 'warehouse':
+      return (
+        <>
+          <DetailRow label="Code" value={node.entity.warehouseCode} />
+          <DetailRow label="Name" value={node.entity.warehouseName} />
+          <DetailRow label="Type" value={node.entity.warehouseTypeCode} />
+        </>
+      );
+    case 'zone':
+      return (
+        <>
+          <DetailRow label="Code" value={node.entity.zoneCode} />
+          <DetailRow label="Name" value={node.entity.zoneName} />
+          <DetailRow label="Type" value={node.entity.zoneType} />
+        </>
+      );
+    case 'location':
+      return (
+        <>
+          <DetailRow label="Code" value={node.entity.locationCode} />
+          <DetailRow label="Name" value={node.entity.locationName} />
+          <DetailRow label="Type" value={node.entity.locationType} />
+          <DetailRow label="Profile" value={node.entity.locationProfileId} />
+          <DetailRow label="Capacity qty" value={node.entity.capacityQty} />
+          <DetailRow label="Mix SKU" value={node.entity.mixSkuPolicy} />
+        </>
+      );
+    default:
+      return null;
+  }
+}
+
+interface SiteLocationDetailPanelProps {
+  selectedNode: SiteLocationTree | null;
+  locationProfiles: LocationProfile[];
+  canEdit: boolean;
+}
+
+export function SiteLocationDetailPanel({
+  selectedNode,
+  locationProfiles,
+  canEdit,
+}: SiteLocationDetailPanelProps) {
+  if (!selectedNode) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Detail</CardTitle>
+        </CardHeader>
+        <CardContent className="text-muted-foreground text-sm">
+          Select a site, warehouse, zone, or location to view details.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const profile =
+    selectedNode.type === 'location'
+      ? locationProfiles.find((item) => item.id === selectedNode.entity.locationProfileId) ?? null
+      : null;
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">{selectedNode.label}</CardTitle>
+          <div className="text-muted-foreground mt-1 text-xs uppercase">{selectedNode.type}</div>
+        </div>
+        <div className="flex items-center gap-2">
+          {!canEdit && <span className="text-muted-foreground text-xs font-medium">Read only</span>}
+          <MasterDataStatusBadge status={selectedNode.status} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <DetailRow label="ID" value={selectedNode.entity.id} />
+          {renderEntityDetails(selectedNode)}
+          <DetailRow label="Updated at" value={selectedNode.entity.updatedAt} />
+        </div>
+
+        {selectedNode.type === 'location' && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold">Profile / Constraints</h2>
+            <LocationProfileConstraintsPanel
+              profile={profile}
+              profileId={selectedNode.entity.locationProfileId}
+            />
+          </section>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

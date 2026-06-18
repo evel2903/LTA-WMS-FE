@@ -3,6 +3,7 @@ import {
   Boxes,
   ClipboardCheck,
   LayoutDashboard,
+  MapPinned,
   PackageCheck,
   PackageOpen,
   Repeat,
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: 'Inventory', to: ROUTES.INVENTORY.ROOT, icon: Boxes },
+  { label: 'Site & Location Tree', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
   { label: 'Warehouse', to: ROUTES.WAREHOUSE.ROOT, icon: Warehouse },
   { label: 'Inbound', to: ROUTES.INBOUND.ROOT, icon: PackageOpen },
   { label: 'Outbound', to: ROUTES.OUTBOUND.ROOT, icon: ShoppingCart },

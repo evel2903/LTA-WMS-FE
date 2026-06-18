@@ -6,6 +6,7 @@
 export const QUERY_NAMESPACES = {
   AUTH: 'auth',
   INVENTORY: 'inventory',
+  MASTER_DATA: 'masterData',
   WAREHOUSE: 'warehouse',
   INBOUND: 'inbound',
   OUTBOUND: 'outbound',
