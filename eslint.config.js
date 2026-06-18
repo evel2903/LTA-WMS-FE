@@ -28,6 +28,11 @@ export default tseslint.config(
       '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
 
+    },
+  },
+  {
+    files: ['**/Domain/**/*.{ts,tsx}'],
+    rules: {
       // Architecture boundary: Domain layer must stay framework-free.
       'no-restricted-imports': [
         'error',
@@ -35,7 +40,6 @@ export default tseslint.config(
           patterns: [
             {
               group: ['react', 'react-dom', 'axios', 'zustand', '@tanstack/*'],
-              // Enforced by review for files under any **/Domain/** folder.
               message:
                 'Domain layer must not import React, Axios, Zustand, or UI/data libraries. Keep it framework-agnostic.',
             },

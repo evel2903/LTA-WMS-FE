@@ -1,0 +1,13 @@
+export const MASTER_DATA_ENDPOINTS = {
+  SITES: '/sites',
+  SITE_BY_ID: (id: string) => `/sites/${id}`,
+  WAREHOUSES: '/warehouses',
+  WAREHOUSE_BY_ID: (id: string) => `/warehouses/${id}`,
+  ZONES: '/zones',
+  ZONE_BY_ID: (id: string) => `/zones/${id}`,
+  LOCATION_PROFILES: '/location-profiles',
+  LOCATION_PROFILE_BY_ID: (id: string) => `/location-profiles/${id}`,
+  LOCATIONS: '/locations',
+  LOCATION_BY_ID: (id: string) => `/locations/${id}`,
+  LOCATION_TREE: '/locations/tree',
+} as const;

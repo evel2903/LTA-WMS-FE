@@ -11,6 +11,7 @@ import { useAuthBootstrap } from '@modules/Auth/Application/UseCases/UseAuthBoot
 import { useSessionExpiry } from '@modules/Auth/Application/UseCases/UseSessionExpiry';
 import { authRoutes } from '@modules/Auth/Presentation/Routes/AuthRoutes';
 import { inventoryRoutes } from '@modules/Inventory/Presentation/Routes/InventoryRoutes';
+import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
         children: [
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
           ...inventoryRoutes,
+          ...masterDataRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },

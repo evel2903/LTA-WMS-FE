@@ -1,0 +1,66 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+
+import { Button } from '@shared/Components/Ui/Button';
+import { Input } from '@shared/Components/Ui/Input';
+import type { Site } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import {
+  siteFormSchema,
+  type SiteFormValues,
+} from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
+
+interface SiteFormProps {
+  initialValue?: Site;
+  disabled?: boolean;
+  pending?: boolean;
+  submitLabel: string;
+  onSubmit: (values: SiteFormValues) => void;
+}
+
+export function SiteForm({
+  initialValue,
+  disabled = false,
+  pending = false,
+  submitLabel,
+  onSubmit,
+}: SiteFormProps) {
+  const form = useForm<SiteFormValues>({
+    resolver: zodResolver(siteFormSchema),
+    defaultValues: {
+      siteCode: initialValue?.siteCode ?? '',
+      siteName: initialValue?.siteName ?? '',
+      status: initialValue?.status ?? 'Active',
+      sourceSystem: initialValue?.sourceSystem ?? '',
+      referenceId: initialValue?.referenceId ?? '',
+    },
+  });
+
+  return (
+    <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
+      <label className="grid gap-1 text-sm">
+        Site code
+        <Input disabled={disabled} {...form.register('siteCode')} />
+        {form.formState.errors.siteCode && (
+          <span className="text-destructive text-xs">{form.formState.errors.siteCode.message}</span>
+        )}
+      </label>
+      <label className="grid gap-1 text-sm">
+        Site name
+        <Input disabled={disabled} {...form.register('siteName')} />
+        {form.formState.errors.siteName && (
+          <span className="text-destructive text-xs">{form.formState.errors.siteName.message}</span>
+        )}
+      </label>
+      <label className="grid gap-1 text-sm">
+        Status
+        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </label>
+      <Button type="submit" disabled={disabled || pending}>
+        {submitLabel}
+      </Button>
+    </form>
+  );
+}

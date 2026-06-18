@@ -12,6 +12,10 @@ export const ROUTES = {
     ROOT: '/inventory',
     DETAIL: (id = ':id') => `/inventory/${id}`,
   },
+  FOUNDATION: {
+    ROOT: '/foundation',
+    LOCATIONS: '/foundation/locations',
+  },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },
   OUTBOUND: { ROOT: '/outbound' },

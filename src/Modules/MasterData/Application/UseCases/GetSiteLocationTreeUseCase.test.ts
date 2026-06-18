@@ -1,0 +1,280 @@
+import { describe, expect, it } from 'vitest';
+
+import { GetSiteLocationTreeUseCase } from '@modules/MasterData/Application/UseCases/GetSiteLocationTreeUseCase';
+import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
+import type {
+  CreateLocationInput,
+  CreateSiteInput,
+  CreateWarehouseInput,
+  CreateZoneInput,
+  LocationTree,
+  SiteLocationTree,
+} from '@modules/MasterData/Domain/Types/MasterDataTree';
+import type {
+  Location,
+  LocationProfile,
+  Site,
+  Warehouse,
+  Zone,
+} from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import type {
+  LocationTreeFilter,
+  MasterDataListFilter,
+} from '@modules/MasterData/Domain/Types/MasterDataQuery';
+
+const site: Site = {
+  id: 'site-1',
+  siteCode: 'SITE-01',
+  siteName: 'Main Site',
+  status: 'Active',
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: '2026-06-18T00:00:00.000Z',
+  updatedAt: '2026-06-18T00:00:00.000Z',
+  createdBy: null,
+  updatedBy: null,
+};
+
+const warehouse: Warehouse = {
+  id: 'wh-1',
+  siteId: 'site-1',
+  warehouseCode: 'WH-01',
+  warehouseName: 'Tier 1 Warehouse',
+  warehouseTypeCode: 'WT-01',
+  status: 'Active',
+  timezone: 'Asia/Bangkok',
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: site.createdAt,
+  updatedAt: site.updatedAt,
+  createdBy: null,
+  updatedBy: null,
+};
+
+const zone: Zone = {
+  id: 'zone-1',
+  warehouseId: 'wh-1',
+  zoneCode: 'ZONE-A',
+  zoneName: 'Ambient Zone',
+  zoneType: 'Ambient',
+  status: 'Active',
+  sequence: 1,
+  temperatureClass: 'Ambient',
+  complianceFlags: {},
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: site.createdAt,
+  updatedAt: site.updatedAt,
+  createdBy: null,
+  updatedBy: null,
+};
+
+const location: Location = {
+  id: 'loc-1',
+  warehouseId: 'wh-1',
+  zoneId: 'zone-1',
+  parentLocationId: null,
+  locationCode: 'A-01-01',
+  locationName: 'Aisle 01 Rack 01',
+  locationType: 'Bin',
+  locationProfileId: 'profile-1',
+  locationStatus: 'Active',
+  capacityQty: 100,
+  capacityVolume: null,
+  capacityWeight: null,
+  palletSlot: null,
+  temperatureClass: 'Ambient',
+  dgCompatibilityGroup: null,
+  bondedFlag: false,
+  ownerRestriction: null,
+  mixSkuPolicy: 'SingleSku',
+  mixLotPolicy: null,
+  mixOwnerPolicy: null,
+  pickSequence: 10,
+  putawaySequence: 20,
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: site.createdAt,
+  updatedAt: site.updatedAt,
+  createdBy: null,
+  updatedBy: null,
+};
+
+class FakeRepository implements IMasterDataRepository {
+  listSites(_filter?: MasterDataListFilter) {
+    return Promise.resolve({ items: [site], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 });
+  }
+
+  listWarehouses(_filter?: MasterDataListFilter) {
+    return Promise.resolve({
+      items: [warehouse],
+      page: 1,
+      pageSize: 100,
+      totalItems: 1,
+      totalPages: 1,
+    });
+  }
+
+  listZones(_filter?: MasterDataListFilter) {
+    return Promise.resolve({ items: [zone], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 });
+  }
+
+  listLocationProfiles(_filter?: MasterDataListFilter) {
+    return Promise.resolve({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 });
+  }
+
+  getLocationTree(_filter: LocationTreeFilter): Promise<LocationTree[]> {
+    return Promise.resolve([
+      {
+        ...location,
+        children: [{ ...location, id: 'loc-child', parentLocationId: 'loc-1', children: [] }],
+      },
+    ]);
+  }
+
+  createSite(input: CreateSiteInput): Promise<Site> {
+    return Promise.resolve({ ...site, siteCode: input.siteCode, siteName: input.siteName });
+  }
+
+  updateSite(): Promise<Site> {
+    return Promise.resolve(site);
+  }
+
+  createWarehouse(input: CreateWarehouseInput): Promise<Warehouse> {
+    return Promise.resolve({
+      ...warehouse,
+      warehouseCode: input.warehouseCode,
+      warehouseName: input.warehouseName,
+    });
+  }
+
+  updateWarehouse(): Promise<Warehouse> {
+    return Promise.resolve(warehouse);
+  }
+
+  createZone(input: CreateZoneInput): Promise<Zone> {
+    return Promise.resolve({ ...zone, zoneCode: input.zoneCode, zoneName: input.zoneName });
+  }
+
+  updateZone(): Promise<Zone> {
+    return Promise.resolve(zone);
+  }
+
+  createLocation(input: CreateLocationInput): Promise<Location> {
+    return Promise.resolve({
+      ...location,
+      locationCode: input.locationCode,
+      locationName: input.locationName,
+    });
+  }
+
+  updateLocation(): Promise<Location> {
+    return Promise.resolve(location);
+  }
+
+  getLocationProfile(): Promise<LocationProfile> {
+    return Promise.reject(new Error('not used'));
+  }
+}
+
+describe('GetSiteLocationTreeUseCase', () => {
+  it('builds Site -> Warehouse -> Zone -> Location hierarchy', async () => {
+    const useCase = new GetSiteLocationTreeUseCase(new FakeRepository());
+
+    const tree = await useCase.execute();
+
+    expect(tree).toHaveLength(1);
+    expect(tree[0]).toMatchObject<Partial<SiteLocationTree>>({
+      id: 'site-1',
+      type: 'site',
+      label: 'SITE-01 - Main Site',
+    });
+    expect(tree[0]?.children[0]).toMatchObject({
+      id: 'wh-1',
+      type: 'warehouse',
+      label: 'WH-01 - Tier 1 Warehouse',
+    });
+    expect(tree[0]?.children[0]?.children[0]).toMatchObject({
+      id: 'zone-1',
+      type: 'zone',
+      label: 'ZONE-A - Ambient Zone',
+    });
+    expect(tree[0]?.children[0]?.children[0]?.children[0]).toMatchObject({
+      id: 'loc-1',
+      type: 'location',
+      label: 'A-01-01 - Aisle 01 Rack 01',
+      children: [expect.objectContaining({ id: 'loc-child', type: 'location' })],
+    });
+  });
+
+  it('filters locations by status consistently with sites/warehouses/zones', async () => {
+    const inactiveLocation: Location = {
+      ...location,
+      id: 'loc-inactive',
+      locationCode: 'A-01-02',
+      locationName: 'Inactive Bin',
+      locationStatus: 'Inactive',
+    };
+
+    class StatusRepository extends FakeRepository {
+      override getLocationTree(): Promise<LocationTree[]> {
+        return Promise.resolve([
+          {
+            ...location,
+            children: [{ ...inactiveLocation, children: [] }],
+          },
+          { ...inactiveLocation, children: [] },
+        ]);
+      }
+    }
+
+    const useCase = new GetSiteLocationTreeUseCase(new StatusRepository());
+
+    const activeOnly = await useCase.execute({ status: 'Active' });
+    const activeLocations = activeOnly[0]?.children[0]?.children[0]?.children ?? [];
+    expect(activeLocations.map((node) => node.id)).toEqual(['loc-1']);
+    expect(activeLocations[0]?.children).toHaveLength(0);
+
+    const unfiltered = await useCase.execute();
+    const allLocations = unfiltered[0]?.children[0]?.children[0]?.children ?? [];
+    expect(allLocations.map((node) => node.id)).toEqual(['loc-1', 'loc-inactive']);
+  });
+
+  it('keeps the rest of the tree when one warehouse location lookup fails', async () => {
+    const warehouseTwo: Warehouse = {
+      ...warehouse,
+      id: 'wh-2',
+      warehouseCode: 'WH-02',
+      warehouseName: 'Second Warehouse',
+    };
+
+    class PartialFailureRepository extends FakeRepository {
+      override listWarehouses() {
+        return Promise.resolve({
+          items: [warehouse, warehouseTwo],
+          page: 1,
+          pageSize: 100,
+          totalItems: 2,
+          totalPages: 1,
+        });
+      }
+
+      override getLocationTree(filter: LocationTreeFilter): Promise<LocationTree[]> {
+        if (filter.warehouseId === 'wh-2') {
+          return Promise.reject(new Error('forbidden scope for wh-2'));
+        }
+        return Promise.resolve([{ ...location, children: [] }]);
+      }
+    }
+
+    const useCase = new GetSiteLocationTreeUseCase(new PartialFailureRepository());
+
+    const tree = await useCase.execute();
+
+    const warehouses = tree[0]?.children ?? [];
+    expect(warehouses.map((node) => node.id)).toEqual(['wh-1', 'wh-2']);
+    // wh-1 keeps its location; wh-2 degrades to no locations instead of
+    // collapsing the entire tree.
+    expect(warehouses[0]?.children[0]?.children.map((node) => node.id)).toEqual(['loc-1']);
+  });
+});
