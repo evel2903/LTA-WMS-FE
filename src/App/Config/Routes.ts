@@ -22,6 +22,10 @@ export const ROUTES = {
       UOMS: '/foundation/master-data/uoms',
       SKUS: '/foundation/master-data/skus',
     },
+    ACCESS: {
+      ROLES: '/foundation/access/roles',
+      USERS: '/foundation/access/users',
+    },
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },
