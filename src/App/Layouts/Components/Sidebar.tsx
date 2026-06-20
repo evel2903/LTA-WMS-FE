@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
+  AlertTriangle,
   Boxes,
   Building2,
   ChevronDown,
   ClipboardCheck,
+  History,
   LayoutDashboard,
   Layers,
   MapPinned,
@@ -60,6 +62,8 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Rule Matrix', to: ROUTES.FOUNDATION.RULE_MATRIX, icon: Network },
       { label: 'Roles & Permissions', to: ROUTES.FOUNDATION.ACCESS.ROLES, icon: ShieldCheck },
       { label: 'Users & Assignments', to: ROUTES.FOUNDATION.ACCESS.USERS, icon: Users },
+      { label: 'Audit Log', to: ROUTES.FOUNDATION.AUDIT, icon: History },
+      { label: 'Exception Queue', to: ROUTES.FOUNDATION.EXCEPTIONS, icon: AlertTriangle },
     ],
   },
   {

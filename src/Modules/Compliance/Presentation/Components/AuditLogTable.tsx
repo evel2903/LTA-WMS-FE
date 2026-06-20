@@ -1,0 +1,53 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@shared/Components/Ui/Table';
+import type { AuditLogEntry } from '@modules/Compliance/Domain/Entities/Compliance';
+
+interface AuditLogTableProps {
+  entries: AuditLogEntry[];
+  selectedId: string | null;
+  onSelect: (entry: AuditLogEntry) => void;
+}
+
+export function AuditLogTable({ entries, selectedId, onSelect }: AuditLogTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Time</TableHead>
+          <TableHead>Actor</TableHead>
+          <TableHead>Action</TableHead>
+          <TableHead>Object</TableHead>
+          <TableHead>Result</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {entries.map((entry) => (
+          <TableRow
+            key={entry.id}
+            data-selected={entry.id === selectedId}
+            className="data-[selected=true]:bg-muted"
+          >
+            <TableCell className="whitespace-nowrap tabular-nums">
+              <button className="underline-offset-2 hover:underline" onClick={() => onSelect(entry)}>
+                {new Date(entry.occurredAt).toLocaleString()}
+              </button>
+            </TableCell>
+            <TableCell>{entry.actorUserId ?? entry.actorType}</TableCell>
+            <TableCell>{entry.action}</TableCell>
+            <TableCell>
+              {entry.objectType}
+              {entry.objectCode ? ` · ${entry.objectCode}` : ''}
+            </TableCell>
+            <TableCell>{entry.result}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

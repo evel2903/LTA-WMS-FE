@@ -26,6 +26,8 @@ export const ROUTES = {
       ROLES: '/foundation/access/roles',
       USERS: '/foundation/access/users',
     },
+    AUDIT: '/foundation/audit',
+    EXCEPTIONS: '/foundation/exceptions',
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },

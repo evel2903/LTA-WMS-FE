@@ -15,6 +15,7 @@ import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRo
 import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
 import { warehouseProfileRoutes } from '@modules/WarehouseProfile/Presentation/Routes/WarehouseProfileRoutes';
 import { accessControlRoutes } from '@modules/AccessControl/Presentation/Routes/AccessControlRoutes';
+import { complianceRoutes } from '@modules/Compliance/Presentation/Routes/ComplianceRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
           ...catalogRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
+          ...complianceRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },

@@ -1,0 +1,217 @@
+import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+
+import { Button } from '@shared/Components/Ui/Button';
+import { Input } from '@shared/Components/Ui/Input';
+import type { ExceptionAction } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
+import type {
+  AssignExceptionInput,
+  LogExceptionInput,
+  ResolveExceptionInput,
+  SubmitExceptionInput,
+} from '@modules/Compliance/Domain/Types/ComplianceTypes';
+import {
+  assignExceptionSchema,
+  parseEvidenceRefs,
+  resolveExceptionSchema,
+  submitExceptionSchema,
+  type AssignExceptionFormValues,
+  type ResolveExceptionFormValues,
+  type SubmitExceptionFormValues,
+} from '@modules/Compliance/Presentation/Forms/ExceptionActionSchema';
+
+interface ExceptionActionFormProps {
+  action: ExceptionAction;
+  disabled?: boolean;
+  pending?: boolean;
+  /** Inline lifecycle-blocked / business-rule message (missing reason/evidence/approval). */
+  blocked?: string;
+  onLog: (input: LogExceptionInput) => void;
+  onAssign: (input: AssignExceptionInput) => void;
+  onSubmit: (input: SubmitExceptionInput) => void;
+  onResolve: (input: ResolveExceptionInput) => void;
+  onClose: () => void;
+}
+
+function Blocked({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <span className="text-destructive text-xs" role="alert">
+      {message}
+    </span>
+  );
+}
+
+export function ExceptionActionForm(props: ExceptionActionFormProps) {
+  switch (props.action) {
+    case 'Log':
+      return <LogForm {...props} />;
+    case 'Assign':
+      return <AssignForm {...props} />;
+    case 'Submit':
+      return <SubmitForm {...props} />;
+    case 'Resolve':
+      return <ResolveForm {...props} />;
+    case 'Close':
+      return <CloseForm {...props} />;
+    default:
+      return null;
+  }
+}
+
+function LogForm({ disabled, pending, blocked, onLog }: ExceptionActionFormProps) {
+  const [hardBlock, setHardBlock] = useState(false);
+  return (
+    <div className="grid gap-2">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          disabled={disabled}
+          checked={hardBlock}
+          onChange={(event) => setHardBlock(event.target.checked)}
+        />
+        Hard block
+      </label>
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={disabled || pending} onClick={() => onLog({ hardBlock })}>
+          Log
+        </Button>
+        <Blocked message={blocked} />
+      </div>
+    </div>
+  );
+}
+
+function AssignForm({ disabled, pending, blocked, onAssign }: ExceptionActionFormProps) {
+  const form = useForm<AssignExceptionFormValues>({
+    resolver: zodResolver(assignExceptionSchema),
+    defaultValues: { assignedToUserId: '', assignedRoleId: '', ownerId: '' },
+  });
+  const errors = form.formState.errors;
+  return (
+    <form
+      className="grid gap-2"
+      onSubmit={form.handleSubmit((values) =>
+        onAssign({
+          assignedToUserId: values.assignedToUserId,
+          assignedRoleId: values.assignedRoleId,
+          ownerId: values.ownerId,
+        }),
+      )}
+    >
+      <label className="grid gap-1 text-sm">
+        Assigned to user id
+        <Input disabled={disabled} {...form.register('assignedToUserId')} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Assigned role id
+        <Input disabled={disabled} {...form.register('assignedRoleId')} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Owner id
+        <Input disabled={disabled} {...form.register('ownerId')} />
+      </label>
+      {errors.assignedToUserId && (
+        <span className="text-destructive text-xs">{errors.assignedToUserId.message}</span>
+      )}
+      {errors.assignedRoleId && (
+        <span className="text-destructive text-xs">{errors.assignedRoleId.message}</span>
+      )}
+      {errors.ownerId && <span className="text-destructive text-xs">{errors.ownerId.message}</span>}
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={disabled || pending}>
+          Assign
+        </Button>
+        <Blocked message={blocked} />
+      </div>
+    </form>
+  );
+}
+
+function SubmitForm({ disabled, pending, blocked, onSubmit }: ExceptionActionFormProps) {
+  const form = useForm<SubmitExceptionFormValues>({
+    resolver: zodResolver(submitExceptionSchema),
+    defaultValues: { requireApproval: false, reasonCode: '', reasonNote: '' },
+  });
+  return (
+    <form
+      className="grid gap-2"
+      onSubmit={form.handleSubmit((values) =>
+        onSubmit({
+          requireApproval: values.requireApproval,
+          reasonCode: values.reasonCode,
+          reasonNote: values.reasonNote,
+        }),
+      )}
+    >
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" disabled={disabled} {...form.register('requireApproval')} />
+        Require approval
+      </label>
+      <label className="grid gap-1 text-sm">
+        Reason code
+        <Input disabled={disabled} {...form.register('reasonCode')} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Reason note
+        <Input disabled={disabled} {...form.register('reasonNote')} />
+      </label>
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={disabled || pending}>
+          Submit for review
+        </Button>
+        <Blocked message={blocked} />
+      </div>
+    </form>
+  );
+}
+
+function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionFormProps) {
+  const form = useForm<ResolveExceptionFormValues>({
+    resolver: zodResolver(resolveExceptionSchema),
+    defaultValues: { reasonCode: '', resolutionNote: '', evidenceRefs: '' },
+  });
+  return (
+    <form
+      className="grid gap-2"
+      onSubmit={form.handleSubmit((values) =>
+        onResolve({
+          reasonCode: values.reasonCode,
+          resolutionNote: values.resolutionNote,
+          evidenceRefs: parseEvidenceRefs(values.evidenceRefs),
+        }),
+      )}
+    >
+      <label className="grid gap-1 text-sm">
+        Reason code
+        <Input disabled={disabled} {...form.register('reasonCode')} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Resolution note
+        <Input disabled={disabled} {...form.register('resolutionNote')} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Evidence refs (comma-separated)
+        <Input disabled={disabled} {...form.register('evidenceRefs')} />
+      </label>
+      <div className="flex items-center gap-2">
+        <Button type="submit" size="sm" disabled={disabled || pending}>
+          Resolve
+        </Button>
+        <Blocked message={blocked} />
+      </div>
+    </form>
+  );
+}
+
+function CloseForm({ disabled, pending, blocked, onClose }: ExceptionActionFormProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button size="sm" disabled={disabled || pending} onClick={() => onClose()}>
+        Close
+      </Button>
+      <Blocked message={blocked} />
+    </div>
+  );
+}
