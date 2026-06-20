@@ -14,6 +14,7 @@ import { inventoryRoutes } from '@modules/Inventory/Presentation/Routes/Inventor
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
 import { warehouseProfileRoutes } from '@modules/WarehouseProfile/Presentation/Routes/WarehouseProfileRoutes';
+import { accessControlRoutes } from '@modules/AccessControl/Presentation/Routes/AccessControlRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
           ...masterDataRoutes,
           ...catalogRoutes,
           ...warehouseProfileRoutes,
+          ...accessControlRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },

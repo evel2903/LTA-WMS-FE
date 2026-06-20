@@ -16,8 +16,10 @@ import {
   Ruler,
   ScrollText,
   Send,
+  ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
+  Users,
   Warehouse,
 } from 'lucide-react';
 
@@ -56,6 +58,8 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'SKU Master', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS, icon: Package },
       { label: 'Warehouse Profiles', to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES, icon: SlidersHorizontal },
       { label: 'Rule Matrix', to: ROUTES.FOUNDATION.RULE_MATRIX, icon: Network },
+      { label: 'Roles & Permissions', to: ROUTES.FOUNDATION.ACCESS.ROLES, icon: ShieldCheck },
+      { label: 'Users & Assignments', to: ROUTES.FOUNDATION.ACCESS.USERS, icon: Users },
     ],
   },
   {
