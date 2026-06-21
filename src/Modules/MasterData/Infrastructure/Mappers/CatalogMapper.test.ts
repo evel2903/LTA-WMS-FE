@@ -4,6 +4,7 @@ import type {
   ItemCoverageDto,
   OwnerDto,
   PagedMasterDataDto,
+  PackDefinitionDto,
   SkuBarcodeDto,
   SkuDto,
   UomConversionDto,
@@ -90,6 +91,23 @@ const skuBarcodeDto: SkuBarcodeDto = {
   UpdatedBy: null,
 };
 
+const packDefinitionDto: PackDefinitionDto = {
+  Id: 'pack-1',
+  SkuId: 'sku-1',
+  PackCode: 'CASE',
+  PackName: 'Case',
+  UomId: 'uom-2',
+  QuantityPerPack: 12,
+  IsDefault: true,
+  Status: 'Active',
+  SourceSystem: null,
+  ReferenceId: null,
+  CreatedAt: '2026-06-18T00:00:00.000Z',
+  UpdatedAt: '2026-06-18T00:00:00.000Z',
+  CreatedBy: null,
+  UpdatedBy: null,
+};
+
 const uomConversionDto: UomConversionDto = {
   Id: 'conv-1',
   SkuId: 'sku-1',
@@ -167,7 +185,18 @@ describe('CatalogMapper', () => {
     });
   });
 
-  it('maps SKU relation DTOs (barcode, conversion, coverage) to camelCase', () => {
+  it('maps SKU relation DTOs (pack, barcode, conversion, coverage) to camelCase', () => {
+    expect(CatalogMapper.toPackDefinition(packDefinitionDto)).toMatchObject({
+      id: 'pack-1',
+      skuId: 'sku-1',
+      packCode: 'CASE',
+      packName: 'Case',
+      uomId: 'uom-2',
+      quantityPerPack: 12,
+      isDefault: true,
+      status: 'Active',
+    });
+
     expect(CatalogMapper.toSkuBarcode(skuBarcodeDto)).toMatchObject({
       id: 'bc-1',
       skuId: 'sku-1',
@@ -283,6 +312,58 @@ describe('CatalogMapper', () => {
 
     const cov = CatalogMapper.toUpdateItemCoverageRequest({ minQty: 0, ownerId: null });
     expect(cov).toEqual({ MinQty: 0 });
+  });
+
+  it('builds pack and relation PATCH payloads with optional reason hooks', () => {
+    expect(
+      CatalogMapper.toCreatePackDefinitionRequest({
+        skuId: 'sku-1',
+        packCode: 'CASE',
+        packName: 'Case',
+        uomId: 'uom-2',
+        quantityPerPack: 12,
+        status: 'Active',
+        isDefault: false,
+        reasonCode: 'MASTER_DATA_FIX',
+      }),
+    ).toEqual({
+      SkuId: 'sku-1',
+      PackCode: 'CASE',
+      PackName: 'Case',
+      UomId: 'uom-2',
+      QuantityPerPack: 12,
+      Status: 'Active',
+      IsDefault: false,
+      ReasonCode: 'MASTER_DATA_FIX',
+    });
+
+    expect(
+      CatalogMapper.toUpdatePackDefinitionRequest({
+        packName: 'Case updated',
+        quantityPerPack: 24,
+        reasonCode: 'MASTER_DATA_FIX',
+      }),
+    ).toEqual({
+      PackName: 'Case updated',
+      QuantityPerPack: 24,
+      ReasonCode: 'MASTER_DATA_FIX',
+    });
+
+    expect(
+      CatalogMapper.toUpdateSkuBarcodeRequest({
+        barcodeType: 'QR',
+        isPrimary: false,
+        reasonCode: 'RELATION_EDIT',
+      }),
+    ).toEqual({ BarcodeType: 'QR', IsPrimary: false, ReasonCode: 'RELATION_EDIT' });
+
+    expect(
+      CatalogMapper.toUpdateUomConversionRequest({
+        factor: 24,
+        effectiveTo: null,
+        reasonCode: 'RELATION_EDIT',
+      }),
+    ).toEqual({ Factor: 24, ReasonCode: 'RELATION_EDIT' });
   });
 
   it('keeps create Owner/Uom requests in PascalCase', () => {

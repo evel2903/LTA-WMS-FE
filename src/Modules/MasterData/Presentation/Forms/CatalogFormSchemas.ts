@@ -118,6 +118,20 @@ export const skuBarcodeFormSchema = z.object({
   ownerId: optionalText(36),
   packCode: optionalText(50),
   isPrimary: z.boolean().optional().default(false),
+  reasonCode: optionalText(64),
+});
+
+// ── PackDefinition ───────────────────────────────────────────────────────────
+
+export const packDefinitionFormSchema = z.object({
+  skuId: requiredText(36, 'SKU is required'),
+  packCode: requiredText(50, 'Pack code is required'),
+  packName: requiredText(255, 'Pack name is required'),
+  uomId: requiredText(36, 'UOM is required'),
+  quantityPerPack: z.coerce.number().min(0.000001, 'Quantity per pack must be greater than 0'),
+  status: masterDataStatusSchema,
+  isDefault: z.boolean().optional().default(false),
+  reasonCode: optionalText(64),
 });
 
 // ── UomConversion ─────────────────────────────────────────────────────────────
@@ -131,6 +145,7 @@ export const uomConversionFormSchema = z
     effectiveFrom: requiredText(40, 'Effective from is required'),
     status: masterDataStatusSchema,
     effectiveTo: optionalText(40),
+    reasonCode: optionalText(64),
   })
   .superRefine((values, ctx) => {
     if (values.fromUomId && values.toUomId && values.fromUomId === values.toUomId) {
@@ -160,6 +175,8 @@ export const itemCoverageFormSchema = z
     standardQty: optionalNonNegativeNumber,
     multipleQty: optionalNonNegativeNumber,
     leadTimeDays: optionalNonNegativeInt,
+    stopReceiving: z.boolean().optional().default(false),
+    stopShipping: z.boolean().optional().default(false),
   })
   .superRefine((values, ctx) => {
     if (
@@ -186,5 +203,6 @@ export type OwnerFormValues = z.infer<typeof ownerFormSchema>;
 export type UomFormValues = z.infer<typeof uomFormSchema>;
 export type SkuFormValues = z.infer<typeof skuFormSchema>;
 export type SkuBarcodeFormValues = z.infer<typeof skuBarcodeFormSchema>;
+export type PackDefinitionFormValues = z.infer<typeof packDefinitionFormSchema>;
 export type UomConversionFormValues = z.infer<typeof uomConversionFormSchema>;
 export type ItemCoverageFormValues = z.infer<typeof itemCoverageFormSchema>;

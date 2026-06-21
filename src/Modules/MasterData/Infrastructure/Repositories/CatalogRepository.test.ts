@@ -44,6 +44,7 @@ describe('CatalogRepository', () => {
     await repository.listUoms({ status: 'Active' });
     await repository.listSkus({ itemStatus: 'Active' });
     await repository.listSkuBarcodes({ skuId: 'sku-1' });
+    await repository.listPackDefinitions({ skuId: 'sku-1' });
     await repository.listUomConversions({ skuId: 'sku-1' });
     await repository.listItemCoverages({ skuId: 'sku-1' });
 
@@ -52,6 +53,7 @@ describe('CatalogRepository', () => {
       ['get', '/uoms'],
       ['get', '/skus'],
       ['get', '/sku-barcodes'],
+      ['get', '/pack-definitions'],
       ['get', '/uom-conversions'],
       ['get', '/item-coverages'],
     ]);
@@ -108,6 +110,22 @@ describe('CatalogRepository', () => {
       baseUomId: 'uom-1',
       inventoryUomId: 'uom-1',
     });
+    await repository.createPackDefinition({
+      skuId: 'sku-1',
+      packCode: 'CASE',
+      packName: 'Case',
+      uomId: 'uom-2',
+      quantityPerPack: 12,
+      status: 'Active',
+      reasonCode: 'RELATION_CREATE',
+    });
+    await repository.updateSkuBarcode('bc-1', { barcodeType: 'QR', reasonCode: 'RELATION_EDIT' });
+    await repository.updateUomConversion('conv-1', { factor: 24, reasonCode: 'RELATION_EDIT' });
+    await repository.updateItemCoverage('cov-1', { maxQty: 250 });
+    await repository.updatePackDefinition('pack-1', {
+      packName: 'Case updated',
+      reasonCode: 'RELATION_EDIT',
+    });
 
     expect(http.calls[0]).toMatchObject({
       method: 'post',
@@ -130,6 +148,39 @@ describe('CatalogRepository', () => {
         BaseUomId: 'uom-1',
         InventoryUomId: 'uom-1',
       },
+    });
+    expect(http.calls[3]).toMatchObject({
+      method: 'post',
+      url: '/pack-definitions',
+      body: {
+        SkuId: 'sku-1',
+        PackCode: 'CASE',
+        PackName: 'Case',
+        UomId: 'uom-2',
+        QuantityPerPack: 12,
+        Status: 'Active',
+        ReasonCode: 'RELATION_CREATE',
+      },
+    });
+    expect(http.calls[4]).toMatchObject({
+      method: 'patch',
+      url: '/sku-barcodes/bc-1',
+      body: { BarcodeType: 'QR', ReasonCode: 'RELATION_EDIT' },
+    });
+    expect(http.calls[5]).toMatchObject({
+      method: 'patch',
+      url: '/uom-conversions/conv-1',
+      body: { Factor: 24, ReasonCode: 'RELATION_EDIT' },
+    });
+    expect(http.calls[6]).toMatchObject({
+      method: 'patch',
+      url: '/item-coverages/cov-1',
+      body: { MaxQty: 250 },
+    });
+    expect(http.calls[7]).toMatchObject({
+      method: 'patch',
+      url: '/pack-definitions/pack-1',
+      body: { PackName: 'Case updated', ReasonCode: 'RELATION_EDIT' },
     });
   });
 

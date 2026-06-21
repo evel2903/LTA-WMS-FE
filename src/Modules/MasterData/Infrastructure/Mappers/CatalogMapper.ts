@@ -2,6 +2,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   ItemCoverage,
   Owner,
+  PackDefinition,
   Sku,
   SkuBarcode,
   Uom,
@@ -10,12 +11,14 @@ import type {
 import type {
   CreateItemCoverageInput,
   CreateOwnerInput,
+  CreatePackDefinitionInput,
   CreateSkuBarcodeInput,
   CreateSkuInput,
   CreateUomConversionInput,
   CreateUomInput,
   UpdateItemCoverageInput,
   UpdateOwnerInput,
+  UpdatePackDefinitionInput,
   UpdateSkuBarcodeInput,
   UpdateSkuInput,
   UpdateUomConversionInput,
@@ -24,6 +27,7 @@ import type {
 import type {
   CreateItemCoverageRequestDto,
   CreateOwnerRequestDto,
+  CreatePackDefinitionRequestDto,
   CreateSkuBarcodeRequestDto,
   CreateSkuRequestDto,
   CreateUomConversionRequestDto,
@@ -31,12 +35,14 @@ import type {
   ItemCoverageDto,
   OwnerDto,
   PagedMasterDataDto,
+  PackDefinitionDto,
   SkuBarcodeDto,
   SkuDto,
   UomConversionDto,
   UomDto,
   UpdateItemCoverageRequestDto,
   UpdateOwnerRequestDto,
+  UpdatePackDefinitionRequestDto,
   UpdateSkuBarcodeRequestDto,
   UpdateSkuRequestDto,
   UpdateUomConversionRequestDto,
@@ -151,6 +157,25 @@ export const CatalogMapper = {
       barcodeValue: dto.BarcodeValue,
       barcodeType: dto.BarcodeType,
       isPrimary: dto.IsPrimary,
+      status: dto.Status,
+      sourceSystem: dto.SourceSystem,
+      referenceId: dto.ReferenceId,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+      createdBy: dto.CreatedBy,
+      updatedBy: dto.UpdatedBy,
+    };
+  },
+
+  toPackDefinition(dto: PackDefinitionDto): PackDefinition {
+    return {
+      id: dto.Id,
+      skuId: dto.SkuId,
+      packCode: dto.PackCode,
+      packName: dto.PackName,
+      uomId: dto.UomId,
+      quantityPerPack: dto.QuantityPerPack,
+      isDefault: dto.IsDefault,
       status: dto.Status,
       sourceSystem: dto.SourceSystem,
       referenceId: dto.ReferenceId,
@@ -324,6 +349,7 @@ export const CatalogMapper = {
       IsPrimary: input.isPrimary,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -339,6 +365,37 @@ export const CatalogMapper = {
       IsPrimary: input.isPrimary,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
+    });
+  },
+
+  toCreatePackDefinitionRequest(input: CreatePackDefinitionInput): CreatePackDefinitionRequestDto {
+    return removeEmpty({
+      SkuId: input.skuId,
+      PackCode: input.packCode,
+      PackName: input.packName,
+      UomId: input.uomId,
+      QuantityPerPack: input.quantityPerPack,
+      Status: input.status,
+      IsDefault: input.isDefault,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
+    });
+  },
+
+  toUpdatePackDefinitionRequest(input: UpdatePackDefinitionInput): UpdatePackDefinitionRequestDto {
+    return removeEmpty({
+      SkuId: input.skuId,
+      PackCode: input.packCode,
+      PackName: input.packName,
+      UomId: input.uomId,
+      QuantityPerPack: input.quantityPerPack,
+      Status: input.status,
+      IsDefault: input.isDefault,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -353,6 +410,7 @@ export const CatalogMapper = {
       EffectiveTo: input.effectiveTo,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -367,6 +425,7 @@ export const CatalogMapper = {
       EffectiveTo: input.effectiveTo,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 

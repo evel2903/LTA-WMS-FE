@@ -37,6 +37,13 @@ export interface SkuBarcodeListFilter extends PageFilter {
   status?: MasterDataStatus;
 }
 
+export interface PackDefinitionListFilter extends PageFilter {
+  skuId?: string;
+  uomId?: string;
+  packCode?: string;
+  status?: MasterDataStatus;
+}
+
 export interface UomConversionListFilter extends PageFilter {
   skuId?: string;
   fromUomId?: string;
@@ -117,9 +124,25 @@ export interface CreateSkuBarcodeInput {
   isPrimary?: boolean;
   sourceSystem?: string | null;
   referenceId?: string | null;
+  reasonCode?: string | null;
 }
 
 export type UpdateSkuBarcodeInput = Partial<CreateSkuBarcodeInput>;
+
+export interface CreatePackDefinitionInput {
+  skuId: string;
+  packCode: string;
+  packName: string;
+  uomId: string;
+  quantityPerPack: number;
+  status: MasterDataStatus;
+  isDefault?: boolean;
+  sourceSystem?: string | null;
+  referenceId?: string | null;
+  reasonCode?: string | null;
+}
+
+export type UpdatePackDefinitionInput = Partial<CreatePackDefinitionInput>;
 
 export interface CreateUomConversionInput {
   skuId: string;
@@ -131,6 +154,7 @@ export interface CreateUomConversionInput {
   effectiveTo?: string | null;
   sourceSystem?: string | null;
   referenceId?: string | null;
+  reasonCode?: string | null;
 }
 
 export type UpdateUomConversionInput = Partial<CreateUomConversionInput>;

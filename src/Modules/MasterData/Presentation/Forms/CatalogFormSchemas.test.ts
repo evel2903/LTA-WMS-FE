@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   itemCoverageFormSchema,
   ownerFormSchema,
+  packDefinitionFormSchema,
   skuBarcodeFormSchema,
   skuFormSchema,
   uomConversionFormSchema,
@@ -131,6 +132,31 @@ describe('Catalog form schemas', () => {
     ).toBe(false);
   });
 
+  it('pack definition schema requires pack identifiers, UOM and positive quantity', () => {
+    expect(
+      packDefinitionFormSchema.safeParse({
+        skuId: 'sku-1',
+        packCode: 'CASE',
+        packName: 'Case',
+        uomId: 'uom-2',
+        quantityPerPack: 12,
+        status: 'Active',
+        isDefault: false,
+        reasonCode: 'RELATION_EDIT',
+      }).success,
+    ).toBe(true);
+    expect(
+      packDefinitionFormSchema.safeParse({
+        skuId: 'sku-1',
+        packCode: '',
+        packName: '',
+        uomId: '',
+        quantityPerPack: 0,
+        status: 'Active',
+      }).success,
+    ).toBe(false);
+  });
+
   it('uom conversion schema rejects equal from/to uom and a non-positive factor', () => {
     expect(
       uomConversionFormSchema.safeParse({
@@ -206,7 +232,19 @@ describe('Catalog form schemas', () => {
         minQty: 0,
         maxQty: 100,
         multipleQty: 1,
+        stopReceiving: true,
+        stopShipping: false,
       }).success,
     ).toBe(true);
+    expect(
+      itemCoverageFormSchema.safeParse({
+        skuId: 'sku-1',
+        warehouseId: '',
+        status: 'Active',
+        minQty: 0,
+        maxQty: 100,
+        multipleQty: 1,
+      }).success,
+    ).toBe(false);
   });
 });

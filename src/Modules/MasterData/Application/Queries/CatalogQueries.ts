@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { catalogQueryKeys } from '@modules/MasterData/Application/Queries/CatalogQueryKeys';
+import { CATALOG_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type {
   OwnerListFilter,
   SkuListFilter,
@@ -31,12 +32,12 @@ export function useSkus(filter: SkuListFilter = {}) {
 
 /** Active owners for select inputs (FK pickers). */
 export function useActiveOwners() {
-  return useOwners({ status: 'Active', pageSize: 200 });
+  return useOwners({ status: 'Active', pageSize: CATALOG_DEFAULT_PAGE_SIZE });
 }
 
 /** Active UOMs for select inputs (FK pickers). */
 export function useActiveUoms() {
-  return useUoms({ status: 'Active', pageSize: 200 });
+  return useUoms({ status: 'Active', pageSize: CATALOG_DEFAULT_PAGE_SIZE });
 }
 
 /**
@@ -50,6 +51,11 @@ export function useSkuRelations(skuId: string | null) {
     queryFn: () => catalogRepository.listSkuBarcodes({ skuId: skuId ?? undefined }),
     enabled,
   });
+  const packs = useQuery({
+    queryKey: catalogQueryKeys.packDefinitions({ skuId: skuId ?? undefined }),
+    queryFn: () => catalogRepository.listPackDefinitions({ skuId: skuId ?? undefined }),
+    enabled,
+  });
   const conversions = useQuery({
     queryKey: catalogQueryKeys.uomConversions({ skuId: skuId ?? undefined }),
     queryFn: () => catalogRepository.listUomConversions({ skuId: skuId ?? undefined }),
@@ -61,5 +67,5 @@ export function useSkuRelations(skuId: string | null) {
     enabled,
   });
 
-  return { barcodes, conversions, coverages };
+  return { barcodes, packs, conversions, coverages };
 }

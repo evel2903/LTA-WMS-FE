@@ -7,6 +7,8 @@ export const CATALOG_ENDPOINTS = {
   SKU_BY_ID: (id: string) => `/skus/${id}`,
   SKU_BARCODES: '/sku-barcodes',
   SKU_BARCODE_BY_ID: (id: string) => `/sku-barcodes/${id}`,
+  PACK_DEFINITIONS: '/pack-definitions',
+  PACK_DEFINITION_BY_ID: (id: string) => `/pack-definitions/${id}`,
   UOM_CONVERSIONS: '/uom-conversions',
   UOM_CONVERSION_BY_ID: (id: string) => `/uom-conversions/${id}`,
   ITEM_COVERAGES: '/item-coverages',

@@ -11,6 +11,7 @@ import {
   useActiveUoms,
   useSkus,
 } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
 import {
   CATALOG_EMPTY_LABELS,
   SKU_STATUSES,
@@ -75,11 +76,13 @@ export function SkuMasterPage() {
   });
   const ownersQuery = useActiveOwners();
   const uomsQuery = useActiveUoms();
+  const warehousesQuery = useActiveWarehouses();
   const mutations = useCatalogMutations();
 
   const skus = query.data?.items ?? [];
   const owners = ownersQuery.data?.items ?? [];
   const uoms = uomsQuery.data?.items ?? [];
+  const warehouses = warehousesQuery.data?.items ?? [];
   const apiError = query.error instanceof ApiError ? query.error : null;
   const state: CatalogListState = apiError?.isForbidden
     ? 'denied'
@@ -245,7 +248,13 @@ export function SkuMasterPage() {
         </Card>
       </div>
       {selected && (
-        <SkuRelationsPanel key={selected.id} skuId={selected.id} uoms={uoms} canEdit={canEdit} />
+        <SkuRelationsPanel
+          key={selected.id}
+          skuId={selected.id}
+          uoms={uoms}
+          warehouses={warehouses}
+          canEdit={canEdit}
+        />
       )}
     </div>
   );

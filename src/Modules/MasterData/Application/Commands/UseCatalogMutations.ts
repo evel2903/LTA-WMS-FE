@@ -6,12 +6,17 @@ import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands
 import type {
   CreateItemCoverageInput,
   CreateOwnerInput,
+  CreatePackDefinitionInput,
   CreateSkuBarcodeInput,
   CreateSkuInput,
   CreateUomConversionInput,
   CreateUomInput,
+  UpdateItemCoverageInput,
   UpdateOwnerInput,
+  UpdatePackDefinitionInput,
+  UpdateSkuBarcodeInput,
   UpdateSkuInput,
+  UpdateUomConversionInput,
   UpdateUomInput,
 } from '@modules/MasterData/Domain/Types/CatalogQuery';
 import { catalogRepository } from '@modules/MasterData/Infrastructure/Repositories/CatalogRepositoryInstance';
@@ -70,14 +75,44 @@ export function useCatalogMutations() {
       onSuccess: invalidateRelations,
       onError: notifyError,
     }),
+    updateSkuBarcode: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdateSkuBarcodeInput }) =>
+        catalogRepository.updateSkuBarcode(id, input),
+      onSuccess: invalidateRelations,
+      onError: notifyError,
+    }),
+    createPackDefinition: useMutation({
+      mutationFn: (input: CreatePackDefinitionInput) =>
+        catalogRepository.createPackDefinition(input),
+      onSuccess: invalidateRelations,
+      onError: notifyError,
+    }),
+    updatePackDefinition: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdatePackDefinitionInput }) =>
+        catalogRepository.updatePackDefinition(id, input),
+      onSuccess: invalidateRelations,
+      onError: notifyError,
+    }),
     createUomConversion: useMutation({
       mutationFn: (input: CreateUomConversionInput) =>
         catalogRepository.createUomConversion(input),
       onSuccess: invalidateRelations,
       onError: notifyError,
     }),
+    updateUomConversion: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdateUomConversionInput }) =>
+        catalogRepository.updateUomConversion(id, input),
+      onSuccess: invalidateRelations,
+      onError: notifyError,
+    }),
     createItemCoverage: useMutation({
       mutationFn: (input: CreateItemCoverageInput) => catalogRepository.createItemCoverage(input),
+      onSuccess: invalidateRelations,
+      onError: notifyError,
+    }),
+    updateItemCoverage: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdateItemCoverageInput }) =>
+        catalogRepository.updateItemCoverage(id, input),
       onSuccess: invalidateRelations,
       onError: notifyError,
     }),

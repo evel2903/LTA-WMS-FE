@@ -2,6 +2,7 @@ import { QUERY_NAMESPACES } from '@shared/Constants/QueryKeys';
 import type {
   ItemCoverageListFilter,
   OwnerListFilter,
+  PackDefinitionListFilter,
   SkuBarcodeListFilter,
   SkuListFilter,
   UomConversionListFilter,
@@ -16,6 +17,8 @@ export const catalogQueryKeys = {
   skus: (filter?: SkuListFilter) => [...catalogQueryKeys.all, 'skus', filter ?? {}] as const,
   skuBarcodes: (filter?: SkuBarcodeListFilter) =>
     [...catalogQueryKeys.all, 'skuRelations', 'barcodes', filter ?? {}] as const,
+  packDefinitions: (filter?: PackDefinitionListFilter) =>
+    [...catalogQueryKeys.all, 'skuRelations', 'packs', filter ?? {}] as const,
   uomConversions: (filter?: UomConversionListFilter) =>
     [...catalogQueryKeys.all, 'skuRelations', 'conversions', filter ?? {}] as const,
   itemCoverages: (filter?: ItemCoverageListFilter) =>

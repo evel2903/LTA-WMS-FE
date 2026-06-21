@@ -69,6 +69,17 @@ export interface SkuBarcode extends MasterDataAuditFields {
   status: MasterDataStatus;
 }
 
+export interface PackDefinition extends MasterDataAuditFields {
+  id: string;
+  skuId: string;
+  packCode: string;
+  packName: string;
+  uomId: string;
+  quantityPerPack: number;
+  isDefault: boolean;
+  status: MasterDataStatus;
+}
+
 export interface UomConversion extends MasterDataAuditFields {
   id: string;
   skuId: string;

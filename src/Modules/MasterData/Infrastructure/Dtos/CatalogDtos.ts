@@ -61,6 +61,17 @@ export interface SkuBarcodeDto extends MasterDataAuditDto {
   Status: MasterDataStatus;
 }
 
+export interface PackDefinitionDto extends MasterDataAuditDto {
+  Id: string;
+  SkuId: string;
+  PackCode: string;
+  PackName: string;
+  UomId: string;
+  QuantityPerPack: number;
+  IsDefault: boolean;
+  Status: MasterDataStatus;
+}
+
 export interface UomConversionDto extends MasterDataAuditDto {
   Id: string;
   SkuId: string;
@@ -137,15 +148,29 @@ export type CreateSkuBarcodeRequestDto = Pick<
   SkuBarcodeDto,
   'SkuId' | 'UomId' | 'BarcodeValue' | 'BarcodeType' | 'Status'
 > &
-  Partial<Pick<SkuBarcodeDto, 'OwnerId' | 'PackCode' | 'IsPrimary' | 'SourceSystem' | 'ReferenceId'>>;
+  Partial<Pick<SkuBarcodeDto, 'OwnerId' | 'PackCode' | 'IsPrimary' | 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateSkuBarcodeRequestDto = Partial<CreateSkuBarcodeRequestDto>;
+
+export type CreatePackDefinitionRequestDto = Pick<
+  PackDefinitionDto,
+  'SkuId' | 'PackCode' | 'PackName' | 'UomId' | 'QuantityPerPack' | 'Status'
+> &
+  Partial<Pick<PackDefinitionDto, 'IsDefault' | 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
+
+export type UpdatePackDefinitionRequestDto = Partial<CreatePackDefinitionRequestDto>;
 
 export type CreateUomConversionRequestDto = Pick<
   UomConversionDto,
   'SkuId' | 'FromUomId' | 'ToUomId' | 'Factor' | 'EffectiveFrom' | 'Status'
 > &
-  Partial<Pick<UomConversionDto, 'EffectiveTo' | 'SourceSystem' | 'ReferenceId'>>;
+  Partial<Pick<UomConversionDto, 'EffectiveTo' | 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateUomConversionRequestDto = Partial<CreateUomConversionRequestDto>;
 

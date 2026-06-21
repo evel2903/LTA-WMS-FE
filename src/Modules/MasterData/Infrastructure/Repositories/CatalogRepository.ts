@@ -5,6 +5,7 @@ import { CATALOG_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/
 import type {
   ItemCoverage,
   Owner,
+  PackDefinition,
   Sku,
   SkuBarcode,
   Uom,
@@ -13,18 +14,24 @@ import type {
 import type {
   CreateItemCoverageInput,
   CreateOwnerInput,
+  CreatePackDefinitionInput,
   CreateSkuBarcodeInput,
   CreateSkuInput,
   CreateUomConversionInput,
   CreateUomInput,
   ItemCoverageListFilter,
   OwnerListFilter,
+  PackDefinitionListFilter,
   SkuBarcodeListFilter,
   SkuListFilter,
   UomConversionListFilter,
   UomListFilter,
+  UpdateItemCoverageInput,
   UpdateOwnerInput,
+  UpdatePackDefinitionInput,
+  UpdateSkuBarcodeInput,
   UpdateSkuInput,
+  UpdateUomConversionInput,
   UpdateUomInput,
 } from '@modules/MasterData/Domain/Types/CatalogQuery';
 import { CATALOG_ENDPOINTS } from '@modules/MasterData/Infrastructure/Api/CatalogEndpoints';
@@ -32,6 +39,7 @@ import type {
   ItemCoverageDto,
   OwnerDto,
   PagedMasterDataDto,
+  PackDefinitionDto,
   SkuBarcodeDto,
   SkuDto,
   UomConversionDto,
@@ -109,6 +117,24 @@ export class CatalogRepository implements ICatalogRepository {
     return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toSkuBarcode(item));
   }
 
+  async listPackDefinitions(
+    filter: PackDefinitionListFilter = {},
+  ): Promise<PaginatedResponse<PackDefinition>> {
+    const dto = await this.http.get<PagedMasterDataDto<PackDefinitionDto>>(
+      CATALOG_ENDPOINTS.PACK_DEFINITIONS,
+      {
+        params: {
+          ...paging(filter),
+          SkuId: filter.skuId,
+          UomId: filter.uomId,
+          PackCode: filter.packCode,
+          Status: filter.status,
+        },
+      },
+    );
+    return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toPackDefinition(item));
+  }
+
   async listUomConversions(
     filter: UomConversionListFilter = {},
   ): Promise<PaginatedResponse<UomConversion>> {
@@ -149,6 +175,11 @@ export class CatalogRepository implements ICatalogRepository {
   async getSku(id: string): Promise<Sku> {
     const dto = await this.http.get<SkuDto>(CATALOG_ENDPOINTS.SKU_BY_ID(id));
     return CatalogMapper.toSku(dto);
+  }
+
+  async getPackDefinition(id: string): Promise<PackDefinition> {
+    const dto = await this.http.get<PackDefinitionDto>(CATALOG_ENDPOINTS.PACK_DEFINITION_BY_ID(id));
+    return CatalogMapper.toPackDefinition(dto);
   }
 
   // ── Mutations ──────────────────────────────────────────────────────────────
@@ -209,6 +240,33 @@ export class CatalogRepository implements ICatalogRepository {
     return CatalogMapper.toSkuBarcode(dto);
   }
 
+  async updateSkuBarcode(id: string, input: UpdateSkuBarcodeInput): Promise<SkuBarcode> {
+    const dto = await this.http.patch<SkuBarcodeDto>(
+      CATALOG_ENDPOINTS.SKU_BARCODE_BY_ID(id),
+      CatalogMapper.toUpdateSkuBarcodeRequest(input),
+    );
+    return CatalogMapper.toSkuBarcode(dto);
+  }
+
+  async createPackDefinition(input: CreatePackDefinitionInput): Promise<PackDefinition> {
+    const dto = await this.http.post<PackDefinitionDto>(
+      CATALOG_ENDPOINTS.PACK_DEFINITIONS,
+      CatalogMapper.toCreatePackDefinitionRequest(input),
+    );
+    return CatalogMapper.toPackDefinition(dto);
+  }
+
+  async updatePackDefinition(
+    id: string,
+    input: UpdatePackDefinitionInput,
+  ): Promise<PackDefinition> {
+    const dto = await this.http.patch<PackDefinitionDto>(
+      CATALOG_ENDPOINTS.PACK_DEFINITION_BY_ID(id),
+      CatalogMapper.toUpdatePackDefinitionRequest(input),
+    );
+    return CatalogMapper.toPackDefinition(dto);
+  }
+
   async createUomConversion(input: CreateUomConversionInput): Promise<UomConversion> {
     const dto = await this.http.post<UomConversionDto>(
       CATALOG_ENDPOINTS.UOM_CONVERSIONS,
@@ -217,10 +275,29 @@ export class CatalogRepository implements ICatalogRepository {
     return CatalogMapper.toUomConversion(dto);
   }
 
+  async updateUomConversion(
+    id: string,
+    input: UpdateUomConversionInput,
+  ): Promise<UomConversion> {
+    const dto = await this.http.patch<UomConversionDto>(
+      CATALOG_ENDPOINTS.UOM_CONVERSION_BY_ID(id),
+      CatalogMapper.toUpdateUomConversionRequest(input),
+    );
+    return CatalogMapper.toUomConversion(dto);
+  }
+
   async createItemCoverage(input: CreateItemCoverageInput): Promise<ItemCoverage> {
     const dto = await this.http.post<ItemCoverageDto>(
       CATALOG_ENDPOINTS.ITEM_COVERAGES,
       CatalogMapper.toCreateItemCoverageRequest(input),
+    );
+    return CatalogMapper.toItemCoverage(dto);
+  }
+
+  async updateItemCoverage(id: string, input: UpdateItemCoverageInput): Promise<ItemCoverage> {
+    const dto = await this.http.patch<ItemCoverageDto>(
+      CATALOG_ENDPOINTS.ITEM_COVERAGE_BY_ID(id),
+      CatalogMapper.toUpdateItemCoverageRequest(input),
     );
     return CatalogMapper.toItemCoverage(dto);
   }

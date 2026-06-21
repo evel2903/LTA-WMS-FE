@@ -5,6 +5,7 @@ import { CatalogMapper } from '@modules/MasterData/Infrastructure/Mappers/Catalo
 import type {
   ItemCoverage,
   Owner,
+  PackDefinition,
   Sku,
   SkuBarcode,
   Uom,
@@ -13,14 +14,20 @@ import type {
 import type {
   CreateItemCoverageInput,
   CreateOwnerInput,
+  CreatePackDefinitionInput,
   CreateSkuBarcodeInput,
   CreateSkuInput,
   CreateUomConversionInput,
   CreateUomInput,
   OwnerListFilter,
+  PackDefinitionListFilter,
   SkuListFilter,
   UomListFilter,
+  UpdateItemCoverageInput,
+  UpdatePackDefinitionInput,
+  UpdateSkuBarcodeInput,
   UpdateSkuInput,
+  UpdateUomConversionInput,
 } from '@modules/MasterData/Domain/Types/CatalogQuery';
 import type { PaginatedResponse } from '@shared/Types/Api';
 
@@ -50,6 +57,9 @@ class FakeCatalogRepository implements ICatalogRepository {
   listSkuBarcodes(): Promise<PaginatedResponse<SkuBarcode>> {
     return Promise.resolve(page<SkuBarcode>([]));
   }
+  listPackDefinitions(_filter?: PackDefinitionListFilter): Promise<PaginatedResponse<PackDefinition>> {
+    return Promise.resolve(page<PackDefinition>([]));
+  }
   listUomConversions(): Promise<PaginatedResponse<UomConversion>> {
     return Promise.resolve(page<UomConversion>([]));
   }
@@ -60,6 +70,9 @@ class FakeCatalogRepository implements ICatalogRepository {
     const found = this.skus.find((sku) => sku.id === id);
     if (!found) return Promise.reject(new Error('not found'));
     return Promise.resolve(found);
+  }
+  getPackDefinition(): Promise<PackDefinition> {
+    return Promise.reject(new Error('not used'));
   }
 
   createSku(input: CreateSkuInput): Promise<Sku> {
@@ -150,10 +163,25 @@ class FakeCatalogRepository implements ICatalogRepository {
   createSkuBarcode(_input: CreateSkuBarcodeInput): Promise<SkuBarcode> {
     return Promise.reject(new Error('not used'));
   }
+  updateSkuBarcode(_id: string, _input: UpdateSkuBarcodeInput): Promise<SkuBarcode> {
+    return Promise.reject(new Error('not used'));
+  }
+  createPackDefinition(_input: CreatePackDefinitionInput): Promise<PackDefinition> {
+    return Promise.reject(new Error('not used'));
+  }
+  updatePackDefinition(_id: string, _input: UpdatePackDefinitionInput): Promise<PackDefinition> {
+    return Promise.reject(new Error('not used'));
+  }
   createUomConversion(_input: CreateUomConversionInput): Promise<UomConversion> {
     return Promise.reject(new Error('not used'));
   }
+  updateUomConversion(_id: string, _input: UpdateUomConversionInput): Promise<UomConversion> {
+    return Promise.reject(new Error('not used'));
+  }
   createItemCoverage(_input: CreateItemCoverageInput): Promise<ItemCoverage> {
+    return Promise.reject(new Error('not used'));
+  }
+  updateItemCoverage(_id: string, _input: UpdateItemCoverageInput): Promise<ItemCoverage> {
     return Promise.reject(new Error('not used'));
   }
 

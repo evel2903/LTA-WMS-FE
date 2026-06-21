@@ -9,6 +9,8 @@ export const masterDataQueryKeys = {
   siteLocationTree: () => [...masterDataQueryKeys.all, 'siteLocationTree'] as const,
   siteLocationTreeFilter: (filter?: MasterDataListFilter) =>
     [...masterDataQueryKeys.siteLocationTree(), filter ?? {}] as const,
+  warehouses: (filter?: MasterDataListFilter) =>
+    [...masterDataQueryKeys.all, 'warehouses', filter ?? {}] as const,
   locationTree: (filter: LocationTreeFilter) =>
     [...masterDataQueryKeys.all, 'locations', 'tree', filter] as const,
   locationProfilesRoot: () => [...masterDataQueryKeys.all, 'locationProfiles'] as const,
