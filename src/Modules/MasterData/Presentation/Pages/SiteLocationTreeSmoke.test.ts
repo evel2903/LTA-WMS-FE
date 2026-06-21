@@ -8,10 +8,12 @@ import { CreateZoneUseCase } from '@modules/MasterData/Application/UseCases/Crea
 import { GetSiteLocationTreeUseCase } from '@modules/MasterData/Application/UseCases/GetSiteLocationTreeUseCase';
 import type {
   CreateLocationInput,
+  CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
   CreateZoneInput,
   LocationTree,
+  UpdateLocationProfileInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
   Location,
@@ -27,6 +29,7 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
   private warehouses: Warehouse[] = [];
   private zones: Zone[] = [];
   private locations: LocationTree[] = [];
+  private profiles: LocationProfile[] = [];
 
   private readonly now = '2026-06-18T00:00:00.000Z';
 
@@ -61,7 +64,13 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
   }
 
   listLocationProfiles(_filter?: MasterDataListFilter) {
-    return Promise.resolve({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 });
+    return Promise.resolve({
+      items: this.profiles,
+      page: 1,
+      pageSize: 100,
+      totalItems: this.profiles.length,
+      totalPages: 1,
+    });
   }
 
   getLocationTree() {
@@ -180,7 +189,41 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
   }
 
   getLocationProfile(): Promise<LocationProfile> {
-    return Promise.reject(new Error('not used'));
+    return Promise.resolve(this.profiles[0]);
+  }
+
+  createLocationProfile(input: CreateLocationProfileInput): Promise<LocationProfile> {
+    const profile: LocationProfile = {
+      id: `profile-${this.profiles.length + 1}`,
+      profileCode: input.profileCode,
+      profileName: input.profileName,
+      locationType: input.locationType,
+      version: 1,
+      status: input.status,
+      capacityPolicy: input.capacityPolicy ?? {},
+      eligibilityPolicy: input.eligibilityPolicy ?? {},
+      mixPolicy: input.mixPolicy ?? {},
+      compliancePolicy: input.compliancePolicy ?? {},
+      operationPolicy: input.operationPolicy ?? {},
+      sourceSystem: input.sourceSystem ?? null,
+      referenceId: input.referenceId ?? null,
+      createdAt: this.now,
+      updatedAt: this.now,
+      createdBy: null,
+      updatedBy: null,
+    };
+    this.profiles.push(profile);
+    return Promise.resolve(profile);
+  }
+
+  updateLocationProfile(id: string, input: UpdateLocationProfileInput): Promise<LocationProfile> {
+    const index = this.profiles.findIndex((profile) => profile.id === id);
+    this.profiles[index] = {
+      ...this.profiles[index],
+      ...input,
+      updatedAt: this.now,
+    };
+    return Promise.resolve(this.profiles[index]);
   }
 }
 

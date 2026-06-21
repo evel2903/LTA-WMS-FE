@@ -98,4 +98,23 @@ export interface CreateLocationInput {
 
 export type UpdateLocationInput = Partial<CreateLocationInput>;
 
+export interface CreateLocationProfileInput {
+  profileCode: string;
+  profileName: string;
+  locationType: string;
+  status: MasterDataStatus;
+  capacityPolicy?: Record<string, unknown>;
+  eligibilityPolicy?: Record<string, unknown>;
+  mixPolicy?: Record<string, unknown>;
+  compliancePolicy?: Record<string, unknown>;
+  operationPolicy?: Record<string, unknown>;
+  sourceSystem?: string | null;
+  referenceId?: string | null;
+  reasonCode?: string | null;
+}
+
+export type UpdateLocationProfileInput = Partial<CreateLocationProfileInput> & {
+  version?: number;
+};
+
 export type { Location, LocationProfile, LocationTree, Site, Warehouse, Zone };

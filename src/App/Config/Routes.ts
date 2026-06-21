@@ -15,6 +15,7 @@ export const ROUTES = {
   FOUNDATION: {
     ROOT: '/foundation',
     LOCATIONS: '/foundation/locations',
+    LOCATION_PROFILES: '/foundation/location-profiles',
     WAREHOUSE_PROFILES: '/foundation/warehouse-profiles',
     RULE_MATRIX: '/foundation/rule-matrix',
     MASTER_DATA: {

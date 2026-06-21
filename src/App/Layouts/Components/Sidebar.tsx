@@ -60,6 +60,11 @@ const NAV_ENTRIES: NavEntry[] = [
     children: [
       { label: 'Foundation Overview', to: ROUTES.FOUNDATION.ROOT, icon: Layers },
       { label: 'Site & Location Tree', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
+      {
+        label: 'Location Profiles',
+        to: ROUTES.FOUNDATION.LOCATION_PROFILES,
+        icon: SlidersHorizontal,
+      },
       { label: 'Owner Master', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, icon: Building2 },
       { label: 'UOM Master', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS, icon: Ruler },
       { label: 'SKU Master', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS, icon: Package },

@@ -9,16 +9,19 @@ import type {
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
   CreateLocationInput,
+  CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
   CreateZoneInput,
   UpdateLocationInput,
+  UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
   UpdateZoneInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
   CreateLocationRequestDto,
+  CreateLocationProfileRequestDto,
   CreateSiteRequestDto,
   CreateWarehouseRequestDto,
   CreateZoneRequestDto,
@@ -28,6 +31,7 @@ import type {
   PagedMasterDataDto,
   SiteDto,
   UpdateLocationRequestDto,
+  UpdateLocationProfileRequestDto,
   UpdateSiteRequestDto,
   UpdateWarehouseRequestDto,
   UpdateZoneRequestDto,
@@ -303,6 +307,45 @@ export const MasterDataMapper = {
       PutawaySequence: input.putawaySequence,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+    });
+  },
+
+  toCreateLocationProfileRequest(
+    input: CreateLocationProfileInput,
+  ): CreateLocationProfileRequestDto {
+    return removeUndefined({
+      ProfileCode: input.profileCode,
+      ProfileName: input.profileName,
+      LocationType: input.locationType,
+      Status: input.status,
+      CapacityPolicy: input.capacityPolicy,
+      EligibilityPolicy: input.eligibilityPolicy,
+      MixPolicy: input.mixPolicy,
+      CompliancePolicy: input.compliancePolicy,
+      OperationPolicy: input.operationPolicy,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
+    });
+  },
+
+  toUpdateLocationProfileRequest(
+    input: UpdateLocationProfileInput,
+  ): UpdateLocationProfileRequestDto {
+    return removeUndefined({
+      ProfileCode: input.profileCode,
+      ProfileName: input.profileName,
+      LocationType: input.locationType,
+      Version: input.version,
+      Status: input.status,
+      CapacityPolicy: input.capacityPolicy,
+      EligibilityPolicy: input.eligibilityPolicy,
+      MixPolicy: input.mixPolicy,
+      CompliancePolicy: input.compliancePolicy,
+      OperationPolicy: input.operationPolicy,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 };

@@ -94,10 +94,7 @@ export interface PagedMasterDataDto<TItem> {
   };
 }
 
-export type CreateSiteRequestDto = Pick<
-  SiteDto,
-  'SiteCode' | 'SiteName' | 'Status'
-> &
+export type CreateSiteRequestDto = Pick<SiteDto, 'SiteCode' | 'SiteName' | 'Status'> &
   Partial<Pick<SiteDto, 'SourceSystem' | 'ReferenceId'>>;
 
 export type UpdateSiteRequestDto = Partial<CreateSiteRequestDto>;
@@ -115,7 +112,10 @@ export type CreateZoneRequestDto = Pick<
   'WarehouseId' | 'ZoneCode' | 'ZoneName' | 'ZoneType' | 'Status'
 > &
   Partial<
-    Pick<ZoneDto, 'Sequence' | 'TemperatureClass' | 'ComplianceFlags' | 'SourceSystem' | 'ReferenceId'>
+    Pick<
+      ZoneDto,
+      'Sequence' | 'TemperatureClass' | 'ComplianceFlags' | 'SourceSystem' | 'ReferenceId'
+    >
   >;
 
 export type UpdateZoneRequestDto = Partial<CreateZoneRequestDto>;
@@ -153,3 +153,26 @@ export type CreateLocationRequestDto = Pick<
   >;
 
 export type UpdateLocationRequestDto = Partial<CreateLocationRequestDto>;
+
+export type CreateLocationProfileRequestDto = Pick<
+  LocationProfileDto,
+  'ProfileCode' | 'ProfileName' | 'LocationType' | 'Status'
+> &
+  Partial<
+    Pick<
+      LocationProfileDto,
+      | 'CapacityPolicy'
+      | 'EligibilityPolicy'
+      | 'MixPolicy'
+      | 'CompliancePolicy'
+      | 'OperationPolicy'
+      | 'SourceSystem'
+      | 'ReferenceId'
+    >
+  > & {
+    ReasonCode?: string | null;
+  };
+
+export type UpdateLocationProfileRequestDto = Partial<CreateLocationProfileRequestDto> & {
+  Version?: number;
+};

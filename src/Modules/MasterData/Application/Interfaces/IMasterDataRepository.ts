@@ -9,10 +9,12 @@ import type {
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
   CreateLocationInput,
+  CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
   CreateZoneInput,
   UpdateLocationInput,
+  UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
   UpdateZoneInput,
@@ -37,4 +39,6 @@ export interface IMasterDataRepository {
   updateZone(id: string, input: UpdateZoneInput): Promise<Zone>;
   createLocation(input: CreateLocationInput): Promise<Location>;
   updateLocation(id: string, input: UpdateLocationInput): Promise<Location>;
+  createLocationProfile(input: CreateLocationProfileInput): Promise<LocationProfile>;
+  updateLocationProfile(id: string, input: UpdateLocationProfileInput): Promise<LocationProfile>;
 }

@@ -12,10 +12,12 @@ import type {
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
   CreateLocationInput,
+  CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
   CreateZoneInput,
   UpdateLocationInput,
+  UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
   UpdateZoneInput,
@@ -39,7 +41,10 @@ import { MasterDataMapper } from '@modules/MasterData/Infrastructure/Mappers/Mas
 function listParams(filter: MasterDataListFilter = {}) {
   return {
     Page: filter.page ?? 1,
-    PageSize: filter.pageSize ?? MASTER_DATA_DEFAULT_PAGE_SIZE,
+    PageSize: Math.min(
+      filter.pageSize ?? MASTER_DATA_DEFAULT_PAGE_SIZE,
+      MASTER_DATA_DEFAULT_PAGE_SIZE,
+    ),
     Status: filter.status,
     SiteId: filter.siteId,
     SiteCode: filter.siteCode,
@@ -171,5 +176,24 @@ export class MasterDataRepository implements IMasterDataRepository {
       MasterDataMapper.toUpdateLocationRequest(input),
     );
     return MasterDataMapper.toLocation(dto);
+  }
+
+  async createLocationProfile(input: CreateLocationProfileInput): Promise<LocationProfile> {
+    const dto = await this.http.post<LocationProfileDto>(
+      MASTER_DATA_ENDPOINTS.LOCATION_PROFILES,
+      MasterDataMapper.toCreateLocationProfileRequest(input),
+    );
+    return MasterDataMapper.toLocationProfile(dto);
+  }
+
+  async updateLocationProfile(
+    id: string,
+    input: UpdateLocationProfileInput,
+  ): Promise<LocationProfile> {
+    const dto = await this.http.patch<LocationProfileDto>(
+      MASTER_DATA_ENDPOINTS.LOCATION_PROFILE_BY_ID(id),
+      MasterDataMapper.toUpdateLocationProfileRequest(input),
+    );
+    return MasterDataMapper.toLocationProfile(dto);
   }
 }

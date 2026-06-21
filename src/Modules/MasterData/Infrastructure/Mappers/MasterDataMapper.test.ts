@@ -223,5 +223,35 @@ describe('MasterDataMapper', () => {
       LocationStatus: 'Active',
       BondedFlag: false,
     });
+
+    expect(
+      MasterDataMapper.toCreateLocationProfileRequest({
+        profileCode: 'BIN-STD',
+        profileName: 'Standard Bin',
+        locationType: 'Bin',
+        status: 'Active',
+        capacityPolicy: { maxQty: 100 },
+        reasonCode: 'RC-MD-UPDATE',
+      }),
+    ).toEqual({
+      ProfileCode: 'BIN-STD',
+      ProfileName: 'Standard Bin',
+      LocationType: 'Bin',
+      Status: 'Active',
+      CapacityPolicy: { maxQty: 100 },
+      ReasonCode: 'RC-MD-UPDATE',
+    });
+
+    expect(
+      MasterDataMapper.toUpdateLocationProfileRequest({
+        profileName: 'Updated Bin',
+        status: 'Inactive',
+        version: 2,
+      }),
+    ).toEqual({
+      ProfileName: 'Updated Bin',
+      Status: 'Inactive',
+      Version: 2,
+    });
   });
 });

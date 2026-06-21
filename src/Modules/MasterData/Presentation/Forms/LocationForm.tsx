@@ -1,6 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 
+import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type {
@@ -23,6 +25,17 @@ interface LocationFormProps {
   pending?: boolean;
   submitLabel: string;
   onSubmit: (values: LocationFormValues) => void;
+}
+
+function ManageProfilesLink() {
+  return (
+    <Link
+      to={ROUTES.FOUNDATION.LOCATION_PROFILES}
+      className="text-primary text-xs font-medium hover:underline"
+    >
+      Manage profiles
+    </Link>
+  );
 }
 
 export function LocationForm({
@@ -74,8 +87,9 @@ export function LocationForm({
 
   if (!hasProfiles) {
     return (
-      <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        No active location profiles. Create a profile fixture before adding locations.
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <span>No active location profiles. Manage profiles before adding locations.</span>
+        <ManageProfilesLink />
       </div>
     );
   }
@@ -103,8 +117,15 @@ export function LocationForm({
         <Input disabled={disabled} {...form.register('locationType')} />
       </label>
       <label className="grid gap-1 text-sm">
-        Location profile
-        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('locationProfileId')}>
+        <span className="flex items-center justify-between gap-2">
+          Location profile
+          <ManageProfilesLink />
+        </span>
+        <select
+          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+          disabled={disabled}
+          {...form.register('locationProfileId')}
+        >
           {profileOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -114,7 +135,11 @@ export function LocationForm({
       </label>
       <label className="grid gap-1 text-sm">
         Status
-        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('locationStatus')}>
+        <select
+          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+          disabled={disabled}
+          {...form.register('locationStatus')}
+        >
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
           <option value="Blocked">Blocked</option>

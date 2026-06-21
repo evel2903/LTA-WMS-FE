@@ -47,7 +47,7 @@ describe('MasterDataRepository', () => {
     await repository.listSites({ status: 'Active', page: 1, pageSize: 100 });
     await repository.listWarehouses({ siteId: 'site-1' });
     await repository.listZones({ warehouseId: 'wh-1' });
-    await repository.listLocationProfiles({ status: 'Active' });
+    await repository.listLocationProfiles({ status: 'Active', pageSize: 500 });
     await repository.getLocationTree({ warehouseId: 'wh-1', zoneId: 'zone-1' });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
@@ -57,6 +57,11 @@ describe('MasterDataRepository', () => {
       ['get', '/location-profiles'],
       ['get', '/locations/tree'],
     ]);
+    const profileListConfig = http.calls[3]?.config as {
+      params: { Status?: string; PageSize?: number };
+    };
+    expect(profileListConfig.params.Status).toBe('Active');
+    expect(profileListConfig.params.PageSize).toBe(100);
     expect(http.calls[4]?.config).toEqual({ params: { WarehouseId: 'wh-1', ZoneId: 'zone-1' } });
   });
 
@@ -92,6 +97,20 @@ describe('MasterDataRepository', () => {
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
     });
+    await repository.createLocationProfile({
+      profileCode: 'BIN-STD',
+      profileName: 'Standard Bin',
+      locationType: 'Bin',
+      status: 'Active',
+      capacityPolicy: { maxQty: 100 },
+      reasonCode: 'RC-MD-UPDATE',
+    });
+    await repository.updateLocationProfile('profile-1', {
+      profileName: 'Updated Bin',
+      status: 'Inactive',
+      version: 2,
+      reasonCode: 'RC-MD-UPDATE',
+    });
 
     expect(http.calls[0]).toMatchObject({
       method: 'post',
@@ -115,6 +134,28 @@ describe('MasterDataRepository', () => {
         LocationType: 'Bin',
         LocationProfileId: 'profile-1',
         LocationStatus: 'Active',
+      },
+    });
+    expect(http.calls[3]).toMatchObject({
+      method: 'post',
+      url: '/location-profiles',
+      body: {
+        ProfileCode: 'BIN-STD',
+        ProfileName: 'Standard Bin',
+        LocationType: 'Bin',
+        Status: 'Active',
+        CapacityPolicy: { maxQty: 100 },
+        ReasonCode: 'RC-MD-UPDATE',
+      },
+    });
+    expect(http.calls[4]).toMatchObject({
+      method: 'patch',
+      url: '/location-profiles/profile-1',
+      body: {
+        ProfileName: 'Updated Bin',
+        Status: 'Inactive',
+        Version: 2,
+        ReasonCode: 'RC-MD-UPDATE',
       },
     });
   });

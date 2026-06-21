@@ -4,11 +4,13 @@ import { GetSiteLocationTreeUseCase } from '@modules/MasterData/Application/UseC
 import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
 import type {
   CreateLocationInput,
+  CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
   CreateZoneInput,
   LocationTree,
   SiteLocationTree,
+  UpdateLocationProfileInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
   Location,
@@ -100,6 +102,26 @@ const location: Location = {
   updatedBy: null,
 };
 
+const locationProfile: LocationProfile = {
+  id: 'profile-1',
+  profileCode: 'BIN-STD',
+  profileName: 'Standard Bin',
+  locationType: 'Bin',
+  version: 1,
+  status: 'Active',
+  capacityPolicy: {},
+  eligibilityPolicy: {},
+  mixPolicy: {},
+  compliancePolicy: {},
+  operationPolicy: {},
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: site.createdAt,
+  updatedAt: site.updatedAt,
+  createdBy: null,
+  updatedBy: null,
+};
+
 class FakeRepository implements IMasterDataRepository {
   listSites(_filter?: MasterDataListFilter) {
     return Promise.resolve({ items: [site], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 });
@@ -120,7 +142,13 @@ class FakeRepository implements IMasterDataRepository {
   }
 
   listLocationProfiles(_filter?: MasterDataListFilter) {
-    return Promise.resolve({ items: [], page: 1, pageSize: 100, totalItems: 0, totalPages: 1 });
+    return Promise.resolve({
+      items: [locationProfile],
+      page: 1,
+      pageSize: 100,
+      totalItems: 1,
+      totalPages: 1,
+    });
   }
 
   getLocationTree(_filter: LocationTreeFilter): Promise<LocationTree[]> {
@@ -173,7 +201,19 @@ class FakeRepository implements IMasterDataRepository {
   }
 
   getLocationProfile(): Promise<LocationProfile> {
-    return Promise.reject(new Error('not used'));
+    return Promise.resolve(locationProfile);
+  }
+
+  createLocationProfile(input: CreateLocationProfileInput): Promise<LocationProfile> {
+    return Promise.resolve({
+      ...locationProfile,
+      profileCode: input.profileCode,
+      profileName: input.profileName,
+    });
+  }
+
+  updateLocationProfile(_id: string, input: UpdateLocationProfileInput): Promise<LocationProfile> {
+    return Promise.resolve({ ...locationProfile, ...input });
   }
 }
 

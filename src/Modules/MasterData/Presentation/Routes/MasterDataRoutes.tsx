@@ -9,6 +9,13 @@ const SiteLocationTreePage = lazy(() =>
   })),
 );
 
+const LocationProfileCatalogPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/LocationProfileCatalogPage').then((module) => ({
+    default: module.LocationProfileCatalogPage,
+  })),
+);
+
 export const masterDataRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.LOCATIONS, element: <SiteLocationTreePage /> },
+  { path: ROUTES.FOUNDATION.LOCATION_PROFILES, element: <LocationProfileCatalogPage /> },
 ];

@@ -24,6 +24,7 @@ const MASTER_DATA_LINKS = {
 
 const QUICK_LINKS: QuickLink[] = [
   { label: 'Site & Location Tree', to: ROUTES.FOUNDATION.LOCATIONS },
+  { label: 'Location Profiles', to: ROUTES.FOUNDATION.LOCATION_PROFILES },
   { label: 'Owner Master', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS },
   { label: 'UOM Master', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS },
   { label: 'SKU Master', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS },

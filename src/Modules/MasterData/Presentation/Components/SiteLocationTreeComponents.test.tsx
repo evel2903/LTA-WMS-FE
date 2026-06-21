@@ -1,10 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
 import { EntityTree } from '@modules/MasterData/Presentation/Components/EntityTree';
 import { SiteLocationDetailPanel } from '@modules/MasterData/Presentation/Components/SiteLocationDetailPanel';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
 import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
+import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import { SiteLocationTreePageView } from '@modules/MasterData/Presentation/Pages/SiteLocationTreePageView';
 import type {
   LocationProfile,
@@ -271,5 +273,22 @@ describe('Site & Location Tree components', () => {
     // The location references 'profile-1' but no active profile matches it.
     expect(html).toContain('not in the active list');
     expect(html).not.toContain('No matching location profile found');
+  });
+
+  it('keeps the manage-profile link visible when no active profile exists', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <LocationForm
+          warehouseId="wh-1"
+          zoneId="zone-1"
+          locationProfiles={[]}
+          submitLabel="Add Location"
+          onSubmit={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(html).toContain('/foundation/location-profiles');
+    expect(html).toContain('Manage profiles');
   });
 });
