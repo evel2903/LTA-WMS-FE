@@ -1,11 +1,9 @@
 import * as React from 'react';
-import * as LabelPrimitive from '@radix-ui/react-label';
+import type * as LabelPrimitive from '@radix-ui/react-label';
 import { Slot } from '@radix-ui/react-slot';
 import {
   Controller,
   FormProvider,
-  useFormContext,
-  useFormState,
   type ControllerProps,
   type FieldPath,
   type FieldValues,
@@ -13,18 +11,13 @@ import {
 
 import { cn } from '@shared/Utils/Cn';
 import { Label } from '@shared/Components/Ui/Label';
+import {
+  FormFieldContext,
+  FormItemContext,
+  useFormField,
+} from '@shared/Components/Ui/FormFieldContext';
 
 const Form = FormProvider;
-
-interface FormFieldContextValue<
-  TFieldValues extends FieldValues = FieldValues,
-  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
-> {
-  name: TName;
-}
-
-const FormFieldContext = React.createContext<FormFieldContextValue | null>(null);
-const FormItemContext = React.createContext<{ id: string } | null>(null);
 
 function FormField<
   TFieldValues extends FieldValues = FieldValues,
@@ -35,25 +28,6 @@ function FormField<
       <Controller {...props} />
     </FormFieldContext>
   );
-}
-
-function useFormField() {
-  const fieldContext = React.use(FormFieldContext);
-  const itemContext = React.use(FormItemContext);
-  const { getFieldState } = useFormContext();
-  const formState = useFormState({ name: fieldContext?.name });
-
-  if (!fieldContext) throw new Error('useFormField must be used within <FormField>');
-  const fieldState = getFieldState(fieldContext.name, formState);
-  const id = itemContext?.id ?? '';
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  };
 }
 
 function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
@@ -104,4 +78,4 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
   );
 }
 
-export { Form, FormField, FormItem, FormLabel, FormControl, FormMessage, useFormField };
+export { Form, FormField, FormItem, FormLabel, FormControl, FormMessage };

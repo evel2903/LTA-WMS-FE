@@ -14,7 +14,7 @@ vi.mock('@modules/AccessControl/Infrastructure/Repositories/AccessControlReposit
     return repo.current;
   },
 }));
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: vi.fn() } }));
 
 import { RolePermissionMatrixPage } from '@modules/AccessControl/Presentation/Pages/RolePermissionMatrixPage';
 import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';

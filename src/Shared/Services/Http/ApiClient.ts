@@ -100,19 +100,37 @@ export interface HttpClient {
   delete<T>(url: string, config?: AxiosRequestConfig): Promise<T>;
 }
 
-function unwrap<T>(payload: ApiResponse<T> | T): T {
-  if (payload && typeof payload === 'object' && 'Data' in payload && 'Success' in payload) {
-    return (payload as ApiResponse<T>).Data;
-  }
-  return payload as T;
+type AxiosPayload<T> = ApiResponse<T> | T;
+
+function isApiResponse<T>(payload: AxiosPayload<T>): payload is ApiResponse<T> {
+  return Boolean(payload && typeof payload === 'object' && 'Data' in payload && 'Success' in payload);
+}
+
+function unwrap<T>(payload: AxiosPayload<T>): T {
+  return isApiResponse(payload) ? payload.Data : payload;
 }
 
 export const httpClient: HttpClient = {
-  get: async (url, config) => unwrap((await axiosInstance.get(url, config)).data),
-  post: async (url, body, config) => unwrap((await axiosInstance.post(url, body, config)).data),
-  put: async (url, body, config) => unwrap((await axiosInstance.put(url, body, config)).data),
-  patch: async (url, body, config) => unwrap((await axiosInstance.patch(url, body, config)).data),
-  delete: async (url, config) => unwrap((await axiosInstance.delete(url, config)).data),
+  get: async <T>(url: string, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.get<AxiosPayload<T>>(url, config);
+    return unwrap(response.data);
+  },
+  post: async <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.post<AxiosPayload<T>>(url, body, config);
+    return unwrap(response.data);
+  },
+  put: async <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.put<AxiosPayload<T>>(url, body, config);
+    return unwrap(response.data);
+  },
+  patch: async <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.patch<AxiosPayload<T>>(url, body, config);
+    return unwrap(response.data);
+  },
+  delete: async <T>(url: string, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.delete<AxiosPayload<T>>(url, config);
+    return unwrap(response.data);
+  },
 };
 
 export { axiosInstance };

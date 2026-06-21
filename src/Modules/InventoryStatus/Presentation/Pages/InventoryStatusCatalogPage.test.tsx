@@ -17,7 +17,7 @@ vi.mock('@modules/InventoryStatus/Infrastructure/Repositories/InventoryStatusRep
   },
 }));
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { InventoryStatusCatalogPage } from '@modules/InventoryStatus/Presentation/Pages/InventoryStatusCatalogPage';
 import { useInventoryStatusStore } from '@modules/InventoryStatus/Application/Stores/InventoryStatusStore';

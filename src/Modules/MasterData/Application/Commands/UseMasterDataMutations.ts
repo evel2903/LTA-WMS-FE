@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { toast } from '@shared/Components/Ui/Sonner';
+import { toast } from '@shared/Components/Ui/Toast';
 import { masterDataQueryKeys } from '@modules/MasterData/Application/Queries/MasterDataQueryKeys';
 import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands/MasterDataMutationError';
 import { CreateLocationUseCase } from '@modules/MasterData/Application/UseCases/CreateLocationUseCase';

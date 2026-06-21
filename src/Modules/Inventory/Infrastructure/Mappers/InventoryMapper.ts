@@ -32,7 +32,7 @@ export const InventoryMapper = {
 
   toPaginated(dto: InventoryListResponseDto): PaginatedResponse<InventoryItem> {
     return {
-      items: dto.items.map(InventoryMapper.toEntity),
+      items: dto.items.map((item) => InventoryMapper.toEntity(item)),
       page: dto.page,
       pageSize: dto.page_size,
       totalItems: dto.total_items,

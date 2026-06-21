@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { toast } from '@shared/Components/Ui/Sonner';
+import { toast } from '@shared/Components/Ui/Toast';
 import { catalogQueryKeys } from '@modules/MasterData/Application/Queries/CatalogQueryKeys';
 import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands/MasterDataMutationError';
 import type {

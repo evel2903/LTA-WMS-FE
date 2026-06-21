@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { toast } from '@shared/Components/Ui/Sonner';
+import { toast } from '@shared/Components/Ui/Toast';
 import { toMutationErrorMessage } from '@modules/WarehouseProfile/Application/Commands/WarehouseProfileMutationError';
 import { warehouseProfileQueryKeys } from '@modules/WarehouseProfile/Application/Queries/WarehouseProfileQueryKeys';
 import type {

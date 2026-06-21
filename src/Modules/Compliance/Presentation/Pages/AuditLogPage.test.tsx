@@ -15,7 +15,7 @@ vi.mock('@modules/Compliance/Infrastructure/Repositories/ComplianceRepositoryIns
     return repo.current;
   },
 }));
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: vi.fn() } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: vi.fn() } }));
 
 import { AuditLogPage } from '@modules/Compliance/Presentation/Pages/AuditLogPage';
 import { useComplianceStore } from '@modules/Compliance/Application/Stores/ComplianceStore';

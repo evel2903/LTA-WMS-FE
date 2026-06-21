@@ -20,7 +20,7 @@ vi.mock('@modules/ReasonCode/Infrastructure/Repositories/ReasonCodeRepositoryIns
   },
 }));
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { ReasonCodeCatalogPage } from '@modules/ReasonCode/Presentation/Pages/ReasonCodeCatalogPage';
 import { useReasonCodeStore } from '@modules/ReasonCode/Application/Stores/ReasonCodeStore';

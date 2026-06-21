@@ -15,7 +15,7 @@ import {
 } from '@shared/Components/Ui/Form';
 import { Input } from '@shared/Components/Ui/Input';
 import { Spinner } from '@shared/Components/Feedback/Spinner';
-import { toast } from '@shared/Components/Ui/Sonner';
+import { toast } from '@shared/Components/Ui/Toast';
 import { useLogin } from '@modules/Auth/Application/UseCases/UseLogin';
 import { loginSchema, type LoginFormValues } from '@modules/Auth/Presentation/Forms/LoginSchema';
 
@@ -37,7 +37,7 @@ export function LoginForm() {
     login(values, {
       onSuccess: () => {
         const from = (location.state as { from?: Location } | null)?.from?.pathname;
-        navigate(from ?? ROUTES.DASHBOARD, { replace: true });
+        void navigate(from ?? ROUTES.DASHBOARD, { replace: true });
       },
       onError: (error) => {
         const message =

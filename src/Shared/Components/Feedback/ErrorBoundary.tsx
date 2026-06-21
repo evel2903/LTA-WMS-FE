@@ -20,7 +20,6 @@ export class ErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // eslint-disable-next-line no-console
     console.error('Unhandled UI error:', error, info.componentStack);
     // TODO: forward to Sentry / observability sink.
   }

@@ -22,7 +22,7 @@ vi.mock('@modules/AccessControl/Infrastructure/Repositories/AccessControlReposit
   },
 }));
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { UsersAssignmentsPage } from '@modules/AccessControl/Presentation/Pages/UsersAssignmentsPage';
 import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';

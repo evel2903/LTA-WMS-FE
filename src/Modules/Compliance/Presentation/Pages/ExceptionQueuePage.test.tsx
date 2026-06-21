@@ -16,7 +16,7 @@ vi.mock('@modules/Compliance/Infrastructure/Repositories/ComplianceRepositoryIns
   },
 }));
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { ExceptionQueuePage } from '@modules/Compliance/Presentation/Pages/ExceptionQueuePage';
 import { useComplianceStore } from '@modules/Compliance/Application/Stores/ComplianceStore';

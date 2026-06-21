@@ -23,7 +23,7 @@ vi.mock(
   }),
 );
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({
+vi.mock('@shared/Components/Ui/Toast', () => ({
   toast: { error: toastError },
 }));
 

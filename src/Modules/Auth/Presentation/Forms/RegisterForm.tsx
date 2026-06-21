@@ -15,7 +15,7 @@ import {
 } from '@shared/Components/Ui/Form';
 import { Input } from '@shared/Components/Ui/Input';
 import { Spinner } from '@shared/Components/Feedback/Spinner';
-import { toast } from '@shared/Components/Ui/Sonner';
+import { toast } from '@shared/Components/Ui/Toast';
 import { useRegister } from '@modules/Auth/Application/UseCases/UseRegister';
 import {
   registerSchema,

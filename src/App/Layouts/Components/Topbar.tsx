@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { LogOut, Moon, Sun } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
-import { useTheme } from '@app/Providers/ThemeProvider';
+import { useTheme } from '@app/Providers/UseTheme';
 import { useLogout } from '@modules/Auth/Application/UseCases/UseLogout';
 import { useAuthStore } from '@modules/Auth/Application/Stores/AuthStore';
 import { Button } from '@shared/Components/Ui/Button';

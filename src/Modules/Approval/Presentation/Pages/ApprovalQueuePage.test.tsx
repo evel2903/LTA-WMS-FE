@@ -17,7 +17,7 @@ vi.mock('@modules/Approval/Infrastructure/Repositories/ApprovalRepositoryInstanc
   },
 }));
 const toastError = vi.hoisted(() => vi.fn());
-vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 const currentUser = vi.hoisted(() => ({
   current: { id: 'reviewer-1' },
 }));
