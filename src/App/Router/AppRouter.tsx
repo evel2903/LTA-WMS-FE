@@ -18,6 +18,7 @@ import { accessControlRoutes } from '@modules/AccessControl/Presentation/Routes/
 import { complianceRoutes } from '@modules/Compliance/Presentation/Routes/ComplianceRoutes';
 import { reasonCodeRoutes } from '@modules/ReasonCode/Presentation/Routes/ReasonCodeRoutes';
 import { inventoryStatusRoutes } from '@modules/InventoryStatus/Presentation/Routes/InventoryStatusRoutes';
+import { approvalRoutes } from '@modules/Approval/Presentation/Routes/ApprovalRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
           ...complianceRoutes,
           ...reasonCodeRoutes,
           ...inventoryStatusRoutes,
+          ...approvalRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },
