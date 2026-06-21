@@ -29,6 +29,7 @@ export const ROUTES = {
     AUDIT: '/foundation/audit',
     EXCEPTIONS: '/foundation/exceptions',
     REASON_CODES: '/foundation/reason-codes',
+    INVENTORY_STATUS: '/foundation/inventory-status',
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },
