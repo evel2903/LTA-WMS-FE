@@ -14,6 +14,7 @@ import {
   Package,
   PackageCheck,
   PackageOpen,
+  PackageSearch,
   Repeat,
   Ruler,
   ScrollText,
@@ -66,6 +67,7 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Audit Log', to: ROUTES.FOUNDATION.AUDIT, icon: History },
       { label: 'Exception Queue', to: ROUTES.FOUNDATION.EXCEPTIONS, icon: AlertTriangle },
       { label: 'Reason Codes', to: ROUTES.FOUNDATION.REASON_CODES, icon: Tags },
+      { label: 'Inventory Status', to: ROUTES.FOUNDATION.INVENTORY_STATUS, icon: PackageSearch },
     ],
   },
   {
