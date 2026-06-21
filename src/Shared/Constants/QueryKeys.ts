@@ -12,6 +12,7 @@ export const QUERY_NAMESPACES = {
   REASON_CODE: 'reasonCode',
   INVENTORY_STATUS: 'inventoryStatus',
   APPROVAL: 'approval',
+  OVERRIDE_LOG: 'overrideLog',
   WAREHOUSE_PROFILE: 'warehouseProfile',
   WAREHOUSE: 'warehouse',
   INBOUND: 'inbound',
