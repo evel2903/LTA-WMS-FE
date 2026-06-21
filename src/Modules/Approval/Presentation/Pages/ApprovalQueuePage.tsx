@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useCurrentUser } from '@modules/Auth/Application/UseCases/UseCurrentUser';
@@ -69,25 +77,22 @@ export function ApprovalQueuePage() {
   });
   const selectedId = store.selectedRequestId;
   const detailQuery = useApprovalRequestDetail(selectedId);
+  const approvalData = useResilientQueryData(query.data);
   // Only trust the detail query when it is for the current selection (guard vs a stale id).
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((item) => item.id === selectedId) ??
+    approvalData?.items.find((item) => item.id === selectedId) ??
     null;
   const mutations = useApprovalMutations();
 
-  const items = query.data?.items ?? [];
-  const meta = query.data;
+  const items = approvalData?.items ?? [];
+  const meta = approvalData;
   const listApiError = query.error instanceof ApiError ? query.error : null;
-  const listState = listApiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : items.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: items.length,
+  });
 
   const detailApiError =
     (detailQuery.error instanceof ApiError ? detailQuery.error : null) ??
@@ -181,6 +186,7 @@ export function ApprovalQueuePage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={items.length > 0} />
                 <ApprovalRequestTable
                   items={items}
                   selectedId={selectedId}
@@ -224,7 +230,11 @@ export function ApprovalQueuePage() {
           <CardHeader>
             <CardTitle className="text-base">Detail</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết approval. Đang hiển thị dữ liệu từ danh sách."
+            />
             {!selected ? (
               <p className="text-muted-foreground text-sm">Chọn một request để xử lý.</p>
             ) : (

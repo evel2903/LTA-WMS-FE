@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import {
@@ -59,24 +67,21 @@ export function OverrideLogPage() {
   });
   const selectedId = store.selectedLogId;
   const detailQuery = useOverrideLogDetail(selectedId);
+  const overrideLogData = useResilientQueryData(query.data);
   // Only trust the detail query when it is for the current selection (guard vs a stale id).
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((log) => log.id === selectedId) ??
+    overrideLogData?.items.find((log) => log.id === selectedId) ??
     null;
 
-  const logs = query.data?.items ?? [];
-  const meta = query.data;
+  const logs = overrideLogData?.items ?? [];
+  const meta = overrideLogData;
   const apiError = query.error instanceof ApiError ? query.error : null;
-  const listState = apiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : logs.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: logs.length,
+  });
 
   return (
     <div className="space-y-6">
@@ -130,6 +135,7 @@ export function OverrideLogPage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={logs.length > 0} />
                 <OverrideLogTable
                   logs={logs}
                   selectedId={selectedId}
@@ -173,7 +179,11 @@ export function OverrideLogPage() {
           <CardHeader>
             <CardTitle className="text-base">Detail</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết override. Đang hiển thị dữ liệu từ danh sách."
+            />
             {selected ? (
               <OverrideLogDetailPanel log={selected} />
             ) : (

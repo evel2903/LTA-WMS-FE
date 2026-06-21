@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { inlineMessage } from '@modules/InventoryStatus/Application/Commands/InventoryStatusMutationError';
@@ -49,27 +57,24 @@ export function InventoryStatusCatalogPage() {
   });
   const selectedId = store.selectedId;
   const detailQuery = useInventoryStatusDetail(selectedId);
+  const inventoryStatusData = useResilientQueryData(query.data);
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((item) => item.id === selectedId) ??
+    inventoryStatusData?.items.find((item) => item.id === selectedId) ??
     null;
   const mutations = useInventoryStatusMutations();
 
-  const items = query.data?.items ?? [];
-  const meta = query.data;
+  const items = inventoryStatusData?.items ?? [];
+  const meta = inventoryStatusData;
   const apiError = query.error instanceof ApiError ? query.error : null;
   const detailForbidden = detailQuery.error instanceof ApiError && detailQuery.error.isForbidden;
   const submitForbidden = submitError instanceof ApiError && submitError.isForbidden;
   const canManage = !apiError?.isForbidden && !detailForbidden && !submitForbidden;
-  const listState = apiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : items.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: items.length,
+  });
 
   const select = (id: string | null) => {
     store.setSelectedId(id);
@@ -145,6 +150,7 @@ export function InventoryStatusCatalogPage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={items.length > 0} />
                 <InventoryStatusTable
                   items={items}
                   selectedId={selectedId}
@@ -191,6 +197,10 @@ export function InventoryStatusCatalogPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết inventory status. Đang hiển thị dữ liệu từ danh sách."
+            />
             {!canManage && <p className="text-muted-foreground text-xs">Read only.</p>}
             {selected ? (
               <InventoryStatusForm

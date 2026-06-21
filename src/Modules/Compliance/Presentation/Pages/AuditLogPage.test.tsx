@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -91,5 +91,56 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+  });
+
+  it('keeps loaded rows visible when a non-403 refetch fails', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.listAuditLogs = vi
+      .fn()
+      .mockResolvedValueOnce({ ...page([entry]), totalPages: 2 })
+      .mockRejectedValueOnce(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Audit refetch failed' }),
+      );
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Next' }));
+
+    await waitFor(() => expect(fake.listAuditLogs).toHaveBeenCalledTimes(2));
+    expect(screen.getByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
+    expect(screen.getByText(/Không làm mới được dữ liệu/i)).toBeTruthy();
+    expect(screen.queryByText('Audit refetch failed')).toBeNull();
+  });
+
+  it('keeps an initial non-403 list error blocking when no rows have loaded', async () => {
+    const fake = new FakeRepository();
+    fake.listAuditLogs = vi.fn(() =>
+      Promise.reject(new ApiError({ status: 500, code: 'UNKNOWN', message: 'Initial audit failed' })),
+    );
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    expect(await screen.findByText('Initial audit failed')).toBeTruthy();
+    expect(screen.queryByText(/Không làm mới được dữ liệu/i)).toBeNull();
+  });
+
+  it('surfaces a non-403 detail error without dropping the selected list-row fallback', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.getAuditLog = vi.fn(() =>
+      Promise.reject(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Audit detail temporarily unavailable' }),
+      ),
+    );
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    await actor.click(await screen.findByText(new Date(entry.occurredAt).toLocaleString()));
+
+    expect(await screen.findByText('Before')).toBeTruthy();
+    expect(screen.getByText('After')).toBeTruthy();
+    expect(await screen.findByText('Audit detail temporarily unavailable')).toBeTruthy();
   });
 });

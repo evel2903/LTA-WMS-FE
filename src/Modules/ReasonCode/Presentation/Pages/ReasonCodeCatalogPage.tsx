@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { conflictMessage } from '@modules/ReasonCode/Application/Commands/ReasonCodeMutationError';
 import { useReasonCodeMutations } from '@modules/ReasonCode/Application/Commands/UseReasonCodeMutations';
 import {
@@ -51,27 +59,25 @@ export function ReasonCodeCatalogPage() {
   });
   const selectedId = store.selectedId;
   const detailQuery = useReasonCodeDetail(selectedId);
+  const reasonCodeData = useResilientQueryData(query.data);
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((item) => item.id === selectedId) ??
+    reasonCodeData?.items.find((item) => item.id === selectedId) ??
     null;
+  const selectedMissing = Boolean(selectedId) && !selected;
   const mutations = useReasonCodeMutations();
 
-  const items = query.data?.items ?? [];
-  const meta = query.data;
+  const items = reasonCodeData?.items ?? [];
+  const meta = reasonCodeData;
   const apiError = query.error instanceof ApiError ? query.error : null;
   const detailForbidden = detailQuery.error instanceof ApiError && detailQuery.error.isForbidden;
   const submitForbidden = submitError instanceof ApiError && submitError.isForbidden;
   const canManage = !apiError?.isForbidden && !detailForbidden && !submitForbidden;
-  const listState = apiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : items.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: items.length,
+  });
 
   const select = (id: string | null) => {
     store.setSelectedId(id);
@@ -186,6 +192,7 @@ export function ReasonCodeCatalogPage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={items.length > 0} />
                 <ReasonCodeTable items={items} selectedId={selectedId} onSelect={(item) => select(item.id)} />
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
@@ -223,9 +230,15 @@ export function ReasonCodeCatalogPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{selected ? 'Edit reason code' : 'Create reason code'}</CardTitle>
+            <CardTitle className="text-base">
+              {selected ? 'Edit reason code' : selectedMissing ? 'Reason code detail' : 'Create reason code'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết reason code. Đang hiển thị dữ liệu từ danh sách."
+            />
             {!canManage && <p className="text-muted-foreground text-xs">Read only.</p>}
             {selected ? (
               <ReasonCodeForm
@@ -238,6 +251,8 @@ export function ReasonCodeCatalogPage() {
                 pending={mutations.update.isPending}
                 onSubmit={(values) => submitUpdate(selected.id, values)}
               />
+            ) : selectedMissing ? (
+              <p className="text-muted-foreground text-sm">Không tải được reason code đã chọn.</p>
             ) : (
               <ReasonCodeForm
                 key={`create-${createNonce}`}

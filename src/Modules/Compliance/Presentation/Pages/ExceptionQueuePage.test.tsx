@@ -101,6 +101,25 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     expect(await screen.findByText(/không có quyền thao tác/i)).toBeTruthy();
   });
 
+  it('keeps the selected case read-only when the list refetch 403s after a cached row', async () => {
+    const actor = userEvent.setup();
+    const live = makeCase({ state: 'DETECTED' });
+    const fake = new FakeExceptionRepo(live);
+    fake.listExceptions = vi
+      .fn()
+      .mockResolvedValueOnce({ ...page([live]), totalPages: 2 })
+      .mockRejectedValueOnce(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'scope denied' }));
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    await actor.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền thao tác/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Log' })).toBeNull();
+  });
+
   it('surfaces a lifecycle-blocked BUSINESS_RULE inline, not as a toast (AC4)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeExceptionRepo(makeCase({ state: 'IN_REVIEW_PENDING_APPROVAL' }));

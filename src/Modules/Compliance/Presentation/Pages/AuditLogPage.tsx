@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import {
@@ -63,24 +71,21 @@ export function AuditLogPage() {
   });
   const selectedId = store.selectedAuditLogId;
   const detailQuery = useAuditLogDetail(selectedId);
+  const auditData = useResilientQueryData(query.data);
   // Only trust the detail query when it is for the current selection (guard vs a stale id).
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((entry) => entry.id === selectedId) ??
+    auditData?.items.find((entry) => entry.id === selectedId) ??
     null;
 
-  const entries = query.data?.items ?? [];
-  const meta = query.data;
+  const entries = auditData?.items ?? [];
+  const meta = auditData;
   const apiError = query.error instanceof ApiError ? query.error : null;
-  const listState = apiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : entries.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: entries.length,
+  });
 
   return (
     <div className="space-y-6">
@@ -148,6 +153,7 @@ export function AuditLogPage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={entries.length > 0} />
                 <AuditLogTable
                   entries={entries}
                   selectedId={selectedId}
@@ -191,7 +197,11 @@ export function AuditLogPage() {
           <CardHeader>
             <CardTitle className="text-base">Detail</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết audit. Đang hiển thị dữ liệu từ danh sách."
+            />
             {selected ? (
               <AuditLogDetailPanel entry={selected} />
             ) : (

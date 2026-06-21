@@ -3,6 +3,14 @@ import { useState } from 'react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import {
+  DetailQueryAlert,
+  ListRefetchWarning,
+} from '@shared/Components/Feedback/QueryResilience';
+import {
+  resolveListViewState,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import {
@@ -68,30 +76,27 @@ export function ExceptionQueuePage() {
   });
   const selectedId = store.selectedExceptionId;
   const detailQuery = useExceptionDetail(selectedId);
+  const exceptionData = useResilientQueryData(query.data);
   // Only trust the detail query when it is for the current selection (guard vs a stale id).
   const selected =
     (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    query.data?.items.find((item) => item.id === selectedId) ??
+    exceptionData?.items.find((item) => item.id === selectedId) ??
     null;
   const mutations = useExceptionMutations();
 
-  const cases = query.data?.items ?? [];
-  const meta = query.data;
+  const cases = exceptionData?.items ?? [];
+  const meta = exceptionData;
   const listApiError = query.error instanceof ApiError ? query.error : null;
-  const listState = listApiError?.isForbidden
-    ? 'denied'
-    : query.isLoading
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : cases.length === 0
-          ? 'empty'
-          : 'ready';
+  const listState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isLoading,
+    itemCount: cases.length,
+  });
 
   const detailApiError =
     (detailQuery.error instanceof ApiError ? detailQuery.error : null) ??
     (actionError instanceof ApiError && actionError.isForbidden ? actionError : null);
-  const canManage = !detailApiError?.isForbidden;
+  const canManage = !listApiError?.isForbidden && !detailApiError?.isForbidden;
   const pending =
     mutations.logException.isPending ||
     mutations.assignException.isPending ||
@@ -167,6 +172,7 @@ export function ExceptionQueuePage() {
           <CardContent className="space-y-3">
             {listState === 'ready' ? (
               <>
+                <ListRefetchWarning error={query.error} hasData={cases.length > 0} />
                 <ExceptionTable
                   cases={cases}
                   selectedId={selectedId}
@@ -210,7 +216,11 @@ export function ExceptionQueuePage() {
           <CardHeader>
             <CardTitle className="text-base">Detail</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <DetailQueryAlert
+              error={detailQuery.error}
+              fallback="Không tải được chi tiết exception. Đang hiển thị dữ liệu từ danh sách."
+            />
             {!selected ? (
               <p className="text-muted-foreground text-sm">Chọn một exception để xử lý.</p>
             ) : (

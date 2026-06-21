@@ -135,6 +135,22 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
   });
 
+  it('does not fall back to create mode when selected detail fails without a list-row fallback', async () => {
+    useReasonCodeStore.setState({ selectedId: 'missing-reason' });
+    const fake = new FakeRepository([makeReasonCode({ id: 'other', reasonCode: 'RC-OTHER' })]);
+    fake.getById = vi.fn(() =>
+      Promise.reject(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Reason detail unavailable' }),
+      ),
+    );
+    repo.current = fake;
+    renderPage();
+
+    expect(await screen.findByText('Reason detail unavailable')).toBeTruthy();
+    expect(screen.getByText('Không tải được reason code đã chọn.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Create reason code' })).toBeNull();
+  });
+
   it('surfaces a 409 duplicate-code conflict inline, not as a toast (AC4)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makeReasonCode()]);

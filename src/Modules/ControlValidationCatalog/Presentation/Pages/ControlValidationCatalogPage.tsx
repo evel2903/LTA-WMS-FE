@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 
+import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { resolveListViewState, useResilientQueryData } from '@shared/Utils/QueryResilience';
 import { FilterControlValidationCatalogUseCase } from '@modules/ControlValidationCatalog/Application/UseCases/FilterControlValidationCatalogUseCase';
 import { useControlValidationCatalog } from '@modules/ControlValidationCatalog/Application/Queries/UseControlValidationCatalog';
 import { ControlValidationCatalogTables } from '@modules/ControlValidationCatalog/Presentation/Components/ControlValidationCatalogTables';
@@ -13,27 +15,26 @@ import {
 export function ControlValidationCatalogPage() {
   const [search, setSearch] = useState('');
   const query = useControlValidationCatalog();
+  const catalogData = useResilientQueryData(query.data);
   const apiError = query.error instanceof ApiError ? query.error : null;
+  const catalogItemCount =
+    (catalogData?.validationRules.length ?? 0) + (catalogData?.controlExceptions.length ?? 0);
 
-  const state: ControlValidationCatalogViewState = apiError?.isForbidden
-    ? 'denied'
-    : query.isPending
-      ? 'loading'
-      : query.error
-        ? 'error'
-        : (query.data?.validationRules.length ?? 0) + (query.data?.controlExceptions.length ?? 0) === 0
-          ? 'empty'
-          : 'ready';
+  const state: ControlValidationCatalogViewState = resolveListViewState({
+    error: query.error,
+    isLoading: query.isPending,
+    itemCount: catalogItemCount,
+  });
 
   const filteredCatalog = useMemo(() => {
-    if (!query.data) {
+    if (!catalogData) {
       return null;
     }
     return new FilterControlValidationCatalogUseCase().execute({
-      catalog: query.data,
+      catalog: catalogData,
       search,
     });
-  }, [query.data, search]);
+  }, [catalogData, search]);
 
   return (
     <div className="space-y-6">
@@ -61,8 +62,11 @@ export function ControlValidationCatalogPage() {
           state={state}
           errorMessage={apiError?.message ?? 'Unable to load control and validation catalog.'}
         />
-      ) : query.data && filteredCatalog ? (
-        <ControlValidationCatalogTables catalog={query.data} filteredCatalog={filteredCatalog} />
+      ) : catalogData && filteredCatalog ? (
+        <div className="space-y-3">
+          <ListRefetchWarning error={query.error} hasData={catalogItemCount > 0} />
+          <ControlValidationCatalogTables catalog={catalogData} filteredCatalog={filteredCatalog} />
+        </div>
       ) : (
         <ControlValidationCatalogStateView state="empty" />
       )}
