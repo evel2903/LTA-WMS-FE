@@ -9,6 +9,7 @@ export const QUERY_NAMESPACES = {
   MASTER_DATA: 'masterData',
   ACCESS_CONTROL: 'accessControl',
   COMPLIANCE: 'compliance',
+  REASON_CODE: 'reasonCode',
   WAREHOUSE_PROFILE: 'warehouseProfile',
   WAREHOUSE: 'warehouse',
   INBOUND: 'inbound',

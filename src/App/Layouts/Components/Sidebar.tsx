@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
+  Tags,
   Users,
   Warehouse,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Users & Assignments', to: ROUTES.FOUNDATION.ACCESS.USERS, icon: Users },
       { label: 'Audit Log', to: ROUTES.FOUNDATION.AUDIT, icon: History },
       { label: 'Exception Queue', to: ROUTES.FOUNDATION.EXCEPTIONS, icon: AlertTriangle },
+      { label: 'Reason Codes', to: ROUTES.FOUNDATION.REASON_CODES, icon: Tags },
     ],
   },
   {

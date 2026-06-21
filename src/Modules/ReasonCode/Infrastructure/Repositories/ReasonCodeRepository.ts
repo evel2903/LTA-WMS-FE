@@ -1,0 +1,53 @@
+import type { HttpClient } from '@shared/Services/Http/ApiClient';
+import type { PaginatedResponse } from '@shared/Types/Api';
+import type { ReasonCode } from '@modules/ReasonCode/Domain/Entities/ReasonCode';
+import type {
+  CreateReasonCodeInput,
+  ReasonCodeFilter,
+  UpdateReasonCodeInput,
+} from '@modules/ReasonCode/Domain/Types/ReasonCodeTypes';
+import type { IReasonCodeRepository } from '@modules/ReasonCode/Application/Interfaces/IReasonCodeRepository';
+import { REASON_CODE_ENDPOINTS } from '@modules/ReasonCode/Infrastructure/Api/ReasonCodeEndpoints';
+import type { PagedDto, ReasonCodeDto } from '@modules/ReasonCode/Infrastructure/Dtos/ReasonCodeDtos';
+import { ReasonCodeMapper } from '@modules/ReasonCode/Infrastructure/Mappers/ReasonCodeMapper';
+
+const DEFAULT_PAGE_SIZE = 20;
+
+/** The single place that touches `httpClient` for the reason-code catalog. */
+export class ReasonCodeRepository implements IReasonCodeRepository {
+  constructor(private readonly http: HttpClient) {}
+
+  async list(filter: ReasonCodeFilter = {}): Promise<PaginatedResponse<ReasonCode>> {
+    const dto = await this.http.get<PagedDto<ReasonCodeDto>>(REASON_CODE_ENDPOINTS.REASON_CODES, {
+      params: {
+        Page: filter.page ?? 1,
+        PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+        ReasonGroup: filter.reasonGroup,
+        Status: filter.status,
+        Action: filter.action,
+      },
+    });
+    return ReasonCodeMapper.toPaged(dto, (item) => ReasonCodeMapper.toReasonCode(item));
+  }
+
+  async getById(id: string): Promise<ReasonCode> {
+    const dto = await this.http.get<ReasonCodeDto>(REASON_CODE_ENDPOINTS.REASON_CODE_BY_ID(id));
+    return ReasonCodeMapper.toReasonCode(dto);
+  }
+
+  async create(input: CreateReasonCodeInput): Promise<ReasonCode> {
+    const dto = await this.http.post<ReasonCodeDto>(
+      REASON_CODE_ENDPOINTS.REASON_CODES,
+      ReasonCodeMapper.toCreateRequest(input),
+    );
+    return ReasonCodeMapper.toReasonCode(dto);
+  }
+
+  async update(id: string, input: UpdateReasonCodeInput): Promise<ReasonCode> {
+    const dto = await this.http.patch<ReasonCodeDto>(
+      REASON_CODE_ENDPOINTS.REASON_CODE_BY_ID(id),
+      ReasonCodeMapper.toUpdateRequest(input),
+    );
+    return ReasonCodeMapper.toReasonCode(dto);
+  }
+}
