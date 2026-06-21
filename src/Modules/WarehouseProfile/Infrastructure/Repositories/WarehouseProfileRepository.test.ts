@@ -42,6 +42,7 @@ describe('WarehouseProfileRepository', () => {
 
     await repository.listProfiles({ status: 'DRAFT' });
     await repository.getProfile('profile-1');
+    await repository.getChecklist('profile-1');
     await repository.listRuleGroups();
     await repository.listRuleDefinitions({ precedenceTier: 'COMPLIANCE' });
     await repository.listProfileRules('profile-1');
@@ -50,6 +51,7 @@ describe('WarehouseProfileRepository', () => {
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/warehouse-profiles'],
       ['get', '/warehouse-profiles/profile-1'],
+      ['get', '/warehouse-profiles/profile-1/checklist'],
       ['get', '/rule-groups'],
       ['get', '/rule-definitions'],
       ['get', '/warehouse-profiles/profile-1/rules'],
@@ -61,10 +63,20 @@ describe('WarehouseProfileRepository', () => {
     const http = new FakeHttpClient();
     const repository = new WarehouseProfileRepository(http);
 
-    await repository.listProfiles({ status: 'ACTIVE', warehouseTypeCode: 'DC', warehouseId: 'wh-1' });
+    await repository.listProfiles({
+      status: 'ACTIVE',
+      warehouseTypeCode: 'DC',
+      warehouseId: 'wh-1',
+    });
 
     expect(http.calls[0]?.config).toEqual({
-      params: { Page: 1, PageSize: 100, Status: 'ACTIVE', WarehouseTypeCode: 'DC', WarehouseId: 'wh-1' },
+      params: {
+        Page: 1,
+        PageSize: 100,
+        Status: 'ACTIVE',
+        WarehouseTypeCode: 'DC',
+        WarehouseId: 'wh-1',
+      },
     });
   });
 
@@ -103,7 +115,12 @@ describe('WarehouseProfileRepository', () => {
     expect(http.calls[0]).toMatchObject({
       method: 'post',
       url: '/warehouse-profiles',
-      body: { ProfileCode: 'WP-01', ProfileName: 'Default', WarehouseTypeCode: 'DC', EffectiveFrom: '2026-06-01' },
+      body: {
+        ProfileCode: 'WP-01',
+        ProfileName: 'Default',
+        WarehouseTypeCode: 'DC',
+        EffectiveFrom: '2026-06-01',
+      },
     });
     expect((http.calls[0]?.body as Record<string, unknown>).Status).toBeUndefined();
   });
@@ -125,7 +142,10 @@ describe('WarehouseProfileRepository', () => {
     const http = new FakeHttpClient();
     const repository = new WarehouseProfileRepository(http);
 
-    await repository.activateProfile('profile-1', { reasonCode: 'POLICY', effectiveFrom: '2026-07-01' });
+    await repository.activateProfile('profile-1', {
+      reasonCode: 'POLICY',
+      effectiveFrom: '2026-07-01',
+    });
     await repository.deactivateProfile('profile-1', { reasonCode: 'RETIRE', reasonNote: 'done' });
 
     expect(http.calls[0]).toMatchObject({
@@ -144,7 +164,10 @@ describe('WarehouseProfileRepository', () => {
     const http = new FakeHttpClient();
     const repository = new WarehouseProfileRepository(http);
 
-    await repository.createAssignment('profile-1', { assignmentType: 'WAREHOUSE', warehouseId: 'wh-9' });
+    await repository.createAssignment('profile-1', {
+      assignmentType: 'WAREHOUSE',
+      warehouseId: 'wh-9',
+    });
     await repository.addProfileRule('profile-1', { ruleDefinitionId: 'rule-1', isEnabled: true });
     await repository.removeProfileRule('profile-1', 'rule-1');
 
@@ -158,7 +181,10 @@ describe('WarehouseProfileRepository', () => {
       url: '/warehouse-profiles/profile-1/rules',
       body: { RuleDefinitionId: 'rule-1', IsEnabled: true },
     });
-    expect(http.calls[2]).toMatchObject({ method: 'delete', url: '/warehouse-profiles/profile-1/rules/rule-1' });
+    expect(http.calls[2]).toMatchObject({
+      method: 'delete',
+      url: '/warehouse-profiles/profile-1/rules/rule-1',
+    });
   });
 
   it('POSTs the preview context (six axes) to /rules/preview and never emits ProfileId', async () => {

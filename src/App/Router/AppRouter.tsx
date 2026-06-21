@@ -10,6 +10,7 @@ import { NotFoundPage } from '@app/Router/NotFoundPage';
 import { useAuthBootstrap } from '@modules/Auth/Application/UseCases/UseAuthBootstrap';
 import { useSessionExpiry } from '@modules/Auth/Application/UseCases/UseSessionExpiry';
 import { authRoutes } from '@modules/Auth/Presentation/Routes/AuthRoutes';
+import { foundationOverviewRoutes } from '@modules/FoundationOverview/Presentation/Routes/FoundationOverviewRoutes';
 import { inventoryRoutes } from '@modules/Inventory/Presentation/Routes/InventoryRoutes';
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
@@ -54,6 +55,7 @@ const router = createBrowserRouter([
         children: [
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
           ...inventoryRoutes,
+          ...foundationOverviewRoutes,
           ...masterDataRoutes,
           ...catalogRoutes,
           ...warehouseProfileRoutes,

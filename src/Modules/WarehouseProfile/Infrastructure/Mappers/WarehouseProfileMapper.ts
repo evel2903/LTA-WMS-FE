@@ -4,6 +4,7 @@ import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGr
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
+import type { WarehouseProfileChecklist } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileChecklist';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
 import type {
   ActivateWarehouseProfileInput,
@@ -26,6 +27,7 @@ import type {
   RuleGroupDto,
   RulePreviewResultDto,
   UpdateWarehouseProfileRequestDto,
+  WarehouseProfileChecklistDto,
   WarehouseProfileAssignmentDto,
   WarehouseProfileDto,
   WarehouseProfileRuleDto,
@@ -109,6 +111,23 @@ export const WarehouseProfileMapper = {
       updatedAt: dto.UpdatedAt,
       createdBy: dto.CreatedBy,
       updatedBy: dto.UpdatedBy,
+    };
+  },
+
+  toChecklist(dto: WarehouseProfileChecklistDto): WarehouseProfileChecklist {
+    return {
+      profileId: dto.ProfileId,
+      warehouseTypeCode: dto.WarehouseTypeCode,
+      overallStatus: dto.OverallStatus,
+      items: (dto.Items ?? []).map((item) => ({
+        code: item.Code,
+        title: item.Title,
+        status: item.Status,
+        message: item.Message,
+        evidence: item.Evidence ?? [],
+        deferredToStory: item.DeferredToStory ?? null,
+      })),
+      evaluatedAt: dto.EvaluatedAt,
     };
   },
 
@@ -314,7 +333,9 @@ export const WarehouseProfileMapper = {
     }) as ActivateWarehouseProfileRequestDto;
   },
 
-  toDeactivateRequest(input: DeactivateWarehouseProfileInput): DeactivateWarehouseProfileRequestDto {
+  toDeactivateRequest(
+    input: DeactivateWarehouseProfileInput,
+  ): DeactivateWarehouseProfileRequestDto {
     return removeEmpty({
       ActorUserId: input.actorUserId,
       ReasonCode: input.reasonCode,

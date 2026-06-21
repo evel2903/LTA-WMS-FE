@@ -4,6 +4,7 @@ import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGr
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
+import type { WarehouseProfileChecklist } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileChecklist';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
 import type {
   ActivateWarehouseProfileInput,
@@ -25,6 +26,7 @@ export interface IWarehouseProfileRepository {
   // Profiles (B1 + B5)
   listProfiles(filter?: WarehouseProfileListFilter): Promise<PaginatedResponse<WarehouseProfile>>;
   getProfile(id: string): Promise<WarehouseProfile>;
+  getChecklist(id: string): Promise<WarehouseProfileChecklist>;
   createProfile(input: CreateWarehouseProfileInput): Promise<WarehouseProfile>;
   updateProfile(id: string, input: UpdateWarehouseProfileInput): Promise<WarehouseProfile>;
   activateProfile(id: string, input: ActivateWarehouseProfileInput): Promise<WarehouseProfile>;
@@ -36,7 +38,9 @@ export interface IWarehouseProfileRepository {
 
   // Rules catalog (B2)
   listRuleGroups(filter?: RuleGroupListFilter): Promise<PaginatedResponse<RuleGroup>>;
-  listRuleDefinitions(filter?: RuleDefinitionListFilter): Promise<PaginatedResponse<RuleDefinition>>;
+  listRuleDefinitions(
+    filter?: RuleDefinitionListFilter,
+  ): Promise<PaginatedResponse<RuleDefinition>>;
 
   // Profile-rule assignment (B2)
   listProfileRules(id: string): Promise<PaginatedResponse<WarehouseProfileRule>>;

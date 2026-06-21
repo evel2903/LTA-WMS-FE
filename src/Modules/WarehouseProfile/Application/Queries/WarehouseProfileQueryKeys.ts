@@ -10,6 +10,7 @@ export const warehouseProfileQueryKeys = {
   profiles: (filter?: WarehouseProfileListFilter) =>
     [...warehouseProfileQueryKeys.all, 'profiles', filter ?? {}] as const,
   profileDetail: (id: string) => [...warehouseProfileQueryKeys.all, 'profile', id] as const,
+  checklist: (id: string) => [...warehouseProfileQueryKeys.all, 'checklist', id] as const,
   assignments: (id: string) => [...warehouseProfileQueryKeys.all, 'assignments', id] as const,
   profileRules: (id: string) => [...warehouseProfileQueryKeys.all, 'profileRules', id] as const,
   ruleGroups: (filter?: RuleGroupListFilter) =>

@@ -8,6 +8,7 @@ import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGr
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
+import type { WarehouseProfileChecklist } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileChecklist';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
 import type {
   ActivateWarehouseProfileInput,
@@ -49,6 +50,16 @@ class InMemoryWarehouseProfileRepository implements IWarehouseProfileRepository 
     const found = this.profiles.find((profile) => profile.id === id);
     if (!found) return Promise.reject(new Error('not found'));
     return Promise.resolve(found);
+  }
+
+  getChecklist(id: string): Promise<WarehouseProfileChecklist> {
+    return Promise.resolve({
+      profileId: id,
+      warehouseTypeCode: 'DC',
+      overallStatus: 'PASS',
+      evaluatedAt: now,
+      items: [],
+    });
   }
 
   createProfile(input: CreateWarehouseProfileInput): Promise<WarehouseProfile> {
@@ -112,7 +123,10 @@ class InMemoryWarehouseProfileRepository implements IWarehouseProfileRepository 
     return Promise.resolve(activated);
   }
 
-  deactivateProfile(id: string, _input: DeactivateWarehouseProfileInput): Promise<WarehouseProfile> {
+  deactivateProfile(
+    id: string,
+    _input: DeactivateWarehouseProfileInput,
+  ): Promise<WarehouseProfile> {
     const index = this.profiles.findIndex((profile) => profile.id === id);
     const deactivated: WarehouseProfile = { ...this.profiles[index], status: 'RETIRED' };
     this.profiles[index] = deactivated;
@@ -123,7 +137,10 @@ class InMemoryWarehouseProfileRepository implements IWarehouseProfileRepository 
     return Promise.resolve(page<WarehouseProfileAssignment>([]));
   }
 
-  createAssignment(_id: string, _input: CreateAssignmentInput): Promise<WarehouseProfileAssignment> {
+  createAssignment(
+    _id: string,
+    _input: CreateAssignmentInput,
+  ): Promise<WarehouseProfileAssignment> {
     return Promise.reject(new Error('not used'));
   }
 
@@ -131,7 +148,9 @@ class InMemoryWarehouseProfileRepository implements IWarehouseProfileRepository 
     return Promise.resolve(page<RuleGroup>([]));
   }
 
-  listRuleDefinitions(_filter?: RuleDefinitionListFilter): Promise<PaginatedResponse<RuleDefinition>> {
+  listRuleDefinitions(
+    _filter?: RuleDefinitionListFilter,
+  ): Promise<PaginatedResponse<RuleDefinition>> {
     return Promise.resolve(page<RuleDefinition>([]));
   }
 
@@ -153,11 +172,23 @@ class InMemoryWarehouseProfileRepository implements IWarehouseProfileRepository 
       winner: null,
       allowed: true,
       approvalRequired: false,
-      controlMode: { mode: null, isHardBlock: false, approvalRequired: false, warning: null, suggestion: null },
+      controlMode: {
+        mode: null,
+        isHardBlock: false,
+        approvalRequired: false,
+        warning: null,
+        suggestion: null,
+      },
       skippedRules: [],
       conflicts: [],
       reasonReadiness: null,
-      actorContext: { actorUserId: null, action: null, objectType: null, objectId: null, reasonCode: null },
+      actorContext: {
+        actorUserId: null,
+        action: null,
+        objectType: null,
+        objectId: null,
+        reasonCode: null,
+      },
     });
   }
 }

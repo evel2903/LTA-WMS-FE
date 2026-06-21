@@ -7,6 +7,7 @@ import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGr
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
+import type { WarehouseProfileChecklist } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileChecklist';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
 import type {
   ActivateWarehouseProfileInput,
@@ -28,6 +29,7 @@ import type {
   RuleDefinitionDto,
   RuleGroupDto,
   RulePreviewResultDto,
+  WarehouseProfileChecklistDto,
   WarehouseProfileAssignmentDto,
   WarehouseProfileDto,
   WarehouseProfileRuleDto,
@@ -67,6 +69,13 @@ export class WarehouseProfileRepository implements IWarehouseProfileRepository {
       WAREHOUSE_PROFILE_ENDPOINTS.PROFILE_BY_ID(id),
     );
     return WarehouseProfileMapper.toProfile(dto);
+  }
+
+  async getChecklist(id: string): Promise<WarehouseProfileChecklist> {
+    const dto = await this.http.get<WarehouseProfileChecklistDto>(
+      WAREHOUSE_PROFILE_ENDPOINTS.PROFILE_CHECKLIST(id),
+    );
+    return WarehouseProfileMapper.toChecklist(dto);
   }
 
   async createProfile(input: CreateWarehouseProfileInput): Promise<WarehouseProfile> {

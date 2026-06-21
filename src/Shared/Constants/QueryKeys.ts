@@ -7,6 +7,7 @@ export const QUERY_NAMESPACES = {
   AUTH: 'auth',
   INVENTORY: 'inventory',
   MASTER_DATA: 'masterData',
+  FOUNDATION_OVERVIEW: 'foundationOverview',
   ACCESS_CONTROL: 'accessControl',
   COMPLIANCE: 'compliance',
   REASON_CODE: 'reasonCode',

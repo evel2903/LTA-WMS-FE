@@ -58,11 +58,16 @@ const NAV_ENTRIES: NavEntry[] = [
     label: 'Foundation',
     icon: Layers,
     children: [
+      { label: 'Foundation Overview', to: ROUTES.FOUNDATION.ROOT, icon: Layers },
       { label: 'Site & Location Tree', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
       { label: 'Owner Master', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, icon: Building2 },
       { label: 'UOM Master', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS, icon: Ruler },
       { label: 'SKU Master', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS, icon: Package },
-      { label: 'Warehouse Profiles', to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES, icon: SlidersHorizontal },
+      {
+        label: 'Warehouse Profiles',
+        to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES,
+        icon: SlidersHorizontal,
+      },
       { label: 'Rule Matrix', to: ROUTES.FOUNDATION.RULE_MATRIX, icon: Network },
       { label: 'Roles & Permissions', to: ROUTES.FOUNDATION.ACCESS.ROLES, icon: ShieldCheck },
       { label: 'Users & Assignments', to: ROUTES.FOUNDATION.ACCESS.USERS, icon: Users },
@@ -121,7 +126,7 @@ function NavGroupItem({ group, defaultOpen }: { group: NavGroup; defaultOpen: bo
       {open && (
         <div className="border-sidebar-border mt-1 ml-4 space-y-1 border-l pl-2">
           {group.children.map(({ label, to, icon: Icon }) => (
-            <NavLink key={to} to={to} className={leafLinkClass}>
+            <NavLink key={to} to={to} end={to === ROUTES.FOUNDATION.ROOT} className={leafLinkClass}>
               <Icon className="size-4" />
               {label}
             </NavLink>

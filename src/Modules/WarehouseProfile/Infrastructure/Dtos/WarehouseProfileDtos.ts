@@ -7,6 +7,7 @@ import type {
   SkippedReason,
   WarehouseProfileStatus,
 } from '@modules/WarehouseProfile/Domain/Enums/WarehouseProfileEnums';
+import type { ProfileChecklistItemStatus } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileChecklist';
 
 /** Shared audit/provenance fields on every B-series response DTO (PascalCase wire shape). */
 export interface WarehouseProfileAuditDto {
@@ -57,6 +58,23 @@ export interface WarehouseProfileDto extends WarehouseProfileAuditDto {
   LabelDevicePolicy: Record<string, unknown>;
   IntegrationPolicy: Record<string, unknown>;
   AuditPolicy: Record<string, unknown>;
+}
+
+export interface WarehouseProfileChecklistItemDto {
+  Code: string;
+  Title: string;
+  Status: ProfileChecklistItemStatus;
+  Message: string;
+  Evidence?: string[];
+  DeferredToStory?: string;
+}
+
+export interface WarehouseProfileChecklistDto {
+  ProfileId: string;
+  WarehouseTypeCode: string;
+  OverallStatus: ProfileChecklistItemStatus;
+  Items: WarehouseProfileChecklistItemDto[];
+  EvaluatedAt: string;
 }
 
 export interface WarehouseProfileAssignmentDto extends WarehouseProfileAuditDto {

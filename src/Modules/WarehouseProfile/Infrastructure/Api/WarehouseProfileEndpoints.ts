@@ -6,6 +6,7 @@
 export const WAREHOUSE_PROFILE_ENDPOINTS = {
   PROFILES: '/warehouse-profiles',
   PROFILE_BY_ID: (id: string) => `/warehouse-profiles/${id}`,
+  PROFILE_CHECKLIST: (id: string) => `/warehouse-profiles/${id}/checklist`,
   PROFILE_ACTIVATE: (id: string) => `/warehouse-profiles/${id}/activate`,
   PROFILE_DEACTIVATE: (id: string) => `/warehouse-profiles/${id}/deactivate`,
   PROFILE_ASSIGNMENTS: (id: string) => `/warehouse-profiles/${id}/assignments`,

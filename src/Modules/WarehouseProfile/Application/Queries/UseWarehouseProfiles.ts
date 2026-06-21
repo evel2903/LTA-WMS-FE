@@ -19,6 +19,14 @@ export function useProfileAssignments(profileId: string | null) {
   });
 }
 
+export function useWarehouseProfileChecklist(profileId: string | null) {
+  return useQuery({
+    queryKey: warehouseProfileQueryKeys.checklist(profileId ?? ''),
+    queryFn: () => warehouseProfileRepository.getChecklist(profileId ?? ''),
+    enabled: Boolean(profileId),
+  });
+}
+
 export function useProfileRules(profileId: string | null) {
   return useQuery({
     queryKey: warehouseProfileQueryKeys.profileRules(profileId ?? ''),

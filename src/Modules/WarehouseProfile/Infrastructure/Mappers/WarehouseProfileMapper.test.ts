@@ -5,6 +5,7 @@ import type {
   RuleDefinitionDto,
   RuleGroupDto,
   RulePreviewResultDto,
+  WarehouseProfileChecklistDto,
   WarehouseProfileAssignmentDto,
   WarehouseProfileDto,
 } from '@modules/WarehouseProfile/Infrastructure/Dtos/WarehouseProfileDtos';
@@ -88,6 +89,54 @@ describe('WarehouseProfileMapper.toPaged', () => {
     );
     expect(empty.items).toEqual([]);
     expect(empty.totalItems).toBe(0);
+  });
+});
+
+describe('WarehouseProfileMapper.toChecklist', () => {
+  it('maps the B7 checklist DTO and defaults optional evidence/deferred fields', () => {
+    const dto: WarehouseProfileChecklistDto = {
+      ProfileId: 'profile-1',
+      WarehouseTypeCode: 'DC',
+      OverallStatus: 'WARNING',
+      EvaluatedAt: '2026-06-21T00:00:00.000Z',
+      Items: [
+        {
+          Code: 'ACTIVE_PROFILE',
+          Title: 'Active profile',
+          Status: 'PASS',
+          Message: 'Active profile resolved.',
+          Evidence: ['profile-1'],
+        },
+        {
+          Code: 'COMPLIANCE',
+          Title: 'Compliance controls',
+          Status: 'DEFERRED',
+          Message: 'Deferred to acceptance.',
+          DeferredToStory: 'C12',
+        },
+      ],
+    };
+
+    const checklist = WarehouseProfileMapper.toChecklist(dto);
+
+    expect(checklist).toMatchObject({
+      profileId: 'profile-1',
+      warehouseTypeCode: 'DC',
+      overallStatus: 'WARNING',
+      evaluatedAt: '2026-06-21T00:00:00.000Z',
+    });
+    expect(checklist.items[0]).toMatchObject({
+      code: 'ACTIVE_PROFILE',
+      status: 'PASS',
+      evidence: ['profile-1'],
+      deferredToStory: null,
+    });
+    expect(checklist.items[1]).toMatchObject({
+      code: 'COMPLIANCE',
+      status: 'DEFERRED',
+      evidence: [],
+      deferredToStory: 'C12',
+    });
   });
 });
 
