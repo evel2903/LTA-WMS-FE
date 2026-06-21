@@ -21,6 +21,7 @@ import { reasonCodeRoutes } from '@modules/ReasonCode/Presentation/Routes/Reason
 import { inventoryStatusRoutes } from '@modules/InventoryStatus/Presentation/Routes/InventoryStatusRoutes';
 import { approvalRoutes } from '@modules/Approval/Presentation/Routes/ApprovalRoutes';
 import { overrideLogRoutes } from '@modules/OverrideLog/Presentation/Routes/OverrideLogRoutes';
+import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalog/Presentation/Routes/ControlValidationCatalogRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
           ...inventoryStatusRoutes,
           ...approvalRoutes,
           ...overrideLogRoutes,
+          ...controlValidationCatalogRoutes,
           // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
         ],
       },

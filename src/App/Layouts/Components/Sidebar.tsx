@@ -75,6 +75,11 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Exception Queue', to: ROUTES.FOUNDATION.EXCEPTIONS, icon: AlertTriangle },
       { label: 'Approval Queue', to: ROUTES.FOUNDATION.APPROVALS, icon: CheckCheck },
       { label: 'Override Log', to: ROUTES.FOUNDATION.OVERRIDES, icon: ShieldAlert },
+      {
+        label: 'Control & Validation',
+        to: ROUTES.FOUNDATION.CONTROL_CATALOG,
+        icon: ClipboardCheck,
+      },
       { label: 'Reason Codes', to: ROUTES.FOUNDATION.REASON_CODES, icon: Tags },
       { label: 'Inventory Status', to: ROUTES.FOUNDATION.INVENTORY_STATUS, icon: PackageSearch },
     ],

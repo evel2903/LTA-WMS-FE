@@ -32,6 +32,7 @@ export const ROUTES = {
     INVENTORY_STATUS: '/foundation/inventory-status',
     APPROVALS: '/foundation/approvals',
     OVERRIDES: '/foundation/overrides',
+    CONTROL_CATALOG: '/foundation/control-catalog',
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },
