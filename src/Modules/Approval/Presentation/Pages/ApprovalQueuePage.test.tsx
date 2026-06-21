@@ -1,0 +1,154 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ApiError } from '@shared/Services/Http/ApiError';
+import type { PaginatedResponse } from '@shared/Types/Api';
+import type { IApprovalRepository } from '@modules/Approval/Application/Interfaces/IApprovalRepository';
+import type { ApprovalRequest } from '@modules/Approval/Domain/Entities/Approval';
+import type { DecideApprovalInput } from '@modules/Approval/Domain/Types/ApprovalTypes';
+
+const repo = vi.hoisted(() => ({ current: null as unknown as IApprovalRepository }));
+vi.mock('@modules/Approval/Infrastructure/Repositories/ApprovalRepositoryInstance', () => ({
+  get approvalRepository() {
+    return repo.current;
+  },
+}));
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock('@shared/Components/Ui/Sonner', () => ({ toast: { error: toastError } }));
+const currentUser = vi.hoisted(() => ({
+  current: { id: 'reviewer-1' },
+}));
+vi.mock('@modules/Auth/Application/UseCases/UseCurrentUser', () => ({
+  useCurrentUser: () => currentUser.current,
+}));
+
+import { ApprovalQueuePage } from '@modules/Approval/Presentation/Pages/ApprovalQueuePage';
+import { useApprovalStore } from '@modules/Approval/Application/Stores/ApprovalStore';
+
+function page<T>(items: T[]): PaginatedResponse<T> {
+  return { items, page: 1, pageSize: 20, totalItems: items.length, totalPages: 1 };
+}
+
+function makeRequest(overrides: Partial<ApprovalRequest> = {}): ApprovalRequest {
+  return {
+    id: 'ar1',
+    requesterUserId: 'u-req',
+    action: 'Override',
+    targetObjectType: 'WarehouseProfile',
+    targetObjectId: 'wp-1',
+    targetObjectCode: 'WP-MAIN',
+    scope: null,
+    requestReasonCodeId: null,
+    requestReasonNote: null,
+    evidenceRefs: null,
+    decision: 'PENDING',
+    decidedByUserId: null,
+    decisionReasonCodeId: null,
+    decisionNote: null,
+    decidedAt: null,
+    referenceType: 'WarehouseProfile',
+    referenceId: 'wp-1',
+    createdAt: '2026-06-21T00:00:00.000Z',
+    updatedAt: '2026-06-21T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+/** Fake whose stored request mutates so invalidated detail/list queries observe the decision. */
+class FakeApprovalRepo implements Partial<IApprovalRepository> {
+  live: ApprovalRequest;
+  constructor(initial: ApprovalRequest) {
+    this.live = initial;
+  }
+  list = vi.fn(() => Promise.resolve(page([this.live])));
+  getById = vi.fn(() => Promise.resolve(this.live));
+  approve = vi.fn((_id: string, _input: DecideApprovalInput) => {
+    this.live = { ...this.live, decision: 'APPROVED', decidedByUserId: 'reviewer-1' };
+    return Promise.resolve(this.live);
+  });
+  reject = vi.fn((_id: string, _input: DecideApprovalInput) => {
+    this.live = { ...this.live, decision: 'REJECTED', decidedByUserId: 'reviewer-1' };
+    return Promise.resolve(this.live);
+  });
+}
+
+function renderPage() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <ApprovalQueuePage />
+    </QueryClientProvider>,
+  );
+}
+
+beforeEach(() => {
+  useApprovalStore.setState({ selectedRequestId: null });
+  currentUser.current = { id: 'reviewer-1' };
+  toastError.mockClear();
+});
+afterEach(() => cleanup());
+
+describe('ApprovalQueuePage (C15)', () => {
+  it('approves a PENDING request and re-reads APPROVED (AC5)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeApprovalRepo(makeRequest());
+    repo.current = fake;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await actor.click(await screen.findByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => expect(fake.approve).toHaveBeenCalledWith('ar1', expect.any(Object)));
+    // UI re-reads the decided request — the table badge flips to Approved (scoped to avoid the filter <option>).
+    expect(await within(screen.getByRole('table')).findByText('Approved')).toBeTruthy();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('rejects via the same form and surfaces a BUSINESS_RULE inline, not as a toast (AC4/AC5)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeApprovalRepo(makeRequest());
+    fake.reject = vi.fn(() =>
+      Promise.reject(
+        new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Request already decided' }),
+      ),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await actor.click(await screen.findByRole('button', { name: 'Reject' }));
+
+    expect(await screen.findByText('Request already decided')).toBeTruthy();
+    expect(toastError).not.toHaveBeenCalled();
+    // Panel stays open — the decision form is still mounted.
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy();
+  });
+
+  it('blocks self-decide when the reviewer is the requester (AC4)', async () => {
+    const actor = userEvent.setup();
+    currentUser.current = { id: 'u-req' }; // same as requesterUserId
+    const fake = new FakeApprovalRepo(makeRequest());
+    repo.current = fake;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+
+    // Scope to the unique panel suffix — the page header also mentions self-approval.
+    expect(await screen.findByText(/\(self-approval\)/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+  });
+
+  it('shows a permission-denied state when the list 403s (AC4)', async () => {
+    const fake = new FakeApprovalRepo(makeRequest());
+    fake.list = vi.fn(() => Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'no' })));
+    repo.current = fake;
+    renderPage();
+
+    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+  });
+});
