@@ -24,6 +24,7 @@ import { overrideLogRoutes } from '@modules/OverrideLog/Presentation/Routes/Over
 import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalog/Presentation/Routes/ControlValidationCatalogRoutes';
 import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/PartnerMasterRoutes';
 import { taskExecutionRoutes } from '@modules/TaskExecution/Presentation/Routes/TaskExecutionRoutes';
+import { barcodeLabelRoutes } from '@modules/BarcodeLabel/Presentation/Routes/BarcodeLabelRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
           ...catalogRoutes,
           ...partnerMasterRoutes,
           ...taskExecutionRoutes,
+          ...barcodeLabelRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,
