@@ -45,6 +45,9 @@ export const ROUTES = {
   MOBILE: {
     TASKS: '/mobile/tasks',
   },
+  LABELS: {
+    ROOT: '/labels',
+  },
   STOCK_TRANSFER: { ROOT: '/stock-transfer' },
   STOCK_ADJUSTMENT: { ROOT: '/stock-adjustment' },
   CYCLE_COUNT: { ROOT: '/cycle-count' },
