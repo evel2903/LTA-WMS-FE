@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Loader2, PlayCircle, RefreshCw, ScanLine } from 'lucide-react';
+import { AlertTriangle, Loader2, PlayCircle, RefreshCw, ScanLine } from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -12,7 +12,11 @@ import {
   useInboundPlans,
   useReceivingReadiness,
 } from '@modules/Inbound/Application/Queries/UseInboundPlans';
-import type { InboundPlan } from '@modules/Inbound/Domain/Types/InboundPlan';
+import { INBOUND_DISCREPANCY_TYPES } from '@modules/Inbound/Domain/Constants/InboundConstants';
+import type {
+  InboundDiscrepancyType,
+  InboundPlan,
+} from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface DraftLine {
   id: number;
@@ -99,6 +103,14 @@ export function InboundPage() {
   const [receiptManualConfirm, setReceiptManualConfirm] = useState(false);
   const [receiptReasonCode, setReceiptReasonCode] = useState('');
   const [receiptIdempotencyKey, setReceiptIdempotencyKey] = useState(() => `receipt-${Date.now()}`);
+  const [discrepancyType, setDiscrepancyType] =
+    useState<InboundDiscrepancyType>('QuantityVariance');
+  const [discrepancyReasonCode, setDiscrepancyReasonCode] = useState('');
+  const [discrepancyReasonNote, setDiscrepancyReasonNote] = useState('');
+  const [discrepancyEvidenceRefs, setDiscrepancyEvidenceRefs] = useState('');
+  const [discrepancyIdempotencyKey, setDiscrepancyIdempotencyKey] = useState(
+    () => `discrepancy-${Date.now()}`,
+  );
 
   const debouncedSourceSystem = useDebouncedValue(sourceSystemFilter, 250);
   const debouncedDocument = useDebouncedValue(documentFilter, 250);
@@ -111,6 +123,7 @@ export function InboundPage() {
   const resetValidateReadiness = mutations.validateReadiness.reset;
   const resetStartReceiving = mutations.startReceivingSession.reset;
   const resetConfirmReceiptLine = mutations.confirmReceiptLine.reset;
+  const resetCaptureDiscrepancy = mutations.captureDiscrepancy.reset;
 
   const plans = useMemo(() => query.data?.items ?? [], [query.data?.items]);
   const selected = useMemo(
@@ -132,6 +145,13 @@ export function InboundPage() {
     () => selected?.lines.find((line) => line.id === selectedLineId) ?? selected?.lines[0] ?? null,
     [selected?.lines, selectedLineId],
   );
+  const lastConfirmedLine = mutations.confirmReceiptLine.data;
+  const confirmedReceiptLine =
+    lastConfirmedLine &&
+    lastConfirmedLine.inboundPlanId === selected?.id &&
+    lastConfirmedLine.inboundPlanLineId === selectedLine?.id
+      ? lastConfirmedLine
+      : null;
   const selectedInitialLineId = selected?.lines[0]?.id ?? null;
   const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
   const readinessQuery = useReceivingReadiness(selected?.id ?? null);
@@ -161,6 +181,21 @@ export function InboundPage() {
     receiptIdempotencyKey.trim() &&
     (receiptManualConfirm ? receiptReasonCode.trim() : true),
   );
+  const discrepancyEvidenceRefList = useMemo(
+    () =>
+      discrepancyEvidenceRefs
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [discrepancyEvidenceRefs],
+  );
+  const canCaptureDiscrepancy = Boolean(
+    receivingSession &&
+    confirmedReceiptLine &&
+    discrepancyReasonCode.trim() &&
+    discrepancyEvidenceRefList.length > 0 &&
+    discrepancyIdempotencyKey.trim(),
+  );
 
   useEffect(() => {
     if (!selectedId && plans[0]) setSelectedId(plans[0].id);
@@ -179,10 +214,17 @@ export function InboundPage() {
     setReceiptManualConfirm(false);
     setReceiptReasonCode('');
     setReceiptIdempotencyKey(`receipt-${selected?.id ?? 'none'}-${Date.now()}`);
+    setDiscrepancyType('QuantityVariance');
+    setDiscrepancyReasonCode('');
+    setDiscrepancyReasonNote('');
+    setDiscrepancyEvidenceRefs('');
+    setDiscrepancyIdempotencyKey(`discrepancy-${selected?.id ?? 'none'}-${Date.now()}`);
     resetValidateReadiness();
     resetStartReceiving();
     resetConfirmReceiptLine();
+    resetCaptureDiscrepancy();
   }, [
+    resetCaptureDiscrepancy,
     resetConfirmReceiptLine,
     resetStartReceiving,
     resetValidateReadiness,
@@ -296,10 +338,36 @@ export function InboundPage() {
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (line) => {
           setReceiptRawScan('');
           setReceiptReasonCode('');
           setReceiptIdempotencyKey(`receipt-${selectedLine.id}-${Date.now()}`);
+          setDiscrepancyType(line.discrepancySignals[0] ?? 'QuantityVariance');
+        },
+      },
+    );
+  }
+
+  function submitDiscrepancy(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!receivingSession || !confirmedReceiptLine || !canCaptureDiscrepancy) return;
+    mutations.captureDiscrepancy.mutate(
+      {
+        receiptId: receivingSession.receiptId,
+        input: {
+          receiptLineId: confirmedReceiptLine.id,
+          discrepancyType,
+          reasonCode: discrepancyReasonCode.trim(),
+          reasonNote: discrepancyReasonNote.trim() || null,
+          evidenceRefs: discrepancyEvidenceRefList,
+          idempotencyKey: discrepancyIdempotencyKey.trim(),
+        },
+      },
+      {
+        onSuccess: () => {
+          setDiscrepancyReasonNote('');
+          setDiscrepancyEvidenceRefs('');
+          setDiscrepancyIdempotencyKey(`discrepancy-${confirmedReceiptLine.id}-${Date.now()}`);
         },
       },
     );
@@ -720,6 +788,87 @@ export function InboundPage() {
                 </p>
               )}
             </form>
+
+            {confirmedReceiptLine && (
+              <form className="space-y-3 rounded-md border p-3" onSubmit={submitDiscrepancy}>
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <AlertTriangle className="size-4" />
+                  Discrepancy routing
+                </div>
+                {confirmedReceiptLine.discrepancySignals.length > 0 && (
+                  <div className="text-muted-foreground text-xs">
+                    Signals: {confirmedReceiptLine.discrepancySignals.join(', ')}
+                  </div>
+                )}
+                <label className="grid gap-1 text-sm">
+                  Discrepancy type
+                  <select
+                    value={discrepancyType}
+                    onChange={(event) =>
+                      setDiscrepancyType(event.target.value as InboundDiscrepancyType)
+                    }
+                    className="rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    {INBOUND_DISCREPANCY_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Discrepancy reason code
+                  <Input
+                    value={discrepancyReasonCode}
+                    onChange={(event) => setDiscrepancyReasonCode(event.target.value)}
+                    placeholder="RC-V1-DISCREPANCY"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Discrepancy reason note
+                  <Input
+                    value={discrepancyReasonNote}
+                    onChange={(event) => setDiscrepancyReasonNote(event.target.value)}
+                    placeholder="Quantity differs from ASN"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Discrepancy evidence refs
+                  <Input
+                    value={discrepancyEvidenceRefs}
+                    onChange={(event) => setDiscrepancyEvidenceRefs(event.target.value)}
+                    placeholder="photo://dock/over-qty-1"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Discrepancy idempotency key
+                  <Input
+                    value={discrepancyIdempotencyKey}
+                    onChange={(event) => setDiscrepancyIdempotencyKey(event.target.value)}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!canCaptureDiscrepancy || mutations.captureDiscrepancy.isPending}
+                >
+                  <AlertTriangle className="size-4" />
+                  Route discrepancy
+                </button>
+                {mutations.captureDiscrepancy.data && (
+                  <p className="text-muted-foreground text-sm">
+                    Discrepancy {mutations.captureDiscrepancy.data.status} / Exception{' '}
+                    {mutations.captureDiscrepancy.data.exceptionCaseId}
+                    {mutations.captureDiscrepancy.data.status === 'PendingApproval'
+                      ? ' / approval required'
+                      : ''}
+                  </p>
+                )}
+                {mutations.captureDiscrepancy.error ? (
+                  <p className="text-destructive text-sm">Unable to route discrepancy.</p>
+                ) : null}
+              </form>
+            )}
           </CardContent>
         </Card>
       </aside>

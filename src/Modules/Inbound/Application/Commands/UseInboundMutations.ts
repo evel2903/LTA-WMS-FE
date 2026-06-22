@@ -4,6 +4,7 @@ import { toast } from '@shared/Components/Ui/Toast';
 import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands/MasterDataMutationError';
 import { inboundQueryKeys } from '@modules/Inbound/Application/Queries/InboundQueryKeys';
 import type {
+  CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   RecordGateInInput,
@@ -43,6 +44,17 @@ export function useInboundMutations() {
     confirmReceiptLine: useMutation({
       mutationFn: ({ receiptId, input }: { receiptId: string; input: ConfirmReceiptLineInput }) =>
         inboundRepository.confirmReceiptLine(receiptId, input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    captureDiscrepancy: useMutation({
+      mutationFn: ({
+        receiptId,
+        input,
+      }: {
+        receiptId: string;
+        input: CaptureInboundDiscrepancyInput;
+      }) => inboundRepository.captureDiscrepancy(receiptId, input),
       onSuccess: invalidateInbound,
       onError: notifyError,
     }),

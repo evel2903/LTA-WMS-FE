@@ -23,3 +23,21 @@ export const RECEIPT_LINE_DISCREPANCY_SIGNALS = [
   'WrongUom',
   'UnresolvedBarcode',
 ] as const;
+
+export const INBOUND_DISCREPANCY_TYPES = [
+  'QuantityVariance',
+  'WrongSku',
+  'WrongUom',
+  'UnresolvedBarcode',
+  'DamagedGoods',
+  'MissingDocument',
+] as const;
+
+export const INBOUND_DISCREPANCY_STATUSES = ['Routed', 'PendingApproval', 'Blocked'] as const;
+
+export const INBOUND_DISCREPANCY_TOLERANCE_DECISIONS = [
+  'NotApplicable',
+  'WithinTolerance',
+  'OverTolerancePendingApproval',
+  'OverToleranceHardBlocked',
+] as const;

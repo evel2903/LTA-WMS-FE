@@ -6,12 +6,14 @@ import {
   INBOUND_MAX_PAGE_SIZE,
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
+  InboundDiscrepancy,
   InboundPlan,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   InboundPlanFilter,
@@ -21,6 +23,7 @@ import type {
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEndpoints';
 import type {
+  InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
   ReceiptLineDto,
@@ -108,5 +111,16 @@ export class InboundRepository implements IInboundRepository {
       InboundMapper.toConfirmReceiptLineRequest(input),
     );
     return InboundMapper.toReceiptLine(dto);
+  }
+
+  async captureDiscrepancy(
+    receiptId: string,
+    input: CaptureInboundDiscrepancyInput,
+  ): Promise<InboundDiscrepancy> {
+    const dto = await this.http.post<InboundDiscrepancyDto>(
+      INBOUND_ENDPOINTS.RECEIPT_DISCREPANCIES(receiptId),
+      InboundMapper.toCaptureDiscrepancyRequest(input),
+    );
+    return InboundMapper.toInboundDiscrepancy(dto);
   }
 }

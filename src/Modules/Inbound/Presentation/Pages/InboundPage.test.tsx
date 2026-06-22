@@ -8,11 +8,13 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
 import type {
+  InboundDiscrepancy,
   InboundPlan,
   ReceiptLine,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   InboundPlanFilter,
@@ -215,6 +217,36 @@ class FakeRepository implements Partial<IInboundRepository> {
         updatedAt: '2026-06-22T09:10:00.000Z',
       }),
   );
+
+  captureDiscrepancy = vi.fn(
+    (_receiptId: string, input: CaptureInboundDiscrepancyInput): Promise<InboundDiscrepancy> =>
+      Promise.resolve({
+        id: 'discrepancy-1',
+        receiptId: 'receipt-1',
+        receiptLineId: input.receiptLineId,
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: 'line-1',
+        discrepancyType: input.discrepancyType,
+        status: 'PendingApproval',
+        toleranceDecision: 'OverTolerancePendingApproval',
+        expectedQuantity: 12,
+        actualQuantity: 14,
+        reasonCode: input.reasonCode,
+        reasonCodeId: 'reason-1',
+        reasonNote: input.reasonNote ?? null,
+        evidenceRefs: input.evidenceRefs ?? [],
+        evidenceJson: input.evidenceJson ?? null,
+        exceptionCaseId: 'exception-1',
+        exceptionState: 'DETECTED',
+        severity: 'MEDIUM',
+        idempotencyKey: input.idempotencyKey,
+        isDuplicate: false,
+        recordedAt: '2026-06-22T09:12:00.000Z',
+        recordedBy: 'test-admin',
+        createdAt: '2026-06-22T09:12:00.000Z',
+        updatedAt: '2026-06-22T09:12:00.000Z',
+      }),
+  );
 }
 
 function renderPage() {
@@ -241,7 +273,7 @@ describe('InboundPage', () => {
     expect(screen.getByText(/ETA: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
     expect(screen.getByText(/CoreFlow trace: core-flow-1/i)).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
-    expect(screen.getByText(/Gate-in is required before receiving/i)).toBeTruthy();
+    expect(await screen.findByText(/Gate-in is required before receiving/i)).toBeTruthy();
     expect(fake.validateReadiness).toHaveBeenCalledWith('inbound-plan-1', {
       attemptOverride: false,
     });
@@ -421,6 +453,199 @@ describe('InboundPage', () => {
       },
     });
     expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
+  });
+
+  it('routes a confirmed discrepancy line with reason, evidence and idempotency', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Actual quantity'));
+    await actor.type(screen.getByLabelText('Actual quantity'), '14');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Confirm receipt line' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), 'photo://dock/over-qty-1');
+    await actor.clear(screen.getByLabelText('Discrepancy idempotency key'));
+    await actor.type(screen.getByLabelText('Discrepancy idempotency key'), 'discrepancy-1');
+    await actor.click(screen.getByRole('button', { name: 'Route discrepancy' }));
+
+    await waitFor(() => expect(fake.captureDiscrepancy).toHaveBeenCalledTimes(1));
+    const [receiptId, discrepancyInput] = fake.captureDiscrepancy.mock.calls[0];
+    expect(receiptId).toBe('receipt-1');
+    expect(discrepancyInput).toMatchObject({
+      receiptLineId: 'receipt-line-1',
+      discrepancyType: 'QuantityVariance',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['photo://dock/over-qty-1'],
+      idempotencyKey: 'discrepancy-1',
+    });
+    expect(
+      await screen.findByText(/Discrepancy PendingApproval \/ Exception exception-1/i),
+    ).toBeTruthy();
+  });
+
+  it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    await actor.clear(screen.getByLabelText('Actual quantity'));
+    await actor.type(screen.getByLabelText('Actual quantity'), '14');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
+    const routeButton = screen.getByRole('button', { name: 'Route discrepancy' });
+    expect(routeButton).toHaveProperty('disabled', true);
+    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), ',,');
+    expect(routeButton).toHaveProperty('disabled', true);
+    expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
+  });
+
+  it('defaults discrepancy type from the confirmed receipt-line signal', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    fake.confirmReceiptLine.mockResolvedValueOnce({
+      id: 'receipt-line-1',
+      receiptId: 'receipt-1',
+      inboundPlanId: 'inbound-plan-1',
+      inboundPlanLineId: 'line-1',
+      lineNumber: 1,
+      skuId: 'sku-1',
+      skuCode: 'SKU-A',
+      uomId: 'uom-1',
+      uomCode: 'EA',
+      expectedQuantity: 12,
+      actualQuantity: 12,
+      status: 'Discrepancy',
+      manualConfirm: false,
+      reasonCode: null,
+      reasonCodeId: null,
+      reasonNote: null,
+      scanEvidenceJson: { RawValue: 'wrong-sku-barcode' },
+      discrepancySignals: ['WrongSku'],
+      idempotencyKey: 'receipt-line-wrong-sku',
+      receivedAt: '2026-06-22T09:10:00.000Z',
+      receivedBy: 'test-admin',
+      isDuplicate: false,
+      createdAt: '2026-06-22T09:10:00.000Z',
+      updatedAt: '2026-06-22T09:10:00.000Z',
+    });
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    await actor.type(screen.getByLabelText('Raw scan value'), 'wrong-sku-barcode');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-wrong-sku');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Discrepancy - WrongSku/i)).toBeTruthy();
+    expect(screen.getByLabelText('Discrepancy type')).toHaveProperty('value', 'WrongSku');
+  });
+
+  it('hides stale discrepancy routing when a different source line is selected', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          {
+            id: 'line-1',
+            lineNumber: 1,
+            skuId: 'sku-1',
+            skuCode: 'SKU-A',
+            uomId: 'uom-1',
+            uomCode: 'EA',
+            expectedQuantity: 12,
+            externalLineReference: '10',
+          },
+          {
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            uomId: 'uom-1',
+            uomCode: 'EA',
+            expectedQuantity: 8,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    await actor.clear(screen.getByLabelText('Actual quantity'));
+    await actor.type(screen.getByLabelText('Actual quantity'), '14');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Discrepancy routing/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Use line 2' }));
+    await waitFor(() => expect(screen.queryByText(/Discrepancy routing/i)).toBeNull());
+  });
+
+  it('shows an inline discrepancy route error when backend rejects capture', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    fake.captureDiscrepancy.mockRejectedValueOnce(
+      new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Evidence is required' }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    await actor.clear(screen.getByLabelText('Actual quantity'));
+    await actor.type(screen.getByLabelText('Actual quantity'), '14');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), 'photo://dock/over-qty-1');
+    await actor.clear(screen.getByLabelText('Discrepancy idempotency key'));
+    await actor.type(screen.getByLabelText('Discrepancy idempotency key'), 'discrepancy-error');
+    await actor.click(screen.getByRole('button', { name: 'Route discrepancy' }));
+
+    expect(await screen.findByText(/Unable to route discrepancy/i)).toBeTruthy();
   });
 
   it('clears stale readiness override after gate-in is recorded', async () => {

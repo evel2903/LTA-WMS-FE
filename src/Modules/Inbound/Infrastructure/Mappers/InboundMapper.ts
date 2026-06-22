@@ -1,11 +1,13 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
+  InboundDiscrepancy,
   InboundPlan,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   RecordGateInInput,
@@ -13,8 +15,10 @@ import type {
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import type {
+  CaptureInboundDiscrepancyRequestDto,
   ConfirmReceiptLineRequestDto,
   CreateInboundPlanRequestDto,
+  InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
   ReceiptLineDto,
@@ -151,6 +155,35 @@ export const InboundMapper = {
     };
   },
 
+  toInboundDiscrepancy(dto: InboundDiscrepancyDto): InboundDiscrepancy {
+    return {
+      id: dto.Id,
+      receiptId: dto.ReceiptId,
+      receiptLineId: dto.ReceiptLineId,
+      inboundPlanId: dto.InboundPlanId,
+      inboundPlanLineId: dto.InboundPlanLineId,
+      discrepancyType: dto.DiscrepancyType,
+      status: dto.Status,
+      toleranceDecision: dto.ToleranceDecision,
+      expectedQuantity: dto.ExpectedQuantity,
+      actualQuantity: dto.ActualQuantity,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs ?? [],
+      evidenceJson: dto.EvidenceJson,
+      exceptionCaseId: dto.ExceptionCaseId,
+      exceptionState: dto.ExceptionState,
+      severity: dto.Severity,
+      idempotencyKey: dto.IdempotencyKey,
+      isDuplicate: dto.IsDuplicate,
+      recordedAt: dto.RecordedAt,
+      recordedBy: dto.RecordedBy,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  },
+
   toCreateRequest(input: CreateInboundPlanInput): CreateInboundPlanRequestDto {
     return removeEmpty({
       SourceSystem: input.sourceSystem,
@@ -232,5 +265,19 @@ export const InboundMapper = {
           })
         : null,
     }) as ConfirmReceiptLineRequestDto;
+  },
+
+  toCaptureDiscrepancyRequest(
+    input: CaptureInboundDiscrepancyInput,
+  ): CaptureInboundDiscrepancyRequestDto {
+    return removeEmpty({
+      ReceiptLineId: input.receiptLineId,
+      DiscrepancyType: input.discrepancyType,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      EvidenceJson: input.evidenceJson,
+      IdempotencyKey: input.idempotencyKey,
+    }) as CaptureInboundDiscrepancyRequestDto;
   },
 };

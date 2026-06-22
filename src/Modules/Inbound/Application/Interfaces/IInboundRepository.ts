@@ -1,11 +1,13 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
+  InboundDiscrepancy,
   InboundPlan,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   InboundPlanFilter,
@@ -25,4 +27,8 @@ export interface IInboundRepository {
   ): Promise<ReceivingReadiness>;
   startReceivingSession(id: string, input?: StartReceivingSessionInput): Promise<ReceivingSession>;
   confirmReceiptLine(receiptId: string, input: ConfirmReceiptLineInput): Promise<ReceiptLine>;
+  captureDiscrepancy(
+    receiptId: string,
+    input: CaptureInboundDiscrepancyInput,
+  ): Promise<InboundDiscrepancy>;
 }

@@ -5,4 +5,5 @@ export const INBOUND_ENDPOINTS = {
   RECEIVING_READINESS: (id: string) => `/inbound-plans/${id}/receiving-readiness`,
   RECEIVING_SESSIONS: (id: string) => `/inbound-plans/${id}/receiving-sessions`,
   RECEIPT_LINES: (receiptId: string) => `/receipts/${receiptId}/lines`,
+  RECEIPT_DISCREPANCIES: (receiptId: string) => `/receipts/${receiptId}/discrepancies`,
 } as const;

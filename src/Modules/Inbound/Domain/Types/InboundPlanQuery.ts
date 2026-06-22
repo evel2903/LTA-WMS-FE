@@ -1,4 +1,7 @@
-import type { InboundPlanDocumentStatus } from '@modules/Inbound/Domain/Types/InboundPlan';
+import type {
+  InboundDiscrepancyType,
+  InboundPlanDocumentStatus,
+} from '@modules/Inbound/Domain/Types/InboundPlan';
 
 export interface InboundPlanFilter {
   page?: number;
@@ -79,4 +82,14 @@ export interface ConfirmReceiptLineInput {
   reasonNote?: string | null;
   idempotencyKey: string;
   scanEvidence?: ReceiptLineScanEvidenceInput | null;
+}
+
+export interface CaptureInboundDiscrepancyInput {
+  receiptLineId: string;
+  discrepancyType: InboundDiscrepancyType;
+  reasonCode: string;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  evidenceJson?: Record<string, unknown> | null;
+  idempotencyKey: string;
 }
