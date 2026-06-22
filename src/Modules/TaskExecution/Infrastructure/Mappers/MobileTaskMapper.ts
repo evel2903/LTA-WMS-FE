@@ -1,10 +1,15 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
-import type { MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
-import type { ClaimMobileTaskInput } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
+import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
+import type {
+  ClaimMobileTaskInput,
+  RecordMobileScanInput,
+} from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import type {
   ClaimMobileTaskRequestDto,
+  MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
+  RecordMobileScanRequestDto,
   ReleaseMobileTaskRequestDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
 
@@ -62,5 +67,40 @@ export const MobileTaskMapper = {
 
   toReleaseRequest(): ReleaseMobileTaskRequestDto {
     return {};
+  },
+
+  toScanEvent(dto: MobileScanEventDto): MobileScanEvent {
+    return {
+      id: dto.Id,
+      taskId: dto.TaskId,
+      taskCode: dto.TaskCode,
+      warehouseId: dto.WarehouseId,
+      ownerId: dto.OwnerId,
+      scanType: dto.ScanType,
+      rawValue: dto.RawValue,
+      normalizedValue: dto.NormalizedValue,
+      result: dto.Result,
+      resolvedObjectType: dto.ResolvedObjectType,
+      resolvedObjectId: dto.ResolvedObjectId,
+      parsedValueJson: dto.ParsedValueJson ?? {},
+      rejectionCode: dto.RejectionCode,
+      rejectionMessage: dto.RejectionMessage,
+      reasonCode: dto.ReasonCode,
+      deviceCode: dto.DeviceCode,
+      sessionId: dto.SessionId,
+      actorUserId: dto.ActorUserId,
+      createdAt: dto.CreatedAt,
+    };
+  },
+
+  toRecordScanRequest(input: RecordMobileScanInput): RecordMobileScanRequestDto {
+    return removeNullish({
+      ScanType: input.scanType,
+      RawValue: input.rawValue,
+      ManualEntry: input.manualEntry,
+      ReasonCode: input.reasonCode,
+      DeviceCode: input.deviceCode,
+      SessionId: input.sessionId,
+    }) as RecordMobileScanRequestDto;
   },
 };

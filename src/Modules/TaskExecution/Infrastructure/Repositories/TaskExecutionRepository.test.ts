@@ -43,12 +43,14 @@ describe('TaskExecutionRepository', () => {
     await repository.list({ warehouseId: 'warehouse-a' });
     await repository.getById('task-a');
     await repository.claim('task-a', { deviceCode: 'RF-01', sessionId: 'session-1' });
+    await repository.recordScan('task-a', { scanType: 'Item', rawValue: '(01)01234567890128' });
     await repository.release('task-a');
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/mobile/tasks'],
       ['get', '/mobile/tasks/task-a'],
       ['post', '/mobile/tasks/task-a/claim'],
+      ['post', '/mobile/tasks/task-a/scans'],
       ['post', '/mobile/tasks/task-a/release'],
     ]);
   });
@@ -95,6 +97,32 @@ describe('TaskExecutionRepository', () => {
       method: 'post',
       url: '/mobile/tasks/task-a/release',
       body: {},
+    });
+  });
+
+  it('records scan evidence through the mobile task scan endpoint', async () => {
+    const http = new FakeHttpClient();
+    const repository = new TaskExecutionRepository(http);
+
+    await repository.recordScan('task-a', {
+      scanType: 'Item',
+      rawValue: '(01)01234567890128(10)LOT-A',
+      manualEntry: false,
+      deviceCode: 'RF-01',
+      sessionId: 'session-1',
+      reasonCode: null,
+    });
+
+    expect(http.calls[0]).toMatchObject({
+      method: 'post',
+      url: '/mobile/tasks/task-a/scans',
+      body: {
+        ScanType: 'Item',
+        RawValue: '(01)01234567890128(10)LOT-A',
+        ManualEntry: false,
+        DeviceCode: 'RF-01',
+        SessionId: 'session-1',
+      },
     });
   });
 });

@@ -32,9 +32,40 @@ export interface PagedMobileTaskDto {
   };
 }
 
+export interface MobileScanEventDto {
+  Id: string;
+  TaskId: string;
+  TaskCode: string;
+  WarehouseId: string;
+  OwnerId: string | null;
+  ScanType: 'Document' | 'Location' | 'Item' | 'Lpn' | 'Package' | 'Load' | 'ManualEntry';
+  RawValue: string;
+  NormalizedValue: string | null;
+  Result: 'Accepted' | 'Rejected' | 'ManualOverrideAccepted';
+  ResolvedObjectType: string | null;
+  ResolvedObjectId: string | null;
+  ParsedValueJson: Record<string, unknown>;
+  RejectionCode: string | null;
+  RejectionMessage: string | null;
+  ReasonCode: string | null;
+  DeviceCode: string | null;
+  SessionId: string | null;
+  ActorUserId: string;
+  CreatedAt: string;
+}
+
 export interface ClaimMobileTaskRequestDto {
   DeviceCode?: string;
   SessionId?: string;
 }
 
 export type ReleaseMobileTaskRequestDto = Record<string, never>;
+
+export interface RecordMobileScanRequestDto {
+  ScanType: 'Document' | 'Location' | 'Item' | 'Lpn' | 'Package' | 'Load' | 'ManualEntry';
+  RawValue: string;
+  ManualEntry?: boolean;
+  ReasonCode?: string;
+  DeviceCode?: string;
+  SessionId?: string;
+}

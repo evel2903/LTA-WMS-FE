@@ -10,3 +10,14 @@ export const MOBILE_TASK_STATUSES = [
   'Completed',
   'Cancelled',
 ] as const;
+
+export const MOBILE_SCAN_TYPES = [
+  'Document',
+  'Location',
+  'Item',
+  'Lpn',
+  'Package',
+  'Load',
+  'ManualEntry',
+] as const;
+export const MOBILE_SCAN_RESULTS = ['Accepted', 'Rejected', 'ManualOverrideAccepted'] as const;

@@ -66,6 +66,8 @@ export interface SkuBarcode extends MasterDataAuditFields {
   barcodeValue: string;
   barcodeType: string;
   isPrimary: boolean;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
   status: MasterDataStatus;
 }
 

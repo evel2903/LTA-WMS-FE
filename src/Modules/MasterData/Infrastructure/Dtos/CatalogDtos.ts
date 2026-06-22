@@ -58,6 +58,8 @@ export interface SkuBarcodeDto extends MasterDataAuditDto {
   BarcodeValue: string;
   BarcodeType: string;
   IsPrimary: boolean;
+  EffectiveFrom: string | null;
+  EffectiveTo: string | null;
   Status: MasterDataStatus;
 }
 
@@ -148,7 +150,18 @@ export type CreateSkuBarcodeRequestDto = Pick<
   SkuBarcodeDto,
   'SkuId' | 'UomId' | 'BarcodeValue' | 'BarcodeType' | 'Status'
 > &
-  Partial<Pick<SkuBarcodeDto, 'OwnerId' | 'PackCode' | 'IsPrimary' | 'SourceSystem' | 'ReferenceId'>> & {
+  Partial<
+    Pick<
+      SkuBarcodeDto,
+      | 'OwnerId'
+      | 'PackCode'
+      | 'IsPrimary'
+      | 'EffectiveFrom'
+      | 'EffectiveTo'
+      | 'SourceSystem'
+      | 'ReferenceId'
+    >
+  > & {
     ReasonCode?: string | null;
   };
 

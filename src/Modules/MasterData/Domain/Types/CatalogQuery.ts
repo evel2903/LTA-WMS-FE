@@ -122,6 +122,8 @@ export interface CreateSkuBarcodeInput {
   ownerId?: string | null;
   packCode?: string | null;
   isPrimary?: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
   sourceSystem?: string | null;
   referenceId?: string | null;
   reasonCode?: string | null;

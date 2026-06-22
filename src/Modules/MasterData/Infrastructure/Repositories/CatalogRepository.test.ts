@@ -119,7 +119,12 @@ describe('CatalogRepository', () => {
       status: 'Active',
       reasonCode: 'RELATION_CREATE',
     });
-    await repository.updateSkuBarcode('bc-1', { barcodeType: 'QR', reasonCode: 'RELATION_EDIT' });
+    await repository.updateSkuBarcode('bc-1', {
+      barcodeType: 'QR',
+      effectiveFrom: '2026-06-21',
+      effectiveTo: null,
+      reasonCode: 'RELATION_EDIT',
+    });
     await repository.updateUomConversion('conv-1', { factor: 24, reasonCode: 'RELATION_EDIT' });
     await repository.updateItemCoverage('cov-1', { maxQty: 250 });
     await repository.updatePackDefinition('pack-1', {
@@ -165,7 +170,12 @@ describe('CatalogRepository', () => {
     expect(http.calls[4]).toMatchObject({
       method: 'patch',
       url: '/sku-barcodes/bc-1',
-      body: { BarcodeType: 'QR', ReasonCode: 'RELATION_EDIT' },
+      body: {
+        BarcodeType: 'QR',
+        EffectiveFrom: '2026-06-21',
+        EffectiveTo: null,
+        ReasonCode: 'RELATION_EDIT',
+      },
     });
     expect(http.calls[5]).toMatchObject({
       method: 'patch',

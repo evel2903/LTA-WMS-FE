@@ -175,6 +175,13 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
             { header: 'Type', render: (barcode) => barcode.barcodeType },
             { header: 'UOM', render: (barcode) => optionLabel(uomOptions, barcode.uomId) },
             { header: 'Pack', render: (barcode) => barcode.packCode ?? '-' },
+            {
+              header: 'Effective',
+              render: (barcode) =>
+                `${dateOnly(barcode.effectiveFrom) || '-'} / ${
+                  dateOnly(barcode.effectiveTo) || '-'
+                }`,
+            },
             { header: 'Status', render: (barcode) => <MasterDataStatusBadge status={barcode.status} /> },
           ]}
           onEdit={(barcode) => {
@@ -558,6 +565,8 @@ function BarcodeForm({
       ownerId: initialValue?.ownerId ?? '',
       packCode: initialValue?.packCode ?? '',
       isPrimary: initialValue?.isPrimary ?? false,
+      effectiveFrom: dateOnly(initialValue?.effectiveFrom ?? ''),
+      effectiveTo: dateOnly(initialValue?.effectiveTo ?? ''),
       reasonCode: '',
     }),
     [initialValue, skuId],
@@ -586,6 +595,12 @@ function BarcodeForm({
         />
         <Field label="Pack code" error={form.formState.errors.packCode?.message}>
           <Input disabled={disabled} {...form.register('packCode')} />
+        </Field>
+        <Field label="Effective from" error={form.formState.errors.effectiveFrom?.message}>
+          <Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
+        </Field>
+        <Field label="Effective to" error={form.formState.errors.effectiveTo?.message}>
+          <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
           label="Status"
@@ -942,6 +957,8 @@ function toBarcodeInput(values: SkuBarcodeFormValues): CreateSkuBarcodeInput {
     ownerId: emptyToNull(values.ownerId),
     packCode: emptyToNull(values.packCode),
     isPrimary: values.isPrimary,
+    effectiveFrom: emptyToNull(values.effectiveFrom),
+    effectiveTo: emptyToNull(values.effectiveTo),
     reasonCode: emptyToNull(values.reasonCode),
   };
 }

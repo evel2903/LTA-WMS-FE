@@ -109,17 +109,29 @@ export const skuFormSchema = z
 
 // ── SkuBarcode ────────────────────────────────────────────────────────────────
 
-export const skuBarcodeFormSchema = z.object({
-  skuId: requiredText(36, 'SKU is required'),
-  uomId: requiredText(36, 'UOM is required'),
-  barcodeValue: requiredText(120, 'Barcode value is required'),
-  barcodeType: requiredText(30, 'Barcode type is required'),
-  status: masterDataStatusSchema,
-  ownerId: optionalText(36),
-  packCode: optionalText(50),
-  isPrimary: z.boolean().optional().default(false),
-  reasonCode: optionalText(64),
-});
+export const skuBarcodeFormSchema = z
+  .object({
+    skuId: requiredText(36, 'SKU is required'),
+    uomId: requiredText(36, 'UOM is required'),
+    barcodeValue: requiredText(120, 'Barcode value is required'),
+    barcodeType: requiredText(30, 'Barcode type is required'),
+    status: masterDataStatusSchema,
+    ownerId: optionalText(36),
+    packCode: optionalText(50),
+    isPrimary: z.boolean().optional().default(false),
+    effectiveFrom: optionalText(40),
+    effectiveTo: optionalText(40),
+    reasonCode: optionalText(64),
+  })
+  .superRefine((values, ctx) => {
+    if (values.effectiveFrom && values.effectiveTo && values.effectiveTo < values.effectiveFrom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['effectiveTo'],
+        message: 'Effective to must be greater than or equal to Effective from',
+      });
+    }
+  });
 
 // ── PackDefinition ───────────────────────────────────────────────────────────
 

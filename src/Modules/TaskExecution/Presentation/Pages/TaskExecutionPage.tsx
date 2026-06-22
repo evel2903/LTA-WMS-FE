@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, Smartphone } from 'lucide-react';
+import { Loader2, RefreshCw, ScanLine, Smartphone } from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -10,10 +10,13 @@ import { useCurrentUser } from '@modules/Auth/Application/UseCases/UseCurrentUse
 import { useMobileTaskMutations } from '@modules/TaskExecution/Application/Commands/UseMobileTaskMutations';
 import { useMobileTasks } from '@modules/TaskExecution/Application/Queries/UseMobileTasks';
 import {
+  MOBILE_SCAN_TYPES,
   MOBILE_TASK_STATUSES,
   MOBILE_TASK_TYPES,
 } from '@modules/TaskExecution/Domain/Constants/MobileTaskConstants';
 import type {
+  MobileScanEvent,
+  MobileScanType,
   MobileTask,
   MobileTaskStatus,
   MobileTaskType,
@@ -31,6 +34,12 @@ function taskPayloadText(task: MobileTask): string {
 
 function StatusBadge({ status }: { status: MobileTaskStatus }) {
   return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+}
+
+function parsedScanText(scan: MobileScanEvent): string {
+  const entries = Object.entries(scan.parsedValueJson ?? {});
+  if (entries.length === 0) return '';
+  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(' | ');
 }
 
 function TaskCard({
@@ -75,6 +84,11 @@ export function TaskExecutionPage() {
   const [taskStatus, setTaskStatus] = useState<TaskStatusFilter>('All');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deviceCode, setDeviceCode] = useState('');
+  const [scanType, setScanType] = useState<MobileScanType>('Item');
+  const [scanValue, setScanValue] = useState('');
+  const [manualEntry, setManualEntry] = useState(false);
+  const [reasonCode, setReasonCode] = useState('');
+  const [latestScan, setLatestScan] = useState<MobileScanEvent | null>(null);
 
   const warehouseId = useDebouncedValue(warehouseFilter, 250);
   const query = useMobileTasks({
@@ -98,6 +112,18 @@ export function TaskExecutionPage() {
     selected.assignedUserId &&
     selected.assignedUserId === currentUser?.id,
   );
+  const canOperateScan = Boolean(
+    selected &&
+      ['Claimed', 'InProgress'].includes(selected.taskStatus) &&
+      selected.assignedUserId &&
+      selected.assignedUserId === currentUser?.id,
+  );
+  const canRecordScan = Boolean(
+    selected &&
+      canOperateScan &&
+      scanValue.trim().length > 0 &&
+      (!manualEntry || reasonCode.trim().length > 0),
+  );
 
   useEffect(() => {
     if (!selectedId && tasks[0]) {
@@ -107,6 +133,13 @@ export function TaskExecutionPage() {
       setSelectedId(tasks[0]?.id ?? null);
     }
   }, [selectedId, tasks]);
+
+  useEffect(() => {
+    setLatestScan(null);
+    setScanValue('');
+    setManualEntry(false);
+    setReasonCode('');
+  }, [selected?.id]);
 
   if (denied) {
     return (
@@ -257,6 +290,107 @@ export function TaskExecutionPage() {
                   Updating task
                 </p>
               )}
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <ScanLine className="size-4" />
+                  Scan evidence
+                </div>
+                <label className="grid gap-1 text-sm">
+                  Scan type
+                  <select
+                    className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    value={scanType}
+                    onChange={(event) => setScanType(event.target.value as MobileScanType)}
+                  >
+                    {MOBILE_SCAN_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Scan value
+                  <Input
+                    value={scanValue}
+                    onChange={(event) => setScanValue(event.target.value)}
+                    placeholder="(01)01234567890128"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={manualEntry}
+                    onChange={(event) => setManualEntry(event.target.checked)}
+                  />
+                  Manual entry
+                </label>
+                {manualEntry && (
+                  <label className="grid gap-1 text-sm">
+                    Reason code
+                    <Input
+                      value={reasonCode}
+                      onChange={(event) => setReasonCode(event.target.value)}
+                      placeholder="RC-V1-OVERRIDE"
+                    />
+                  </label>
+                )}
+                <button
+                  type="button"
+                  className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!canRecordScan || mutations.recordScan.isPending}
+                  onClick={() => {
+                    setLatestScan(null);
+                    mutations.recordScan.mutate(
+                      {
+                        id: selected.id,
+                        input: {
+                          scanType,
+                          rawValue: scanValue.trim(),
+                          manualEntry,
+                          reasonCode: manualEntry ? reasonCode.trim() : undefined,
+                          deviceCode: deviceCode || undefined,
+                          sessionId: selected.sessionId || undefined,
+                        },
+                      },
+                      {
+                        onSuccess: (scan) => {
+                          setLatestScan(scan);
+                          setScanValue('');
+                        },
+                        onError: () => {
+                          setLatestScan(null);
+                        },
+                      },
+                    );
+                  }}
+                >
+                  Record scan
+                </button>
+                {mutations.recordScan.isPending && (
+                  <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <RefreshCw className="size-4 animate-spin" />
+                    Recording scan
+                  </p>
+                )}
+                {latestScan && (
+                  <div className="rounded-md border p-3 text-sm">
+                    <div className="font-medium">
+                      {latestScan.result === 'Accepted'
+                        ? 'Accepted scan'
+                        : latestScan.result === 'Rejected'
+                          ? 'Rejected scan'
+                          : 'Manual override accepted'}
+                    </div>
+                    <div className="text-muted-foreground mt-1 space-y-1">
+                      {latestScan.normalizedValue && <div>{latestScan.normalizedValue}</div>}
+                      {parsedScanText(latestScan) && <div>{parsedScanText(latestScan)}</div>}
+                      {latestScan.rejectionMessage && <div>{latestScan.rejectionMessage}</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <p className="text-muted-foreground text-sm">

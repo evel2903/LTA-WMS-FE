@@ -82,6 +82,8 @@ const skuBarcodeDto: SkuBarcodeDto = {
   BarcodeValue: '0123456789012',
   BarcodeType: 'EAN13',
   IsPrimary: true,
+  EffectiveFrom: '2026-06-18T00:00:00.000Z',
+  EffectiveTo: null,
   Status: 'Active',
   SourceSystem: null,
   ReferenceId: null,
@@ -205,6 +207,8 @@ describe('CatalogMapper', () => {
       barcodeValue: '0123456789012',
       barcodeType: 'EAN13',
       isPrimary: true,
+      effectiveFrom: '2026-06-18T00:00:00.000Z',
+      effectiveTo: null,
       status: 'Active',
     });
 
@@ -353,9 +357,17 @@ describe('CatalogMapper', () => {
       CatalogMapper.toUpdateSkuBarcodeRequest({
         barcodeType: 'QR',
         isPrimary: false,
+        effectiveFrom: '2026-06-21',
+        effectiveTo: null,
         reasonCode: 'RELATION_EDIT',
       }),
-    ).toEqual({ BarcodeType: 'QR', IsPrimary: false, ReasonCode: 'RELATION_EDIT' });
+    ).toEqual({
+      BarcodeType: 'QR',
+      IsPrimary: false,
+      EffectiveFrom: '2026-06-21',
+      EffectiveTo: null,
+      ReasonCode: 'RELATION_EDIT',
+    });
 
     expect(
       CatalogMapper.toUpdateUomConversionRequest({

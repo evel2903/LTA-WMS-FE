@@ -62,6 +62,10 @@ function removeEmpty<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+function removeUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
+}
+
 export const CatalogMapper = {
   toPaged<TDto, TEntity>(
     dto: PagedMasterDataDto<TDto>,
@@ -157,6 +161,8 @@ export const CatalogMapper = {
       barcodeValue: dto.BarcodeValue,
       barcodeType: dto.BarcodeType,
       isPrimary: dto.IsPrimary,
+      effectiveFrom: dto.EffectiveFrom,
+      effectiveTo: dto.EffectiveTo,
       status: dto.Status,
       sourceSystem: dto.SourceSystem,
       referenceId: dto.ReferenceId,
@@ -347,6 +353,8 @@ export const CatalogMapper = {
       OwnerId: input.ownerId,
       PackCode: input.packCode,
       IsPrimary: input.isPrimary,
+      EffectiveFrom: input.effectiveFrom,
+      EffectiveTo: input.effectiveTo,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
       ReasonCode: input.reasonCode,
@@ -354,7 +362,7 @@ export const CatalogMapper = {
   },
 
   toUpdateSkuBarcodeRequest(input: UpdateSkuBarcodeInput): UpdateSkuBarcodeRequestDto {
-    return removeEmpty({
+    return removeUndefined({
       SkuId: input.skuId,
       UomId: input.uomId,
       BarcodeValue: input.barcodeValue,
@@ -363,6 +371,8 @@ export const CatalogMapper = {
       OwnerId: input.ownerId,
       PackCode: input.packCode,
       IsPrimary: input.isPrimary,
+      EffectiveFrom: input.effectiveFrom,
+      EffectiveTo: input.effectiveTo,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
       ReasonCode: input.reasonCode,

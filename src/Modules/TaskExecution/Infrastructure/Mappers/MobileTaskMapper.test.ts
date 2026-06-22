@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
@@ -28,6 +29,28 @@ const dto: MobileTaskDto = {
   TaskPayload: { source: 'STAGE-01', target: 'A-01-01' },
   CreatedAt: '2026-06-22T08:00:00.000Z',
   UpdatedAt: '2026-06-22T08:00:00.000Z',
+};
+
+const scanDto: MobileScanEventDto = {
+  Id: 'scan-1',
+  TaskId: 'task-a',
+  TaskCode: 'MT-001',
+  WarehouseId: 'warehouse-a',
+  OwnerId: 'owner-a',
+  ScanType: 'Item',
+  RawValue: '(01)01234567890128(10)LOT-A(17)260930',
+  NormalizedValue: '01234567890128',
+  Result: 'Accepted',
+  ResolvedObjectType: 'SKU',
+  ResolvedObjectId: 'sku-1',
+  ParsedValueJson: { gtin: '01234567890128', lot: 'LOT-A', expiry: '260930' },
+  RejectionCode: null,
+  RejectionMessage: null,
+  ReasonCode: null,
+  DeviceCode: 'RF-01',
+  SessionId: 'session-1',
+  ActorUserId: 'current-user',
+  CreatedAt: '2026-06-22T08:30:00.000Z',
 };
 
 describe('MobileTaskMapper', () => {
@@ -71,5 +94,38 @@ describe('MobileTaskMapper', () => {
       DeviceCode: 'RF-01',
     });
     expect(MobileTaskMapper.toReleaseRequest()).toEqual({});
+  });
+
+  it('maps scan event DTOs with parsed GS1 evidence', () => {
+    expect(MobileTaskMapper.toScanEvent(scanDto)).toMatchObject({
+      id: 'scan-1',
+      taskId: 'task-a',
+      scanType: 'Item',
+      rawValue: '(01)01234567890128(10)LOT-A(17)260930',
+      normalizedValue: '01234567890128',
+      result: 'Accepted',
+      resolvedObjectType: 'SKU',
+      resolvedObjectId: 'sku-1',
+      parsedValueJson: { gtin: '01234567890128', lot: 'LOT-A', expiry: '260930' },
+      deviceCode: 'RF-01',
+    });
+  });
+
+  it('builds PascalCase scan payloads and omits nullish optionals', () => {
+    expect(
+      MobileTaskMapper.toRecordScanRequest({
+        scanType: 'Item',
+        rawValue: '(01)01234567890128',
+        manualEntry: false,
+        reasonCode: '',
+        deviceCode: 'RF-01',
+        sessionId: null,
+      }),
+    ).toEqual({
+      ScanType: 'Item',
+      RawValue: '(01)01234567890128',
+      ManualEntry: false,
+      DeviceCode: 'RF-01',
+    });
   });
 });

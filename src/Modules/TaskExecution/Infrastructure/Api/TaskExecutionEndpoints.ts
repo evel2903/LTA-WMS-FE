@@ -3,4 +3,5 @@ export const TASK_EXECUTION_ENDPOINTS = {
   TASK_BY_ID: (id: string) => `/mobile/tasks/${encodeURIComponent(id)}`,
   CLAIM: (id: string) => `/mobile/tasks/${encodeURIComponent(id)}/claim`,
   RELEASE: (id: string) => `/mobile/tasks/${encodeURIComponent(id)}/release`,
+  SCANS: (id: string) => `/mobile/tasks/${encodeURIComponent(id)}/scans`,
 } as const;

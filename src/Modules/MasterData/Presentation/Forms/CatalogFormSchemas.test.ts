@@ -119,6 +119,8 @@ describe('Catalog form schemas', () => {
         barcodeValue: '0123456789012',
         barcodeType: 'EAN13',
         status: 'Active',
+        effectiveFrom: '2026-06-18',
+        effectiveTo: '2026-06-30',
       }).success,
     ).toBe(true);
     expect(
@@ -128,6 +130,31 @@ describe('Catalog form schemas', () => {
         barcodeValue: '',
         barcodeType: '',
         status: 'Active',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('sku barcode schema keeps effective window optional but rejects inverted dates', () => {
+    expect(
+      skuBarcodeFormSchema.safeParse({
+        skuId: 'sku-1',
+        uomId: 'uom-1',
+        barcodeValue: '0123456789012',
+        barcodeType: 'EAN13',
+        status: 'Active',
+        effectiveFrom: '',
+        effectiveTo: '',
+      }).success,
+    ).toBe(true);
+    expect(
+      skuBarcodeFormSchema.safeParse({
+        skuId: 'sku-1',
+        uomId: 'uom-1',
+        barcodeValue: '0123456789012',
+        barcodeType: 'EAN13',
+        status: 'Active',
+        effectiveFrom: '2026-06-30',
+        effectiveTo: '2026-06-18',
       }).success,
     ).toBe(false);
   });

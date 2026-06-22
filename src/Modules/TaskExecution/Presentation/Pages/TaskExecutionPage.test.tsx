@@ -9,10 +9,11 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import { useAuthStore } from '@modules/Auth/Application/Stores/AuthStore';
 import type { User } from '@modules/Auth/Domain/Entities/User';
 import type { ITaskExecutionRepository } from '@modules/TaskExecution/Application/Interfaces/ITaskExecutionRepository';
-import type { MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
+import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
 import type {
   ClaimMobileTaskInput,
   MobileTaskListFilter,
+  RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as ITaskExecutionRepository }));
@@ -58,6 +59,31 @@ function makeTask(overrides: Partial<MobileTask> = {}): MobileTask {
   };
 }
 
+function makeScan(overrides: Partial<MobileScanEvent> = {}): MobileScanEvent {
+  return {
+    id: 'scan-1',
+    taskId: 'task-a',
+    taskCode: 'MT-001',
+    warehouseId: 'warehouse-a',
+    ownerId: 'owner-a',
+    scanType: 'Item',
+    rawValue: '(01)01234567890128(10)LOT-A',
+    normalizedValue: '01234567890128',
+    result: 'Accepted',
+    resolvedObjectType: 'SKU',
+    resolvedObjectId: 'sku-1',
+    parsedValueJson: { gtin: '01234567890128', lot: 'LOT-A' },
+    rejectionCode: null,
+    rejectionMessage: null,
+    reasonCode: null,
+    deviceCode: 'RF-01',
+    sessionId: null,
+    actorUserId: 'current-user',
+    createdAt: '2026-06-22T08:30:00.000Z',
+    ...overrides,
+  };
+}
+
 class FakeRepository implements Partial<ITaskExecutionRepository> {
   public items: MobileTask[];
 
@@ -99,6 +125,17 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
     this.items[index] = { ...this.items[index], taskStatus: 'Released', assignedUserId: null };
     return Promise.resolve(this.items[index]);
   });
+
+  recordScan = vi.fn((_id: string, input: RecordMobileScanInput) =>
+    Promise.resolve(
+      makeScan({
+        scanType: input.scanType,
+        rawValue: input.rawValue,
+        deviceCode: input.deviceCode ?? null,
+        sessionId: input.sessionId ?? null,
+      }),
+    ),
+  );
 }
 
 function renderPage() {
@@ -166,6 +203,131 @@ describe('TaskExecutionPage', () => {
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Release task' })).toBeNull();
+  });
+
+  it('records scan evidence and shows accepted GS1 feedback', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' })]);
+    setCurrentUser();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /MT-001/i });
+    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
+    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+
+    await waitFor(() =>
+      expect(fake.recordScan).toHaveBeenCalledWith('task-a', {
+        scanType: 'Item',
+        rawValue: '(01)01234567890128(10)LOT-A',
+        manualEntry: false,
+        reasonCode: undefined,
+        deviceCode: undefined,
+        sessionId: undefined,
+      }),
+    );
+    expect(await screen.findByText(/Accepted scan/i)).toBeTruthy();
+    expect(screen.getAllByText(/01234567890128/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/LOT-A/)).toBeTruthy();
+  });
+
+  it('shows rejected scan feedback from stable rejection payloads', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
+    ]);
+    fake.recordScan.mockResolvedValueOnce(
+      makeScan({
+        result: 'Rejected',
+        normalizedValue: 'missing-barcode',
+        resolvedObjectType: null,
+        resolvedObjectId: null,
+        parsedValueJson: {},
+        rejectionCode: 'UNRESOLVED_BARCODE',
+        rejectionMessage: 'Barcode could not be resolved',
+      }),
+    );
+    setCurrentUser();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /MT-001/i });
+    await actor.type(screen.getByLabelText('Scan value'), 'missing-barcode');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+
+    expect(await screen.findByText(/Rejected scan/i)).toBeTruthy();
+    expect(screen.getByText(/Barcode could not be resolved/i)).toBeTruthy();
+  });
+
+  it('clears previous scan feedback when a later scan mutation fails', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
+    ]);
+    fake.recordScan
+      .mockResolvedValueOnce(makeScan())
+      .mockRejectedValueOnce(new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Scan rejected' }));
+    setCurrentUser();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /MT-001/i });
+    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    expect(await screen.findByText(/Accepted scan/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Scan value'), 'bad-scan');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+
+    await waitFor(() => expect(fake.recordScan).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText(/Accepted scan/i)).toBeNull());
+  });
+
+  it('disables scan recording when another operator has claimed the task', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({ taskStatus: 'Claimed', assignedUserId: 'other-user' }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /MT-001/i });
+    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128');
+
+    expect(screen.getByRole('button', { name: 'Record scan' })).toHaveProperty('disabled', true);
+    expect(fake.recordScan).not.toHaveBeenCalled();
+  });
+
+  it('requires a reason before recording manual-entry scan evidence', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /MT-001/i });
+    await actor.type(screen.getByLabelText('Scan value'), 'typed-sku');
+    await actor.click(screen.getByLabelText('Manual entry'));
+
+    expect(screen.getByRole('button', { name: 'Record scan' })).toHaveProperty('disabled', true);
+
+    await actor.type(screen.getByLabelText('Reason code'), 'RC-V1-OVERRIDE');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+
+    await waitFor(() =>
+      expect(fake.recordScan).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({
+          rawValue: 'typed-sku',
+          manualEntry: true,
+          reasonCode: 'RC-V1-OVERRIDE',
+        }),
+      ),
+    );
   });
 
   it('passes warehouse and task type filters to the repository', async () => {

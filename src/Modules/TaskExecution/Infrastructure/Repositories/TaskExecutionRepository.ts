@@ -5,13 +5,15 @@ import {
   MOBILE_TASK_DEFAULT_PAGE_SIZE,
   MOBILE_TASK_MAX_PAGE_SIZE,
 } from '@modules/TaskExecution/Domain/Constants/MobileTaskConstants';
-import type { MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
+import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
 import type {
   ClaimMobileTaskInput,
   MobileTaskListFilter,
+  RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import { TASK_EXECUTION_ENDPOINTS } from '@modules/TaskExecution/Infrastructure/Api/TaskExecutionEndpoints';
 import type {
+  MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
@@ -61,5 +63,13 @@ export class TaskExecutionRepository implements ITaskExecutionRepository {
       MobileTaskMapper.toReleaseRequest(),
     );
     return MobileTaskMapper.toTask(dto);
+  }
+
+  async recordScan(id: string, input: RecordMobileScanInput): Promise<MobileScanEvent> {
+    const dto = await this.http.post<MobileScanEventDto>(
+      TASK_EXECUTION_ENDPOINTS.SCANS(id),
+      MobileTaskMapper.toRecordScanRequest(input),
+    );
+    return MobileTaskMapper.toScanEvent(dto);
   }
 }
