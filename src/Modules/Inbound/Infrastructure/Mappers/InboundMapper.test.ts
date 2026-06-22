@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type {
   InboundPlanDto,
   PagedInboundPlanDto,
+  ReceiptLineDto,
+  ReceivingSessionDto,
 } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
 import { InboundMapper } from '@modules/Inbound/Infrastructure/Mappers/InboundMapper';
 
@@ -45,6 +47,54 @@ const inboundPlanDto: InboundPlanDto = {
   UpdatedAt: '2026-06-22T08:00:00.000Z',
   CreatedBy: 'admin',
   UpdatedBy: null,
+};
+
+const receivingSessionDto: ReceivingSessionDto = {
+  Id: 'session-1',
+  InboundPlanId: 'inbound-plan-1',
+  ReceiptId: 'receipt-1',
+  ReceiptNumber: 'ASN-10001-RCPT',
+  SessionKey: 'dock-1:user-1',
+  DeviceCode: 'rf-01',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  Status: 'Open',
+  StartedAt: '2026-06-22T09:05:00.000Z',
+  ClosedAt: null,
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:05:00.000Z',
+  UpdatedAt: '2026-06-22T09:05:00.000Z',
+  StartedBy: 'user-1',
+  UpdatedBy: null,
+};
+
+const receiptLineDto: ReceiptLineDto = {
+  Id: 'receipt-line-1',
+  ReceiptId: 'receipt-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  LineNumber: 1,
+  SkuId: 'sku-1',
+  SkuCode: 'SKU-A',
+  UomId: 'uom-1',
+  UomCode: 'EA',
+  ExpectedQuantity: 12,
+  ActualQuantity: 10,
+  Status: 'Discrepancy',
+  ManualConfirm: true,
+  ReasonCode: 'RC-V1-MANUAL-SCAN',
+  ReasonCodeId: 'reason-1',
+  ReasonNote: 'Barcode unreadable',
+  ScanEvidenceJson: null,
+  DiscrepancySignals: ['QuantityVariance'],
+  IdempotencyKey: 'receipt-line-1',
+  ReceivedAt: '2026-06-22T09:10:00.000Z',
+  ReceivedBy: 'user-1',
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:10:00.000Z',
+  UpdatedAt: '2026-06-22T09:10:00.000Z',
 };
 
 describe('InboundMapper', () => {
@@ -130,6 +180,59 @@ describe('InboundMapper', () => {
     ).toEqual({
       AttemptOverride: true,
       ReasonCode: 'RC-V1-HANDOFF',
+    });
+  });
+
+  it('maps receiving session and receipt line DTOs into domain objects', () => {
+    expect(InboundMapper.toReceivingSession(receivingSessionDto)).toMatchObject({
+      id: 'session-1',
+      receiptId: 'receipt-1',
+      receiptNumber: 'ASN-10001-RCPT',
+      status: 'Open',
+    });
+    expect(InboundMapper.toReceiptLine(receiptLineDto)).toMatchObject({
+      id: 'receipt-line-1',
+      receiptId: 'receipt-1',
+      actualQuantity: 10,
+      status: 'Discrepancy',
+      discrepancySignals: ['QuantityVariance'],
+      manualConfirm: true,
+    });
+  });
+
+  it('builds PascalCase receiving session and receipt line payloads', () => {
+    expect(
+      InboundMapper.toStartReceivingRequest({
+        sessionKey: 'dock-1:user-1',
+        deviceCode: 'rf-01',
+      }),
+    ).toEqual({
+      SessionKey: 'dock-1:user-1',
+      DeviceCode: 'rf-01',
+    });
+
+    expect(
+      InboundMapper.toConfirmReceiptLineRequest({
+        inboundPlanLineId: 'line-1',
+        actualQuantity: 12,
+        idempotencyKey: 'receipt-line-1',
+        scanEvidence: {
+          rawValue: 'barcode-1',
+          scanResult: 'Accepted',
+          resolvedSkuId: 'sku-1',
+          resolvedUomId: 'uom-1',
+        },
+      }),
+    ).toEqual({
+      InboundPlanLineId: 'line-1',
+      ActualQuantity: 12,
+      IdempotencyKey: 'receipt-line-1',
+      ScanEvidence: {
+        RawValue: 'barcode-1',
+        ScanResult: 'Accepted',
+        ResolvedSkuId: 'sku-1',
+        ResolvedUomId: 'uom-1',
+      },
     });
   });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, PlayCircle, RefreshCw, ScanLine } from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -91,6 +91,14 @@ export function InboundPage() {
   const [gateReference, setGateReference] = useState('');
   const [readinessReasonCode, setReadinessReasonCode] = useState('');
   const [readinessOverridePlanId, setReadinessOverridePlanId] = useState<string | null>(null);
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [receivingSessionKey, setReceivingSessionKey] = useState('dock-1');
+  const [receivingDeviceCode, setReceivingDeviceCode] = useState('rf-web');
+  const [receiptActualQuantity, setReceiptActualQuantity] = useState('1');
+  const [receiptRawScan, setReceiptRawScan] = useState('');
+  const [receiptManualConfirm, setReceiptManualConfirm] = useState(false);
+  const [receiptReasonCode, setReceiptReasonCode] = useState('');
+  const [receiptIdempotencyKey, setReceiptIdempotencyKey] = useState(() => `receipt-${Date.now()}`);
 
   const debouncedSourceSystem = useDebouncedValue(sourceSystemFilter, 250);
   const debouncedDocument = useDebouncedValue(documentFilter, 250);
@@ -101,6 +109,8 @@ export function InboundPage() {
   });
   const mutations = useInboundMutations();
   const resetValidateReadiness = mutations.validateReadiness.reset;
+  const resetStartReceiving = mutations.startReceivingSession.reset;
+  const resetConfirmReceiptLine = mutations.confirmReceiptLine.reset;
 
   const plans = useMemo(() => query.data?.items ?? [], [query.data?.items]);
   const selected = useMemo(
@@ -114,6 +124,16 @@ export function InboundPage() {
       null,
     [mutations.createInboundPlan.data, mutations.recordGateIn.data, plans, selectedId],
   );
+  const receivingSession =
+    mutations.startReceivingSession.data?.inboundPlanId === selected?.id
+      ? mutations.startReceivingSession.data
+      : null;
+  const selectedLine = useMemo(
+    () => selected?.lines.find((line) => line.id === selectedLineId) ?? selected?.lines[0] ?? null,
+    [selected?.lines, selectedLineId],
+  );
+  const selectedInitialLineId = selected?.lines[0]?.id ?? null;
+  const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
   const readinessQuery = useReceivingReadiness(selected?.id ?? null);
   const readiness =
     readinessOverridePlanId === selected?.id
@@ -127,10 +147,20 @@ export function InboundPage() {
     supplierId.trim() &&
     ownerId.trim() &&
     warehouseId.trim() &&
-    lineDrafts.every((line) => line.skuId.trim() && line.uomId.trim() && Number(line.expectedQuantity) > 0),
+    lineDrafts.every(
+      (line) => line.skuId.trim() && line.uomId.trim() && Number(line.expectedQuantity) > 0,
+    ),
   );
   const canGateIn = Boolean(selected && gateReference.trim());
   const canOverride = Boolean(selected && readinessReasonCode.trim());
+  const canStartReceiving = Boolean(selected && receivingSessionKey.trim());
+  const canConfirmReceiptLine = Boolean(
+    receivingSession &&
+    selectedLine &&
+    Number(receiptActualQuantity) > 0 &&
+    receiptIdempotencyKey.trim() &&
+    (receiptManualConfirm ? receiptReasonCode.trim() : true),
+  );
 
   useEffect(() => {
     if (!selectedId && plans[0]) setSelectedId(plans[0].id);
@@ -143,8 +173,23 @@ export function InboundPage() {
     setGateReference('');
     setReadinessReasonCode('');
     setReadinessOverridePlanId(null);
+    setSelectedLineId(selectedInitialLineId);
+    setReceiptActualQuantity(String(selectedInitialExpectedQuantity));
+    setReceiptRawScan('');
+    setReceiptManualConfirm(false);
+    setReceiptReasonCode('');
+    setReceiptIdempotencyKey(`receipt-${selected?.id ?? 'none'}-${Date.now()}`);
     resetValidateReadiness();
-  }, [resetValidateReadiness, selected?.id]);
+    resetStartReceiving();
+    resetConfirmReceiptLine();
+  }, [
+    resetConfirmReceiptLine,
+    resetStartReceiving,
+    resetValidateReadiness,
+    selected?.id,
+    selectedInitialExpectedQuantity,
+    selectedInitialLineId,
+  ]);
 
   function updateLine(id: number, patch: Partial<DraftLine>) {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -213,6 +258,50 @@ export function InboundPage() {
         input: { attemptOverride: true, reasonCode: readinessReasonCode.trim() },
       },
       { onSuccess: () => setReadinessOverridePlanId(selected.id) },
+    );
+  }
+
+  function submitStartReceiving(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected || !canStartReceiving) return;
+    mutations.startReceivingSession.mutate({
+      id: selected.id,
+      input: {
+        sessionKey: receivingSessionKey.trim(),
+        deviceCode: receivingDeviceCode.trim() || null,
+      },
+    });
+  }
+
+  function submitReceiptLine(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!receivingSession || !selectedLine || !canConfirmReceiptLine) return;
+    mutations.confirmReceiptLine.mutate(
+      {
+        receiptId: receivingSession.receiptId,
+        input: {
+          inboundPlanLineId: selectedLine.id,
+          actualQuantity: Number(receiptActualQuantity),
+          manualConfirm: receiptManualConfirm,
+          reasonCode: receiptManualConfirm ? receiptReasonCode.trim() : null,
+          idempotencyKey: receiptIdempotencyKey.trim(),
+          scanEvidence: receiptManualConfirm
+            ? null
+            : {
+                rawValue: receiptRawScan.trim(),
+                scanResult: 'Accepted',
+                resolvedSkuId: selectedLine.skuId,
+                resolvedUomId: selectedLine.uomId,
+              },
+        },
+      },
+      {
+        onSuccess: () => {
+          setReceiptRawScan('');
+          setReceiptReasonCode('');
+          setReceiptIdempotencyKey(`receipt-${selectedLine.id}-${Date.now()}`);
+        },
+      },
     );
   }
 
@@ -299,6 +388,7 @@ export function InboundPage() {
                       <th className="py-2">UOM</th>
                       <th className="py-2 text-right">Expected</th>
                       <th className="py-2 text-right">External ref</th>
+                      <th className="py-2 text-right">Receive</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -309,6 +399,21 @@ export function InboundPage() {
                         <td className="py-2">{line.uomCode ?? line.uomId}</td>
                         <td className="py-2 text-right">{line.expectedQuantity}</td>
                         <td className="py-2 text-right">{line.externalLineReference ?? '-'}</td>
+                        <td className="py-2 text-right">
+                          <button
+                            type="button"
+                            className={cn(
+                              'rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
+                              selectedLine?.id === line.id && 'border-primary bg-primary/5',
+                            )}
+                            onClick={() => {
+                              setSelectedLineId(line.id);
+                              setReceiptActualQuantity(String(line.expectedQuantity));
+                            }}
+                          >
+                            Use line {line.lineNumber}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -415,7 +520,9 @@ export function InboundPage() {
                         type="number"
                         min="1"
                         value={line.expectedQuantity}
-                        onChange={(event) => updateLine(line.id, { expectedQuantity: event.target.value })}
+                        onChange={(event) =>
+                          updateLine(line.id, { expectedQuantity: event.target.value })
+                        }
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
@@ -506,6 +613,112 @@ export function InboundPage() {
               >
                 Override readiness
               </button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Receiving scan</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form className="space-y-3" onSubmit={submitStartReceiving}>
+              <label className="grid gap-1 text-sm">
+                Receiving session key
+                <Input
+                  value={receivingSessionKey}
+                  onChange={(event) => setReceivingSessionKey(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                Device code
+                <Input
+                  value={receivingDeviceCode}
+                  onChange={(event) => setReceivingDeviceCode(event.target.value)}
+                />
+              </label>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canStartReceiving || mutations.startReceivingSession.isPending}
+              >
+                <PlayCircle className="size-4" />
+                Start receiving
+              </button>
+              {receivingSession && (
+                <p className="text-muted-foreground text-sm">
+                  Receipt {receivingSession.receiptNumber}
+                  {receivingSession.isDuplicate ? ' reused' : ' ready'}.
+                </p>
+              )}
+            </form>
+
+            <form className="space-y-3" onSubmit={submitReceiptLine}>
+              <div className="text-muted-foreground text-sm">
+                Selected line:{' '}
+                {selectedLine
+                  ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
+                  : 'None'}
+              </div>
+              <label className="grid gap-1 text-sm">
+                Actual quantity
+                <Input
+                  type="number"
+                  min="0.0001"
+                  value={receiptActualQuantity}
+                  onChange={(event) => setReceiptActualQuantity(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                Raw scan value
+                <Input
+                  value={receiptRawScan}
+                  onChange={(event) => setReceiptRawScan(event.target.value)}
+                  disabled={receiptManualConfirm}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={receiptManualConfirm}
+                  onChange={(event) => setReceiptManualConfirm(event.target.checked)}
+                />
+                Manual confirm
+              </label>
+              <label className="grid gap-1 text-sm">
+                Receipt reason code
+                <Input
+                  value={receiptReasonCode}
+                  onChange={(event) => setReceiptReasonCode(event.target.value)}
+                  disabled={!receiptManualConfirm}
+                  placeholder="RC-V1-MANUAL-SCAN"
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                Idempotency key
+                <Input
+                  value={receiptIdempotencyKey}
+                  onChange={(event) => setReceiptIdempotencyKey(event.target.value)}
+                />
+              </label>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!canConfirmReceiptLine || mutations.confirmReceiptLine.isPending}
+              >
+                <ScanLine className="size-4" />
+                Confirm receipt line
+              </button>
+              {mutations.confirmReceiptLine.data && (
+                <p className="text-muted-foreground text-sm">
+                  Line {mutations.confirmReceiptLine.data.lineNumber}{' '}
+                  {mutations.confirmReceiptLine.data.status}
+                  {mutations.confirmReceiptLine.data.isDuplicate ? ' duplicate reused' : ''}
+                  {mutations.confirmReceiptLine.data.discrepancySignals.length
+                    ? ` - ${mutations.confirmReceiptLine.data.discrepancySignals.join(', ')}`
+                    : ''}
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>

@@ -1,10 +1,18 @@
 import type {
   INBOUND_DOCUMENT_STATUSES,
   INBOUND_GATE_IN_STATUSES,
+  RECEIPT_DOCUMENT_STATUSES,
+  RECEIPT_LINE_DISCREPANCY_SIGNALS,
+  RECEIPT_LINE_STATUSES,
+  RECEIVING_SESSION_STATUSES,
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
 
 export type InboundPlanDocumentStatus = (typeof INBOUND_DOCUMENT_STATUSES)[number];
 export type InboundGateInStatus = (typeof INBOUND_GATE_IN_STATUSES)[number];
+export type ReceivingSessionStatus = (typeof RECEIVING_SESSION_STATUSES)[number];
+export type ReceiptDocumentStatus = (typeof RECEIPT_DOCUMENT_STATUSES)[number];
+export type ReceiptLineStatus = (typeof RECEIPT_LINE_STATUSES)[number];
+export type ReceiptLineDiscrepancySignal = (typeof RECEIPT_LINE_DISCREPANCY_SIGNALS)[number];
 
 export interface InboundPlanLine {
   id: string;
@@ -57,4 +65,67 @@ export interface ReceivingReadiness {
   reason: string;
   inboundPlanId?: string;
   businessReference?: string;
+}
+
+export interface ReceivingSession {
+  id: string;
+  inboundPlanId: string;
+  receiptId: string;
+  receiptNumber: string;
+  sessionKey: string;
+  deviceCode: string | null;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  status: ReceivingSessionStatus;
+  startedAt: string;
+  closedAt: string | null;
+  isDuplicate: boolean;
+  createdAt: string;
+  updatedAt: string;
+  startedBy: string | null;
+  updatedBy: string | null;
+}
+
+export interface ReceiptLineScanEvidence {
+  rawValue?: string | null;
+  parsedValue?: Record<string, unknown> | null;
+  scanEventId?: string | null;
+  scanType?: string | null;
+  scanResult?: string | null;
+  resolvedSkuId?: string | null;
+  resolvedUomId?: string | null;
+  resolvedPackId?: string | null;
+  lotNumber?: string | null;
+  expiryDate?: string | null;
+  serialNumber?: string | null;
+  lpn?: string | null;
+}
+
+export interface ReceiptLine {
+  id: string;
+  receiptId: string;
+  inboundPlanId: string;
+  inboundPlanLineId: string;
+  lineNumber: number;
+  skuId: string;
+  skuCode: string | null;
+  uomId: string;
+  uomCode: string | null;
+  expectedQuantity: number;
+  actualQuantity: number;
+  status: ReceiptLineStatus;
+  manualConfirm: boolean;
+  reasonCode: string | null;
+  reasonCodeId: string | null;
+  reasonNote: string | null;
+  scanEvidenceJson: Record<string, unknown> | null;
+  discrepancySignals: ReceiptLineDiscrepancySignal[];
+  idempotencyKey: string;
+  receivedAt: string;
+  receivedBy: string | null;
+  isDuplicate: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

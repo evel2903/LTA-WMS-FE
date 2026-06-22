@@ -1,6 +1,9 @@
 import type {
   InboundGateInStatus,
   InboundPlanDocumentStatus,
+  ReceiptLineDiscrepancySignal,
+  ReceiptLineStatus,
+  ReceivingSessionStatus,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 export interface InboundPlanLineDto {
@@ -99,4 +102,88 @@ export interface ReceivingReadinessDto {
   Reason: string;
   InboundPlanId?: string;
   BusinessReference?: string;
+}
+
+export interface StartReceivingSessionRequestDto {
+  SessionKey?: string | null;
+  DeviceCode?: string | null;
+  AttemptOverride?: boolean;
+  ReasonCode?: string | null;
+  ReasonNote?: string | null;
+  EvidenceRefs?: string[];
+}
+
+export interface ReceivingSessionDto {
+  Id: string;
+  InboundPlanId: string;
+  ReceiptId: string;
+  ReceiptNumber: string;
+  SessionKey: string;
+  DeviceCode: string | null;
+  OwnerId: string;
+  OwnerCode: string | null;
+  WarehouseId: string;
+  WarehouseCode: string | null;
+  Status: ReceivingSessionStatus;
+  StartedAt: string;
+  ClosedAt: string | null;
+  IsDuplicate: boolean;
+  CreatedAt: string;
+  UpdatedAt: string;
+  StartedBy: string | null;
+  UpdatedBy: string | null;
+}
+
+export interface ReceiptLineScanEvidenceDto {
+  RawValue?: string | null;
+  ParsedValue?: Record<string, unknown> | null;
+  ScanEventId?: string | null;
+  ScanType?: string | null;
+  ScanResult?: string | null;
+  ResolvedSkuId?: string | null;
+  ResolvedUomId?: string | null;
+  ResolvedPackId?: string | null;
+  LotNumber?: string | null;
+  ExpiryDate?: string | null;
+  SerialNumber?: string | null;
+  Lpn?: string | null;
+}
+
+export interface ConfirmReceiptLineRequestDto {
+  InboundPlanLineId: string;
+  ActualQuantity: number;
+  SkuId?: string | null;
+  UomId?: string | null;
+  ManualConfirm?: boolean;
+  ReasonCode?: string | null;
+  ReasonNote?: string | null;
+  IdempotencyKey: string;
+  ScanEvidence?: ReceiptLineScanEvidenceDto | null;
+}
+
+export interface ReceiptLineDto {
+  Id: string;
+  ReceiptId: string;
+  InboundPlanId: string;
+  InboundPlanLineId: string;
+  LineNumber: number;
+  SkuId: string;
+  SkuCode: string | null;
+  UomId: string;
+  UomCode: string | null;
+  ExpectedQuantity: number;
+  ActualQuantity: number;
+  Status: ReceiptLineStatus;
+  ManualConfirm: boolean;
+  ReasonCode: string | null;
+  ReasonCodeId: string | null;
+  ReasonNote: string | null;
+  ScanEvidenceJson: Record<string, unknown> | null;
+  DiscrepancySignals: ReceiptLineDiscrepancySignal[];
+  IdempotencyKey: string;
+  ReceivedAt: string;
+  ReceivedBy: string | null;
+  IsDuplicate: boolean;
+  CreatedAt: string;
+  UpdatedAt: string;
 }

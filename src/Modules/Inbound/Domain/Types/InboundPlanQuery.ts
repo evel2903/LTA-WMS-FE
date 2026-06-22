@@ -44,3 +44,39 @@ export interface ValidateReceivingReadinessInput {
   reasonNote?: string | null;
   evidenceRefs?: string[];
 }
+
+export interface StartReceivingSessionInput {
+  sessionKey?: string | null;
+  deviceCode?: string | null;
+  attemptOverride?: boolean;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+}
+
+export interface ReceiptLineScanEvidenceInput {
+  rawValue?: string | null;
+  parsedValue?: Record<string, unknown> | null;
+  scanEventId?: string | null;
+  scanType?: string | null;
+  scanResult?: string | null;
+  resolvedSkuId?: string | null;
+  resolvedUomId?: string | null;
+  resolvedPackId?: string | null;
+  lotNumber?: string | null;
+  expiryDate?: string | null;
+  serialNumber?: string | null;
+  lpn?: string | null;
+}
+
+export interface ConfirmReceiptLineInput {
+  inboundPlanLineId: string;
+  actualQuantity: number;
+  skuId?: string | null;
+  uomId?: string | null;
+  manualConfirm?: boolean;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  idempotencyKey: string;
+  scanEvidence?: ReceiptLineScanEvidenceInput | null;
+}

@@ -1,17 +1,23 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
-import type { InboundPlan } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  InboundPlan,
+  ReceiptLine,
+  ReceivingSession,
+} from '@modules/Inbound/Domain/Types/InboundPlan';
+import type {
+  ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   InboundPlanFilter,
   RecordGateInInput,
+  StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 
@@ -152,6 +158,62 @@ class FakeRepository implements Partial<IInboundRepository> {
         ? { ...this.readiness, allowed: true, blocked: false, overrideAccepted: true }
         : this.readiness,
     ),
+  );
+
+  startReceivingSession = vi.fn(
+    (id: string, input?: StartReceivingSessionInput): Promise<ReceivingSession> => {
+      const plan = this.items.find((item) => item.id === id) ?? this.items[0];
+      return Promise.resolve({
+        id: 'session-1',
+        inboundPlanId: id,
+        receiptId: 'receipt-1',
+        receiptNumber: `${plan?.sourceDocumentNumber ?? 'ASN-10001'}-RCPT`,
+        sessionKey: input?.sessionKey ?? 'dock-1',
+        deviceCode: input?.deviceCode ?? null,
+        ownerId: plan?.ownerId ?? 'owner-1',
+        ownerCode: plan?.ownerCode ?? 'OWN-A',
+        warehouseId: plan?.warehouseId ?? 'warehouse-1',
+        warehouseCode: plan?.warehouseCode ?? 'WT-01',
+        status: 'Open',
+        startedAt: '2026-06-22T09:05:00.000Z',
+        closedAt: null,
+        isDuplicate: false,
+        createdAt: '2026-06-22T09:05:00.000Z',
+        updatedAt: '2026-06-22T09:05:00.000Z',
+        startedBy: 'test-admin',
+        updatedBy: null,
+      });
+    },
+  );
+
+  confirmReceiptLine = vi.fn(
+    (_receiptId: string, input: ConfirmReceiptLineInput): Promise<ReceiptLine> =>
+      Promise.resolve({
+        id: 'receipt-line-1',
+        receiptId: 'receipt-1',
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: input.inboundPlanLineId,
+        lineNumber: 1,
+        skuId: 'sku-1',
+        skuCode: 'SKU-A',
+        uomId: 'uom-1',
+        uomCode: 'EA',
+        expectedQuantity: 12,
+        actualQuantity: input.actualQuantity,
+        status: input.actualQuantity === 12 ? 'Received' : 'Discrepancy',
+        manualConfirm: input.manualConfirm ?? false,
+        reasonCode: input.reasonCode ?? null,
+        reasonCodeId: input.reasonCode ? 'reason-1' : null,
+        reasonNote: input.reasonNote ?? null,
+        scanEvidenceJson: input.scanEvidence ? { RawValue: input.scanEvidence.rawValue } : null,
+        discrepancySignals: input.actualQuantity === 12 ? [] : ['QuantityVariance'],
+        idempotencyKey: input.idempotencyKey,
+        receivedAt: '2026-06-22T09:10:00.000Z',
+        receivedBy: 'test-admin',
+        isDuplicate: false,
+        createdAt: '2026-06-22T09:10:00.000Z',
+        updatedAt: '2026-06-22T09:10:00.000Z',
+      }),
   );
 }
 
@@ -318,6 +380,47 @@ describe('InboundPage', () => {
       }),
     );
     expect(await screen.findByText(/override accepted/i)).toBeTruthy();
+  });
+
+  it('starts receiving and confirms a scan receipt line through repository commands', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.clear(screen.getByLabelText('Receiving session key'));
+    await actor.type(screen.getByLabelText('Receiving session key'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Raw scan value'), '01012345678901281726010110LOT-A');
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Confirm receipt line' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(fake.startReceivingSession).toHaveBeenCalledWith('inbound-plan-1', {
+        sessionKey: 'dock-1:user-1',
+        deviceCode: 'rf-web',
+      }),
+    );
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+    const [receiptId, receiptInput] = fake.confirmReceiptLine.mock.calls[0];
+    expect(receiptId).toBe('receipt-1');
+    expect(receiptInput).toMatchObject({
+      inboundPlanLineId: 'line-1',
+      actualQuantity: 12,
+      idempotencyKey: 'receipt-line-1',
+      scanEvidence: {
+        rawValue: '01012345678901281726010110LOT-A',
+        resolvedSkuId: 'sku-1',
+        resolvedUomId: 'uom-1',
+      },
+    });
+    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
   });
 
   it('clears stale readiness override after gate-in is recorded', async () => {

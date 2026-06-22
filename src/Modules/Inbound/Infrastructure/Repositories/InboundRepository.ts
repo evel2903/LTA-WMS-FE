@@ -5,18 +5,27 @@ import {
   INBOUND_DEFAULT_PAGE_SIZE,
   INBOUND_MAX_PAGE_SIZE,
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
-import type { InboundPlan, ReceivingReadiness } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
+  InboundPlan,
+  ReceiptLine,
+  ReceivingReadiness,
+  ReceivingSession,
+} from '@modules/Inbound/Domain/Types/InboundPlan';
+import type {
+  ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   InboundPlanFilter,
   RecordGateInInput,
+  StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEndpoints';
 import type {
   InboundPlanDto,
   PagedInboundPlanDto,
+  ReceiptLineDto,
   ReceivingReadinessDto,
+  ReceivingSessionDto,
 } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
 import { InboundMapper } from '@modules/Inbound/Infrastructure/Mappers/InboundMapper';
 
@@ -77,5 +86,27 @@ export class InboundRepository implements IInboundRepository {
       InboundMapper.toReadinessRequest(input),
     );
     return InboundMapper.toReadiness(dto);
+  }
+
+  async startReceivingSession(
+    id: string,
+    input: StartReceivingSessionInput = {},
+  ): Promise<ReceivingSession> {
+    const dto = await this.http.post<ReceivingSessionDto>(
+      INBOUND_ENDPOINTS.RECEIVING_SESSIONS(id),
+      InboundMapper.toStartReceivingRequest(input),
+    );
+    return InboundMapper.toReceivingSession(dto);
+  }
+
+  async confirmReceiptLine(
+    receiptId: string,
+    input: ConfirmReceiptLineInput,
+  ): Promise<ReceiptLine> {
+    const dto = await this.http.post<ReceiptLineDto>(
+      INBOUND_ENDPOINTS.RECEIPT_LINES(receiptId),
+      InboundMapper.toConfirmReceiptLineRequest(input),
+    );
+    return InboundMapper.toReceiptLine(dto);
   }
 }

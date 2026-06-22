@@ -57,6 +57,16 @@ describe('InboundRepository', () => {
       gateReference: 'GATE-A-001',
     });
     await repository.validateReadiness('inbound-plan-1', { attemptOverride: false });
+    await repository.startReceivingSession('inbound-plan-1', {
+      sessionKey: 'dock-1:user-1',
+      deviceCode: 'rf-01',
+    });
+    await repository.confirmReceiptLine('receipt-1', {
+      inboundPlanLineId: 'line-1',
+      actualQuantity: 12,
+      idempotencyKey: 'receipt-line-1',
+      scanEvidence: { rawValue: 'barcode-1', scanResult: 'Accepted' },
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/inbound-plans'],
@@ -64,6 +74,8 @@ describe('InboundRepository', () => {
       ['post', '/inbound-plans'],
       ['post', '/inbound-plans/inbound-plan-1/gate-in'],
       ['post', '/inbound-plans/inbound-plan-1/receiving-readiness'],
+      ['post', '/inbound-plans/inbound-plan-1/receiving-sessions'],
+      ['post', '/receipts/receipt-1/lines'],
     ]);
   });
 
@@ -130,6 +142,21 @@ describe('InboundRepository', () => {
       reasonCode: 'RC-V1-HANDOFF',
       reasonNote: 'Supervisor approved gate-in evidence gap',
     });
+    await repository.startReceivingSession('inbound-plan-1', {
+      sessionKey: 'dock-1:user-1',
+      deviceCode: 'rf-01',
+    });
+    await repository.confirmReceiptLine('receipt-1', {
+      inboundPlanLineId: 'line-1',
+      actualQuantity: 12,
+      idempotencyKey: 'receipt-line-1',
+      scanEvidence: {
+        rawValue: 'barcode-1',
+        scanResult: 'Accepted',
+        resolvedSkuId: 'sku-1',
+        resolvedUomId: 'uom-1',
+      },
+    });
 
     expect(http.calls[0]).toMatchObject({
       method: 'post',
@@ -157,6 +184,29 @@ describe('InboundRepository', () => {
         AttemptOverride: true,
         ReasonCode: 'RC-V1-HANDOFF',
         ReasonNote: 'Supervisor approved gate-in evidence gap',
+      },
+    });
+    expect(http.calls[3]).toMatchObject({
+      method: 'post',
+      url: '/inbound-plans/inbound-plan-1/receiving-sessions',
+      body: {
+        SessionKey: 'dock-1:user-1',
+        DeviceCode: 'rf-01',
+      },
+    });
+    expect(http.calls[4]).toMatchObject({
+      method: 'post',
+      url: '/receipts/receipt-1/lines',
+      body: {
+        InboundPlanLineId: 'line-1',
+        ActualQuantity: 12,
+        IdempotencyKey: 'receipt-line-1',
+        ScanEvidence: {
+          RawValue: 'barcode-1',
+          ScanResult: 'Accepted',
+          ResolvedSkuId: 'sku-1',
+          ResolvedUomId: 'uom-1',
+        },
       },
     });
   });
