@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type {
+  InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
   ReceiptLineDto,
@@ -95,6 +96,33 @@ const receiptLineDto: ReceiptLineDto = {
   IsDuplicate: false,
   CreatedAt: '2026-06-22T09:10:00.000Z',
   UpdatedAt: '2026-06-22T09:10:00.000Z',
+};
+
+const inboundDiscrepancyDto: InboundDiscrepancyDto = {
+  Id: 'discrepancy-1',
+  ReceiptId: 'receipt-1',
+  ReceiptLineId: 'receipt-line-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  DiscrepancyType: 'QuantityVariance',
+  Status: 'PendingApproval',
+  ToleranceDecision: 'OverTolerancePendingApproval',
+  ExpectedQuantity: 12,
+  ActualQuantity: 14,
+  ReasonCode: 'RC-V1-DISCREPANCY',
+  ReasonCodeId: 'reason-1',
+  ReasonNote: 'Over ASN quantity',
+  EvidenceRefs: ['photo://dock/over-qty-1'],
+  EvidenceJson: { station: 'dock-1' },
+  ExceptionCaseId: 'exception-1',
+  ExceptionState: 'DETECTED',
+  Severity: 'MEDIUM',
+  IdempotencyKey: 'discrepancy-1',
+  RecordedAt: '2026-06-22T09:12:00.000Z',
+  RecordedBy: 'user-1',
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:12:00.000Z',
+  UpdatedAt: '2026-06-22T09:12:00.000Z',
 };
 
 describe('InboundMapper', () => {
@@ -200,6 +228,22 @@ describe('InboundMapper', () => {
     });
   });
 
+  it('maps inbound discrepancy DTOs into domain objects', () => {
+    expect(InboundMapper.toInboundDiscrepancy(inboundDiscrepancyDto)).toMatchObject({
+      id: 'discrepancy-1',
+      receiptLineId: 'receipt-line-1',
+      discrepancyType: 'QuantityVariance',
+      status: 'PendingApproval',
+      toleranceDecision: 'OverTolerancePendingApproval',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['photo://dock/over-qty-1'],
+      exceptionCaseId: 'exception-1',
+      exceptionState: 'DETECTED',
+      severity: 'MEDIUM',
+      recordedBy: 'user-1',
+    });
+  });
+
   it('builds PascalCase receiving session and receipt line payloads', () => {
     expect(
       InboundMapper.toStartReceivingRequest({
@@ -233,6 +277,26 @@ describe('InboundMapper', () => {
         ResolvedSkuId: 'sku-1',
         ResolvedUomId: 'uom-1',
       },
+    });
+
+    expect(
+      InboundMapper.toCaptureDiscrepancyRequest({
+        receiptLineId: 'receipt-line-1',
+        discrepancyType: 'QuantityVariance',
+        reasonCode: 'RC-V1-DISCREPANCY',
+        reasonNote: 'Over ASN quantity',
+        evidenceRefs: ['photo://dock/over-qty-1'],
+        evidenceJson: { station: 'dock-1' },
+        idempotencyKey: 'discrepancy-1',
+      }),
+    ).toEqual({
+      ReceiptLineId: 'receipt-line-1',
+      DiscrepancyType: 'QuantityVariance',
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      ReasonNote: 'Over ASN quantity',
+      EvidenceRefs: ['photo://dock/over-qty-1'],
+      EvidenceJson: { station: 'dock-1' },
+      IdempotencyKey: 'discrepancy-1',
     });
   });
 });

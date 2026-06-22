@@ -67,6 +67,13 @@ describe('InboundRepository', () => {
       idempotencyKey: 'receipt-line-1',
       scanEvidence: { rawValue: 'barcode-1', scanResult: 'Accepted' },
     });
+    await repository.captureDiscrepancy('receipt-1', {
+      receiptLineId: 'receipt-line-1',
+      discrepancyType: 'QuantityVariance',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['photo://dock/over-qty-1'],
+      idempotencyKey: 'discrepancy-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/inbound-plans'],
@@ -76,6 +83,7 @@ describe('InboundRepository', () => {
       ['post', '/inbound-plans/inbound-plan-1/receiving-readiness'],
       ['post', '/inbound-plans/inbound-plan-1/receiving-sessions'],
       ['post', '/receipts/receipt-1/lines'],
+      ['post', '/receipts/receipt-1/discrepancies'],
     ]);
   });
 
@@ -157,6 +165,15 @@ describe('InboundRepository', () => {
         resolvedUomId: 'uom-1',
       },
     });
+    await repository.captureDiscrepancy('receipt-1', {
+      receiptLineId: 'receipt-line-1',
+      discrepancyType: 'QuantityVariance',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: 'Over ASN quantity',
+      evidenceRefs: ['photo://dock/over-qty-1'],
+      evidenceJson: { station: 'dock-1' },
+      idempotencyKey: 'discrepancy-1',
+    });
 
     expect(http.calls[0]).toMatchObject({
       method: 'post',
@@ -207,6 +224,19 @@ describe('InboundRepository', () => {
           ResolvedSkuId: 'sku-1',
           ResolvedUomId: 'uom-1',
         },
+      },
+    });
+    expect(http.calls[5]).toMatchObject({
+      method: 'post',
+      url: '/receipts/receipt-1/discrepancies',
+      body: {
+        ReceiptLineId: 'receipt-line-1',
+        DiscrepancyType: 'QuantityVariance',
+        ReasonCode: 'RC-V1-DISCREPANCY',
+        ReasonNote: 'Over ASN quantity',
+        EvidenceRefs: ['photo://dock/over-qty-1'],
+        EvidenceJson: { station: 'dock-1' },
+        IdempotencyKey: 'discrepancy-1',
       },
     });
   });

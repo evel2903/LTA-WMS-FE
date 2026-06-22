@@ -1,4 +1,9 @@
 import type {
+  ControlExceptionSeverity,
+  ExceptionState,
+  InboundDiscrepancyStatus,
+  InboundDiscrepancyToleranceDecision,
+  InboundDiscrepancyType,
   InboundGateInStatus,
   InboundPlanDocumentStatus,
   ReceiptLineDiscrepancySignal,
@@ -183,6 +188,43 @@ export interface ReceiptLineDto {
   IdempotencyKey: string;
   ReceivedAt: string;
   ReceivedBy: string | null;
+  IsDuplicate: boolean;
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
+export interface CaptureInboundDiscrepancyRequestDto {
+  ReceiptLineId: string;
+  DiscrepancyType: InboundDiscrepancyType;
+  ReasonCode: string;
+  ReasonNote?: string | null;
+  EvidenceRefs?: string[];
+  EvidenceJson?: Record<string, unknown> | null;
+  IdempotencyKey: string;
+}
+
+export interface InboundDiscrepancyDto {
+  Id: string;
+  ReceiptId: string;
+  ReceiptLineId: string;
+  InboundPlanId: string;
+  InboundPlanLineId: string;
+  DiscrepancyType: InboundDiscrepancyType;
+  Status: InboundDiscrepancyStatus;
+  ToleranceDecision: InboundDiscrepancyToleranceDecision;
+  ExpectedQuantity: number | null;
+  ActualQuantity: number | null;
+  ReasonCode: string;
+  ReasonCodeId: string | null;
+  ReasonNote: string | null;
+  EvidenceRefs: string[];
+  EvidenceJson: Record<string, unknown> | null;
+  ExceptionCaseId: string;
+  ExceptionState: ExceptionState;
+  Severity: ControlExceptionSeverity;
+  IdempotencyKey: string;
+  RecordedAt: string;
+  RecordedBy: string | null;
   IsDuplicate: boolean;
   CreatedAt: string;
   UpdatedAt: string;
