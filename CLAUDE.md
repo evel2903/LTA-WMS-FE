@@ -46,6 +46,7 @@ Data flow: **DTO → Mapper → Domain Entity → UseCase → Query/Command hook
 **Ports live in `Application/Interfaces/`, NOT in Domain** — this mirrors the backend's Clean Architecture per module (verified in LTA-WMS-BE: `Modules/*/Application/Interfaces/I*Repository.ts`, with Domain holding only Entities + ValueObjects). Hexagonal style: the use case owns the contract it depends on; Infrastructure implements it. The interface may import Domain entities (Application → Domain is the correct direction).
 
 Non-negotiables (ESLint `no-restricted-imports` guards the Domain boundary):
+
 - Components contain UI logic only. Business logic lives in Application use cases.
 - All HTTP lives in Infrastructure repositories. Never call axios/`httpClient` from a component or page.
 - Domain never imports a framework, and holds no ports/interfaces. If you need React/Axios/Zustand, you're in the wrong layer.
@@ -76,24 +77,24 @@ The backend is **NOT** a typical bearer-token API. Get this wrong and auth break
   - Every request MUST send cookies → the axios instance sets `withCredentials: true`. Keep it.
   - Login state is known only by calling `GET /auth/me` (done once at boot by `useAuthBootstrap`) or from a login/register/refresh response.
 - **Single-flight refresh is mandatory.** Refresh tokens rotate and the old one is revoked; parallel `/auth/refresh` calls trigger server-side reuse detection that kills ALL sessions. The interceptor in [ApiClient.ts](src/Shared/Services/Http/ApiClient.ts) serialises refresh through one shared promise — **do not** change it to fire per-request.
-- **Auth endpoints are at the host root** (`http://host/auth/...`), outside the `/api/v1` WMS prefix. The repository passes `AUTH_REQUEST_CONFIG` (`baseURL: ENV.apiBaseUrl`) to escape the prefix. WMS module endpoints use the prefixed base.
+- **Auth endpoints are at the host root** (`http://host/auth/...`). The repository passes `AUTH_REQUEST_CONFIG` (`baseURL: ENV.apiBaseUrl`) so auth calls bypass any optional WMS API prefix. Current WMS module endpoints use root controller paths plus `X-API-Version`; keep `VITE_API_PREFIX` empty unless a gateway explicitly adds a prefix.
 - **Roles are `'User' | 'Admin'`** (PascalCase). `POST`s return **201**, not 200. `/auth/me` returns `UserId` (not `Id`) — handled in `AuthMapper.fromMe`.
 
 ## Reference implementations (copy these patterns)
 
-| Concern | File |
-|---|---|
-| Axios client + cookie refresh + envelope unwrap | `src/Shared/Services/Http/ApiClient.ts` |
-| Normalised error | `src/Shared/Services/Http/ApiError.ts` |
-| Repository pattern | `src/Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts` |
-| UseCase pattern | `src/Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts` |
-| DTO → Mapper → Entity | `src/Modules/*/Infrastructure/Mappers/*Mapper.ts` |
-| Query/Command hooks + query keys | `src/Modules/Inventory/Application/{Queries,Commands}/` |
-| RHF + Zod form (schema = source of truth) | `src/Modules/Auth/Presentation/Forms/LoginForm.tsx` |
-| Module-local Zustand (no tokens, no persist) | `src/Modules/Auth/Application/Stores/AuthStore.ts` |
-| Auth boot / session-expiry wiring | `src/Modules/Auth/Application/UseCases/UseAuthBootstrap.ts`, `UseSessionExpiry.ts` |
-| Guards | `src/App/Guards/{ProtectedRoute,RoleGuard,GuestRoute}.tsx` |
-| Route aggregation | `src/App/Router/AppRouter.tsx` |
+| Concern                                         | File                                                                               |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Axios client + cookie refresh + envelope unwrap | `src/Shared/Services/Http/ApiClient.ts`                                            |
+| Normalised error                                | `src/Shared/Services/Http/ApiError.ts`                                             |
+| Repository pattern                              | `src/Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts`         |
+| UseCase pattern                                 | `src/Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts`            |
+| DTO → Mapper → Entity                           | `src/Modules/*/Infrastructure/Mappers/*Mapper.ts`                                  |
+| Query/Command hooks + query keys                | `src/Modules/Inventory/Application/{Queries,Commands}/`                            |
+| RHF + Zod form (schema = source of truth)       | `src/Modules/Auth/Presentation/Forms/LoginForm.tsx`                                |
+| Module-local Zustand (no tokens, no persist)    | `src/Modules/Auth/Application/Stores/AuthStore.ts`                                 |
+| Auth boot / session-expiry wiring               | `src/Modules/Auth/Application/UseCases/UseAuthBootstrap.ts`, `UseSessionExpiry.ts` |
+| Guards                                          | `src/App/Guards/{ProtectedRoute,RoleGuard,GuestRoute}.tsx`                         |
+| Route aggregation                               | `src/App/Router/AppRouter.tsx`                                                     |
 
 ## Implementation status
 
@@ -118,4 +119,4 @@ The backend is **NOT** a typical bearer-token API. Get this wrong and auth break
 
 ## Env
 
-`.env.development` (committed). Copy `.env.example` for new envs. `VITE_API_BASE_URL` is the host root; `VITE_API_PREFIX` (`/api/v1`) applies to WMS endpoints only. `App/Config/Env.ts` validates env with Zod and fails fast on misconfig.
+`.env.development` (committed). Copy `.env.example` for new envs. `VITE_API_BASE_URL` is the host root; `VITE_API_PREFIX` is empty by default because the current BE does not expose a global `/api/v1` prefix. Set it only when a gateway/proxy explicitly adds one. `App/Config/Env.ts` validates env with Zod and fails fast on misconfig.

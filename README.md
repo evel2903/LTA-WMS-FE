@@ -88,7 +88,7 @@ src/
 ```
 
 `Auth` and `Inventory` are implemented end-to-end. The remaining modules follow
-the **exact same four-layer shape** — see *§6 Adding a module*.
+the **exact same four-layer shape** — see _§6 Adding a module_.
 
 ---
 
@@ -96,12 +96,12 @@ the **exact same four-layer shape** — see *§6 Adding a module*.
 
 Configured in `tsconfig.app.json`, `tsconfig.json`, and `vite.config.ts`.
 
-| Alias        | Resolves to       |
-| ------------ | ----------------- |
-| `@/*`        | `src/*`           |
-| `@app/*`     | `src/App/*`       |
-| `@shared/*`  | `src/Shared/*`    |
-| `@modules/*` | `src/Modules/*`   |
+| Alias        | Resolves to     |
+| ------------ | --------------- |
+| `@/*`        | `src/*`         |
+| `@app/*`     | `src/App/*`     |
+| `@shared/*`  | `src/Shared/*`  |
+| `@modules/*` | `src/Modules/*` |
 
 ---
 
@@ -111,14 +111,14 @@ Copy `.env.example` → `.env` (or `.env.development` / `.env.production`).
 All client-exposed vars are prefixed `VITE_` and validated at boot by
 `App/Config/Env.ts` (the app **fails fast** on a bad config).
 
-| Variable             | Purpose                                    |
-| -------------------- | ------------------------------------------ |
-| `VITE_API_BASE_URL`  | Backend gateway base URL                   |
-| `VITE_API_PREFIX`    | API path prefix (e.g. `/api/v1`)           |
-| `VITE_API_TIMEOUT`   | Axios timeout (ms)                         |
-| `VITE_APP_NAME`      | Display name                               |
-| `VITE_APP_ENV`       | `development` \| `staging` \| `production` |
-| `VITE_FEATURE_FLAGS` | Comma-separated feature flags              |
+| Variable             | Purpose                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`  | Backend gateway base URL                                               |
+| `VITE_API_PREFIX`    | Optional gateway API path prefix; empty for the current BE root routes |
+| `VITE_API_TIMEOUT`   | Axios timeout (ms)                                                     |
+| `VITE_APP_NAME`      | Display name                                                           |
+| `VITE_APP_ENV`       | `development` \| `staging` \| `production`                             |
+| `VITE_FEATURE_FLAGS` | Comma-separated feature flags                                          |
 
 ---
 
@@ -164,15 +164,17 @@ by aggregating routes/types at the `App/` layer.
 ## 7. Coding standards
 
 ### Naming
+
 - **Folders, Components, Pages, Types, Interfaces, Classes, UseCases:** `PascalCase`
 - **Files:** `PascalCase.ts` / `PascalCase.tsx` (e.g. `GetInventoryListUseCase.ts`)
-  - *Exception:* shadcn/ui primitives under `Shared/Components/Ui` keep the
+  - _Exception:_ shadcn/ui primitives under `Shared/Components/Ui` keep the
     library's own filenames managed by its CLI.
 - **React hooks:** `useXxx.ts` (`useAuth.ts`, `useInventory.ts`)
 - **Variables / functions:** `camelCase`
 - **Constants:** `UPPER_SNAKE_CASE`
 
 ### Architecture rules (enforced by review + ESLint `no-restricted-imports`)
+
 1. React components contain **UI logic only**.
 2. Business logic stays in the **Application** layer (use cases / hooks).
 3. API calls stay in the **Infrastructure** layer (repositories).
@@ -188,14 +190,16 @@ by aggregating routes/types at the `App/` layer.
 13. Keep modules independent.
 
 ### State ownership
-| Kind                          | Tool                        |
-| ----------------------------- | --------------------------- |
-| Server data (lists, entities) | TanStack Query              |
-| Auth identity / UI filters    | Zustand (module-local)      |
-| Form state                    | React Hook Form + Zod       |
-| Theme / global UI             | React Context (`App/`)      |
+
+| Kind                          | Tool                   |
+| ----------------------------- | ---------------------- |
+| Server data (lists, entities) | TanStack Query         |
+| Auth identity / UI filters    | Zustand (module-local) |
+| Form state                    | React Hook Form + Zod  |
+| Theme / global UI             | React Context (`App/`) |
 
 ### Imports & conventions
+
 - Always use path aliases; never deep relative `../../../`.
 - Type-only imports use `import type { ... }` (`verbatimModuleSyntax` on).
 - Reference routes through `App/Config/Routes.ts`, never hard-coded strings.
@@ -206,13 +210,13 @@ by aggregating routes/types at the `App/` layer.
 
 ## 8. Reference implementations (where to look)
 
-| Concern                     | File                                                                  |
-| --------------------------- | --------------------------------------------------------------------- |
-| Axios client + interceptors | `Shared/Services/Http/ApiClient.ts`                                   |
-| Repository Pattern          | `Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts`|
-| UseCase Pattern             | `Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts`   |
-| DTO → Mapper → Entity       | `Modules/Inventory/Infrastructure/Mappers/InventoryMapper.ts`         |
-| RHF + Zod form              | `Modules/Inventory/Presentation/Forms/AdjustQuantityForm.tsx`         |
-| Zustand (client state)      | `Modules/Auth/Application/Stores/AuthStore.ts`                        |
-| Protected route             | `App/Guards/ProtectedRoute.tsx`                                       |
-| Module routes aggregation   | `App/Router/AppRouter.tsx`                                            |
+| Concern                     | File                                                                   |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Axios client + interceptors | `Shared/Services/Http/ApiClient.ts`                                    |
+| Repository Pattern          | `Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts` |
+| UseCase Pattern             | `Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts`    |
+| DTO → Mapper → Entity       | `Modules/Inventory/Infrastructure/Mappers/InventoryMapper.ts`          |
+| RHF + Zod form              | `Modules/Inventory/Presentation/Forms/AdjustQuantityForm.tsx`          |
+| Zustand (client state)      | `Modules/Auth/Application/Stores/AuthStore.ts`                         |
+| Protected route             | `App/Guards/ProtectedRoute.tsx`                                        |
+| Module routes aggregation   | `App/Router/AppRouter.tsx`                                             |

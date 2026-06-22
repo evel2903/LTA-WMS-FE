@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 const envSchema = z.object({
   VITE_API_BASE_URL: z.string().url(),
-  VITE_API_PREFIX: z.string().default('/api/v1'),
+  VITE_API_PREFIX: z.string().default(''),
   VITE_API_TIMEOUT: z.coerce.number().int().positive().default(30_000),
   VITE_APP_NAME: z.string().default('LTA-WMS'),
   VITE_APP_ENV: z.enum(['development', 'staging', 'production']).default('development'),
@@ -30,7 +30,11 @@ export const ENV = {
   appEnv: raw.VITE_APP_ENV,
   isProduction: raw.VITE_APP_ENV === 'production',
   isDevelopment: raw.VITE_APP_ENV === 'development',
-  featureFlags: new Set(raw.VITE_FEATURE_FLAGS.split(',').map((f) => f.trim()).filter(Boolean)),
+  featureFlags: new Set(
+    raw.VITE_FEATURE_FLAGS.split(',')
+      .map((f) => f.trim())
+      .filter(Boolean),
+  ),
 } as const;
 
 export type AppEnv = typeof ENV;

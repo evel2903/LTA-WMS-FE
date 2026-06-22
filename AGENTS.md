@@ -32,7 +32,7 @@ If a task seems to require breaking a layer rule, stop and surface it instead of
   - Keep `withCredentials: true` on the axios instance.
   - Login state comes only from `GET /auth/me` (`useAuthBootstrap`) or login/register/refresh responses.
 - Refresh MUST stay **single-flight** (one shared promise in `ApiClient.ts`). Do not make refresh per-request.
-- Auth endpoints are at host root via `AUTH_REQUEST_CONFIG`; WMS endpoints use the `/api/v1` prefix. Don't mix them.
+- Auth endpoints are at host root via `AUTH_REQUEST_CONFIG`; current WMS endpoints use root controller paths plus `X-API-Version`. Keep `VITE_API_PREFIX` empty unless a gateway explicitly adds a prefix.
 - Roles are `'User' | 'Admin'`. `/auth/me` returns `UserId` (mapped in `AuthMapper.fromMe`). POSTs return 201.
 
 ## 3. Coding standards
@@ -76,18 +76,18 @@ If a task seems to require breaking a layer rule, stop and surface it instead of
 
 ## Reference map
 
-| Concern | File |
-|---|---|
-| HTTP client, cookie refresh, unwrap | `src/Shared/Services/Http/ApiClient.ts` |
-| Error normalisation | `src/Shared/Services/Http/ApiError.ts` |
-| Repository | `src/Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts` |
-| UseCase | `src/Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts` |
-| Mapper (DTO↔Entity) | `src/Modules/*/Infrastructure/Mappers/*Mapper.ts` |
-| Query/Command hooks | `src/Modules/Inventory/Application/{Queries,Commands}/` |
-| RHF + Zod form | `src/Modules/Auth/Presentation/Forms/LoginForm.tsx` |
-| Module-local store | `src/Modules/Auth/Application/Stores/AuthStore.ts` |
-| Auth boot/expiry | `src/Modules/Auth/Application/UseCases/UseAuthBootstrap.ts`, `UseSessionExpiry.ts` |
-| Guards / routing | `src/App/Guards/`, `src/App/Router/AppRouter.tsx` |
+| Concern                             | File                                                                               |
+| ----------------------------------- | ---------------------------------------------------------------------------------- |
+| HTTP client, cookie refresh, unwrap | `src/Shared/Services/Http/ApiClient.ts`                                            |
+| Error normalisation                 | `src/Shared/Services/Http/ApiError.ts`                                             |
+| Repository                          | `src/Modules/Inventory/Infrastructure/Repositories/InventoryRepository.ts`         |
+| UseCase                             | `src/Modules/Inventory/Application/UseCases/GetInventoryListUseCase.ts`            |
+| Mapper (DTO↔Entity)                 | `src/Modules/*/Infrastructure/Mappers/*Mapper.ts`                                  |
+| Query/Command hooks                 | `src/Modules/Inventory/Application/{Queries,Commands}/`                            |
+| RHF + Zod form                      | `src/Modules/Auth/Presentation/Forms/LoginForm.tsx`                                |
+| Module-local store                  | `src/Modules/Auth/Application/Stores/AuthStore.ts`                                 |
+| Auth boot/expiry                    | `src/Modules/Auth/Application/UseCases/UseAuthBootstrap.ts`, `UseSessionExpiry.ts` |
+| Guards / routing                    | `src/App/Guards/`, `src/App/Router/AppRouter.tsx`                                  |
 
 ## Status (don't assume beyond this)
 
