@@ -22,6 +22,7 @@ import { inventoryStatusRoutes } from '@modules/InventoryStatus/Presentation/Rou
 import { approvalRoutes } from '@modules/Approval/Presentation/Routes/ApprovalRoutes';
 import { overrideLogRoutes } from '@modules/OverrideLog/Presentation/Routes/OverrideLogRoutes';
 import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalog/Presentation/Routes/ControlValidationCatalogRoutes';
+import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/PartnerMasterRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
           ...foundationOverviewRoutes,
           ...masterDataRoutes,
           ...catalogRoutes,
+          ...partnerMasterRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,

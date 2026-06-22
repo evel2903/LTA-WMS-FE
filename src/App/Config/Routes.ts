@@ -22,6 +22,7 @@ export const ROUTES = {
       OWNERS: '/foundation/master-data/owners',
       UOMS: '/foundation/master-data/uoms',
       SKUS: '/foundation/master-data/skus',
+      PARTNERS: '/foundation/master-data/partners',
     },
     ACCESS: {
       ROLES: '/foundation/access/roles',
