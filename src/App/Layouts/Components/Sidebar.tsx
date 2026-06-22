@@ -68,6 +68,7 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Owner Master', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, icon: Building2 },
       { label: 'UOM Master', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS, icon: Ruler },
       { label: 'SKU Master', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS, icon: Package },
+      { label: 'Partner Master', to: ROUTES.FOUNDATION.MASTER_DATA.PARTNERS, icon: Users },
       {
         label: 'Warehouse Profiles',
         to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES,
