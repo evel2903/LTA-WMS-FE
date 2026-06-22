@@ -25,6 +25,7 @@ import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalo
 import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/PartnerMasterRoutes';
 import { taskExecutionRoutes } from '@modules/TaskExecution/Presentation/Routes/TaskExecutionRoutes';
 import { barcodeLabelRoutes } from '@modules/BarcodeLabel/Presentation/Routes/BarcodeLabelRoutes';
+import { inboundRoutes } from '@modules/Inbound/Presentation/Routes/InboundRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
           ...partnerMasterRoutes,
           ...taskExecutionRoutes,
           ...barcodeLabelRoutes,
+          ...inboundRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,
@@ -73,7 +75,7 @@ const router = createBrowserRouter([
           ...approvalRoutes,
           ...overrideLogRoutes,
           ...controlValidationCatalogRoutes,
-          // ...warehouseRoutes, ...inboundRoutes, etc. registered the same way.
+          // ...warehouseRoutes, etc. registered the same way.
         ],
       },
     ],
