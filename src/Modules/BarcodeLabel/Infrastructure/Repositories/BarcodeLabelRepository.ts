@@ -5,7 +5,11 @@ import {
   BARCODE_LABEL_DEFAULT_PAGE_SIZE,
   BARCODE_LABEL_MAX_PAGE_SIZE,
 } from '@modules/BarcodeLabel/Domain/Constants/BarcodeLabelConstants';
-import type { LabelTemplate, PrintJob } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
+import type {
+  LabelBlockingValidationResult,
+  LabelTemplate,
+  PrintJob,
+} from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
 import type {
   CreateLabelTemplateInput,
   CreateLabelTemplateVersionInput,
@@ -13,10 +17,12 @@ import type {
   PreviewPrintJobInput,
   PrintJobListFilter,
   ReprintPrintJobInput,
+  ValidateLabelBlockingInput,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabelQuery';
 import { BARCODE_LABEL_ENDPOINTS } from '@modules/BarcodeLabel/Infrastructure/Api/BarcodeLabelEndpoints';
 import type {
   LabelTemplateDto,
+  LabelBlockingValidationResultDto,
   PagedLabelTemplateDto,
   PagedPrintJobDto,
   PrintJobDto,
@@ -100,5 +106,15 @@ export class BarcodeLabelRepository implements IBarcodeLabelRepository {
       BarcodeLabelMapper.toReprintRequest(input),
     );
     return BarcodeLabelMapper.toPrintJob(dto);
+  }
+
+  async validateLabelBlocking(
+    input: ValidateLabelBlockingInput,
+  ): Promise<LabelBlockingValidationResult> {
+    const dto = await this.http.post<LabelBlockingValidationResultDto>(
+      BARCODE_LABEL_ENDPOINTS.LABEL_BLOCKING_VALIDATE,
+      BarcodeLabelMapper.toValidateLabelBlockingRequest(input),
+    );
+    return BarcodeLabelMapper.toLabelBlockingValidationResult(dto);
   }
 }

@@ -1,5 +1,9 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
-import type { LabelTemplate, PrintJob } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
+import type {
+  LabelBlockingValidationResult,
+  LabelTemplate,
+  PrintJob,
+} from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
 import type {
   CreateLabelTemplateInput,
   CreateLabelTemplateVersionInput,
@@ -7,6 +11,7 @@ import type {
   PreviewPrintJobInput,
   PrintJobListFilter,
   ReprintPrintJobInput,
+  ValidateLabelBlockingInput,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabelQuery';
 
 export interface IBarcodeLabelRepository {
@@ -16,4 +21,7 @@ export interface IBarcodeLabelRepository {
   previewPrintJob(input: PreviewPrintJobInput): Promise<PrintJob>;
   listPrintJobs(filter?: PrintJobListFilter): Promise<PaginatedResponse<PrintJob>>;
   reprintPrintJob(id: string, input: ReprintPrintJobInput): Promise<PrintJob>;
+  validateLabelBlocking(
+    input: ValidateLabelBlockingInput,
+  ): Promise<LabelBlockingValidationResult>;
 }

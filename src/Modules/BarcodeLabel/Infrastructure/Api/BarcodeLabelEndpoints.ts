@@ -6,4 +6,5 @@ export const BARCODE_LABEL_ENDPOINTS = {
   PRINT_JOB_BY_ID: (id: string) => `/print-jobs/${id}`,
   PREVIEW: '/print-jobs/preview',
   REPRINT: (id: string) => `/print-jobs/${id}/reprint`,
+  LABEL_BLOCKING_VALIDATE: '/label-blocking/validate',
 } as const;

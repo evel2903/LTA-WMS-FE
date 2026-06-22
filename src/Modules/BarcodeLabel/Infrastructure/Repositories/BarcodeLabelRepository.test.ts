@@ -75,6 +75,12 @@ describe('BarcodeLabelRepository', () => {
     });
     await repository.listPrintJobs({ templateId: 'template-1' });
     await repository.reprintPrintJob('job-1', { reasonCode: 'RC-V1-REPRINT' });
+    await repository.validateLabelBlocking({
+      downstreamAction: 'putaway',
+      businessObjectType: 'LPN',
+      businessObjectId: 'lpn-1',
+      warehouseProfileId: 'profile-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/label-templates'],
@@ -83,6 +89,7 @@ describe('BarcodeLabelRepository', () => {
       ['post', '/print-jobs/preview'],
       ['get', '/print-jobs'],
       ['post', '/print-jobs/job-1/reprint'],
+      ['post', '/label-blocking/validate'],
     ]);
   });
 
@@ -135,6 +142,43 @@ describe('BarcodeLabelRepository', () => {
       method: 'post',
       url: '/print-jobs/job-1/reprint',
       body: { ReasonCode: 'RC-V1-REPRINT', ReasonNote: 'Label damaged' },
+    });
+  });
+
+  it('sends PascalCase label blocking validation payload', async () => {
+    const http = new FakeHttpClient();
+    const repository = new BarcodeLabelRepository(http);
+
+    await repository.validateLabelBlocking({
+      downstreamAction: 'ready_for_staging',
+      businessObjectType: 'Package',
+      businessObjectId: 'pkg-1',
+      businessObjectCode: 'PKG0001',
+      warehouseProfileId: 'profile-1',
+      warehouseId: 'warehouse-a',
+      ownerId: 'owner-a',
+      labelType: 'Shipping',
+      attemptOverride: true,
+      reasonCode: 'RC-V1-OVERRIDE',
+      reasonNote: 'Supervisor accepted',
+    });
+
+    expect(http.calls[0]).toMatchObject({
+      method: 'post',
+      url: '/label-blocking/validate',
+      body: {
+        DownstreamAction: 'ready_for_staging',
+        BusinessObjectType: 'Package',
+        BusinessObjectId: 'pkg-1',
+        BusinessObjectCode: 'PKG0001',
+        WarehouseProfileId: 'profile-1',
+        WarehouseId: 'warehouse-a',
+        OwnerId: 'owner-a',
+        LabelType: 'Shipping',
+        AttemptOverride: true,
+        ReasonCode: 'RC-V1-OVERRIDE',
+        ReasonNote: 'Supervisor accepted',
+      },
     });
   });
 });

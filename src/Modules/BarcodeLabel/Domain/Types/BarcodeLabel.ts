@@ -6,6 +6,9 @@ export type PrintJobStatus =
   | 'ReprintRequested'
   | 'Reprinted'
   | 'Cancelled';
+export type LabelBlockingDownstreamAction = 'putaway' | 'ready_for_staging' | 'loading';
+export type LabelBlockingDecision = 'NotRequired' | 'Allowed' | 'Blocked' | 'OverrideAccepted';
+export type LabelBlockingPolicyMode = 'none' | 'hard' | 'soft';
 
 export interface LabelTemplate {
   id: string;
@@ -44,4 +47,18 @@ export interface PrintJob {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+}
+
+export interface LabelBlockingValidationResult {
+  allowed: boolean;
+  blocked: boolean;
+  decision: LabelBlockingDecision;
+  requiredLabelType: string | null;
+  policyMode: LabelBlockingPolicyMode;
+  overrideAllowed: boolean;
+  overrideAccepted: boolean;
+  reason: string;
+  matchedPrintJobId: string | null;
+  matchedPrintJobCode: string | null;
+  validationDetails: Record<string, unknown>;
 }

@@ -6,7 +6,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IBarcodeLabelRepository } from '@modules/BarcodeLabel/Application/Interfaces/IBarcodeLabelRepository';
-import type { LabelTemplate, PrintJob } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
+import type {
+  LabelBlockingValidationResult,
+  LabelTemplate,
+  PrintJob,
+} from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
 import type {
   CreateLabelTemplateInput,
   CreateLabelTemplateVersionInput,
@@ -14,6 +18,7 @@ import type {
   PreviewPrintJobInput,
   PrintJobListFilter,
   ReprintPrintJobInput,
+  ValidateLabelBlockingInput,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabelQuery';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IBarcodeLabelRepository }));
@@ -70,6 +75,25 @@ function makePrintJob(overrides: Partial<PrintJob> = {}): PrintJob {
     updatedAt: '2026-06-22T08:30:00.000Z',
     createdBy: 'user-1',
     updatedBy: 'user-1',
+    ...overrides,
+  };
+}
+
+function makeBlockingResult(
+  overrides: Partial<LabelBlockingValidationResult> = {},
+): LabelBlockingValidationResult {
+  return {
+    allowed: false,
+    blocked: true,
+    decision: 'Blocked',
+    requiredLabelType: 'LPN',
+    policyMode: 'hard',
+    overrideAllowed: false,
+    overrideAccepted: false,
+    reason: 'Required label evidence is missing.',
+    matchedPrintJobId: null,
+    matchedPrintJobCode: null,
+    validationDetails: { DownstreamAction: 'putaway' },
     ...overrides,
   };
 }
@@ -152,6 +176,10 @@ class FakeRepository implements Partial<IBarcodeLabelRepository> {
     this.printJobs = [job, ...this.printJobs.filter((item) => item.id !== id)];
     return Promise.resolve(job);
   });
+
+  validateLabelBlocking = vi.fn((_input: ValidateLabelBlockingInput) =>
+    Promise.resolve(makeBlockingResult()),
+  );
 }
 
 function renderPage() {
@@ -290,5 +318,62 @@ describe('BarcodeLabelPage', () => {
 
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Preview print job' })).toBeNull();
+  });
+
+  it('validates label blocking readiness and renders blocked decision', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /LPN-STD/i });
+    await actor.click(screen.getByRole('button', { name: 'Validate label block' }));
+
+    await waitFor(() =>
+      expect(fake.validateLabelBlocking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          downstreamAction: 'putaway',
+          businessObjectType: 'LPN',
+          businessObjectId: 'lpn-1',
+          warehouseProfileId: 'profile-1',
+          labelType: 'LPN',
+        }),
+      ),
+    );
+    expect(await screen.findByText(/Required label evidence is missing/i)).toBeTruthy();
+  });
+
+  it('requires an override reason before submitting label block override', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /LPN-STD/i });
+    await actor.click(screen.getByLabelText('Attempt override'));
+    fireEvent.change(screen.getByLabelText('Override reason code'), { target: { value: '' } });
+
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Validate label block' }).disabled,
+    ).toBe(true);
+  });
+
+  it('clears stale label blocking decision when validation inputs change', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: /LPN-STD/i });
+    await actor.click(screen.getByRole('button', { name: 'Validate label block' }));
+    expect(await screen.findByText(/Required label evidence is missing/i)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Business object id'), {
+      target: { value: 'lpn-2' },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Required label evidence is missing/i)).toBeNull();
+    });
   });
 });

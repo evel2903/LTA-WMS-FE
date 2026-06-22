@@ -1,4 +1,5 @@
 import type {
+  LabelBlockingDownstreamAction,
   LabelTemplateStatus,
   PrintJobStatus,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
@@ -47,6 +48,21 @@ export interface PreviewPrintJobInput {
 
 export interface ReprintPrintJobInput {
   reasonCode: string;
+  reasonNote?: string | null;
+  evidenceRefs?: string[] | null;
+}
+
+export interface ValidateLabelBlockingInput {
+  downstreamAction: LabelBlockingDownstreamAction;
+  businessObjectType: string;
+  businessObjectId: string;
+  businessObjectCode?: string | null;
+  warehouseProfileId: string;
+  warehouseId?: string | null;
+  ownerId?: string | null;
+  labelType?: string | null;
+  attemptOverride?: boolean;
+  reasonCode?: string | null;
   reasonNote?: string | null;
   evidenceRefs?: string[] | null;
 }

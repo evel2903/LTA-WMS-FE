@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RefreshCw, Tags } from 'lucide-react';
+import { Loader2, RefreshCw, ShieldAlert, Tags } from 'lucide-react';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
@@ -10,11 +10,13 @@ import {
   usePrintJobs,
 } from '@modules/BarcodeLabel/Application/Queries/UseBarcodeLabels';
 import {
+  LABEL_BLOCKING_ACTIONS,
   LABEL_TEMPLATE_STATUSES,
   LABEL_TYPES,
   PRINT_JOB_STATUSES,
 } from '@modules/BarcodeLabel/Domain/Constants/BarcodeLabelConstants';
 import type {
+  LabelBlockingDownstreamAction,
   LabelTemplate,
   LabelTemplateStatus,
   PrintJob,
@@ -128,6 +130,12 @@ export function BarcodeLabelPage() {
   const [payloadError, setPayloadError] = useState<string | null>(null);
   const [reasonCode, setReasonCode] = useState('RC-V1-REPRINT');
   const [reasonNote, setReasonNote] = useState('Label damaged');
+  const [blockingAction, setBlockingAction] = useState<LabelBlockingDownstreamAction>('putaway');
+  const [blockingProfileId, setBlockingProfileId] = useState('profile-1');
+  const [blockingLabelType, setBlockingLabelType] = useState('LPN');
+  const [attemptOverride, setAttemptOverride] = useState(false);
+  const [overrideReasonCode, setOverrideReasonCode] = useState('RC-V1-OVERRIDE');
+  const [overrideReasonNote, setOverrideReasonNote] = useState('Supervisor accepted');
 
   const templatesQuery = useLabelTemplates({
     status: templateStatus === 'All' ? undefined : templateStatus,
@@ -145,6 +153,7 @@ export function BarcodeLabelPage() {
   const mutations = useBarcodeLabelMutations();
   const resetPreviewPrintJob = mutations.previewPrintJob.reset;
   const resetReprintPrintJob = mutations.reprintPrintJob.reset;
+  const resetValidateLabelBlocking = mutations.validateLabelBlocking.reset;
   const templateError = templatesQuery.error instanceof ApiError ? templatesQuery.error : null;
   const printJobError = printJobsQuery.error instanceof ApiError ? printJobsQuery.error : null;
   const mutationError = [
@@ -152,6 +161,7 @@ export function BarcodeLabelPage() {
     mutations.createTemplateVersion.error,
     mutations.previewPrintJob.error,
     mutations.reprintPrintJob.error,
+    mutations.validateLabelBlocking.error,
   ].find((error): error is ApiError => error instanceof ApiError);
   const denied = Boolean(templateError?.isForbidden || printJobError?.isForbidden);
   const mutationDenied = Boolean(mutationError?.isForbidden);
@@ -165,6 +175,13 @@ export function BarcodeLabelPage() {
     selectedTemplate && businessObjectType.trim() && businessObjectId.trim(),
   );
   const canReprint = Boolean(previewSource && reasonCode.trim().length > 0);
+  const canValidateLabelBlock = Boolean(
+    businessObjectType.trim() &&
+    businessObjectId.trim() &&
+    blockingProfileId.trim() &&
+    (!attemptOverride || overrideReasonCode.trim().length > 0),
+  );
+  const labelBlockingResult = mutations.validateLabelBlocking.data ?? null;
 
   useEffect(() => {
     if (!selectedTemplateId && templates[0]) {
@@ -180,6 +197,23 @@ export function BarcodeLabelPage() {
     resetPreviewPrintJob();
     resetReprintPrintJob();
   }, [selectedTemplate?.id, printJobStatus, resetPreviewPrintJob, resetReprintPrintJob]);
+
+  useEffect(() => {
+    resetValidateLabelBlocking();
+  }, [
+    attemptOverride,
+    blockingAction,
+    blockingLabelType,
+    blockingProfileId,
+    businessObjectCode,
+    businessObjectId,
+    businessObjectType,
+    overrideReasonCode,
+    overrideReasonNote,
+    ownerId,
+    resetValidateLabelBlocking,
+    warehouseId,
+  ]);
 
   if (denied) {
     return (
@@ -549,6 +583,126 @@ export function BarcodeLabelPage() {
                     Reprint job
                   </button>
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="size-4" />
+              <CardTitle className="text-base">Label blocking</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm">
+                Downstream action
+                <select
+                  className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                  value={blockingAction}
+                  onChange={(event) =>
+                    setBlockingAction(event.target.value as LabelBlockingDownstreamAction)
+                  }
+                >
+                  {LABEL_BLOCKING_ACTIONS.map((action) => (
+                    <option key={action} value={action}>
+                      {action}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Warehouse profile id
+                <Input
+                  value={blockingProfileId}
+                  onChange={(event) => setBlockingProfileId(event.target.value)}
+                />
+              </label>
+            </div>
+            <label className="grid gap-1 text-sm">
+              Required label type
+              <Input
+                value={blockingLabelType}
+                onChange={(event) => setBlockingLabelType(event.target.value)}
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={attemptOverride}
+                onChange={(event) => setAttemptOverride(event.target.checked)}
+              />
+              Attempt override
+            </label>
+            {attemptOverride && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-sm">
+                  Override reason code
+                  <Input
+                    value={overrideReasonCode}
+                    onChange={(event) => setOverrideReasonCode(event.target.value)}
+                  />
+                </label>
+                <label className="grid gap-1 text-sm">
+                  Override reason note
+                  <Input
+                    value={overrideReasonNote}
+                    onChange={(event) => setOverrideReasonNote(event.target.value)}
+                  />
+                </label>
+              </div>
+            )}
+            <button
+              type="button"
+              className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                !canValidateLabelBlock ||
+                mutationDenied ||
+                mutations.validateLabelBlocking.isPending
+              }
+              onClick={() => {
+                resetValidateLabelBlocking();
+                mutations.validateLabelBlocking.mutate({
+                  downstreamAction: blockingAction,
+                  businessObjectType: businessObjectType.trim(),
+                  businessObjectId: businessObjectId.trim(),
+                  businessObjectCode: businessObjectCode.trim() || null,
+                  warehouseProfileId: blockingProfileId.trim(),
+                  warehouseId: warehouseId.trim() || null,
+                  ownerId: ownerId.trim() || null,
+                  labelType: blockingLabelType.trim() || null,
+                  attemptOverride,
+                  reasonCode: attemptOverride ? overrideReasonCode.trim() : null,
+                  reasonNote: attemptOverride ? overrideReasonNote.trim() || null : null,
+                });
+              }}
+            >
+              Validate label block
+            </button>
+            {mutations.validateLabelBlocking.isPending && (
+              <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                <RefreshCw className="size-4 animate-spin" />
+                Validating label readiness
+              </p>
+            )}
+            {labelBlockingResult && (
+              <div className="space-y-2 rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{labelBlockingResult.decision}</span>
+                  <span className="rounded-md border px-2 py-1 text-xs">
+                    {labelBlockingResult.policyMode}
+                  </span>
+                </div>
+                <p className={labelBlockingResult.blocked ? 'text-destructive' : undefined}>
+                  {labelBlockingResult.reason}
+                </p>
+                {labelBlockingResult.matchedPrintJobCode && (
+                  <p className="text-muted-foreground">
+                    Matched print job: {labelBlockingResult.matchedPrintJobCode}
+                  </p>
+                )}
               </div>
             )}
           </CardContent>

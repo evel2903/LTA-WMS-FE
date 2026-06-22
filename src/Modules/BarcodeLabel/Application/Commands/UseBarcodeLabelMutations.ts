@@ -7,6 +7,7 @@ import type {
   CreateLabelTemplateVersionInput,
   PreviewPrintJobInput,
   ReprintPrintJobInput,
+  ValidateLabelBlockingInput,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabelQuery';
 import { barcodeLabelRepository } from '@modules/BarcodeLabel/Infrastructure/Repositories/BarcodeLabelRepositoryInstance';
 
@@ -37,6 +38,11 @@ export function useBarcodeLabelMutations() {
       mutationFn: ({ id, input }: { id: string; input: ReprintPrintJobInput }) =>
         barcodeLabelRepository.reprintPrintJob(id, input),
       onSuccess: invalidateLabels,
+      onError: notifyError,
+    }),
+    validateLabelBlocking: useMutation({
+      mutationFn: (input: ValidateLabelBlockingInput) =>
+        barcodeLabelRepository.validateLabelBlocking(input),
       onError: notifyError,
     }),
   };

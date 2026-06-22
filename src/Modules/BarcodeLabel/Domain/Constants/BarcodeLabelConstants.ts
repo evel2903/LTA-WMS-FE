@@ -1,4 +1,5 @@
 import type {
+  LabelBlockingDownstreamAction,
   LabelTemplateStatus,
   PrintJobStatus,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
@@ -16,3 +17,8 @@ export const PRINT_JOB_STATUSES: PrintJobStatus[] = [
   'Cancelled',
 ];
 export const LABEL_TYPES = ['LPN', 'Package', 'Item'] as const;
+export const LABEL_BLOCKING_ACTIONS: LabelBlockingDownstreamAction[] = [
+  'putaway',
+  'ready_for_staging',
+  'loading',
+];

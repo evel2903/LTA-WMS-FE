@@ -1,20 +1,27 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
-import type { LabelTemplate, PrintJob } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
+import type {
+  LabelBlockingValidationResult,
+  LabelTemplate,
+  PrintJob,
+} from '@modules/BarcodeLabel/Domain/Types/BarcodeLabel';
 import type {
   CreateLabelTemplateInput,
   CreateLabelTemplateVersionInput,
   PreviewPrintJobInput,
   ReprintPrintJobInput,
+  ValidateLabelBlockingInput,
 } from '@modules/BarcodeLabel/Domain/Types/BarcodeLabelQuery';
 import type {
   CreateLabelTemplateRequestDto,
   CreateLabelTemplateVersionRequestDto,
+  LabelBlockingValidationResultDto,
   LabelTemplateDto,
   PagedLabelTemplateDto,
   PagedPrintJobDto,
   PreviewPrintJobRequestDto,
   PrintJobDto,
   ReprintPrintJobRequestDto,
+  ValidateLabelBlockingRequestDto,
 } from '@modules/BarcodeLabel/Infrastructure/Dtos/BarcodeLabelDtos';
 
 function removeNullish<T extends Record<string, unknown>>(value: T): Partial<T> {
@@ -64,6 +71,24 @@ export const BarcodeLabelMapper = {
       updatedAt: dto.UpdatedAt,
       createdBy: dto.CreatedBy,
       updatedBy: dto.UpdatedBy,
+    };
+  },
+
+  toLabelBlockingValidationResult(
+    dto: LabelBlockingValidationResultDto,
+  ): LabelBlockingValidationResult {
+    return {
+      allowed: dto.Allowed,
+      blocked: dto.Blocked,
+      decision: dto.Decision,
+      requiredLabelType: dto.RequiredLabelType,
+      policyMode: dto.PolicyMode,
+      overrideAllowed: dto.OverrideAllowed,
+      overrideAccepted: dto.OverrideAccepted,
+      reason: dto.Reason,
+      matchedPrintJobId: dto.MatchedPrintJobId,
+      matchedPrintJobCode: dto.MatchedPrintJobCode,
+      validationDetails: dto.ValidationDetails,
     };
   },
 
@@ -130,5 +155,24 @@ export const BarcodeLabelMapper = {
       ReasonNote: input.reasonNote,
       EvidenceRefs: input.evidenceRefs,
     }) as ReprintPrintJobRequestDto;
+  },
+
+  toValidateLabelBlockingRequest(
+    input: ValidateLabelBlockingInput,
+  ): ValidateLabelBlockingRequestDto {
+    return removeNullish({
+      DownstreamAction: input.downstreamAction,
+      BusinessObjectType: input.businessObjectType,
+      BusinessObjectId: input.businessObjectId,
+      BusinessObjectCode: input.businessObjectCode,
+      WarehouseProfileId: input.warehouseProfileId,
+      WarehouseId: input.warehouseId,
+      OwnerId: input.ownerId,
+      LabelType: input.labelType,
+      AttemptOverride: input.attemptOverride,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+    }) as ValidateLabelBlockingRequestDto;
   },
 };

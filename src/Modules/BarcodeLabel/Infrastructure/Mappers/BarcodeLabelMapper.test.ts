@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BarcodeLabelMapper } from '@modules/BarcodeLabel/Infrastructure/Mappers/BarcodeLabelMapper';
 import type {
+  LabelBlockingValidationResultDto,
   LabelTemplateDto,
   PrintJobDto,
 } from '@modules/BarcodeLabel/Infrastructure/Dtos/BarcodeLabelDtos';
@@ -44,6 +45,20 @@ const printJobDto: PrintJobDto = {
   UpdatedBy: 'user-1',
 };
 
+const blockingDto: LabelBlockingValidationResultDto = {
+  Allowed: false,
+  Blocked: true,
+  Decision: 'Blocked',
+  RequiredLabelType: 'LPN',
+  PolicyMode: 'hard',
+  OverrideAllowed: false,
+  OverrideAccepted: false,
+  Reason: 'Required label evidence is missing.',
+  MatchedPrintJobId: null,
+  MatchedPrintJobCode: null,
+  ValidationDetails: { DownstreamAction: 'putaway' },
+};
+
 describe('BarcodeLabelMapper', () => {
   it('maps label template and print job DTOs into domain types', () => {
     expect(BarcodeLabelMapper.toLabelTemplate(templateDto)).toMatchObject({
@@ -56,6 +71,11 @@ describe('BarcodeLabelMapper', () => {
       jobCode: 'PJ-001',
       status: 'Previewed',
       previewContent: 'LPN SSCC-1',
+    });
+    expect(BarcodeLabelMapper.toLabelBlockingValidationResult(blockingDto)).toMatchObject({
+      allowed: false,
+      decision: 'Blocked',
+      requiredLabelType: 'LPN',
     });
   });
 
@@ -108,5 +128,27 @@ describe('BarcodeLabelMapper', () => {
         reasonNote: null,
       }),
     ).toEqual({ ReasonCode: 'RC-V1-REPRINT' });
+
+    expect(
+      BarcodeLabelMapper.toValidateLabelBlockingRequest({
+        downstreamAction: 'putaway',
+        businessObjectType: 'LPN',
+        businessObjectId: 'lpn-1',
+        businessObjectCode: '',
+        warehouseProfileId: 'profile-1',
+        warehouseId: 'warehouse-a',
+        ownerId: null,
+        labelType: 'LPN',
+        attemptOverride: false,
+      }),
+    ).toEqual({
+      DownstreamAction: 'putaway',
+      BusinessObjectType: 'LPN',
+      BusinessObjectId: 'lpn-1',
+      WarehouseProfileId: 'profile-1',
+      WarehouseId: 'warehouse-a',
+      LabelType: 'LPN',
+      AttemptOverride: false,
+    });
   });
 });
