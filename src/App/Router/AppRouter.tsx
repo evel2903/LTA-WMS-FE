@@ -23,6 +23,7 @@ import { approvalRoutes } from '@modules/Approval/Presentation/Routes/ApprovalRo
 import { overrideLogRoutes } from '@modules/OverrideLog/Presentation/Routes/OverrideLogRoutes';
 import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalog/Presentation/Routes/ControlValidationCatalogRoutes';
 import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/PartnerMasterRoutes';
+import { taskExecutionRoutes } from '@modules/TaskExecution/Presentation/Routes/TaskExecutionRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
           ...masterDataRoutes,
           ...catalogRoutes,
           ...partnerMasterRoutes,
+          ...taskExecutionRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,

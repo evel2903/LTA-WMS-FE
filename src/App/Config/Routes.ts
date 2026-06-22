@@ -42,6 +42,9 @@ export const ROUTES = {
   PICKING: { ROOT: '/picking' },
   PACKING: { ROOT: '/packing' },
   SHIPPING: { ROOT: '/shipping' },
+  MOBILE: {
+    TASKS: '/mobile/tasks',
+  },
   STOCK_TRANSFER: { ROOT: '/stock-transfer' },
   STOCK_ADJUSTMENT: { ROOT: '/stock-adjustment' },
   CYCLE_COUNT: { ROOT: '/cycle-count' },
