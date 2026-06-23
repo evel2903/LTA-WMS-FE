@@ -7,6 +7,9 @@ import type {
   RECEIPT_DOCUMENT_STATUSES,
   RECEIPT_LINE_DISCREPANCY_SIGNALS,
   RECEIPT_LINE_STATUSES,
+  QC_DISPOSITION_CODES,
+  QC_RESULT_STATUSES,
+  QC_TASK_STATUSES,
   RECEIVING_SESSION_STATUSES,
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
 
@@ -20,6 +23,9 @@ export type ReceivingSessionStatus = (typeof RECEIVING_SESSION_STATUSES)[number]
 export type ReceiptDocumentStatus = (typeof RECEIPT_DOCUMENT_STATUSES)[number];
 export type ReceiptLineStatus = (typeof RECEIPT_LINE_STATUSES)[number];
 export type ReceiptLineDiscrepancySignal = (typeof RECEIPT_LINE_DISCREPANCY_SIGNALS)[number];
+export type QcTaskStatus = (typeof QC_TASK_STATUSES)[number];
+export type QcResultStatus = (typeof QC_RESULT_STATUSES)[number];
+export type QcDispositionCode = (typeof QC_DISPOSITION_CODES)[number];
 export type ExceptionState =
   | 'DETECTED'
   | 'LOGGED'
@@ -168,6 +174,72 @@ export interface InboundDiscrepancy {
   isDuplicate: boolean;
   recordedAt: string;
   recordedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcTask {
+  id: string;
+  receiptId: string;
+  receiptLineId: string;
+  inboundPlanId: string;
+  inboundPlanLineId: string;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  skuId: string;
+  skuCode: string | null;
+  uomId: string;
+  uomCode: string | null;
+  actualQuantity: number;
+  taskStatus: QcTaskStatus;
+  required: boolean;
+  triggerReason: string;
+  triggerPolicyJson: Record<string, unknown> | null;
+  inventoryStatusCode: string;
+  targetInventoryStatusCode: string | null;
+  reasonCode: string | null;
+  reasonCodeId: string | null;
+  reasonNote: string | null;
+  evidenceRefs: string[];
+  idempotencyKey: string;
+  isDuplicate: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcResult {
+  id: string;
+  qcTaskId: string;
+  receiptId: string;
+  receiptLineId: string;
+  inboundPlanId: string;
+  inboundPlanLineId: string;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  resultStatus: QcResultStatus;
+  dispositionCode: QcDispositionCode;
+  taskStatus: QcTaskStatus;
+  inspectedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  acceptedInventoryStatusCode: string | null;
+  rejectedInventoryStatusCode: string | null;
+  targetInventoryStatusCode: string;
+  reasonCode: string | null;
+  reasonCodeId: string | null;
+  reasonNote: string | null;
+  evidenceRefs: string[];
+  evidenceJson: Record<string, unknown> | null;
+  idempotencyKey: string;
+  recordedAt: string;
+  recordedBy: string | null;
+  isDuplicate: boolean;
   createdAt: string;
   updatedAt: string;
 }

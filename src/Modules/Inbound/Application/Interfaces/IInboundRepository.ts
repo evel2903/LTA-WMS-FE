@@ -2,6 +2,8 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
   InboundPlan,
+  QcResult,
+  QcTask,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
@@ -10,7 +12,9 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
+  EvaluateQcTaskInput,
   InboundPlanFilter,
+  RecordQcResultInput,
   RecordGateInInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
@@ -31,4 +35,6 @@ export interface IInboundRepository {
     receiptId: string,
     input: CaptureInboundDiscrepancyInput,
   ): Promise<InboundDiscrepancy>;
+  evaluateQcTask(receiptId: string, input: EvaluateQcTaskInput): Promise<QcTask>;
+  recordQcResult(qcTaskId: string, input: RecordQcResultInput): Promise<QcResult>;
 }

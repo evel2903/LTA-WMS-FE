@@ -7,6 +7,8 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
+  EvaluateQcTaskInput,
+  RecordQcResultInput,
   RecordGateInInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
@@ -55,6 +57,18 @@ export function useInboundMutations() {
         receiptId: string;
         input: CaptureInboundDiscrepancyInput;
       }) => inboundRepository.captureDiscrepancy(receiptId, input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    evaluateQcTask: useMutation({
+      mutationFn: ({ receiptId, input }: { receiptId: string; input: EvaluateQcTaskInput }) =>
+        inboundRepository.evaluateQcTask(receiptId, input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    recordQcResult: useMutation({
+      mutationFn: ({ qcTaskId, input }: { qcTaskId: string; input: RecordQcResultInput }) =>
+        inboundRepository.recordQcResult(qcTaskId, input),
       onSuccess: invalidateInbound,
       onError: notifyError,
     }),

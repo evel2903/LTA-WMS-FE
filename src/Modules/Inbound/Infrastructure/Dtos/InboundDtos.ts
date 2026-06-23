@@ -6,6 +6,9 @@ import type {
   InboundDiscrepancyType,
   InboundGateInStatus,
   InboundPlanDocumentStatus,
+  QcDispositionCode,
+  QcResultStatus,
+  QcTaskStatus,
   ReceiptLineDiscrepancySignal,
   ReceiptLineStatus,
   ReceivingSessionStatus,
@@ -222,6 +225,94 @@ export interface InboundDiscrepancyDto {
   ExceptionCaseId: string;
   ExceptionState: ExceptionState;
   Severity: ControlExceptionSeverity;
+  IdempotencyKey: string;
+  RecordedAt: string;
+  RecordedBy: string | null;
+  IsDuplicate: boolean;
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
+export interface EvaluateQcTaskRequestDto {
+  ReceiptLineId: string;
+  IdempotencyKey: string;
+  ForceRequired?: boolean;
+  ReasonCode?: string | null;
+  ReasonNote?: string | null;
+  EvidenceRefs?: string[];
+}
+
+export interface QcTaskDto {
+  Id: string;
+  ReceiptId: string;
+  ReceiptLineId: string;
+  InboundPlanId: string;
+  InboundPlanLineId: string;
+  OwnerId: string;
+  OwnerCode: string | null;
+  WarehouseId: string;
+  WarehouseCode: string | null;
+  SkuId: string;
+  SkuCode: string | null;
+  UomId: string;
+  UomCode: string | null;
+  ActualQuantity: number;
+  TaskStatus: QcTaskStatus;
+  Required: boolean;
+  TriggerReason: string;
+  TriggerPolicyJson: Record<string, unknown> | null;
+  InventoryStatusCode: string;
+  TargetInventoryStatusCode: string | null;
+  ReasonCode: string | null;
+  ReasonCodeId: string | null;
+  ReasonNote: string | null;
+  EvidenceRefs: string[];
+  IdempotencyKey: string;
+  IsDuplicate: boolean;
+  CreatedBy: string | null;
+  UpdatedBy: string | null;
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
+export interface RecordQcResultRequestDto {
+  IdempotencyKey: string;
+  ResultStatus: QcResultStatus;
+  DispositionCode: QcDispositionCode;
+  InspectedQuantity: number;
+  AcceptedQuantity: number;
+  RejectedQuantity: number;
+  ReasonCode?: string | null;
+  ReasonNote?: string | null;
+  EvidenceRefs?: string[];
+  EvidenceJson?: Record<string, unknown> | null;
+}
+
+export interface QcResultDto {
+  Id: string;
+  QcTaskId: string;
+  ReceiptId: string;
+  ReceiptLineId: string;
+  InboundPlanId: string;
+  InboundPlanLineId: string;
+  OwnerId: string;
+  OwnerCode: string | null;
+  WarehouseId: string;
+  WarehouseCode: string | null;
+  ResultStatus: QcResultStatus;
+  DispositionCode: QcDispositionCode;
+  TaskStatus: QcTaskStatus;
+  InspectedQuantity: number;
+  AcceptedQuantity: number;
+  RejectedQuantity: number;
+  AcceptedInventoryStatusCode: string | null;
+  RejectedInventoryStatusCode: string | null;
+  TargetInventoryStatusCode: string;
+  ReasonCode: string | null;
+  ReasonCodeId: string | null;
+  ReasonNote: string | null;
+  EvidenceRefs: string[];
+  EvidenceJson: Record<string, unknown> | null;
   IdempotencyKey: string;
   RecordedAt: string;
   RecordedBy: string | null;

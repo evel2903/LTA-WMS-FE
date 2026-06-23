@@ -74,6 +74,19 @@ describe('InboundRepository', () => {
       evidenceRefs: ['photo://dock/over-qty-1'],
       idempotencyKey: 'discrepancy-1',
     });
+    await repository.evaluateQcTask('receipt-1', {
+      receiptLineId: 'receipt-line-1',
+      idempotencyKey: 'qc-task-1',
+      forceRequired: true,
+    });
+    await repository.recordQcResult('qc-task-1', {
+      idempotencyKey: 'qc-result-1',
+      resultStatus: 'Passed',
+      dispositionCode: 'Release',
+      inspectedQuantity: 12,
+      acceptedQuantity: 12,
+      rejectedQuantity: 0,
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/inbound-plans'],
@@ -84,6 +97,8 @@ describe('InboundRepository', () => {
       ['post', '/inbound-plans/inbound-plan-1/receiving-sessions'],
       ['post', '/receipts/receipt-1/lines'],
       ['post', '/receipts/receipt-1/discrepancies'],
+      ['post', '/receipts/receipt-1/qc-tasks'],
+      ['post', '/qc-tasks/qc-task-1/results'],
     ]);
   });
 
@@ -174,6 +189,26 @@ describe('InboundRepository', () => {
       evidenceJson: { station: 'dock-1' },
       idempotencyKey: 'discrepancy-1',
     });
+    await repository.evaluateQcTask('receipt-1', {
+      receiptLineId: 'receipt-line-1',
+      idempotencyKey: 'qc-task-1',
+      forceRequired: true,
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: 'QC required by discrepancy',
+      evidenceRefs: ['photo://dock/qc-trigger-1'],
+    });
+    await repository.recordQcResult('qc-task-1', {
+      idempotencyKey: 'qc-result-1',
+      resultStatus: 'Failed',
+      dispositionCode: 'Quarantine',
+      inspectedQuantity: 12,
+      acceptedQuantity: 8,
+      rejectedQuantity: 4,
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: 'Four units damaged',
+      evidenceRefs: ['photo://qc/damaged-4'],
+      evidenceJson: { rejectedQuantity: 4 },
+    });
 
     expect(http.calls[0]).toMatchObject({
       method: 'post',
@@ -237,6 +272,34 @@ describe('InboundRepository', () => {
         EvidenceRefs: ['photo://dock/over-qty-1'],
         EvidenceJson: { station: 'dock-1' },
         IdempotencyKey: 'discrepancy-1',
+      },
+    });
+    expect(http.calls[6]).toMatchObject({
+      method: 'post',
+      url: '/receipts/receipt-1/qc-tasks',
+      body: {
+        ReceiptLineId: 'receipt-line-1',
+        IdempotencyKey: 'qc-task-1',
+        ForceRequired: true,
+        ReasonCode: 'RC-V1-DISCREPANCY',
+        ReasonNote: 'QC required by discrepancy',
+        EvidenceRefs: ['photo://dock/qc-trigger-1'],
+      },
+    });
+    expect(http.calls[7]).toMatchObject({
+      method: 'post',
+      url: '/qc-tasks/qc-task-1/results',
+      body: {
+        IdempotencyKey: 'qc-result-1',
+        ResultStatus: 'Failed',
+        DispositionCode: 'Quarantine',
+        InspectedQuantity: 12,
+        AcceptedQuantity: 8,
+        RejectedQuantity: 4,
+        ReasonCode: 'RC-V1-DISCREPANCY',
+        ReasonNote: 'Four units damaged',
+        EvidenceRefs: ['photo://qc/damaged-4'],
+        EvidenceJson: { rejectedQuantity: 4 },
       },
     });
   });

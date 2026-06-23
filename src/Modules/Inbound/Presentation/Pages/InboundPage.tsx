@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { AlertTriangle, Loader2, PlayCircle, RefreshCw, ScanLine } from 'lucide-react';
+import {
+  AlertTriangle,
+  ClipboardCheck,
+  Loader2,
+  PlayCircle,
+  RefreshCw,
+  ScanLine,
+} from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -12,10 +19,16 @@ import {
   useInboundPlans,
   useReceivingReadiness,
 } from '@modules/Inbound/Application/Queries/UseInboundPlans';
-import { INBOUND_DISCREPANCY_TYPES } from '@modules/Inbound/Domain/Constants/InboundConstants';
+import {
+  INBOUND_DISCREPANCY_TYPES,
+  QC_DISPOSITION_CODES,
+  QC_RESULT_STATUSES,
+} from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
   InboundDiscrepancyType,
   InboundPlan,
+  QcDispositionCode,
+  QcResultStatus,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface DraftLine {
@@ -111,6 +124,22 @@ export function InboundPage() {
   const [discrepancyIdempotencyKey, setDiscrepancyIdempotencyKey] = useState(
     () => `discrepancy-${Date.now()}`,
   );
+  const [qcForceRequired, setQcForceRequired] = useState(false);
+  const [qcTaskReasonCode, setQcTaskReasonCode] = useState('');
+  const [qcTaskReasonNote, setQcTaskReasonNote] = useState('');
+  const [qcTaskEvidenceRefs, setQcTaskEvidenceRefs] = useState('');
+  const [qcTaskIdempotencyKey, setQcTaskIdempotencyKey] = useState(() => `qc-task-${Date.now()}`);
+  const [qcResultStatus, setQcResultStatus] = useState<QcResultStatus>('Passed');
+  const [qcDispositionCode, setQcDispositionCode] = useState<QcDispositionCode>('Release');
+  const [qcInspectedQuantity, setQcInspectedQuantity] = useState('1');
+  const [qcAcceptedQuantity, setQcAcceptedQuantity] = useState('1');
+  const [qcRejectedQuantity, setQcRejectedQuantity] = useState('0');
+  const [qcResultReasonCode, setQcResultReasonCode] = useState('');
+  const [qcResultReasonNote, setQcResultReasonNote] = useState('');
+  const [qcResultEvidenceRefs, setQcResultEvidenceRefs] = useState('');
+  const [qcResultIdempotencyKey, setQcResultIdempotencyKey] = useState(
+    () => `qc-result-${Date.now()}`,
+  );
 
   const debouncedSourceSystem = useDebouncedValue(sourceSystemFilter, 250);
   const debouncedDocument = useDebouncedValue(documentFilter, 250);
@@ -124,6 +153,8 @@ export function InboundPage() {
   const resetStartReceiving = mutations.startReceivingSession.reset;
   const resetConfirmReceiptLine = mutations.confirmReceiptLine.reset;
   const resetCaptureDiscrepancy = mutations.captureDiscrepancy.reset;
+  const resetEvaluateQcTask = mutations.evaluateQcTask.reset;
+  const resetRecordQcResult = mutations.recordQcResult.reset;
 
   const plans = useMemo(() => query.data?.items ?? [], [query.data?.items]);
   const selected = useMemo(
@@ -151,6 +182,15 @@ export function InboundPage() {
     lastConfirmedLine.inboundPlanId === selected?.id &&
     lastConfirmedLine.inboundPlanLineId === selectedLine?.id
       ? lastConfirmedLine
+      : null;
+  const evaluatedQcTask =
+    mutations.evaluateQcTask.data &&
+    confirmedReceiptLine?.id === mutations.evaluateQcTask.data.receiptLineId
+      ? mutations.evaluateQcTask.data
+      : null;
+  const recordedQcResult =
+    mutations.recordQcResult.data && evaluatedQcTask?.id === mutations.recordQcResult.data.qcTaskId
+      ? mutations.recordQcResult.data
       : null;
   const selectedInitialLineId = selected?.lines[0]?.id ?? null;
   const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
@@ -189,12 +229,48 @@ export function InboundPage() {
         .filter(Boolean),
     [discrepancyEvidenceRefs],
   );
+  const qcTaskEvidenceRefList = useMemo(
+    () =>
+      qcTaskEvidenceRefs
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [qcTaskEvidenceRefs],
+  );
+  const qcResultEvidenceRefList = useMemo(
+    () =>
+      qcResultEvidenceRefs
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [qcResultEvidenceRefs],
+  );
   const canCaptureDiscrepancy = Boolean(
     receivingSession &&
     confirmedReceiptLine &&
     discrepancyReasonCode.trim() &&
     discrepancyEvidenceRefList.length > 0 &&
     discrepancyIdempotencyKey.trim(),
+  );
+  const canEvaluateQcTask = Boolean(
+    receivingSession && confirmedReceiptLine && qcTaskIdempotencyKey.trim(),
+  );
+  const qcInspectedQty = Number(qcInspectedQuantity);
+  const qcAcceptedQty = Number(qcAcceptedQuantity);
+  const qcRejectedQty = Number(qcRejectedQuantity);
+  const qcQuantityBalanced = qcAcceptedQty + qcRejectedQty === qcInspectedQty;
+  const qcNeedsReasonEvidence =
+    qcResultStatus !== 'Passed' || qcDispositionCode !== 'Release' || qcRejectedQty > 0;
+  const canRecordQcResult = Boolean(
+    evaluatedQcTask?.required &&
+    qcResultIdempotencyKey.trim() &&
+    qcInspectedQty > 0 &&
+    qcAcceptedQty >= 0 &&
+    qcRejectedQty >= 0 &&
+    qcQuantityBalanced &&
+    (qcNeedsReasonEvidence
+      ? qcResultReasonCode.trim() && qcResultEvidenceRefList.length > 0
+      : true),
   );
 
   useEffect(() => {
@@ -219,13 +295,31 @@ export function InboundPage() {
     setDiscrepancyReasonNote('');
     setDiscrepancyEvidenceRefs('');
     setDiscrepancyIdempotencyKey(`discrepancy-${selected?.id ?? 'none'}-${Date.now()}`);
+    setQcForceRequired(false);
+    setQcTaskReasonCode('');
+    setQcTaskReasonNote('');
+    setQcTaskEvidenceRefs('');
+    setQcTaskIdempotencyKey(`qc-task-${selected?.id ?? 'none'}-${Date.now()}`);
+    setQcResultStatus('Passed');
+    setQcDispositionCode('Release');
+    setQcInspectedQuantity(String(selectedInitialExpectedQuantity));
+    setQcAcceptedQuantity(String(selectedInitialExpectedQuantity));
+    setQcRejectedQuantity('0');
+    setQcResultReasonCode('');
+    setQcResultReasonNote('');
+    setQcResultEvidenceRefs('');
+    setQcResultIdempotencyKey(`qc-result-${selected?.id ?? 'none'}-${Date.now()}`);
     resetValidateReadiness();
     resetStartReceiving();
     resetConfirmReceiptLine();
     resetCaptureDiscrepancy();
+    resetEvaluateQcTask();
+    resetRecordQcResult();
   }, [
     resetCaptureDiscrepancy,
     resetConfirmReceiptLine,
+    resetEvaluateQcTask,
+    resetRecordQcResult,
     resetStartReceiving,
     resetValidateReadiness,
     selected?.id,
@@ -343,6 +437,13 @@ export function InboundPage() {
           setReceiptReasonCode('');
           setReceiptIdempotencyKey(`receipt-${selectedLine.id}-${Date.now()}`);
           setDiscrepancyType(line.discrepancySignals[0] ?? 'QuantityVariance');
+          setQcTaskIdempotencyKey(`qc-task-${line.id}-${Date.now()}`);
+          setQcInspectedQuantity(String(line.actualQuantity));
+          setQcAcceptedQuantity(String(line.actualQuantity));
+          setQcRejectedQuantity('0');
+          setQcResultIdempotencyKey(`qc-result-${line.id}-${Date.now()}`);
+          mutations.evaluateQcTask.reset();
+          mutations.recordQcResult.reset();
         },
       },
     );
@@ -368,6 +469,60 @@ export function InboundPage() {
           setDiscrepancyReasonNote('');
           setDiscrepancyEvidenceRefs('');
           setDiscrepancyIdempotencyKey(`discrepancy-${confirmedReceiptLine.id}-${Date.now()}`);
+        },
+      },
+    );
+  }
+
+  function submitEvaluateQcTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!receivingSession || !confirmedReceiptLine || !canEvaluateQcTask) return;
+    mutations.evaluateQcTask.mutate(
+      {
+        receiptId: receivingSession.receiptId,
+        input: {
+          receiptLineId: confirmedReceiptLine.id,
+          idempotencyKey: qcTaskIdempotencyKey.trim(),
+          forceRequired: qcForceRequired,
+          reasonCode: qcTaskReasonCode.trim() || null,
+          reasonNote: qcTaskReasonNote.trim() || null,
+          evidenceRefs: qcTaskEvidenceRefList,
+        },
+      },
+      {
+        onSuccess: (task) => {
+          setQcInspectedQuantity(String(task.actualQuantity));
+          setQcAcceptedQuantity(String(task.actualQuantity));
+          setQcRejectedQuantity('0');
+          setQcResultIdempotencyKey(`qc-result-${task.id}-${Date.now()}`);
+        },
+      },
+    );
+  }
+
+  function submitQcResult(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!evaluatedQcTask || !canRecordQcResult) return;
+    mutations.recordQcResult.mutate(
+      {
+        qcTaskId: evaluatedQcTask.id,
+        input: {
+          idempotencyKey: qcResultIdempotencyKey.trim(),
+          resultStatus: qcResultStatus,
+          dispositionCode: qcDispositionCode,
+          inspectedQuantity: Number(qcInspectedQuantity),
+          acceptedQuantity: Number(qcAcceptedQuantity),
+          rejectedQuantity: Number(qcRejectedQuantity),
+          reasonCode: qcResultReasonCode.trim() || null,
+          reasonNote: qcResultReasonNote.trim() || null,
+          evidenceRefs: qcResultEvidenceRefList,
+        },
+      },
+      {
+        onSuccess: () => {
+          setQcResultReasonNote('');
+          setQcResultEvidenceRefs('');
+          setQcResultIdempotencyKey(`qc-result-${evaluatedQcTask.id}-${Date.now()}`);
         },
       },
     );
@@ -790,84 +945,269 @@ export function InboundPage() {
             </form>
 
             {confirmedReceiptLine && (
-              <form className="space-y-3 rounded-md border p-3" onSubmit={submitDiscrepancy}>
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <AlertTriangle className="size-4" />
-                  Discrepancy routing
-                </div>
-                {confirmedReceiptLine.discrepancySignals.length > 0 && (
-                  <div className="text-muted-foreground text-xs">
-                    Signals: {confirmedReceiptLine.discrepancySignals.join(', ')}
+              <>
+                <form className="space-y-3 rounded-md border p-3" onSubmit={submitDiscrepancy}>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <AlertTriangle className="size-4" />
+                    Discrepancy routing
                   </div>
-                )}
-                <label className="grid gap-1 text-sm">
-                  Discrepancy type
-                  <select
-                    value={discrepancyType}
-                    onChange={(event) =>
-                      setDiscrepancyType(event.target.value as InboundDiscrepancyType)
-                    }
-                    className="rounded-md border bg-background px-3 py-2 text-sm"
+                  {confirmedReceiptLine.discrepancySignals.length > 0 && (
+                    <div className="text-muted-foreground text-xs">
+                      Signals: {confirmedReceiptLine.discrepancySignals.join(', ')}
+                    </div>
+                  )}
+                  <label className="grid gap-1 text-sm">
+                    Discrepancy type
+                    <select
+                      value={discrepancyType}
+                      onChange={(event) =>
+                        setDiscrepancyType(event.target.value as InboundDiscrepancyType)
+                      }
+                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                      {INBOUND_DISCREPANCY_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Discrepancy reason code
+                    <Input
+                      value={discrepancyReasonCode}
+                      onChange={(event) => setDiscrepancyReasonCode(event.target.value)}
+                      placeholder="RC-V1-DISCREPANCY"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Discrepancy reason note
+                    <Input
+                      value={discrepancyReasonNote}
+                      onChange={(event) => setDiscrepancyReasonNote(event.target.value)}
+                      placeholder="Quantity differs from ASN"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Discrepancy evidence refs
+                    <Input
+                      value={discrepancyEvidenceRefs}
+                      onChange={(event) => setDiscrepancyEvidenceRefs(event.target.value)}
+                      placeholder="photo://dock/over-qty-1"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Discrepancy idempotency key
+                    <Input
+                      value={discrepancyIdempotencyKey}
+                      onChange={(event) => setDiscrepancyIdempotencyKey(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!canCaptureDiscrepancy || mutations.captureDiscrepancy.isPending}
                   >
-                    {INBOUND_DISCREPANCY_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Discrepancy reason code
-                  <Input
-                    value={discrepancyReasonCode}
-                    onChange={(event) => setDiscrepancyReasonCode(event.target.value)}
-                    placeholder="RC-V1-DISCREPANCY"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Discrepancy reason note
-                  <Input
-                    value={discrepancyReasonNote}
-                    onChange={(event) => setDiscrepancyReasonNote(event.target.value)}
-                    placeholder="Quantity differs from ASN"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Discrepancy evidence refs
-                  <Input
-                    value={discrepancyEvidenceRefs}
-                    onChange={(event) => setDiscrepancyEvidenceRefs(event.target.value)}
-                    placeholder="photo://dock/over-qty-1"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Discrepancy idempotency key
-                  <Input
-                    value={discrepancyIdempotencyKey}
-                    onChange={(event) => setDiscrepancyIdempotencyKey(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!canCaptureDiscrepancy || mutations.captureDiscrepancy.isPending}
-                >
-                  <AlertTriangle className="size-4" />
-                  Route discrepancy
-                </button>
-                {mutations.captureDiscrepancy.data && (
-                  <p className="text-muted-foreground text-sm">
-                    Discrepancy {mutations.captureDiscrepancy.data.status} / Exception{' '}
-                    {mutations.captureDiscrepancy.data.exceptionCaseId}
-                    {mutations.captureDiscrepancy.data.status === 'PendingApproval'
-                      ? ' / approval required'
-                      : ''}
-                  </p>
-                )}
-                {mutations.captureDiscrepancy.error ? (
-                  <p className="text-destructive text-sm">Unable to route discrepancy.</p>
-                ) : null}
-              </form>
+                    <AlertTriangle className="size-4" />
+                    Route discrepancy
+                  </button>
+                  {mutations.captureDiscrepancy.data && (
+                    <p className="text-muted-foreground text-sm">
+                      Discrepancy {mutations.captureDiscrepancy.data.status} / Exception{' '}
+                      {mutations.captureDiscrepancy.data.exceptionCaseId}
+                      {mutations.captureDiscrepancy.data.status === 'PendingApproval'
+                        ? ' / approval required'
+                        : ''}
+                    </p>
+                  )}
+                  {mutations.captureDiscrepancy.error ? (
+                    <p className="text-destructive text-sm">Unable to route discrepancy.</p>
+                  ) : null}
+                </form>
+
+                <div className="space-y-3 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <ClipboardCheck className="size-4" />
+                    QC task and result
+                  </div>
+                  <form className="space-y-3" onSubmit={submitEvaluateQcTask}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={qcForceRequired}
+                        onChange={(event) => setQcForceRequired(event.target.checked)}
+                      />
+                      Force QC required
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      QC trigger reason code
+                      <Input
+                        value={qcTaskReasonCode}
+                        onChange={(event) => setQcTaskReasonCode(event.target.value)}
+                        placeholder="RC-V1-DISCREPANCY"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      QC trigger reason note
+                      <Input
+                        value={qcTaskReasonNote}
+                        onChange={(event) => setQcTaskReasonNote(event.target.value)}
+                        placeholder="Profile or discrepancy requires QC"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      QC trigger evidence refs
+                      <Input
+                        value={qcTaskEvidenceRefs}
+                        onChange={(event) => setQcTaskEvidenceRefs(event.target.value)}
+                        placeholder="photo://dock/qc-trigger-1"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      QC task idempotency key
+                      <Input
+                        value={qcTaskIdempotencyKey}
+                        onChange={(event) => setQcTaskIdempotencyKey(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!canEvaluateQcTask || mutations.evaluateQcTask.isPending}
+                    >
+                      <ClipboardCheck className="size-4" />
+                      Evaluate QC
+                    </button>
+                  </form>
+
+                  {evaluatedQcTask && (
+                    <div className="text-muted-foreground text-sm">
+                      QC {evaluatedQcTask.taskStatus} / {evaluatedQcTask.inventoryStatusCode} /{' '}
+                      {evaluatedQcTask.required ? evaluatedQcTask.triggerReason : 'Skipped'}
+                    </div>
+                  )}
+
+                  {evaluatedQcTask?.required && (
+                    <form className="space-y-3 border-t pt-3" onSubmit={submitQcResult}>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="grid gap-1 text-sm">
+                          QC result status
+                          <select
+                            value={qcResultStatus}
+                            onChange={(event) =>
+                              setQcResultStatus(event.target.value as QcResultStatus)
+                            }
+                            className="rounded-md border bg-background px-3 py-2 text-sm"
+                          >
+                            {QC_RESULT_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          QC disposition
+                          <select
+                            value={qcDispositionCode}
+                            onChange={(event) =>
+                              setQcDispositionCode(event.target.value as QcDispositionCode)
+                            }
+                            className="rounded-md border bg-background px-3 py-2 text-sm"
+                          >
+                            {QC_DISPOSITION_CODES.map((code) => (
+                              <option key={code} value={code}>
+                                {code}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <label className="grid gap-1 text-sm">
+                          Inspected quantity
+                          <Input
+                            type="number"
+                            min="0.0001"
+                            value={qcInspectedQuantity}
+                            onChange={(event) => setQcInspectedQuantity(event.target.value)}
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          Accepted quantity
+                          <Input
+                            type="number"
+                            min="0"
+                            value={qcAcceptedQuantity}
+                            onChange={(event) => setQcAcceptedQuantity(event.target.value)}
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          Rejected quantity
+                          <Input
+                            type="number"
+                            min="0"
+                            value={qcRejectedQuantity}
+                            onChange={(event) => setQcRejectedQuantity(event.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <label className="grid gap-1 text-sm">
+                        QC result reason code
+                        <Input
+                          value={qcResultReasonCode}
+                          onChange={(event) => setQcResultReasonCode(event.target.value)}
+                          placeholder="RC-V1-DISCREPANCY"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm">
+                        QC result reason note
+                        <Input
+                          value={qcResultReasonNote}
+                          onChange={(event) => setQcResultReasonNote(event.target.value)}
+                          placeholder="Rejected units damaged"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm">
+                        QC result evidence refs
+                        <Input
+                          value={qcResultEvidenceRefs}
+                          onChange={(event) => setQcResultEvidenceRefs(event.target.value)}
+                          placeholder="photo://qc/damaged-2"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-sm">
+                        QC result idempotency key
+                        <Input
+                          value={qcResultIdempotencyKey}
+                          onChange={(event) => setQcResultIdempotencyKey(event.target.value)}
+                        />
+                      </label>
+                      <button
+                        type="submit"
+                        className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!canRecordQcResult || mutations.recordQcResult.isPending}
+                      >
+                        <ClipboardCheck className="size-4" />
+                        Record QC result
+                      </button>
+                    </form>
+                  )}
+
+                  {recordedQcResult && (
+                    <p className="text-muted-foreground text-sm">
+                      QC result {recordedQcResult.resultStatus} / target{' '}
+                      {recordedQcResult.targetInventoryStatusCode}
+                    </p>
+                  )}
+                  {mutations.evaluateQcTask.error ? (
+                    <p className="text-destructive text-sm">Unable to evaluate QC.</p>
+                  ) : null}
+                  {mutations.recordQcResult.error ? (
+                    <p className="text-destructive text-sm">Unable to record QC result.</p>
+                  ) : null}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

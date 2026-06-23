@@ -2,6 +2,8 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
   InboundPlan,
+  QcResult,
+  QcTask,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
@@ -10,6 +12,8 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
+  EvaluateQcTaskInput,
+  RecordQcResultInput,
   RecordGateInInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
@@ -18,9 +22,13 @@ import type {
   CaptureInboundDiscrepancyRequestDto,
   ConfirmReceiptLineRequestDto,
   CreateInboundPlanRequestDto,
+  EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
+  QcResultDto,
+  QcTaskDto,
+  RecordQcResultRequestDto,
   ReceiptLineDto,
   ReceivingReadinessDto,
   ReceivingSessionDto,
@@ -184,6 +192,76 @@ export const InboundMapper = {
     };
   },
 
+  toQcTask(dto: QcTaskDto): QcTask {
+    return {
+      id: dto.Id,
+      receiptId: dto.ReceiptId,
+      receiptLineId: dto.ReceiptLineId,
+      inboundPlanId: dto.InboundPlanId,
+      inboundPlanLineId: dto.InboundPlanLineId,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      skuId: dto.SkuId,
+      skuCode: dto.SkuCode,
+      uomId: dto.UomId,
+      uomCode: dto.UomCode,
+      actualQuantity: dto.ActualQuantity,
+      taskStatus: dto.TaskStatus,
+      required: dto.Required,
+      triggerReason: dto.TriggerReason,
+      triggerPolicyJson: dto.TriggerPolicyJson,
+      inventoryStatusCode: dto.InventoryStatusCode,
+      targetInventoryStatusCode: dto.TargetInventoryStatusCode,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs ?? [],
+      idempotencyKey: dto.IdempotencyKey,
+      isDuplicate: dto.IsDuplicate,
+      createdBy: dto.CreatedBy,
+      updatedBy: dto.UpdatedBy,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  },
+
+  toQcResult(dto: QcResultDto): QcResult {
+    return {
+      id: dto.Id,
+      qcTaskId: dto.QcTaskId,
+      receiptId: dto.ReceiptId,
+      receiptLineId: dto.ReceiptLineId,
+      inboundPlanId: dto.InboundPlanId,
+      inboundPlanLineId: dto.InboundPlanLineId,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      resultStatus: dto.ResultStatus,
+      dispositionCode: dto.DispositionCode,
+      taskStatus: dto.TaskStatus,
+      inspectedQuantity: dto.InspectedQuantity,
+      acceptedQuantity: dto.AcceptedQuantity,
+      rejectedQuantity: dto.RejectedQuantity,
+      acceptedInventoryStatusCode: dto.AcceptedInventoryStatusCode,
+      rejectedInventoryStatusCode: dto.RejectedInventoryStatusCode,
+      targetInventoryStatusCode: dto.TargetInventoryStatusCode,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs ?? [],
+      evidenceJson: dto.EvidenceJson,
+      idempotencyKey: dto.IdempotencyKey,
+      recordedAt: dto.RecordedAt,
+      recordedBy: dto.RecordedBy,
+      isDuplicate: dto.IsDuplicate,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  },
+
   toCreateRequest(input: CreateInboundPlanInput): CreateInboundPlanRequestDto {
     return removeEmpty({
       SourceSystem: input.sourceSystem,
@@ -279,5 +357,31 @@ export const InboundMapper = {
       EvidenceJson: input.evidenceJson,
       IdempotencyKey: input.idempotencyKey,
     }) as CaptureInboundDiscrepancyRequestDto;
+  },
+
+  toEvaluateQcTaskRequest(input: EvaluateQcTaskInput): EvaluateQcTaskRequestDto {
+    return removeEmpty({
+      ReceiptLineId: input.receiptLineId,
+      IdempotencyKey: input.idempotencyKey,
+      ForceRequired: input.forceRequired,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+    }) as EvaluateQcTaskRequestDto;
+  },
+
+  toRecordQcResultRequest(input: RecordQcResultInput): RecordQcResultRequestDto {
+    return removeEmpty({
+      IdempotencyKey: input.idempotencyKey,
+      ResultStatus: input.resultStatus,
+      DispositionCode: input.dispositionCode,
+      InspectedQuantity: input.inspectedQuantity,
+      AcceptedQuantity: input.acceptedQuantity,
+      RejectedQuantity: input.rejectedQuantity,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      EvidenceJson: input.evidenceJson,
+    }) as RecordQcResultRequestDto;
   },
 };

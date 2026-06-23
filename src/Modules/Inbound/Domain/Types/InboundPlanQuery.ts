@@ -1,4 +1,6 @@
 import type {
+  QcDispositionCode,
+  QcResultStatus,
   InboundDiscrepancyType,
   InboundPlanDocumentStatus,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
@@ -92,4 +94,26 @@ export interface CaptureInboundDiscrepancyInput {
   evidenceRefs?: string[];
   evidenceJson?: Record<string, unknown> | null;
   idempotencyKey: string;
+}
+
+export interface EvaluateQcTaskInput {
+  receiptLineId: string;
+  idempotencyKey: string;
+  forceRequired?: boolean;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+}
+
+export interface RecordQcResultInput {
+  idempotencyKey: string;
+  resultStatus: QcResultStatus;
+  dispositionCode: QcDispositionCode;
+  inspectedQuantity: number;
+  acceptedQuantity: number;
+  rejectedQuantity: number;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  evidenceJson?: Record<string, unknown> | null;
 }

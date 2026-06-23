@@ -8,6 +8,8 @@ import {
 import type {
   InboundDiscrepancy,
   InboundPlan,
+  QcResult,
+  QcTask,
   ReceiptLine,
   ReceivingReadiness,
   ReceivingSession,
@@ -16,7 +18,9 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
+  EvaluateQcTaskInput,
   InboundPlanFilter,
+  RecordQcResultInput,
   RecordGateInInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
@@ -26,6 +30,8 @@ import type {
   InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
+  QcResultDto,
+  QcTaskDto,
   ReceiptLineDto,
   ReceivingReadinessDto,
   ReceivingSessionDto,
@@ -122,5 +128,21 @@ export class InboundRepository implements IInboundRepository {
       InboundMapper.toCaptureDiscrepancyRequest(input),
     );
     return InboundMapper.toInboundDiscrepancy(dto);
+  }
+
+  async evaluateQcTask(receiptId: string, input: EvaluateQcTaskInput): Promise<QcTask> {
+    const dto = await this.http.post<QcTaskDto>(
+      INBOUND_ENDPOINTS.RECEIPT_QC_TASKS(receiptId),
+      InboundMapper.toEvaluateQcTaskRequest(input),
+    );
+    return InboundMapper.toQcTask(dto);
+  }
+
+  async recordQcResult(qcTaskId: string, input: RecordQcResultInput): Promise<QcResult> {
+    const dto = await this.http.post<QcResultDto>(
+      INBOUND_ENDPOINTS.QC_TASK_RESULTS(qcTaskId),
+      InboundMapper.toRecordQcResultRequest(input),
+    );
+    return InboundMapper.toQcResult(dto);
   }
 }

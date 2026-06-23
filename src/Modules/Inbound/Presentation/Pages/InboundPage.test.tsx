@@ -10,6 +10,8 @@ import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces
 import type {
   InboundDiscrepancy,
   InboundPlan,
+  QcResult,
+  QcTask,
   ReceiptLine,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
@@ -17,7 +19,9 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
+  EvaluateQcTaskInput,
   InboundPlanFilter,
+  RecordQcResultInput,
   RecordGateInInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
@@ -245,6 +249,78 @@ class FakeRepository implements Partial<IInboundRepository> {
         recordedBy: 'test-admin',
         createdAt: '2026-06-22T09:12:00.000Z',
         updatedAt: '2026-06-22T09:12:00.000Z',
+      }),
+  );
+
+  evaluateQcTask = vi.fn(
+    (_receiptId: string, input: EvaluateQcTaskInput): Promise<QcTask> =>
+      Promise.resolve({
+        id: 'qc-task-1',
+        receiptId: 'receipt-1',
+        receiptLineId: input.receiptLineId,
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: 'line-1',
+        ownerId: 'owner-1',
+        ownerCode: 'OWN-A',
+        warehouseId: 'warehouse-1',
+        warehouseCode: 'WT-01',
+        skuId: 'sku-1',
+        skuCode: 'SKU-A',
+        uomId: 'uom-1',
+        uomCode: 'EA',
+        actualQuantity: 12,
+        taskStatus: input.forceRequired ? 'PendingQc' : 'NotRequired',
+        required: input.forceRequired === true,
+        triggerReason: input.forceRequired ? 'Forced' : 'NotRequired',
+        triggerPolicyJson: null,
+        inventoryStatusCode: input.forceRequired ? 'PENDING_QC' : 'READY_FOR_PUTAWAY',
+        targetInventoryStatusCode: input.forceRequired ? null : 'READY_FOR_PUTAWAY',
+        reasonCode: input.reasonCode ?? null,
+        reasonCodeId: input.reasonCode ? 'reason-1' : null,
+        reasonNote: input.reasonNote ?? null,
+        evidenceRefs: input.evidenceRefs ?? [],
+        idempotencyKey: input.idempotencyKey,
+        isDuplicate: false,
+        createdBy: 'test-admin',
+        updatedBy: 'test-admin',
+        createdAt: '2026-06-22T09:15:00.000Z',
+        updatedAt: '2026-06-22T09:15:00.000Z',
+      }),
+  );
+
+  recordQcResult = vi.fn(
+    (_qcTaskId: string, input: RecordQcResultInput): Promise<QcResult> =>
+      Promise.resolve({
+        id: 'qc-result-1',
+        qcTaskId: 'qc-task-1',
+        receiptId: 'receipt-1',
+        receiptLineId: 'receipt-line-1',
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: 'line-1',
+        ownerId: 'owner-1',
+        ownerCode: 'OWN-A',
+        warehouseId: 'warehouse-1',
+        warehouseCode: 'WT-01',
+        resultStatus: input.resultStatus,
+        dispositionCode: input.dispositionCode,
+        taskStatus: input.resultStatus === 'Passed' ? 'Closed' : 'Dispositioned',
+        inspectedQuantity: input.inspectedQuantity,
+        acceptedQuantity: input.acceptedQuantity,
+        rejectedQuantity: input.rejectedQuantity,
+        acceptedInventoryStatusCode: input.acceptedQuantity > 0 ? 'READY_FOR_PUTAWAY' : null,
+        rejectedInventoryStatusCode: input.rejectedQuantity > 0 ? 'QUARANTINE' : null,
+        targetInventoryStatusCode: input.rejectedQuantity > 0 ? 'QUARANTINE' : 'READY_FOR_PUTAWAY',
+        reasonCode: input.reasonCode ?? null,
+        reasonCodeId: input.reasonCode ? 'reason-1' : null,
+        reasonNote: input.reasonNote ?? null,
+        evidenceRefs: input.evidenceRefs ?? [],
+        evidenceJson: input.evidenceJson ?? null,
+        idempotencyKey: input.idempotencyKey,
+        recordedAt: '2026-06-22T09:20:00.000Z',
+        recordedBy: 'test-admin',
+        isDuplicate: false,
+        createdAt: '2026-06-22T09:20:00.000Z',
+        updatedAt: '2026-06-22T09:20:00.000Z',
       }),
   );
 }
@@ -493,6 +569,102 @@ describe('InboundPage', () => {
     expect(
       await screen.findByText(/Discrepancy PendingApproval \/ Exception exception-1/i),
     ).toBeTruthy();
+  });
+
+  it('evaluates QC skipped after a confirmed receipt line', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('QC task idempotency key'));
+    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+
+    await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
+    expect(fake.evaluateQcTask).toHaveBeenCalledWith('receipt-1', {
+      receiptLineId: 'receipt-line-1',
+      idempotencyKey: 'qc-task-skipped',
+      forceRequired: false,
+      reasonCode: null,
+      reasonNote: null,
+      evidenceRefs: [],
+    });
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+  });
+
+  it('records required QC result with split quarantine disposition and evidence', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
+    await actor.click(screen.getByLabelText('Force QC required'));
+    await actor.clear(screen.getByLabelText('QC task idempotency key'));
+    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-required');
+    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+    expect(await screen.findByText(/QC PendingQc \/ PENDING_QC \/ Forced/i)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('QC result status'), { target: { value: 'Failed' } });
+    fireEvent.change(screen.getByLabelText('QC disposition'), { target: { value: 'Quarantine' } });
+    fireEvent.change(screen.getByLabelText('Accepted quantity'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Rejected quantity'), { target: { value: '3' } });
+    const recordButton = screen.getByRole('button', { name: 'Record QC result' });
+    expect(recordButton).toHaveProperty('disabled', true);
+
+    fireEvent.change(screen.getByLabelText('QC result reason code'), {
+      target: { value: 'RC-V1-DISCREPANCY' },
+    });
+    fireEvent.change(screen.getByLabelText('QC result evidence refs'), {
+      target: { value: 'photo://qc/damaged-4' },
+    });
+    fireEvent.change(screen.getByLabelText('QC result idempotency key'), {
+      target: { value: 'qc-result-split' },
+    });
+    expect(recordButton).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText('Rejected quantity'), { target: { value: '4' } });
+    await waitFor(() => expect(recordButton).toHaveProperty('disabled', false));
+    fireEvent.submit(recordButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.recordQcResult).toHaveBeenCalledTimes(1));
+    expect(fake.recordQcResult).toHaveBeenCalledWith('qc-task-1', {
+      idempotencyKey: 'qc-result-split',
+      resultStatus: 'Failed',
+      dispositionCode: 'Quarantine',
+      inspectedQuantity: 12,
+      acceptedQuantity: 8,
+      rejectedQuantity: 4,
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: null,
+      evidenceRefs: ['photo://qc/damaged-4'],
+    });
+    expect(await screen.findByText(/QC result Failed \/ target QUARANTINE/i)).toBeTruthy();
   });
 
   it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {

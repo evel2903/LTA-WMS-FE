@@ -4,6 +4,8 @@ import type {
   InboundDiscrepancyDto,
   InboundPlanDto,
   PagedInboundPlanDto,
+  QcResultDto,
+  QcTaskDto,
   ReceiptLineDto,
   ReceivingSessionDto,
 } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
@@ -125,6 +127,72 @@ const inboundDiscrepancyDto: InboundDiscrepancyDto = {
   UpdatedAt: '2026-06-22T09:12:00.000Z',
 };
 
+const qcTaskDto: QcTaskDto = {
+  Id: 'qc-task-1',
+  ReceiptId: 'receipt-1',
+  ReceiptLineId: 'receipt-line-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  SkuId: 'sku-1',
+  SkuCode: 'SKU-A',
+  UomId: 'uom-1',
+  UomCode: 'EA',
+  ActualQuantity: 12,
+  TaskStatus: 'PendingQc',
+  Required: true,
+  TriggerReason: 'WarehouseProfile',
+  TriggerPolicyJson: { InboundQcRequired: true },
+  InventoryStatusCode: 'PENDING_QC',
+  TargetInventoryStatusCode: null,
+  ReasonCode: 'RC-V1-DISCREPANCY',
+  ReasonCodeId: 'reason-1',
+  ReasonNote: 'QC required by profile',
+  EvidenceRefs: ['photo://dock/qc-trigger-1'],
+  IdempotencyKey: 'qc-task-1',
+  IsDuplicate: false,
+  CreatedBy: 'user-1',
+  UpdatedBy: 'user-1',
+  CreatedAt: '2026-06-22T09:15:00.000Z',
+  UpdatedAt: '2026-06-22T09:15:00.000Z',
+};
+
+const qcResultDto: QcResultDto = {
+  Id: 'qc-result-1',
+  QcTaskId: 'qc-task-1',
+  ReceiptId: 'receipt-1',
+  ReceiptLineId: 'receipt-line-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  ResultStatus: 'Failed',
+  DispositionCode: 'Quarantine',
+  TaskStatus: 'Dispositioned',
+  InspectedQuantity: 12,
+  AcceptedQuantity: 8,
+  RejectedQuantity: 4,
+  AcceptedInventoryStatusCode: 'READY_FOR_PUTAWAY',
+  RejectedInventoryStatusCode: 'QUARANTINE',
+  TargetInventoryStatusCode: 'QUARANTINE',
+  ReasonCode: 'RC-V1-DISCREPANCY',
+  ReasonCodeId: 'reason-1',
+  ReasonNote: 'Four units damaged',
+  EvidenceRefs: ['photo://qc/damaged-4'],
+  EvidenceJson: { rejectedQuantity: 4 },
+  IdempotencyKey: 'qc-result-1',
+  RecordedAt: '2026-06-22T09:20:00.000Z',
+  RecordedBy: 'user-1',
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:20:00.000Z',
+  UpdatedAt: '2026-06-22T09:20:00.000Z',
+};
+
 describe('InboundMapper', () => {
   it('maps PascalCase inbound plan DTOs into camelCase domain objects', () => {
     expect(InboundMapper.toInboundPlan(inboundPlanDto)).toMatchObject({
@@ -244,6 +312,28 @@ describe('InboundMapper', () => {
     });
   });
 
+  it('maps QC task and result DTOs into domain objects', () => {
+    expect(InboundMapper.toQcTask(qcTaskDto)).toMatchObject({
+      id: 'qc-task-1',
+      receiptLineId: 'receipt-line-1',
+      taskStatus: 'PendingQc',
+      required: true,
+      triggerReason: 'WarehouseProfile',
+      inventoryStatusCode: 'PENDING_QC',
+    });
+    expect(InboundMapper.toQcTask(qcTaskDto).inventoryStatusCode).not.toBe('AVAILABLE');
+    expect(InboundMapper.toQcResult(qcResultDto)).toMatchObject({
+      id: 'qc-result-1',
+      qcTaskId: 'qc-task-1',
+      resultStatus: 'Failed',
+      dispositionCode: 'Quarantine',
+      taskStatus: 'Dispositioned',
+      acceptedInventoryStatusCode: 'READY_FOR_PUTAWAY',
+      rejectedInventoryStatusCode: 'QUARANTINE',
+      targetInventoryStatusCode: 'QUARANTINE',
+    });
+  });
+
   it('builds PascalCase receiving session and receipt line payloads', () => {
     expect(
       InboundMapper.toStartReceivingRequest({
@@ -297,6 +387,48 @@ describe('InboundMapper', () => {
       EvidenceRefs: ['photo://dock/over-qty-1'],
       EvidenceJson: { station: 'dock-1' },
       IdempotencyKey: 'discrepancy-1',
+    });
+    expect(
+      InboundMapper.toEvaluateQcTaskRequest({
+        receiptLineId: 'receipt-line-1',
+        idempotencyKey: 'qc-task-1',
+        forceRequired: true,
+        reasonCode: 'RC-V1-DISCREPANCY',
+        reasonNote: 'QC required by discrepancy',
+        evidenceRefs: ['photo://dock/qc-trigger-1'],
+      }),
+    ).toEqual({
+      ReceiptLineId: 'receipt-line-1',
+      IdempotencyKey: 'qc-task-1',
+      ForceRequired: true,
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      ReasonNote: 'QC required by discrepancy',
+      EvidenceRefs: ['photo://dock/qc-trigger-1'],
+    });
+    expect(
+      InboundMapper.toRecordQcResultRequest({
+        idempotencyKey: 'qc-result-1',
+        resultStatus: 'Failed',
+        dispositionCode: 'Quarantine',
+        inspectedQuantity: 12,
+        acceptedQuantity: 8,
+        rejectedQuantity: 4,
+        reasonCode: 'RC-V1-DISCREPANCY',
+        reasonNote: 'Four units damaged',
+        evidenceRefs: ['photo://qc/damaged-4'],
+        evidenceJson: { rejectedQuantity: 4 },
+      }),
+    ).toEqual({
+      IdempotencyKey: 'qc-result-1',
+      ResultStatus: 'Failed',
+      DispositionCode: 'Quarantine',
+      InspectedQuantity: 12,
+      AcceptedQuantity: 8,
+      RejectedQuantity: 4,
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      ReasonNote: 'Four units damaged',
+      EvidenceRefs: ['photo://qc/damaged-4'],
+      EvidenceJson: { rejectedQuantity: 4 },
     });
   });
 });

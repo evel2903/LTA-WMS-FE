@@ -41,3 +41,14 @@ export const INBOUND_DISCREPANCY_TOLERANCE_DECISIONS = [
   'OverTolerancePendingApproval',
   'OverToleranceHardBlocked',
 ] as const;
+
+export const QC_TASK_STATUSES = [
+  'NotRequired',
+  'PendingQc',
+  'InInspection',
+  'Dispositioned',
+  'Closed',
+] as const;
+
+export const QC_RESULT_STATUSES = ['Passed', 'ConditionalPassed', 'Failed', 'Hold'] as const;
+export const QC_DISPOSITION_CODES = ['Release', 'Hold', 'Quarantine', 'Reject', 'Damage'] as const;
