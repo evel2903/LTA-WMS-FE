@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/
 import { Button } from '@shared/Components/Ui/Button';
 import { useInventoryList } from '@modules/Inventory/Application/Queries/UseInventoryList';
 import { useInventoryFilterStore } from '@modules/Inventory/Application/Stores/InventoryFilterStore';
+import { InventoryControlPanel } from '@modules/Inventory/Presentation/Components/InventoryControlPanel';
 import { InventoryTable } from '@modules/Inventory/Presentation/Components/InventoryTable';
 import { InventoryToolbar } from '@modules/Inventory/Presentation/Components/InventoryToolbar';
 
@@ -34,45 +35,46 @@ export function InventoryPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">
-            Items {data ? `(${data.totalItems})` : ''}
-          </CardTitle>
-          <InventoryToolbar />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <InventoryTable
-            items={data?.items ?? []}
-            isLoading={isLoading}
-            onRowClick={(item) => navigate(ROUTES.INVENTORY.DETAIL(item.id))}
-          />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-base">Items {data ? `(${data.totalItems})` : ''}</CardTitle>
+            <InventoryToolbar />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <InventoryTable
+              items={data?.items ?? []}
+              isLoading={isLoading}
+              onRowClick={(item) => navigate(ROUTES.INVENTORY.DETAIL(item.id))}
+            />
 
-          {data && data.totalPages > 1 && (
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={(filter.page ?? 1) <= 1 || isFetching}
-                onClick={() => setPage((filter.page ?? 1) - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-muted-foreground text-sm">
-                Page {data.page} of {data.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={(filter.page ?? 1) >= data.totalPages || isFetching}
-                onClick={() => setPage((filter.page ?? 1) + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            {data && data.totalPages > 1 && (
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={(filter.page ?? 1) <= 1 || isFetching}
+                  onClick={() => setPage((filter.page ?? 1) - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-muted-foreground text-sm">
+                  Page {data.page} of {data.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={(filter.page ?? 1) >= data.totalPages || isFetching}
+                  onClick={() => setPage((filter.page ?? 1) + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <InventoryControlPanel />
+      </div>
     </div>
   );
 }

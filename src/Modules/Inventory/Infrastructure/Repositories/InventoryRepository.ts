@@ -3,12 +3,18 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventoryItem } from '@modules/Inventory/Domain/Entities/InventoryItem';
 import type { IInventoryRepository } from '@modules/Inventory/Application/Interfaces/IInventoryRepository';
 import type {
+  ChangeInventoryStatusInput,
+  InventoryControlResult,
+  MoveInventoryInternalInput,
+} from '@modules/Inventory/Domain/Types/InventoryControl';
+import type {
   AdjustQuantityInput,
   InventoryListFilter,
 } from '@modules/Inventory/Domain/Types/InventoryQuery';
 import { INVENTORY_ENDPOINTS } from '@modules/Inventory/Infrastructure/Api/InventoryEndpoints';
 import { InventoryMapper } from '@modules/Inventory/Infrastructure/Mappers/InventoryMapper';
 import type {
+  InventoryControlResultDto,
   InventoryItemDto,
   InventoryListResponseDto,
 } from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
@@ -47,6 +53,22 @@ export class InventoryRepository implements IInventoryRepository {
       InventoryMapper.toAdjustRequest(input),
     );
     return InventoryMapper.toEntity(dto);
+  }
+
+  async changeStatus(input: ChangeInventoryStatusInput): Promise<InventoryControlResult> {
+    const dto = await this.http.post<InventoryControlResultDto>(
+      INVENTORY_ENDPOINTS.STATUS_CHANGE,
+      InventoryMapper.toChangeStatusRequest(input),
+    );
+    return InventoryMapper.toControlResult(dto);
+  }
+
+  async moveInternal(input: MoveInventoryInternalInput): Promise<InventoryControlResult> {
+    const dto = await this.http.post<InventoryControlResultDto>(
+      INVENTORY_ENDPOINTS.INTERNAL_MOVE,
+      InventoryMapper.toMoveInternalRequest(input),
+    );
+    return InventoryMapper.toControlResult(dto);
   }
 }
 

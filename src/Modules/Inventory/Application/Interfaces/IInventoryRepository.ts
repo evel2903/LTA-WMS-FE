@@ -1,6 +1,11 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventoryItem } from '@modules/Inventory/Domain/Entities/InventoryItem';
 import type {
+  ChangeInventoryStatusInput,
+  InventoryControlResult,
+  MoveInventoryInternalInput,
+} from '@modules/Inventory/Domain/Types/InventoryControl';
+import type {
   AdjustQuantityInput,
   InventoryListFilter,
 } from '@modules/Inventory/Domain/Types/InventoryQuery';
@@ -16,4 +21,6 @@ export interface IInventoryRepository {
   list(filter: InventoryListFilter): Promise<PaginatedResponse<InventoryItem>>;
   getById(id: string): Promise<InventoryItem>;
   adjustQuantity(input: AdjustQuantityInput): Promise<InventoryItem>;
+  changeStatus(input: ChangeInventoryStatusInput): Promise<InventoryControlResult>;
+  moveInternal(input: MoveInventoryInternalInput): Promise<InventoryControlResult>;
 }
