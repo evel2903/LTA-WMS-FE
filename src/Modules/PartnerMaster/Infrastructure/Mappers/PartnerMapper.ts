@@ -65,7 +65,6 @@ export const PartnerMapper = {
     return removeEmpty({
       PartnerCode: input.partnerCode,
       PartnerName: input.partnerName,
-      PartnerType: input.partnerType,
       Status: input.status,
       SourceSystem: input.sourceSystem,
       ExternalReference: input.externalReference,

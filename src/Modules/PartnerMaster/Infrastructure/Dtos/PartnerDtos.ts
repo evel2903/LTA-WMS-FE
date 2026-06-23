@@ -35,7 +35,7 @@ export interface CreatePartnerRequestDto {
   ReferenceText?: string;
 }
 
-export type UpdatePartnerRequestDto = Partial<CreatePartnerRequestDto>;
+export type UpdatePartnerRequestDto = Partial<Omit<CreatePartnerRequestDto, 'PartnerType'>>;
 
 export interface DeactivatePartnerRequestDto {
   ReasonCode: string;

@@ -357,6 +357,8 @@ describe('CatalogMapper', () => {
       CatalogMapper.toUpdateSkuBarcodeRequest({
         barcodeType: 'QR',
         isPrimary: false,
+        ownerId: null,
+        packCode: null,
         effectiveFrom: '2026-06-21',
         effectiveTo: null,
         reasonCode: 'RELATION_EDIT',

@@ -29,7 +29,7 @@ export interface CreatePartnerInput {
   referenceText?: string | null;
 }
 
-export type UpdatePartnerInput = Partial<CreatePartnerInput>;
+export type UpdatePartnerInput = Partial<Omit<CreatePartnerInput, 'partnerType'>>;
 
 export interface DeactivatePartnerInput {
   reasonCode: string;

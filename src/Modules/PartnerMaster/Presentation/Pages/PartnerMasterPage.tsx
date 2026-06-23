@@ -200,9 +200,19 @@ export function PartnerMasterPage() {
               pending={mutations.updatePartner.isPending}
               deactivatePending={mutations.deactivatePartner.isPending}
               conflict={conflictMessage(submitError) ?? undefined}
-              onSubmit={(values) =>
+              onSubmit={(values) => {
                 mutations.updatePartner.mutate(
-                  { id: selected.id, input: values },
+                  {
+                    id: selected.id,
+                    input: {
+                      partnerCode: values.partnerCode,
+                      partnerName: values.partnerName,
+                      status: values.status,
+                      sourceSystem: values.sourceSystem,
+                      externalReference: values.externalReference,
+                      referenceText: values.referenceText,
+                    },
+                  },
                   {
                     onError: setSubmitError,
                     onSuccess: (partner) => {
@@ -210,8 +220,8 @@ export function PartnerMasterPage() {
                       setSelected(partner);
                     },
                   },
-                )
-              }
+                );
+              }}
               onDeactivate={(values) =>
                 mutations.deactivatePartner.mutate(
                   { id: selected.id, input: values },

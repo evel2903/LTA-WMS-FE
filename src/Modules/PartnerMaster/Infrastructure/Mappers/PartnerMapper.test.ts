@@ -87,6 +87,15 @@ describe('PartnerMapper', () => {
       ReferenceText: 'Keep EDI alias',
     });
 
+    expect(
+      PartnerMapper.toUpdateRequest({
+        partnerName: 'Carrier Updated',
+        partnerType: 'Carrier',
+      } as Parameters<typeof PartnerMapper.toUpdateRequest>[0] & { partnerType: 'Carrier' }),
+    ).toEqual({
+      PartnerName: 'Carrier Updated',
+    });
+
     expect(PartnerMapper.toDeactivateRequest({ reasonCode: 'RC-V1-CANCEL' })).toEqual({
       ReasonCode: 'RC-V1-CANCEL',
     });

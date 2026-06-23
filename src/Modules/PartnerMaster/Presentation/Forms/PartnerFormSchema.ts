@@ -17,7 +17,7 @@ export const partnerFormSchema = z.object({
   partnerType: partnerTypeSchema,
   status: partnerStatusSchema,
   sourceSystem: requiredText(100, 'Source system is required'),
-  externalReference: requiredText(120, 'External reference is required'),
+  externalReference: requiredText(100, 'External reference is required'),
   referenceText: optionalText(255),
 });
 

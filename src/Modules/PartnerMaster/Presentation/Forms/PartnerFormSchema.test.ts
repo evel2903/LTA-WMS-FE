@@ -50,4 +50,13 @@ describe('Partner form schemas', () => {
     expect(partnerDeactivateSchema.safeParse({ reasonCode: 'RC-V1-CANCEL' }).success).toBe(true);
     expect(partnerDeactivateSchema.safeParse({ reasonCode: '' }).success).toBe(false);
   });
+
+  it('keeps external reference aligned with backend max length 100', () => {
+    expect(
+      partnerFormSchema.safeParse({ ...validPartner, externalReference: 'X'.repeat(100) }).success,
+    ).toBe(true);
+    expect(
+      partnerFormSchema.safeParse({ ...validPartner, externalReference: 'X'.repeat(101) }).success,
+    ).toBe(false);
+  });
 });
