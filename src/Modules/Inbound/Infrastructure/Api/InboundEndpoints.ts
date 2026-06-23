@@ -5,6 +5,10 @@ export const INBOUND_ENDPOINTS = {
   RECEIVING_READINESS: (id: string) => `/inbound-plans/${id}/receiving-readiness`,
   RECEIVING_SESSIONS: (id: string) => `/inbound-plans/${id}/receiving-sessions`,
   RECEIPT_LINES: (receiptId: string) => `/receipts/${receiptId}/lines`,
+  RECEIPT_LINE_LPN: (receiptId: string, receiptLineId: string) =>
+    `/receipts/${receiptId}/lines/${receiptLineId}/lpn`,
+  RECEIPT_LINE_RELEASE_TO_PUTAWAY: (receiptId: string, receiptLineId: string) =>
+    `/receipts/${receiptId}/lines/${receiptLineId}/release-to-putaway`,
   RECEIPT_DISCREPANCIES: (receiptId: string) => `/receipts/${receiptId}/discrepancies`,
   RECEIPT_QC_TASKS: (receiptId: string) => `/receipts/${receiptId}/qc-tasks`,
   QC_TASK_RESULTS: (qcTaskId: string) => `/qc-tasks/${qcTaskId}/results`,

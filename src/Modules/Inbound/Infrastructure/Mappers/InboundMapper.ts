@@ -1,7 +1,9 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
+  InboundLpn,
   InboundPlan,
+  InboundPutawayRelease,
   QcResult,
   QcTask,
   ReceiptLine,
@@ -10,21 +12,26 @@ import type {
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
   CaptureInboundDiscrepancyInput,
+  ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   RecordGateInInput,
+  ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import type {
   CaptureInboundDiscrepancyRequestDto,
+  ConfirmInboundLpnRequestDto,
   ConfirmReceiptLineRequestDto,
   CreateInboundPlanRequestDto,
   EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
+  InboundLpnDto,
   InboundPlanDto,
+  InboundPutawayReleaseDto,
   PagedInboundPlanDto,
   QcResultDto,
   QcTaskDto,
@@ -33,6 +40,7 @@ import type {
   ReceivingReadinessDto,
   ReceivingSessionDto,
   RecordGateInRequestDto,
+  ReleaseInboundToPutawayRequestDto,
   StartReceivingSessionRequestDto,
   ValidateReceivingReadinessRequestDto,
 } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
@@ -157,6 +165,79 @@ export const InboundMapper = {
       idempotencyKey: dto.IdempotencyKey,
       receivedAt: dto.ReceivedAt,
       receivedBy: dto.ReceivedBy,
+      isDuplicate: dto.IsDuplicate,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  },
+
+  toInboundLpn(dto: InboundLpnDto): InboundLpn {
+    return {
+      id: dto.Id,
+      receiptId: dto.ReceiptId,
+      receiptLineId: dto.ReceiptLineId,
+      inboundPlanId: dto.InboundPlanId,
+      inboundPlanLineId: dto.InboundPlanLineId,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      skuId: dto.SkuId,
+      skuCode: dto.SkuCode,
+      uomId: dto.UomId,
+      uomCode: dto.UomCode,
+      quantity: dto.Quantity,
+      lpnCode: dto.LpnCode,
+      ssccCode: dto.SsccCode,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs ?? [],
+      idempotencyKey: dto.IdempotencyKey,
+      confirmedAt: dto.ConfirmedAt,
+      confirmedBy: dto.ConfirmedBy,
+      isDuplicate: dto.IsDuplicate,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  },
+
+  toInboundPutawayRelease(dto: InboundPutawayReleaseDto): InboundPutawayRelease {
+    return {
+      id: dto.Id,
+      inboundLpnId: dto.InboundLpnId,
+      receiptId: dto.ReceiptId,
+      receiptLineId: dto.ReceiptLineId,
+      inboundPlanId: dto.InboundPlanId,
+      inboundPlanLineId: dto.InboundPlanLineId,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      skuId: dto.SkuId,
+      skuCode: dto.SkuCode,
+      uomId: dto.UomId,
+      uomCode: dto.UomCode,
+      quantity: dto.Quantity,
+      lpnCode: dto.LpnCode,
+      ssccCode: dto.SsccCode,
+      inventoryStatusCode: dto.InventoryStatusCode,
+      currentLocationId: dto.CurrentLocationId,
+      currentLocationCode: dto.CurrentLocationCode,
+      warehouseProfileId: dto.WarehouseProfileId,
+      labelDecision: dto.LabelDecision,
+      labelReason: dto.LabelReason,
+      matchedPrintJobId: dto.MatchedPrintJobId,
+      constraintJson: dto.ConstraintJson,
+      outboxMessageId: dto.OutboxMessageId,
+      coreFlowMilestoneId: dto.CoreFlowMilestoneId,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs ?? [],
+      idempotencyKey: dto.IdempotencyKey,
+      releasedAt: dto.ReleasedAt,
+      releasedBy: dto.ReleasedBy,
       isDuplicate: dto.IsDuplicate,
       createdAt: dto.CreatedAt,
       updatedAt: dto.UpdatedAt,
@@ -343,6 +424,33 @@ export const InboundMapper = {
           })
         : null,
     }) as ConfirmReceiptLineRequestDto;
+  },
+
+  toConfirmInboundLpnRequest(input: ConfirmInboundLpnInput): ConfirmInboundLpnRequestDto {
+    return removeEmpty({
+      LpnCode: input.lpnCode,
+      SsccCode: input.ssccCode,
+      Quantity: input.quantity,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    }) as ConfirmInboundLpnRequestDto;
+  },
+
+  toReleaseInboundToPutawayRequest(
+    input: ReleaseInboundToPutawayInput,
+  ): ReleaseInboundToPutawayRequestDto {
+    return removeEmpty({
+      CurrentLocationId: input.currentLocationId,
+      CurrentLocationCode: input.currentLocationCode,
+      RequireLpn: input.requireLpn,
+      AttemptLabelOverride: input.attemptLabelOverride,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    }) as ReleaseInboundToPutawayRequestDto;
   },
 
   toCaptureDiscrepancyRequest(

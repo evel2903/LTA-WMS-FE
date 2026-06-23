@@ -1,7 +1,9 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
+  InboundLpn,
   InboundPlan,
+  InboundPutawayRelease,
   QcResult,
   QcTask,
   ReceiptLine,
@@ -10,12 +12,14 @@ import type {
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
   CaptureInboundDiscrepancyInput,
+  ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   EvaluateQcTaskInput,
   InboundPlanFilter,
   RecordQcResultInput,
   RecordGateInInput,
+  ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
@@ -31,6 +35,16 @@ export interface IInboundRepository {
   ): Promise<ReceivingReadiness>;
   startReceivingSession(id: string, input?: StartReceivingSessionInput): Promise<ReceivingSession>;
   confirmReceiptLine(receiptId: string, input: ConfirmReceiptLineInput): Promise<ReceiptLine>;
+  confirmInboundLpn(
+    receiptId: string,
+    receiptLineId: string,
+    input: ConfirmInboundLpnInput,
+  ): Promise<InboundLpn>;
+  releaseInboundToPutaway(
+    receiptId: string,
+    receiptLineId: string,
+    input: ReleaseInboundToPutawayInput,
+  ): Promise<InboundPutawayRelease>;
   captureDiscrepancy(
     receiptId: string,
     input: CaptureInboundDiscrepancyInput,

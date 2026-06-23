@@ -9,7 +9,9 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
 import type {
   InboundDiscrepancy,
+  InboundLpn,
   InboundPlan,
+  InboundPutawayRelease,
   QcResult,
   QcTask,
   ReceiptLine,
@@ -17,12 +19,14 @@ import type {
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
   CaptureInboundDiscrepancyInput,
+  ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   EvaluateQcTaskInput,
   InboundPlanFilter,
   RecordQcResultInput,
   RecordGateInInput,
+  ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
@@ -219,6 +223,89 @@ class FakeRepository implements Partial<IInboundRepository> {
         isDuplicate: false,
         createdAt: '2026-06-22T09:10:00.000Z',
         updatedAt: '2026-06-22T09:10:00.000Z',
+      }),
+  );
+
+  confirmInboundLpn = vi.fn(
+    (
+      _receiptId: string,
+      receiptLineId: string,
+      input: ConfirmInboundLpnInput,
+    ): Promise<InboundLpn> =>
+      Promise.resolve({
+        id: 'lpn-1',
+        receiptId: 'receipt-1',
+        receiptLineId,
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: 'line-1',
+        ownerId: 'owner-1',
+        ownerCode: 'OWN-A',
+        warehouseId: 'warehouse-1',
+        warehouseCode: 'WT-01',
+        skuId: 'sku-1',
+        skuCode: 'SKU-A',
+        uomId: 'uom-1',
+        uomCode: 'EA',
+        quantity: 12,
+        lpnCode: input.lpnCode,
+        ssccCode: input.ssccCode ?? null,
+        reasonCode: input.reasonCode ?? null,
+        reasonCodeId: input.reasonCode ? 'reason-1' : null,
+        reasonNote: input.reasonNote ?? null,
+        evidenceRefs: input.evidenceRefs ?? [],
+        idempotencyKey: input.idempotencyKey,
+        confirmedAt: '2026-06-22T09:16:00.000Z',
+        confirmedBy: 'test-admin',
+        isDuplicate: false,
+        createdAt: '2026-06-22T09:16:00.000Z',
+        updatedAt: '2026-06-22T09:16:00.000Z',
+      }),
+  );
+
+  releaseInboundToPutaway = vi.fn(
+    (
+      _receiptId: string,
+      receiptLineId: string,
+      input: ReleaseInboundToPutawayInput,
+    ): Promise<InboundPutawayRelease> =>
+      Promise.resolve({
+        id: 'release-1',
+        inboundLpnId: 'lpn-1',
+        receiptId: 'receipt-1',
+        receiptLineId,
+        inboundPlanId: 'inbound-plan-1',
+        inboundPlanLineId: 'line-1',
+        ownerId: 'owner-1',
+        ownerCode: 'OWN-A',
+        warehouseId: 'warehouse-1',
+        warehouseCode: 'WT-01',
+        skuId: 'sku-1',
+        skuCode: 'SKU-A',
+        uomId: 'uom-1',
+        uomCode: 'EA',
+        quantity: 12,
+        lpnCode: 'LPN-0001',
+        ssccCode: '003456789012345678',
+        inventoryStatusCode: 'READY_FOR_PUTAWAY',
+        currentLocationId: input.currentLocationId ?? null,
+        currentLocationCode: input.currentLocationCode ?? 'RECEIVING',
+        warehouseProfileId: 'profile-1',
+        labelDecision: 'NotRequired',
+        labelReason: 'No label blocking rule required for this action.',
+        matchedPrintJobId: null,
+        constraintJson: { ReadinessSourceType: 'QcTask' },
+        outboxMessageId: 'outbox-1',
+        coreFlowMilestoneId: 'milestone-1',
+        reasonCode: input.reasonCode ?? null,
+        reasonCodeId: input.reasonCode ? 'reason-1' : null,
+        reasonNote: input.reasonNote ?? null,
+        evidenceRefs: input.evidenceRefs ?? [],
+        idempotencyKey: input.idempotencyKey,
+        releasedAt: '2026-06-22T09:25:00.000Z',
+        releasedBy: 'test-admin',
+        isDuplicate: false,
+        createdAt: '2026-06-22T09:25:00.000Z',
+        updatedAt: '2026-06-22T09:25:00.000Z',
       }),
   );
 
@@ -604,6 +691,107 @@ describe('InboundPage', () => {
       evidenceRefs: [],
     });
     expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+  });
+
+  it('confirms LPN/SSCC and releases READY_FOR_PUTAWAY line to putaway', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('QC task idempotency key'));
+    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+
+    const releaseButton = screen.getByRole('button', { name: 'Release to putaway' });
+    expect(releaseButton).toHaveProperty('disabled', true);
+    await actor.type(screen.getByLabelText('LPN code'), 'LPN-0001');
+    await actor.type(screen.getByLabelText('SSCC code'), '003456789012345678');
+    await actor.clear(screen.getByLabelText('LPN idempotency key'));
+    await actor.type(screen.getByLabelText('LPN idempotency key'), 'lpn-1');
+    await actor.click(screen.getByRole('button', { name: 'Confirm LPN/SSCC' }));
+
+    expect(await screen.findByText(/LPN LPN-0001 \/ 003456789012345678/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Current location code'));
+    await actor.type(screen.getByLabelText('Current location code'), 'RCV-01');
+    await actor.clear(screen.getByLabelText('Release idempotency key'));
+    await actor.type(screen.getByLabelText('Release idempotency key'), 'release-1');
+    await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));
+    fireEvent.submit(releaseButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmInboundLpn).toHaveBeenCalledTimes(1));
+    expect(fake.confirmInboundLpn).toHaveBeenCalledWith('receipt-1', 'receipt-line-1', {
+      lpnCode: 'LPN-0001',
+      ssccCode: '003456789012345678',
+      idempotencyKey: 'lpn-1',
+    });
+    await waitFor(() => expect(fake.releaseInboundToPutaway).toHaveBeenCalledTimes(1));
+    expect(fake.releaseInboundToPutaway).toHaveBeenCalledWith('receipt-1', 'receipt-line-1', {
+      currentLocationCode: 'RCV-01',
+      requireLpn: true,
+      attemptLabelOverride: false,
+      reasonCode: null,
+      evidenceRefs: [],
+      idempotencyKey: 'release-1',
+    });
+    expect(await screen.findByText(/Released 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i)).toBeTruthy();
+  });
+
+  it('shows backend release block reason inline', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    fake.releaseInboundToPutaway.mockRejectedValueOnce(
+      new ApiError({
+        status: 400,
+        code: 'BUSINESS_RULE',
+        message: 'Inventory status PENDING_QC cannot be released to putaway',
+      }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByRole('button', { name: 'ASN-10001' });
+    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Idempotency key'));
+    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Confirm receipt line' })
+        .closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('QC task idempotency key'));
+    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+
+    await actor.click(screen.getByLabelText('Require LPN'));
+    await actor.clear(screen.getByLabelText('Release idempotency key'));
+    await actor.type(screen.getByLabelText('Release idempotency key'), 'release-blocked');
+    const releaseButton = screen.getByRole('button', { name: 'Release to putaway' });
+    await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));
+    fireEvent.submit(releaseButton.closest('form') as HTMLFormElement);
+
+    expect(
+      await screen.findByText(/Inventory status PENDING_QC cannot be released to putaway/i),
+    ).toBeTruthy();
   });
 
   it('records required QC result with split quarantine disposition and evidence', async () => {

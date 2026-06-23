@@ -7,7 +7,9 @@ import {
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
   InboundDiscrepancy,
+  InboundLpn,
   InboundPlan,
+  InboundPutawayRelease,
   QcResult,
   QcTask,
   ReceiptLine,
@@ -16,19 +18,23 @@ import type {
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
   CaptureInboundDiscrepancyInput,
+  ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   EvaluateQcTaskInput,
   InboundPlanFilter,
   RecordQcResultInput,
   RecordGateInInput,
+  ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEndpoints';
 import type {
   InboundDiscrepancyDto,
+  InboundLpnDto,
   InboundPlanDto,
+  InboundPutawayReleaseDto,
   PagedInboundPlanDto,
   QcResultDto,
   QcTaskDto,
@@ -117,6 +123,30 @@ export class InboundRepository implements IInboundRepository {
       InboundMapper.toConfirmReceiptLineRequest(input),
     );
     return InboundMapper.toReceiptLine(dto);
+  }
+
+  async confirmInboundLpn(
+    receiptId: string,
+    receiptLineId: string,
+    input: ConfirmInboundLpnInput,
+  ): Promise<InboundLpn> {
+    const dto = await this.http.post<InboundLpnDto>(
+      INBOUND_ENDPOINTS.RECEIPT_LINE_LPN(receiptId, receiptLineId),
+      InboundMapper.toConfirmInboundLpnRequest(input),
+    );
+    return InboundMapper.toInboundLpn(dto);
+  }
+
+  async releaseInboundToPutaway(
+    receiptId: string,
+    receiptLineId: string,
+    input: ReleaseInboundToPutawayInput,
+  ): Promise<InboundPutawayRelease> {
+    const dto = await this.http.post<InboundPutawayReleaseDto>(
+      INBOUND_ENDPOINTS.RECEIPT_LINE_RELEASE_TO_PUTAWAY(receiptId, receiptLineId),
+      InboundMapper.toReleaseInboundToPutawayRequest(input),
+    );
+    return InboundMapper.toInboundPutawayRelease(dto);
   }
 
   async captureDiscrepancy(

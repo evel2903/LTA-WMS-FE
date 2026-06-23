@@ -86,6 +86,27 @@ export interface ConfirmReceiptLineInput {
   scanEvidence?: ReceiptLineScanEvidenceInput | null;
 }
 
+export interface ConfirmInboundLpnInput {
+  lpnCode: string;
+  ssccCode?: string | null;
+  quantity?: number | null;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface ReleaseInboundToPutawayInput {
+  currentLocationId?: string | null;
+  currentLocationCode?: string | null;
+  requireLpn?: boolean;
+  attemptLabelOverride?: boolean;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
 export interface CaptureInboundDiscrepancyInput {
   receiptLineId: string;
   discrepancyType: InboundDiscrepancyType;

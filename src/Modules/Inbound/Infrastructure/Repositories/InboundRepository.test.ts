@@ -67,6 +67,15 @@ describe('InboundRepository', () => {
       idempotencyKey: 'receipt-line-1',
       scanEvidence: { rawValue: 'barcode-1', scanResult: 'Accepted' },
     });
+    await repository.confirmInboundLpn('receipt-1', 'receipt-line-1', {
+      lpnCode: 'LPN-0001',
+      ssccCode: '003456789012345678',
+      idempotencyKey: 'lpn-1',
+    });
+    await repository.releaseInboundToPutaway('receipt-1', 'receipt-line-1', {
+      currentLocationCode: 'RCV-01',
+      idempotencyKey: 'release-1',
+    });
     await repository.captureDiscrepancy('receipt-1', {
       receiptLineId: 'receipt-line-1',
       discrepancyType: 'QuantityVariance',
@@ -96,6 +105,8 @@ describe('InboundRepository', () => {
       ['post', '/inbound-plans/inbound-plan-1/receiving-readiness'],
       ['post', '/inbound-plans/inbound-plan-1/receiving-sessions'],
       ['post', '/receipts/receipt-1/lines'],
+      ['post', '/receipts/receipt-1/lines/receipt-line-1/lpn'],
+      ['post', '/receipts/receipt-1/lines/receipt-line-1/release-to-putaway'],
       ['post', '/receipts/receipt-1/discrepancies'],
       ['post', '/receipts/receipt-1/qc-tasks'],
       ['post', '/qc-tasks/qc-task-1/results'],
@@ -180,6 +191,19 @@ describe('InboundRepository', () => {
         resolvedUomId: 'uom-1',
       },
     });
+    await repository.confirmInboundLpn('receipt-1', 'receipt-line-1', {
+      lpnCode: 'LPN-0001',
+      ssccCode: '003456789012345678',
+      idempotencyKey: 'lpn-1',
+    });
+    await repository.releaseInboundToPutaway('receipt-1', 'receipt-line-1', {
+      currentLocationCode: 'RCV-01',
+      requireLpn: true,
+      attemptLabelOverride: true,
+      reasonCode: 'RC-V1-LABEL-OVERRIDE',
+      evidenceRefs: ['photo://label/override-1'],
+      idempotencyKey: 'release-1',
+    });
     await repository.captureDiscrepancy('receipt-1', {
       receiptLineId: 'receipt-line-1',
       discrepancyType: 'QuantityVariance',
@@ -263,6 +287,27 @@ describe('InboundRepository', () => {
     });
     expect(http.calls[5]).toMatchObject({
       method: 'post',
+      url: '/receipts/receipt-1/lines/receipt-line-1/lpn',
+      body: {
+        LpnCode: 'LPN-0001',
+        SsccCode: '003456789012345678',
+        IdempotencyKey: 'lpn-1',
+      },
+    });
+    expect(http.calls[6]).toMatchObject({
+      method: 'post',
+      url: '/receipts/receipt-1/lines/receipt-line-1/release-to-putaway',
+      body: {
+        CurrentLocationCode: 'RCV-01',
+        RequireLpn: true,
+        AttemptLabelOverride: true,
+        ReasonCode: 'RC-V1-LABEL-OVERRIDE',
+        EvidenceRefs: ['photo://label/override-1'],
+        IdempotencyKey: 'release-1',
+      },
+    });
+    expect(http.calls[7]).toMatchObject({
+      method: 'post',
       url: '/receipts/receipt-1/discrepancies',
       body: {
         ReceiptLineId: 'receipt-line-1',
@@ -274,7 +319,7 @@ describe('InboundRepository', () => {
         IdempotencyKey: 'discrepancy-1',
       },
     });
-    expect(http.calls[6]).toMatchObject({
+    expect(http.calls[8]).toMatchObject({
       method: 'post',
       url: '/receipts/receipt-1/qc-tasks',
       body: {
@@ -286,7 +331,7 @@ describe('InboundRepository', () => {
         EvidenceRefs: ['photo://dock/qc-trigger-1'],
       },
     });
-    expect(http.calls[7]).toMatchObject({
+    expect(http.calls[9]).toMatchObject({
       method: 'post',
       url: '/qc-tasks/qc-task-1/results',
       body: {

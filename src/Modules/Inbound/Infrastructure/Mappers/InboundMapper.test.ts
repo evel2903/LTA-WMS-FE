@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   InboundDiscrepancyDto,
+  InboundLpnDto,
   InboundPlanDto,
+  InboundPutawayReleaseDto,
   PagedInboundPlanDto,
   QcResultDto,
   QcTaskDto,
@@ -98,6 +100,75 @@ const receiptLineDto: ReceiptLineDto = {
   IsDuplicate: false,
   CreatedAt: '2026-06-22T09:10:00.000Z',
   UpdatedAt: '2026-06-22T09:10:00.000Z',
+};
+
+const inboundLpnDto: InboundLpnDto = {
+  Id: 'lpn-1',
+  ReceiptId: 'receipt-1',
+  ReceiptLineId: 'receipt-line-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  SkuId: 'sku-1',
+  SkuCode: 'SKU-A',
+  UomId: 'uom-1',
+  UomCode: 'EA',
+  Quantity: 12,
+  LpnCode: 'LPN-0001',
+  SsccCode: '003456789012345678',
+  ReasonCode: null,
+  ReasonCodeId: null,
+  ReasonNote: null,
+  EvidenceRefs: [],
+  IdempotencyKey: 'lpn-1',
+  ConfirmedAt: '2026-06-22T09:16:00.000Z',
+  ConfirmedBy: 'user-1',
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:16:00.000Z',
+  UpdatedAt: '2026-06-22T09:16:00.000Z',
+};
+
+const inboundPutawayReleaseDto: InboundPutawayReleaseDto = {
+  Id: 'release-1',
+  InboundLpnId: 'lpn-1',
+  ReceiptId: 'receipt-1',
+  ReceiptLineId: 'receipt-line-1',
+  InboundPlanId: 'inbound-plan-1',
+  InboundPlanLineId: 'line-1',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  SkuId: 'sku-1',
+  SkuCode: 'SKU-A',
+  UomId: 'uom-1',
+  UomCode: 'EA',
+  Quantity: 12,
+  LpnCode: 'LPN-0001',
+  SsccCode: '003456789012345678',
+  InventoryStatusCode: 'READY_FOR_PUTAWAY',
+  CurrentLocationId: null,
+  CurrentLocationCode: 'RCV-01',
+  WarehouseProfileId: 'profile-1',
+  LabelDecision: 'NotRequired',
+  LabelReason: 'No label blocking rule required for this action.',
+  MatchedPrintJobId: null,
+  ConstraintJson: { ReadinessSourceType: 'QcTask' },
+  OutboxMessageId: 'outbox-1',
+  CoreFlowMilestoneId: 'milestone-1',
+  ReasonCode: null,
+  ReasonCodeId: null,
+  ReasonNote: null,
+  EvidenceRefs: [],
+  IdempotencyKey: 'release-1',
+  ReleasedAt: '2026-06-22T09:25:00.000Z',
+  ReleasedBy: 'user-1',
+  IsDuplicate: false,
+  CreatedAt: '2026-06-22T09:25:00.000Z',
+  UpdatedAt: '2026-06-22T09:25:00.000Z',
 };
 
 const inboundDiscrepancyDto: InboundDiscrepancyDto = {
@@ -312,6 +383,26 @@ describe('InboundMapper', () => {
     });
   });
 
+  it('maps inbound LPN and putaway release DTOs into domain objects', () => {
+    expect(InboundMapper.toInboundLpn(inboundLpnDto)).toMatchObject({
+      id: 'lpn-1',
+      receiptLineId: 'receipt-line-1',
+      lpnCode: 'LPN-0001',
+      ssccCode: '003456789012345678',
+      quantity: 12,
+      isDuplicate: false,
+    });
+    expect(InboundMapper.toInboundPutawayRelease(inboundPutawayReleaseDto)).toMatchObject({
+      id: 'release-1',
+      inboundLpnId: 'lpn-1',
+      receiptLineId: 'receipt-line-1',
+      lpnCode: 'LPN-0001',
+      inventoryStatusCode: 'READY_FOR_PUTAWAY',
+      currentLocationCode: 'RCV-01',
+      labelDecision: 'NotRequired',
+    });
+  });
+
   it('maps QC task and result DTOs into domain objects', () => {
     expect(InboundMapper.toQcTask(qcTaskDto)).toMatchObject({
       id: 'qc-task-1',
@@ -387,6 +478,34 @@ describe('InboundMapper', () => {
       EvidenceRefs: ['photo://dock/over-qty-1'],
       EvidenceJson: { station: 'dock-1' },
       IdempotencyKey: 'discrepancy-1',
+    });
+    expect(
+      InboundMapper.toConfirmInboundLpnRequest({
+        lpnCode: 'LPN-0001',
+        ssccCode: '003456789012345678',
+        idempotencyKey: 'lpn-1',
+      }),
+    ).toEqual({
+      LpnCode: 'LPN-0001',
+      SsccCode: '003456789012345678',
+      IdempotencyKey: 'lpn-1',
+    });
+    expect(
+      InboundMapper.toReleaseInboundToPutawayRequest({
+        currentLocationCode: 'RCV-01',
+        requireLpn: true,
+        attemptLabelOverride: true,
+        reasonCode: 'RC-V1-LABEL-OVERRIDE',
+        evidenceRefs: ['photo://label/override-1'],
+        idempotencyKey: 'release-1',
+      }),
+    ).toEqual({
+      CurrentLocationCode: 'RCV-01',
+      RequireLpn: true,
+      AttemptLabelOverride: true,
+      ReasonCode: 'RC-V1-LABEL-OVERRIDE',
+      EvidenceRefs: ['photo://label/override-1'],
+      IdempotencyKey: 'release-1',
     });
     expect(
       InboundMapper.toEvaluateQcTaskRequest({

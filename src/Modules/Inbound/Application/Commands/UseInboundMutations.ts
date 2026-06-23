@@ -5,11 +5,13 @@ import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands
 import { inboundQueryKeys } from '@modules/Inbound/Application/Queries/InboundQueryKeys';
 import type {
   CaptureInboundDiscrepancyInput,
+  ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
   CreateInboundPlanInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   RecordGateInInput,
+  ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
@@ -46,6 +48,32 @@ export function useInboundMutations() {
     confirmReceiptLine: useMutation({
       mutationFn: ({ receiptId, input }: { receiptId: string; input: ConfirmReceiptLineInput }) =>
         inboundRepository.confirmReceiptLine(receiptId, input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    confirmInboundLpn: useMutation({
+      mutationFn: ({
+        receiptId,
+        receiptLineId,
+        input,
+      }: {
+        receiptId: string;
+        receiptLineId: string;
+        input: ConfirmInboundLpnInput;
+      }) => inboundRepository.confirmInboundLpn(receiptId, receiptLineId, input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    releaseInboundToPutaway: useMutation({
+      mutationFn: ({
+        receiptId,
+        receiptLineId,
+        input,
+      }: {
+        receiptId: string;
+        receiptLineId: string;
+        input: ReleaseInboundToPutawayInput;
+      }) => inboundRepository.releaseInboundToPutaway(receiptId, receiptLineId, input),
       onSuccess: invalidateInbound,
       onError: notifyError,
     }),
