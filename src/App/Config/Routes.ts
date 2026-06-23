@@ -38,6 +38,7 @@ export const ROUTES = {
   },
   WAREHOUSE: { ROOT: '/warehouse' },
   INBOUND: { ROOT: '/inbound' },
+  PUTAWAY: { ROOT: '/putaway' },
   OUTBOUND: { ROOT: '/outbound' },
   PICKING: { ROOT: '/picking' },
   PACKING: { ROOT: '/packing' },

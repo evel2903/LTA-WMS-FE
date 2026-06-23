@@ -21,6 +21,7 @@ export const QUERY_NAMESPACES = {
   WAREHOUSE_PROFILE: 'warehouseProfile',
   WAREHOUSE: 'warehouse',
   INBOUND: 'inbound',
+  PUTAWAY: 'putaway',
   OUTBOUND: 'outbound',
   PICKING: 'picking',
   PACKING: 'packing',

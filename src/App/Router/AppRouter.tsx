@@ -26,6 +26,7 @@ import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/
 import { taskExecutionRoutes } from '@modules/TaskExecution/Presentation/Routes/TaskExecutionRoutes';
 import { barcodeLabelRoutes } from '@modules/BarcodeLabel/Presentation/Routes/BarcodeLabelRoutes';
 import { inboundRoutes } from '@modules/Inbound/Presentation/Routes/InboundRoutes';
+import { putawayRoutes } from '@modules/Putaway/Presentation/Routes/PutawayRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -67,6 +68,7 @@ const router = createBrowserRouter([
           ...taskExecutionRoutes,
           ...barcodeLabelRoutes,
           ...inboundRoutes,
+          ...putawayRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,

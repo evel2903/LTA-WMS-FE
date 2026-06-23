@@ -97,6 +97,7 @@ const NAV_ENTRIES: NavEntry[] = [
     children: [
       { label: 'Warehouse', to: ROUTES.WAREHOUSE.ROOT, icon: Warehouse },
       { label: 'Inbound', to: ROUTES.INBOUND.ROOT, icon: PackageOpen },
+      { label: 'Putaway', to: ROUTES.PUTAWAY.ROOT, icon: PackageCheck },
       { label: 'Outbound', to: ROUTES.OUTBOUND.ROOT, icon: ShoppingCart },
       { label: 'Picking', to: ROUTES.PICKING.ROOT, icon: PackageCheck },
       { label: 'Packing', to: ROUTES.PACKING.ROOT, icon: PackageCheck },
