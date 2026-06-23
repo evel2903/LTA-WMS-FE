@@ -151,6 +151,75 @@ export interface ReceiptLine {
   updatedAt: string;
 }
 
+export interface InboundLpn {
+  id: string;
+  receiptId: string;
+  receiptLineId: string;
+  inboundPlanId: string;
+  inboundPlanLineId: string;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  skuId: string;
+  skuCode: string | null;
+  uomId: string;
+  uomCode: string | null;
+  quantity: number;
+  lpnCode: string;
+  ssccCode: string | null;
+  reasonCode: string | null;
+  reasonCodeId: string | null;
+  reasonNote: string | null;
+  evidenceRefs: string[];
+  idempotencyKey: string;
+  confirmedAt: string;
+  confirmedBy: string | null;
+  isDuplicate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InboundPutawayRelease {
+  id: string;
+  inboundLpnId: string | null;
+  receiptId: string;
+  receiptLineId: string;
+  inboundPlanId: string;
+  inboundPlanLineId: string;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  skuId: string;
+  skuCode: string | null;
+  uomId: string;
+  uomCode: string | null;
+  quantity: number;
+  lpnCode: string | null;
+  ssccCode: string | null;
+  inventoryStatusCode: string;
+  currentLocationId: string | null;
+  currentLocationCode: string | null;
+  warehouseProfileId: string | null;
+  labelDecision: string | null;
+  labelReason: string | null;
+  matchedPrintJobId: string | null;
+  constraintJson: Record<string, unknown> | null;
+  outboxMessageId: string | null;
+  coreFlowMilestoneId: string | null;
+  reasonCode: string | null;
+  reasonCodeId: string | null;
+  reasonNote: string | null;
+  evidenceRefs: string[];
+  idempotencyKey: string;
+  releasedAt: string;
+  releasedBy: string | null;
+  isDuplicate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InboundDiscrepancy {
   id: string;
   receiptId: string;

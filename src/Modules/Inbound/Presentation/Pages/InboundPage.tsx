@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ClipboardCheck,
   Loader2,
+  PackageCheck,
   PlayCircle,
   RefreshCw,
   ScanLine,
@@ -140,6 +141,17 @@ export function InboundPage() {
   const [qcResultIdempotencyKey, setQcResultIdempotencyKey] = useState(
     () => `qc-result-${Date.now()}`,
   );
+  const [lpnCode, setLpnCode] = useState('');
+  const [ssccCode, setSsccCode] = useState('');
+  const [lpnIdempotencyKey, setLpnIdempotencyKey] = useState(() => `lpn-${Date.now()}`);
+  const [releaseCurrentLocationCode, setReleaseCurrentLocationCode] = useState('RECEIVING');
+  const [releaseRequireLpn, setReleaseRequireLpn] = useState(true);
+  const [releaseAttemptLabelOverride, setReleaseAttemptLabelOverride] = useState(false);
+  const [releaseReasonCode, setReleaseReasonCode] = useState('');
+  const [releaseEvidenceRefs, setReleaseEvidenceRefs] = useState('');
+  const [releaseIdempotencyKey, setReleaseIdempotencyKey] = useState(
+    () => `release-${Date.now()}`,
+  );
 
   const debouncedSourceSystem = useDebouncedValue(sourceSystemFilter, 250);
   const debouncedDocument = useDebouncedValue(documentFilter, 250);
@@ -152,6 +164,8 @@ export function InboundPage() {
   const resetValidateReadiness = mutations.validateReadiness.reset;
   const resetStartReceiving = mutations.startReceivingSession.reset;
   const resetConfirmReceiptLine = mutations.confirmReceiptLine.reset;
+  const resetConfirmInboundLpn = mutations.confirmInboundLpn.reset;
+  const resetReleaseInboundToPutaway = mutations.releaseInboundToPutaway.reset;
   const resetCaptureDiscrepancy = mutations.captureDiscrepancy.reset;
   const resetEvaluateQcTask = mutations.evaluateQcTask.reset;
   const resetRecordQcResult = mutations.recordQcResult.reset;
@@ -191,6 +205,16 @@ export function InboundPage() {
   const recordedQcResult =
     mutations.recordQcResult.data && evaluatedQcTask?.id === mutations.recordQcResult.data.qcTaskId
       ? mutations.recordQcResult.data
+      : null;
+  const confirmedInboundLpn =
+    mutations.confirmInboundLpn.data &&
+    mutations.confirmInboundLpn.data.receiptLineId === confirmedReceiptLine?.id
+      ? mutations.confirmInboundLpn.data
+      : null;
+  const putawayRelease =
+    mutations.releaseInboundToPutaway.data &&
+    mutations.releaseInboundToPutaway.data.receiptLineId === confirmedReceiptLine?.id
+      ? mutations.releaseInboundToPutaway.data
       : null;
   const selectedInitialLineId = selected?.lines[0]?.id ?? null;
   const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
@@ -245,6 +269,14 @@ export function InboundPage() {
         .filter(Boolean),
     [qcResultEvidenceRefs],
   );
+  const releaseEvidenceRefList = useMemo(
+    () =>
+      releaseEvidenceRefs
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    [releaseEvidenceRefs],
+  );
   const canCaptureDiscrepancy = Boolean(
     receivingSession &&
     confirmedReceiptLine &&
@@ -271,6 +303,19 @@ export function InboundPage() {
     (qcNeedsReasonEvidence
       ? qcResultReasonCode.trim() && qcResultEvidenceRefList.length > 0
       : true),
+  );
+  const putawayReady =
+    evaluatedQcTask?.targetInventoryStatusCode === 'READY_FOR_PUTAWAY' ||
+    recordedQcResult?.targetInventoryStatusCode === 'READY_FOR_PUTAWAY';
+  const canConfirmInboundLpn = Boolean(
+    receivingSession && confirmedReceiptLine && lpnCode.trim() && lpnIdempotencyKey.trim(),
+  );
+  const canReleaseInboundToPutaway = Boolean(
+    receivingSession &&
+      confirmedReceiptLine &&
+      putawayReady &&
+      releaseIdempotencyKey.trim() &&
+      (releaseRequireLpn ? confirmedInboundLpn : true),
   );
 
   useEffect(() => {
@@ -309,16 +354,29 @@ export function InboundPage() {
     setQcResultReasonNote('');
     setQcResultEvidenceRefs('');
     setQcResultIdempotencyKey(`qc-result-${selected?.id ?? 'none'}-${Date.now()}`);
+    setLpnCode('');
+    setSsccCode('');
+    setLpnIdempotencyKey(`lpn-${selected?.id ?? 'none'}-${Date.now()}`);
+    setReleaseCurrentLocationCode('RECEIVING');
+    setReleaseRequireLpn(true);
+    setReleaseAttemptLabelOverride(false);
+    setReleaseReasonCode('');
+    setReleaseEvidenceRefs('');
+    setReleaseIdempotencyKey(`release-${selected?.id ?? 'none'}-${Date.now()}`);
     resetValidateReadiness();
     resetStartReceiving();
     resetConfirmReceiptLine();
+    resetConfirmInboundLpn();
+    resetReleaseInboundToPutaway();
     resetCaptureDiscrepancy();
     resetEvaluateQcTask();
     resetRecordQcResult();
   }, [
     resetCaptureDiscrepancy,
     resetConfirmReceiptLine,
+    resetConfirmInboundLpn,
     resetEvaluateQcTask,
+    resetReleaseInboundToPutaway,
     resetRecordQcResult,
     resetStartReceiving,
     resetValidateReadiness,
@@ -442,8 +500,40 @@ export function InboundPage() {
           setQcAcceptedQuantity(String(line.actualQuantity));
           setQcRejectedQuantity('0');
           setQcResultIdempotencyKey(`qc-result-${line.id}-${Date.now()}`);
+          setLpnCode('');
+          setSsccCode('');
+          setLpnIdempotencyKey(`lpn-${line.id}-${Date.now()}`);
+          setReleaseCurrentLocationCode('RECEIVING');
+          setReleaseReasonCode('');
+          setReleaseEvidenceRefs('');
+          setReleaseIdempotencyKey(`release-${line.id}-${Date.now()}`);
           mutations.evaluateQcTask.reset();
           mutations.recordQcResult.reset();
+          mutations.confirmInboundLpn.reset();
+          mutations.releaseInboundToPutaway.reset();
+        },
+      },
+    );
+  }
+
+  function submitInboundLpn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!receivingSession || !confirmedReceiptLine || !canConfirmInboundLpn) return;
+    mutations.confirmInboundLpn.mutate(
+      {
+        receiptId: receivingSession.receiptId,
+        receiptLineId: confirmedReceiptLine.id,
+        input: {
+          lpnCode: lpnCode.trim(),
+          ssccCode: ssccCode.trim() || null,
+          idempotencyKey: lpnIdempotencyKey.trim(),
+        },
+      },
+      {
+        onSuccess: (lpn) => {
+          setLpnCode(lpn.lpnCode);
+          setSsccCode(lpn.ssccCode ?? '');
+          setLpnIdempotencyKey(`lpn-${lpn.receiptLineId}-${Date.now()}`);
         },
       },
     );
@@ -523,6 +613,32 @@ export function InboundPage() {
           setQcResultReasonNote('');
           setQcResultEvidenceRefs('');
           setQcResultIdempotencyKey(`qc-result-${evaluatedQcTask.id}-${Date.now()}`);
+        },
+      },
+    );
+  }
+
+  function submitReleaseInboundToPutaway(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!receivingSession || !confirmedReceiptLine || !canReleaseInboundToPutaway) return;
+    mutations.releaseInboundToPutaway.mutate(
+      {
+        receiptId: receivingSession.receiptId,
+        receiptLineId: confirmedReceiptLine.id,
+        input: {
+          currentLocationCode: releaseCurrentLocationCode.trim() || null,
+          requireLpn: releaseRequireLpn,
+          attemptLabelOverride: releaseAttemptLabelOverride,
+          reasonCode: releaseReasonCode.trim() || null,
+          evidenceRefs: releaseEvidenceRefList,
+          idempotencyKey: releaseIdempotencyKey.trim(),
+        },
+      },
+      {
+        onSuccess: (release) => {
+          setReleaseIdempotencyKey(`release-${release.receiptLineId}-${Date.now()}`);
+          setReleaseReasonCode('');
+          setReleaseEvidenceRefs('');
         },
       },
     );
@@ -1205,6 +1321,126 @@ export function InboundPage() {
                   ) : null}
                   {mutations.recordQcResult.error ? (
                     <p className="text-destructive text-sm">Unable to record QC result.</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-3 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <PackageCheck className="size-4" />
+                    LPN/SSCC and putaway release
+                  </div>
+                  <form className="space-y-3" onSubmit={submitInboundLpn}>
+                    <label className="grid gap-1 text-sm">
+                      LPN code
+                      <Input value={lpnCode} onChange={(event) => setLpnCode(event.target.value)} />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      SSCC code
+                      <Input value={ssccCode} onChange={(event) => setSsccCode(event.target.value)} />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      LPN idempotency key
+                      <Input
+                        value={lpnIdempotencyKey}
+                        onChange={(event) => setLpnIdempotencyKey(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!canConfirmInboundLpn || mutations.confirmInboundLpn.isPending}
+                    >
+                      <PackageCheck className="size-4" />
+                      Confirm LPN/SSCC
+                    </button>
+                  </form>
+
+                  {confirmedInboundLpn && (
+                    <p className="text-muted-foreground text-sm">
+                      LPN {confirmedInboundLpn.lpnCode}
+                      {confirmedInboundLpn.ssccCode ? ` / ${confirmedInboundLpn.ssccCode}` : ''}
+                      {confirmedInboundLpn.isDuplicate ? ' duplicate reused' : ''}
+                    </p>
+                  )}
+
+                  <form className="space-y-3 border-t pt-3" onSubmit={submitReleaseInboundToPutaway}>
+                    <label className="grid gap-1 text-sm">
+                      Current location code
+                      <Input
+                        value={releaseCurrentLocationCode}
+                        onChange={(event) => setReleaseCurrentLocationCode(event.target.value)}
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={releaseRequireLpn}
+                        onChange={(event) => setReleaseRequireLpn(event.target.checked)}
+                      />
+                      Require LPN
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={releaseAttemptLabelOverride}
+                        onChange={(event) => setReleaseAttemptLabelOverride(event.target.checked)}
+                      />
+                      Label override
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Release reason code
+                      <Input
+                        value={releaseReasonCode}
+                        onChange={(event) => setReleaseReasonCode(event.target.value)}
+                        placeholder="RC-V1-LABEL-OVERRIDE"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Release evidence refs
+                      <Input
+                        value={releaseEvidenceRefs}
+                        onChange={(event) => setReleaseEvidenceRefs(event.target.value)}
+                        placeholder="photo://label/override-1"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Release idempotency key
+                      <Input
+                        value={releaseIdempotencyKey}
+                        onChange={(event) => setReleaseIdempotencyKey(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={
+                        !canReleaseInboundToPutaway ||
+                        mutations.releaseInboundToPutaway.isPending
+                      }
+                    >
+                      <PackageCheck className="size-4" />
+                      Release to putaway
+                    </button>
+                  </form>
+
+                  {putawayRelease && (
+                    <p className="text-muted-foreground text-sm">
+                      Released {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId} /{' '}
+                      {putawayRelease.inventoryStatusCode}
+                      {putawayRelease.currentLocationCode
+                        ? ` / ${putawayRelease.currentLocationCode}`
+                        : ''}
+                    </p>
+                  )}
+                  {mutations.confirmInboundLpn.error ? (
+                    <p className="text-destructive text-sm">Unable to confirm LPN/SSCC.</p>
+                  ) : null}
+                  {mutations.releaseInboundToPutaway.error ? (
+                    <p className="text-destructive text-sm">
+                      {mutations.releaseInboundToPutaway.error instanceof ApiError
+                        ? mutations.releaseInboundToPutaway.error.message
+                        : 'Unable to release to putaway.'}
+                    </p>
                   ) : null}
                 </div>
               </>
