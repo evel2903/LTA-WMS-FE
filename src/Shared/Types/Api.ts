@@ -15,6 +15,7 @@ export interface ApiResponse<TData> {
 export interface ApiErrorItem {
   Code: ApiErrorCode;
   Message: string;
+  Details?: unknown;
 }
 
 /** Error envelope returned on 4xx/5xx. */
