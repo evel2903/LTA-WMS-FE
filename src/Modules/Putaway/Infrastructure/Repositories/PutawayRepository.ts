@@ -7,11 +7,16 @@ import {
 } from '@modules/Putaway/Domain/Constants/PutawayConstants';
 import type { PutawayTask } from '@modules/Putaway/Domain/Types/PutawayTask';
 import type {
+  ConfirmPutawayTaskInput,
   PutawayTaskListFilter,
   ReleasePutawayTaskInput,
 } from '@modules/Putaway/Domain/Types/PutawayTaskQuery';
 import { PUTAWAY_ENDPOINTS } from '@modules/Putaway/Infrastructure/Api/PutawayEndpoints';
-import type { PagedPutawayTaskDto, PutawayTaskDto } from '@modules/Putaway/Infrastructure/Dtos/PutawayDtos';
+import type {
+  ConfirmPutawayTaskResultDto,
+  PagedPutawayTaskDto,
+  PutawayTaskDto,
+} from '@modules/Putaway/Infrastructure/Dtos/PutawayDtos';
 import { PutawayMapper } from '@modules/Putaway/Infrastructure/Mappers/PutawayMapper';
 
 function pageSize(value?: number): number {
@@ -51,5 +56,13 @@ export class PutawayRepository implements IPutawayRepository {
       PutawayMapper.toReleaseRequest(input),
     );
     return PutawayMapper.toTask(dto);
+  }
+
+  async confirm(taskId: string, input: ConfirmPutawayTaskInput) {
+    const dto = await this.http.post<ConfirmPutawayTaskResultDto>(
+      PUTAWAY_ENDPOINTS.CONFIRM_TASK(taskId),
+      PutawayMapper.toConfirmRequest(input),
+    );
+    return PutawayMapper.toConfirmResult(dto);
   }
 }

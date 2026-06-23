@@ -23,3 +23,16 @@ export interface ReleasePutawayTaskInput {
   evidenceRefs?: string[];
   idempotencyKey: string;
 }
+
+export interface ConfirmPutawayTaskInput {
+  sourceLocationScan: string;
+  targetLocationScan: string;
+  lpnScan?: string | null;
+  confirmedQuantity?: number | null;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  deviceCode?: string | null;
+  sessionId?: string | null;
+  idempotencyKey: string;
+}

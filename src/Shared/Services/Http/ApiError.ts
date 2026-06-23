@@ -18,12 +18,14 @@ const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
 export class ApiError extends Error {
   readonly status: number;
   readonly code: ApiErrorCode;
+  readonly details?: unknown;
 
-  constructor(params: { status: number; code: ApiErrorCode; message: string }) {
+  constructor(params: { status: number; code: ApiErrorCode; message: string; details?: unknown }) {
     super(params.message);
     this.name = 'ApiError';
     this.status = params.status;
     this.code = params.code;
+    this.details = params.details;
   }
 
   get isUnauthorized(): boolean {
@@ -41,6 +43,7 @@ export class ApiError extends Error {
       status,
       code: first?.Code ?? STATUS_TO_CODE[status] ?? 'UNKNOWN',
       message: first?.Message ?? 'An unexpected error occurred.',
+      details: first?.Details,
     });
   }
 }
