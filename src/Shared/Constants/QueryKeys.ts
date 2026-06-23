@@ -22,6 +22,7 @@ export const QUERY_NAMESPACES = {
   WAREHOUSE: 'warehouse',
   INBOUND: 'inbound',
   PUTAWAY: 'putaway',
+  REPLENISHMENT: 'replenishment',
   OUTBOUND: 'outbound',
   PICKING: 'picking',
   PACKING: 'packing',

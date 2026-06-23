@@ -28,6 +28,7 @@ import { barcodeLabelRoutes } from '@modules/BarcodeLabel/Presentation/Routes/Ba
 import { inboundRoutes } from '@modules/Inbound/Presentation/Routes/InboundRoutes';
 import { putawayRoutes } from '@modules/Putaway/Presentation/Routes/PutawayRoutes';
 import { cycleCountRoutes } from '@modules/CycleCount/Presentation/Routes/CycleCountRoutes';
+import { replenishmentRoutes } from '@modules/Replenishment/Presentation/Routes/ReplenishmentRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
           ...inboundRoutes,
           ...putawayRoutes,
           ...cycleCountRoutes,
+          ...replenishmentRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,
