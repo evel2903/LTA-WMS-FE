@@ -55,3 +55,47 @@ export interface ConfirmPickTaskResult {
   outboxMessageId: string | null;
   isDuplicate: boolean;
 }
+
+export type PickExceptionType = 'ShortPick' | 'NoStock' | 'Damaged' | 'WrongItem';
+export type PickSubstitutionPolicyDecision = 'Allow' | 'RequireApproval' | 'Disallow';
+export type PickSubstitutionStatus = 'Rejected' | 'PendingApproval' | 'AutoApplied';
+
+export interface ReportPickExceptionInput {
+  mobileTaskId?: string | null;
+  exceptionType: PickExceptionType;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  observedQuantity?: number | null;
+  damagedQuantity?: number | null;
+  observedSkuId?: string | null;
+  observedSkuCode?: string | null;
+  replenishmentTargetLocationId?: string | null;
+  idempotencyKey: string;
+}
+
+export interface RequestPickSubstitutionInput {
+  mobileTaskId?: string | null;
+  substituteSkuId: string;
+  substituteSkuCode?: string | null;
+  substituteUomId?: string | null;
+  substituteUomCode?: string | null;
+  quantity: number;
+  policyDecision: PickSubstitutionPolicyDecision;
+  policyReason?: string | null;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface PickExceptionResult {
+  pickTask: Record<string, unknown>;
+  mobileTask: MobileTask | null;
+  exceptionCase: Record<string, unknown> | null;
+  replenishmentRequired: boolean;
+  replenishmentTask: Record<string, unknown> | null;
+  substitutionStatus: PickSubstitutionStatus | null;
+  approvalRequest: Record<string, unknown> | null;
+  isDuplicate: boolean;
+}

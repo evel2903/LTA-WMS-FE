@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle2, RefreshCw, ScanLine, Smartphone } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, ScanLine, Shuffle, Smartphone } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -17,9 +17,20 @@ import type {
   MobileTask,
   MobileTaskStatus,
 } from '@modules/TaskExecution/Domain/Types/MobileTask';
+import type {
+  PickExceptionType,
+  PickSubstitutionPolicyDecision,
+} from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 
-const TASK_ACTIONS = new Set(['claim', 'release', 'scan', 'confirm']);
+const TASK_ACTIONS = new Set(['claim', 'release', 'scan', 'confirm', 'exception', 'substitution']);
 const DEFAULT_PICK_CONFIRM_REASON = 'RC-V1-DISCREPANCY';
+const DEFAULT_PICK_EXCEPTION_REASON = 'RC-V1-DISCREPANCY';
+const PICK_EXCEPTION_TYPES: PickExceptionType[] = ['ShortPick', 'NoStock', 'Damaged', 'WrongItem'];
+const SUBSTITUTION_POLICY_DECISIONS: PickSubstitutionPolicyDecision[] = [
+  'Allow',
+  'RequireApproval',
+  'Disallow',
+];
 
 function taskPayloadText(task: MobileTask): string {
   if (!task.taskPayload || Object.keys(task.taskPayload).length === 0) return 'No task payload';
@@ -111,11 +122,29 @@ export function TaskExecutionDetailPage() {
   const [reasonCode, setReasonCode] = useState('');
   const [confirmReasonCode, setConfirmReasonCode] = useState(DEFAULT_PICK_CONFIRM_REASON);
   const [confirmReasonNote, setConfirmReasonNote] = useState('');
+  const [exceptionType, setExceptionType] = useState<PickExceptionType>('ShortPick');
+  const [exceptionReasonCode, setExceptionReasonCode] = useState(DEFAULT_PICK_EXCEPTION_REASON);
+  const [exceptionReasonNote, setExceptionReasonNote] = useState('');
+  const [exceptionEvidenceRef, setExceptionEvidenceRef] = useState('');
+  const [observedQuantity, setObservedQuantity] = useState('');
+  const [damagedQuantity, setDamagedQuantity] = useState('');
+  const [observedSkuId, setObservedSkuId] = useState('');
+  const [observedSkuCode, setObservedSkuCode] = useState('');
+  const [replenishmentTargetLocationId, setReplenishmentTargetLocationId] = useState('');
+  const [substituteSkuId, setSubstituteSkuId] = useState('');
+  const [substituteSkuCode, setSubstituteSkuCode] = useState('');
+  const [substituteQuantity, setSubstituteQuantity] = useState('');
+  const [substitutionPolicyDecision, setSubstitutionPolicyDecision] =
+    useState<PickSubstitutionPolicyDecision>('RequireApproval');
+  const [substitutionPolicyReason, setSubstitutionPolicyReason] = useState('');
+  const [substitutionReasonNote, setSubstitutionReasonNote] = useState('');
   const [latestScan, setLatestScan] = useState<MobileScanEvent | null>(null);
   const [acceptedScans, setAcceptedScans] = useState<
     Partial<Record<MobileScanType, MobileScanEvent>>
   >({});
   const [lastConfirmMessage, setLastConfirmMessage] = useState<string | null>(null);
+  const [lastExceptionMessage, setLastExceptionMessage] = useState<string | null>(null);
+  const [lastSubstitutionMessage, setLastSubstitutionMessage] = useState<string | null>(null);
 
   const task = taskQuery.data ?? null;
   const apiError = taskQuery.error instanceof ApiError ? taskQuery.error : null;
@@ -179,6 +208,25 @@ export function TaskExecutionDetailPage() {
     hasPickEvidence &&
     confirmReasonCode.trim().length > 0,
   );
+  const canReportException = Boolean(
+    task &&
+    task.taskType === 'Pick' &&
+    currentPickTaskId &&
+    canOperateScan &&
+    exceptionReasonCode.trim().length > 0 &&
+    exceptionEvidenceRef.trim().length > 0,
+  );
+  const substitutionQuantityValue = Number(substituteQuantity);
+  const canRequestSubstitution = Boolean(
+    task &&
+    task.taskType === 'Pick' &&
+    currentPickTaskId &&
+    canOperateScan &&
+    substituteSkuId.trim().length > 0 &&
+    Number.isFinite(substitutionQuantityValue) &&
+    substitutionQuantityValue > 0 &&
+    exceptionEvidenceRef.trim().length > 0,
+  );
 
   useEffect(() => {
     if (action && !TASK_ACTIONS.has(action)) {
@@ -195,6 +243,23 @@ export function TaskExecutionDetailPage() {
     setReasonCode('');
     setConfirmReasonCode(DEFAULT_PICK_CONFIRM_REASON);
     setConfirmReasonNote('');
+    setExceptionType('ShortPick');
+    setExceptionReasonCode(DEFAULT_PICK_EXCEPTION_REASON);
+    setExceptionReasonNote('');
+    setExceptionEvidenceRef('');
+    setObservedQuantity('');
+    setDamagedQuantity('');
+    setObservedSkuId('');
+    setObservedSkuCode('');
+    setReplenishmentTargetLocationId('');
+    setSubstituteSkuId('');
+    setSubstituteSkuCode('');
+    setSubstituteQuantity('');
+    setSubstitutionPolicyDecision('RequireApproval');
+    setSubstitutionPolicyReason('');
+    setSubstitutionReasonNote('');
+    setLastExceptionMessage(null);
+    setLastSubstitutionMessage(null);
   }, [task?.id]);
 
   return (
@@ -519,6 +584,256 @@ export function TaskExecutionDetailPage() {
                   ) : null}
                   {lastConfirmMessage ? (
                     <p className="text-sm font-medium">{lastConfirmMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {task.taskType === 'Pick' ? (
+                <div className="space-y-4 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <AlertTriangle className="size-4" />
+                    Pick exception
+                  </div>
+                  <label className="grid gap-1 text-sm">
+                    Exception type
+                    <select
+                      className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                      value={exceptionType}
+                      onChange={(event) => setExceptionType(event.target.value as PickExceptionType)}
+                    >
+                      {PICK_EXCEPTION_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Reason code
+                    <Input
+                      value={exceptionReasonCode}
+                      onChange={(event) => setExceptionReasonCode(event.target.value)}
+                      placeholder={DEFAULT_PICK_EXCEPTION_REASON}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Evidence reference
+                    <Input
+                      value={exceptionEvidenceRef}
+                      onChange={(event) => setExceptionEvidenceRef(event.target.value)}
+                      placeholder="scan:event-id"
+                    />
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      Observed quantity
+                      <Input
+                        value={observedQuantity}
+                        onChange={(event) => setObservedQuantity(event.target.value)}
+                        inputMode="decimal"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Damaged quantity
+                      <Input
+                        value={damagedQuantity}
+                        onChange={(event) => setDamagedQuantity(event.target.value)}
+                        inputMode="decimal"
+                      />
+                    </label>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      Observed SKU ID
+                      <Input
+                        value={observedSkuId}
+                        onChange={(event) => setObservedSkuId(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Observed SKU code
+                      <Input
+                        value={observedSkuCode}
+                        onChange={(event) => setObservedSkuCode(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <label className="grid gap-1 text-sm">
+                    Replenishment target location
+                    <Input
+                      value={replenishmentTargetLocationId}
+                      onChange={(event) => setReplenishmentTargetLocationId(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Reason note
+                    <Input
+                      value={exceptionReasonNote}
+                      onChange={(event) => setExceptionReasonNote(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!canReportException || mutations.reportPickException.isPending}
+                    onClick={() => {
+                      if (!currentPickTaskId) return;
+                      setLastExceptionMessage(null);
+                      mutations.reportPickException.mutate(
+                        {
+                          mobileTaskId: task.id,
+                          input: {
+                            mobileTaskId: task.id,
+                            exceptionType,
+                            reasonCode: exceptionReasonCode.trim(),
+                            reasonNote: exceptionReasonNote.trim() || undefined,
+                            evidenceRefs: [exceptionEvidenceRef.trim()],
+                            observedQuantity: observedQuantity ? Number(observedQuantity) : undefined,
+                            damagedQuantity: damagedQuantity ? Number(damagedQuantity) : undefined,
+                            observedSkuId: observedSkuId.trim() || undefined,
+                            observedSkuCode: observedSkuCode.trim() || undefined,
+                            replenishmentTargetLocationId:
+                              replenishmentTargetLocationId.trim() || undefined,
+                            idempotencyKey: `pick-exception:${currentPickTaskId}:${exceptionType}:${exceptionEvidenceRef.trim()}`,
+                          },
+                        },
+                        {
+                          onSuccess: (result) => {
+                            setLastExceptionMessage(
+                              result.replenishmentTask
+                                ? 'Pick exception recorded with replenishment task'
+                                : result.replenishmentRequired
+                                  ? 'Pick exception recorded with replenishment required'
+                                  : 'Pick exception recorded',
+                            );
+                          },
+                          onError: () => setLastExceptionMessage(null),
+                        },
+                      );
+                    }}
+                  >
+                    Report exception
+                  </button>
+                  {mutations.reportPickException.isPending ? (
+                    <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <RefreshCw className="size-4 animate-spin" />
+                      Reporting exception
+                    </p>
+                  ) : null}
+                  {lastExceptionMessage ? (
+                    <p className="text-sm font-medium">{lastExceptionMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              {task.taskType === 'Pick' ? (
+                <div className="space-y-4 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Shuffle className="size-4" />
+                    Pick substitution
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      Substitute SKU ID
+                      <Input
+                        value={substituteSkuId}
+                        onChange={(event) => setSubstituteSkuId(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Substitute SKU code
+                      <Input
+                        value={substituteSkuCode}
+                        onChange={(event) => setSubstituteSkuCode(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <label className="grid gap-1 text-sm">
+                    Quantity
+                    <Input
+                      value={substituteQuantity}
+                      onChange={(event) => setSubstituteQuantity(event.target.value)}
+                      inputMode="decimal"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Policy decision
+                    <select
+                      className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                      value={substitutionPolicyDecision}
+                      onChange={(event) =>
+                        setSubstitutionPolicyDecision(
+                          event.target.value as PickSubstitutionPolicyDecision,
+                        )
+                      }
+                    >
+                      {SUBSTITUTION_POLICY_DECISIONS.map((decision) => (
+                        <option key={decision} value={decision}>
+                          {decision}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Policy reason
+                    <Input
+                      value={substitutionPolicyReason}
+                      onChange={(event) => setSubstitutionPolicyReason(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Reason note
+                    <Input
+                      value={substitutionReasonNote}
+                      onChange={(event) => setSubstitutionReasonNote(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!canRequestSubstitution || mutations.requestPickSubstitution.isPending}
+                    onClick={() => {
+                      if (!currentPickTaskId || !Number.isFinite(substitutionQuantityValue)) return;
+                      setLastSubstitutionMessage(null);
+                      mutations.requestPickSubstitution.mutate(
+                        {
+                          mobileTaskId: task.id,
+                          input: {
+                            mobileTaskId: task.id,
+                            substituteSkuId: substituteSkuId.trim(),
+                            substituteSkuCode: substituteSkuCode.trim() || undefined,
+                            quantity: substitutionQuantityValue,
+                            policyDecision: substitutionPolicyDecision,
+                            policyReason: substitutionPolicyReason.trim() || undefined,
+                            reasonCode: exceptionReasonCode.trim(),
+                            reasonNote: substitutionReasonNote.trim() || undefined,
+                            evidenceRefs: [exceptionEvidenceRef.trim()],
+                            idempotencyKey: `pick-substitution:${currentPickTaskId}:${substituteSkuId.trim()}:${exceptionEvidenceRef.trim()}`,
+                          },
+                        },
+                        {
+                          onSuccess: (result) => {
+                            setLastSubstitutionMessage(
+                              result.approvalRequest
+                                ? 'Substitution routed for approval'
+                                : result.substitutionStatus === 'Rejected'
+                                  ? 'Substitution rejected by policy'
+                                  : 'Substitution context recorded',
+                            );
+                          },
+                          onError: () => setLastSubstitutionMessage(null),
+                        },
+                      );
+                    }}
+                  >
+                    Request substitution
+                  </button>
+                  {mutations.requestPickSubstitution.isPending ? (
+                    <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <RefreshCw className="size-4 animate-spin" />
+                      Routing substitution
+                    </p>
+                  ) : null}
+                  {lastSubstitutionMessage ? (
+                    <p className="text-sm font-medium">{lastSubstitutionMessage}</p>
                   ) : null}
                 </div>
               ) : null}

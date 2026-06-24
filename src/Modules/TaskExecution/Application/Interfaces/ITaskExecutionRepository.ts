@@ -5,7 +5,10 @@ import type {
   ConfirmPickTaskInput,
   ConfirmPickTaskResult,
   MobileTaskListFilter,
+  PickExceptionResult,
   RecordMobileScanInput,
+  ReportPickExceptionInput,
+  RequestPickSubstitutionInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 
 export interface ITaskExecutionRepository {
@@ -18,4 +21,12 @@ export interface ITaskExecutionRepository {
     mobileTaskId: string,
     input: ConfirmPickTaskInput,
   ): Promise<ConfirmPickTaskResult>;
+  reportPickException(
+    mobileTaskId: string,
+    input: ReportPickExceptionInput,
+  ): Promise<PickExceptionResult>;
+  requestPickSubstitution(
+    mobileTaskId: string,
+    input: RequestPickSubstitutionInput,
+  ): Promise<PickExceptionResult>;
 }

@@ -172,4 +172,64 @@ describe('MobileTaskMapper', () => {
       isDuplicate: false,
     });
   });
+
+  it('maps pick exception and substitution payloads without leaking DTO casing', () => {
+    expect(
+      MobileTaskMapper.toReportPickExceptionRequest({
+        mobileTaskId: 'task-a',
+        exceptionType: 'ShortPick',
+        reasonCode: 'RC-V1-DISCREPANCY',
+        evidenceRefs: ['scan:short'],
+        observedQuantity: 2,
+        idempotencyKey: 'pick-exception-1',
+      }),
+    ).toEqual({
+      MobileTaskId: 'task-a',
+      ExceptionType: 'ShortPick',
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      EvidenceRefs: ['scan:short'],
+      ObservedQuantity: 2,
+      IdempotencyKey: 'pick-exception-1',
+    });
+
+    expect(
+      MobileTaskMapper.toRequestPickSubstitutionRequest({
+        mobileTaskId: 'task-a',
+        substituteSkuId: 'sku-sub',
+        substituteSkuCode: 'SKU-SUB',
+        quantity: 1,
+        policyDecision: 'RequireApproval',
+        evidenceRefs: ['scan:short'],
+        idempotencyKey: 'pick-substitution-1',
+      }),
+    ).toEqual({
+      MobileTaskId: 'task-a',
+      SubstituteSkuId: 'sku-sub',
+      SubstituteSkuCode: 'SKU-SUB',
+      Quantity: 1,
+      PolicyDecision: 'RequireApproval',
+      EvidenceRefs: ['scan:short'],
+      IdempotencyKey: 'pick-substitution-1',
+    });
+
+    expect(
+      MobileTaskMapper.toPickExceptionResult({
+        PickTask: { Id: 'pick-task-1' },
+        MobileTask: { ...dto, TaskStatus: 'Blocked' },
+        ExceptionCase: { Id: 'exception-1' },
+        ReplenishmentRequired: true,
+        ReplenishmentTask: null,
+        SubstitutionStatus: 'PendingApproval',
+        ApprovalRequest: { Id: 'approval-1' },
+        IsDuplicate: false,
+      }),
+    ).toMatchObject({
+      pickTask: { Id: 'pick-task-1' },
+      mobileTask: { id: 'task-a', taskStatus: 'Blocked' },
+      exceptionCase: { Id: 'exception-1' },
+      replenishmentRequired: true,
+      substitutionStatus: 'PendingApproval',
+      approvalRequest: { Id: 'approval-1' },
+    });
+  });
 });

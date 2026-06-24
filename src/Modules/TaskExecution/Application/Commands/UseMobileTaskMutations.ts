@@ -7,6 +7,8 @@ import type {
   ClaimMobileTaskInput,
   ConfirmPickTaskInput,
   RecordMobileScanInput,
+  ReportPickExceptionInput,
+  RequestPickSubstitutionInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import { taskExecutionRepository } from '@modules/TaskExecution/Infrastructure/Repositories/TaskExecutionRepositoryInstance';
 
@@ -42,6 +44,28 @@ export function useMobileTaskMutations() {
         mobileTaskId: string;
         input: ConfirmPickTaskInput;
       }) => taskExecutionRepository.confirmPickTask(mobileTaskId, input),
+      onSuccess: invalidateTasks,
+      onError: notifyError,
+    }),
+    reportPickException: useMutation({
+      mutationFn: ({
+        mobileTaskId,
+        input,
+      }: {
+        mobileTaskId: string;
+        input: ReportPickExceptionInput;
+      }) => taskExecutionRepository.reportPickException(mobileTaskId, input),
+      onSuccess: invalidateTasks,
+      onError: notifyError,
+    }),
+    requestPickSubstitution: useMutation({
+      mutationFn: ({
+        mobileTaskId,
+        input,
+      }: {
+        mobileTaskId: string;
+        input: RequestPickSubstitutionInput;
+      }) => taskExecutionRepository.requestPickSubstitution(mobileTaskId, input),
       onSuccess: invalidateTasks,
       onError: notifyError,
     }),
