@@ -30,6 +30,7 @@ import { putawayRoutes } from '@modules/Putaway/Presentation/Routes/PutawayRoute
 import { cycleCountRoutes } from '@modules/CycleCount/Presentation/Routes/CycleCountRoutes';
 import { replenishmentRoutes } from '@modules/Replenishment/Presentation/Routes/ReplenishmentRoutes';
 import { outboundRoutes } from '@modules/Outbound/Presentation/Routes/OutboundRoutes';
+import { packingRoutes } from '@modules/Packing/Presentation/Routes/PackingRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -75,6 +76,7 @@ const router = createBrowserRouter([
           ...cycleCountRoutes,
           ...replenishmentRoutes,
           ...outboundRoutes,
+          ...packingRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,

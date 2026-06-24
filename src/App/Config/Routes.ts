@@ -97,7 +97,12 @@ export const ROUTES = {
     ACTION: (id = ':id', action = ':action') => `/outbound/${id}/${action}`,
   },
   PICKING: { ROOT: '/picking' },
-  PACKING: { ROOT: '/packing' },
+  PACKING: {
+    ROOT: '/packing',
+    NEW: '/packing/new',
+    DETAIL: (id = ':id') => `/packing/${id}`,
+    ACTION: (id = ':id', action = ':action') => `/packing/${id}/${action}`,
+  },
   SHIPPING: { ROOT: '/shipping' },
   MOBILE: {
     TASKS: '/mobile/tasks',
