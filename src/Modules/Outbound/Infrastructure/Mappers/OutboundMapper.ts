@@ -4,11 +4,14 @@ import type {
   AllocationLine,
   OutboundOrder,
   OutboundOrderLine,
+  PickRelease,
+  PickTask,
 } from '@modules/Outbound/Domain/Types/OutboundOrder';
 import type {
   AllocateOutboundOrderInput,
   ImportOutboundOrderInput,
   ReasonOutboundOrderInput,
+  ReleaseOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 import type {
   AllocationDto,
@@ -17,6 +20,9 @@ import type {
   OutboundOrderLineDto,
   PagedAllocationDto,
   PagedOutboundOrderDto,
+  PagedPickReleaseDto,
+  PickReleaseDto,
+  PickTaskDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
 
 function removeEmpty<T extends Record<string, unknown>>(value: T): T {
@@ -144,6 +150,74 @@ export class OutboundMapper {
     };
   }
 
+  static toPickTask(dto: PickTaskDto): PickTask {
+    return {
+      id: dto.Id,
+      pickReleaseId: dto.PickReleaseId,
+      outboundOrderId: dto.OutboundOrderId,
+      allocationId: dto.AllocationId,
+      allocationLineId: dto.AllocationLineId,
+      outboundOrderLineId: dto.OutboundOrderLineId,
+      taskNumber: dto.TaskNumber,
+      status: dto.Status,
+      sequence: dto.Sequence,
+      batchNumber: dto.BatchNumber,
+      sourceBalanceId: dto.SourceBalanceId,
+      sourceDimensionId: dto.SourceDimensionId,
+      sourceLocationId: dto.SourceLocationId,
+      targetLocationId: dto.TargetLocationId,
+      targetReference: dto.TargetReference,
+      skuId: dto.SkuId,
+      skuCode: dto.SkuCode,
+      uomId: dto.UomId,
+      uomCode: dto.UomCode,
+      quantity: dto.Quantity,
+      inventoryStatusCode: dto.InventoryStatusCode,
+      lotNumber: dto.LotNumber,
+      serialNumber: dto.SerialNumber,
+      expiryDate: dto.ExpiryDate,
+      createdAt: dto.CreatedAt,
+    };
+  }
+
+  static toPickRelease(dto: PickReleaseDto): PickRelease {
+    return {
+      id: dto.Id,
+      releaseNumber: dto.ReleaseNumber,
+      outboundOrderId: dto.OutboundOrderId,
+      allocationId: dto.AllocationId,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      releaseMode: dto.ReleaseMode,
+      batchSize: dto.BatchSize,
+      status: dto.Status,
+      blockReason: dto.BlockReason,
+      totalTaskCount: dto.TotalTaskCount,
+      totalReleasedQuantity: dto.TotalReleasedQuantity,
+      outboxMessageId: dto.OutboxMessageId,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs,
+      isDuplicate: dto.IsDuplicate,
+      tasks: dto.Tasks.map((task) => OutboundMapper.toPickTask(task)),
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  }
+
+  static toPagedPickReleases(dto: PagedPickReleaseDto): PaginatedResponse<PickRelease> {
+    return {
+      items: dto.Items.map((item) => OutboundMapper.toPickRelease(item)),
+      page: dto.Meta?.Page ?? dto.Page ?? 1,
+      pageSize: dto.Meta?.PageSize ?? dto.PageSize ?? 50,
+      totalItems: dto.Meta?.TotalItems ?? dto.TotalItems ?? dto.Items.length,
+      totalPages: dto.Meta?.TotalPages ?? dto.TotalPages ?? 1,
+    };
+  }
+
   static toImportRequest(input: ImportOutboundOrderInput) {
     return removeEmpty({
       SourceSystem: input.sourceSystem,
@@ -184,6 +258,17 @@ export class OutboundMapper {
   static toAllocateRequest(input: AllocateOutboundOrderInput) {
     return removeEmpty({
       Policy: input.policy,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toReleaseRequest(input: ReleaseOutboundOrderInput) {
+    return removeEmpty({
+      ReleaseMode: input.releaseMode,
+      BatchSize: input.batchSize,
       ReasonCode: input.reasonCode,
       ReasonNote: input.reasonNote,
       EvidenceRefs: input.evidenceRefs,

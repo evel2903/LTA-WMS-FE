@@ -3,6 +3,7 @@ import { outboundQueryKeys } from '@modules/Outbound/Application/Queries/Outboun
 import type {
   AllocationListFilter,
   OutboundOrderListFilter,
+  PickReleaseListFilter,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 import { outboundRepository } from '@modules/Outbound/Infrastructure/Repositories/OutboundRepositoryInstance';
 
@@ -32,6 +33,17 @@ export function useOutboundAllocations(
   return useQuery({
     queryKey: outboundQueryKeys.allocationList(orderId ?? '', filter),
     queryFn: () => outboundRepository.listAllocations(orderId as string, filter),
+    enabled: Boolean(orderId),
+  });
+}
+
+export function useOutboundPickReleases(
+  orderId: string | null,
+  filter: PickReleaseListFilter = {},
+) {
+  return useQuery({
+    queryKey: outboundQueryKeys.releaseList(orderId ?? '', filter),
+    queryFn: () => outboundRepository.listReleases(orderId as string, filter),
     enabled: Boolean(orderId),
   });
 }

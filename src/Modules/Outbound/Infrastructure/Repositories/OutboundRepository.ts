@@ -5,13 +5,15 @@ import {
   OUTBOUND_DEFAULT_PAGE_SIZE,
   OUTBOUND_MAX_PAGE_SIZE,
 } from '@modules/Outbound/Domain/Constants/OutboundConstants';
-import type { Allocation, OutboundOrder } from '@modules/Outbound/Domain/Types/OutboundOrder';
+import type { Allocation, OutboundOrder, PickRelease } from '@modules/Outbound/Domain/Types/OutboundOrder';
 import type {
   AllocateOutboundOrderInput,
   AllocationListFilter,
   ImportOutboundOrderInput,
   OutboundOrderListFilter,
+  PickReleaseListFilter,
   ReasonOutboundOrderInput,
+  ReleaseOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 import { OUTBOUND_ENDPOINTS } from '@modules/Outbound/Infrastructure/Api/OutboundEndpoints';
 import type {
@@ -19,6 +21,8 @@ import type {
   OutboundOrderDto,
   PagedAllocationDto,
   PagedOutboundOrderDto,
+  PagedPickReleaseDto,
+  PickReleaseDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
 import { OutboundMapper } from '@modules/Outbound/Infrastructure/Mappers/OutboundMapper';
 
@@ -122,5 +126,32 @@ export class OutboundRepository implements IOutboundRepository {
   async getAllocation(id: string): Promise<Allocation> {
     const dto = await this.http.get<AllocationDto>(OUTBOUND_ENDPOINTS.ALLOCATION_BY_ID(id));
     return OutboundMapper.toAllocation(dto);
+  }
+
+  async release(id: string, input: ReleaseOutboundOrderInput): Promise<PickRelease> {
+    const dto = await this.http.post<PickReleaseDto>(
+      OUTBOUND_ENDPOINTS.RELEASE(id),
+      OutboundMapper.toReleaseRequest(input),
+    );
+    return OutboundMapper.toPickRelease(dto);
+  }
+
+  async listReleases(
+    id: string,
+    filter: PickReleaseListFilter = {},
+  ): Promise<PaginatedResponse<PickRelease>> {
+    const dto = await this.http.get<PagedPickReleaseDto>(OUTBOUND_ENDPOINTS.RELEASES(id), {
+      params: removeUndefined({
+        Page: pageNumber(filter.page),
+        PageSize: pageSize(filter.pageSize),
+        Status: filter.status,
+      }),
+    });
+    return OutboundMapper.toPagedPickReleases(dto);
+  }
+
+  async getRelease(id: string): Promise<PickRelease> {
+    const dto = await this.http.get<PickReleaseDto>(OUTBOUND_ENDPOINTS.RELEASE_BY_ID(id));
+    return OutboundMapper.toPickRelease(dto);
   }
 }

@@ -2,6 +2,8 @@ import type {
   AllocationPolicy,
   AllocationStatus,
   OutboundOrderStatus,
+  PickReleaseMode,
+  PickReleaseStatus,
 } from '@modules/Outbound/Domain/Types/OutboundOrder';
 
 export interface OutboundOrderListFilter {
@@ -56,6 +58,21 @@ export interface AllocationListFilter {
 
 export interface AllocateOutboundOrderInput {
   policy?: AllocationPolicy;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface PickReleaseListFilter {
+  page?: number;
+  pageSize?: number;
+  status?: PickReleaseStatus;
+}
+
+export interface ReleaseOutboundOrderInput {
+  releaseMode?: PickReleaseMode;
+  batchSize?: number;
   reasonCode?: string;
   reasonNote?: string;
   evidenceRefs?: string[];

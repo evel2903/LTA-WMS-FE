@@ -4,6 +4,7 @@ import type {
   AllocateOutboundOrderInput,
   ImportOutboundOrderInput,
   ReasonOutboundOrderInput,
+  ReleaseOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 import { outboundRepository } from '@modules/Outbound/Infrastructure/Repositories/OutboundRepositoryInstance';
 
@@ -55,6 +56,15 @@ export function useOutboundMutations() {
         void invalidateOutbound();
         void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.detail(input.id) });
         void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.allocationLists(input.id) });
+      },
+    }),
+    releaseOrder: useMutation({
+      mutationFn: (input: { id: string; payload: ReleaseOutboundOrderInput }) =>
+        outboundRepository.release(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateOutbound();
+        void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.detail(input.id) });
+        void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.releaseLists(input.id) });
       },
     }),
   };

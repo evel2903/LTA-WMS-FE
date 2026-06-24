@@ -2,6 +2,9 @@ import type {
   AllocationPolicy,
   AllocationStatus,
   OutboundOrderStatus,
+  PickReleaseMode,
+  PickReleaseStatus,
+  PickTaskStatus,
 } from '@modules/Outbound/Domain/Types/OutboundOrder';
 
 export interface OutboundOrderLineDto {
@@ -110,6 +113,74 @@ export interface AllocationDto {
 
 export interface PagedAllocationDto {
   Items: AllocationDto[];
+  Meta?: {
+    Page: number;
+    PageSize: number;
+    TotalItems: number;
+    TotalPages: number;
+  };
+  Page?: number;
+  PageSize?: number;
+  TotalItems?: number;
+  TotalPages?: number;
+}
+
+export interface PickTaskDto {
+  Id: string;
+  PickReleaseId: string;
+  OutboundOrderId: string;
+  AllocationId: string;
+  AllocationLineId: string;
+  OutboundOrderLineId: string;
+  TaskNumber: string;
+  Status: PickTaskStatus;
+  Sequence: number;
+  BatchNumber: string | null;
+  SourceBalanceId: string;
+  SourceDimensionId: string;
+  SourceLocationId: string;
+  TargetLocationId: string | null;
+  TargetReference: string | null;
+  SkuId: string;
+  SkuCode: string | null;
+  UomId: string;
+  UomCode: string | null;
+  Quantity: number;
+  InventoryStatusCode: string | null;
+  LotNumber: string | null;
+  SerialNumber: string | null;
+  ExpiryDate: string | null;
+  CreatedAt: string;
+}
+
+export interface PickReleaseDto {
+  Id: string;
+  ReleaseNumber: string;
+  OutboundOrderId: string;
+  AllocationId: string;
+  WarehouseId: string;
+  WarehouseCode: string | null;
+  OwnerId: string;
+  OwnerCode: string | null;
+  ReleaseMode: PickReleaseMode;
+  BatchSize: number;
+  Status: PickReleaseStatus;
+  BlockReason: string | null;
+  TotalTaskCount: number;
+  TotalReleasedQuantity: number;
+  OutboxMessageId: string | null;
+  ReasonCode: string | null;
+  ReasonCodeId: string | null;
+  ReasonNote: string | null;
+  EvidenceRefs: string[];
+  IsDuplicate: boolean;
+  Tasks: PickTaskDto[];
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
+export interface PagedPickReleaseDto {
+  Items: PickReleaseDto[];
   Meta?: {
     Page: number;
     PageSize: number;
