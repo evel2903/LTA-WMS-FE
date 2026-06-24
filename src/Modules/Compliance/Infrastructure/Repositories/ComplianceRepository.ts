@@ -19,6 +19,17 @@ import type {
 import { ComplianceMapper } from '@modules/Compliance/Infrastructure/Mappers/ComplianceMapper';
 
 const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function paging(filter: { page?: number; pageSize?: number } = {}) {
+  return {
+    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
+    PageSize:
+      !filter.pageSize || filter.pageSize < 1
+        ? DEFAULT_PAGE_SIZE
+        : Math.min(filter.pageSize, MAX_PAGE_SIZE),
+  };
+}
 
 /** The single place that touches `httpClient` for the audit + exception surface. */
 export class ComplianceRepository implements IComplianceRepository {
@@ -27,8 +38,7 @@ export class ComplianceRepository implements IComplianceRepository {
   async listAuditLogs(filter: AuditLogFilter = {}): Promise<PaginatedResponse<AuditLogEntry>> {
     const dto = await this.http.get<PagedDto<AuditLogDto>>(COMPLIANCE_ENDPOINTS.AUDIT_LOGS, {
       params: {
-        Page: filter.page ?? 1,
-        PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+        ...paging(filter),
         ActorUserId: filter.actorUserId,
         Action: filter.action,
         ObjectType: filter.objectType,
@@ -49,8 +59,7 @@ export class ComplianceRepository implements IComplianceRepository {
   async listExceptions(filter: ExceptionListFilter = {}): Promise<PaginatedResponse<ExceptionCase>> {
     const dto = await this.http.get<PagedDto<ExceptionCaseDto>>(COMPLIANCE_ENDPOINTS.EXCEPTIONS, {
       params: {
-        Page: filter.page ?? 1,
-        PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+        ...paging(filter),
         State: filter.state,
         ExceptionType: filter.exceptionType,
         ReferenceType: filter.referenceType,

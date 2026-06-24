@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IApprovalRepository } from '@modules/Approval/Application/Interfaces/IApprovalRepository';
@@ -26,6 +28,7 @@ vi.mock('@modules/Auth/Application/UseCases/UseCurrentUser', () => ({
 }));
 
 import { ApprovalQueuePage } from '@modules/Approval/Presentation/Pages/ApprovalQueuePage';
+import { ApprovalRequestDetailPage } from '@modules/Approval/Presentation/Pages/ApprovalRequestDetailPage';
 import { useApprovalStore } from '@modules/Approval/Application/Stores/ApprovalStore';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -75,13 +78,25 @@ class FakeApprovalRepo implements Partial<IApprovalRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialPath = ROUTES.FOUNDATION.APPROVALS) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <ApprovalQueuePage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.APPROVALS} element={<ApprovalQueuePage />} />
+          <Route
+            path={ROUTES.FOUNDATION.APPROVAL_DETAIL()}
+            element={<ApprovalRequestDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.APPROVAL_ACTION()}
+            element={<ApprovalRequestDetailPage mode="action" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -101,11 +116,12 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
     await actor.click(await screen.findByRole('button', { name: 'Approve' }));
 
     await waitFor(() => expect(fake.approve).toHaveBeenCalledWith('ar1', expect.any(Object)));
-    // UI re-reads the decided request — the table badge flips to Approved (scoped to avoid the filter <option>).
-    expect(await within(screen.getByRole('table')).findByText('Approved')).toBeTruthy();
+    // UI re-reads the decided request on the action route.
+    await waitFor(() => expect(screen.getAllByText('Approved').length).toBeGreaterThan(0));
     expect(toastError).not.toHaveBeenCalled();
   });
 
@@ -121,6 +137,7 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
     await actor.click(await screen.findByRole('button', { name: 'Reject' }));
 
     expect(await screen.findByText('Request already decided')).toBeTruthy();
@@ -137,6 +154,7 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
 
     // Scope to the unique panel suffix — the page header also mentions self-approval.
     expect(await screen.findByText(/\(self-approval\)/i)).toBeTruthy();

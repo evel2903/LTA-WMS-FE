@@ -78,6 +78,11 @@ describe('WarehouseProfileRepository', () => {
         WarehouseId: 'wh-1',
       },
     });
+
+    await repository.listProfiles({ page: 0, pageSize: 500 });
+    await repository.listProfiles({ page: -4, pageSize: -10 });
+    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
+    expect(http.calls[2]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
   });
 
   it('builds only the whitelisted rule-definition list params (tier/control mode filter)', async () => {

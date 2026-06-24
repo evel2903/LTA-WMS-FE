@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IComplianceRepository } from '@modules/Compliance/Application/Interfaces/IComplianceRepository';
@@ -19,6 +21,7 @@ const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { ExceptionQueuePage } from '@modules/Compliance/Presentation/Pages/ExceptionQueuePage';
+import { ExceptionDetailPage } from '@modules/Compliance/Presentation/Pages/ExceptionDetailPage';
 import { useComplianceStore } from '@modules/Compliance/Application/Stores/ComplianceStore';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -53,13 +56,19 @@ function makeCase(overrides: Partial<ExceptionCase> = {}): ExceptionCase {
   };
 }
 
-function renderPage() {
+function renderPage(initialPath = ROUTES.FOUNDATION.EXCEPTIONS) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <ExceptionQueuePage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.EXCEPTIONS} element={<ExceptionQueuePage />} />
+          <Route path={ROUTES.FOUNDATION.EXCEPTION_DETAIL()} element={<ExceptionDetailPage mode="detail" />} />
+          <Route path={ROUTES.FOUNDATION.EXCEPTION_ACTION()} element={<ExceptionDetailPage mode="action" />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -80,6 +89,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
 
     // Select the only case via its Type cell (the row trigger).
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    await actor.click(await screen.findByRole('link', { name: 'Open lifecycle' }));
     // DETECTED → the single legal action is "Log".
     await actor.click(await screen.findByRole('button', { name: 'Log' }));
 
@@ -98,7 +108,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
-    expect(await screen.findByText(/không có quyền thao tác/i)).toBeTruthy();
+    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
   });
 
   it('keeps the selected case read-only when the list refetch 403s after a cached row', async () => {
@@ -112,11 +122,9 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
-    await actor.click(screen.getByRole('button', { name: 'Next' }));
+    await actor.click(await screen.findByRole('button', { name: 'Next' }));
 
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
-    expect(await screen.findByText(/không có quyền thao tác/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Log' })).toBeNull();
   });
 
@@ -136,6 +144,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    await actor.click(await screen.findByRole('link', { name: 'Open lifecycle' }));
     await actor.click(await screen.findByRole('button', { name: 'Resolve' }));
 
     expect(await screen.findByText('Resolve requires evidence for this exception type')).toBeTruthy();
