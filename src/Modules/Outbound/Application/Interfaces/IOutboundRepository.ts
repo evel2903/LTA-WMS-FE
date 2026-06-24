@@ -1,11 +1,13 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
-import type { Allocation, OutboundOrder } from '@modules/Outbound/Domain/Types/OutboundOrder';
+import type { Allocation, OutboundOrder, PickRelease } from '@modules/Outbound/Domain/Types/OutboundOrder';
 import type {
   AllocateOutboundOrderInput,
   AllocationListFilter,
   ImportOutboundOrderInput,
   OutboundOrderListFilter,
+  PickReleaseListFilter,
   ReasonOutboundOrderInput,
+  ReleaseOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 
 export interface IOutboundRepository {
@@ -19,4 +21,7 @@ export interface IOutboundRepository {
   allocate(id: string, input: AllocateOutboundOrderInput): Promise<Allocation>;
   listAllocations(id: string, filter?: AllocationListFilter): Promise<PaginatedResponse<Allocation>>;
   getAllocation(id: string): Promise<Allocation>;
+  release(id: string, input: ReleaseOutboundOrderInput): Promise<PickRelease>;
+  listReleases(id: string, filter?: PickReleaseListFilter): Promise<PaginatedResponse<PickRelease>>;
+  getRelease(id: string): Promise<PickRelease>;
 }

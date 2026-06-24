@@ -12,14 +12,17 @@ import { useOutboundMutations } from '@modules/Outbound/Application/Commands/Use
 import {
   useOutboundAllocations,
   useOutboundOrder,
+  useOutboundPickReleases,
 } from '@modules/Outbound/Application/Queries/UseOutboundOrders';
 import type {
   AllocationPolicy,
   AllocationStatus,
   OutboundOrderStatus,
+  PickReleaseMode,
+  PickReleaseStatus,
 } from '@modules/Outbound/Domain/Types/OutboundOrder';
 
-const ACTIONS = new Set(['hold', 'reject', 'cancel', 'validate', 'allocate']);
+const ACTIONS = new Set(['hold', 'reject', 'cancel', 'validate', 'allocate', 'release']);
 
 function evidence(value: string): string[] {
   return value
@@ -42,6 +45,10 @@ function AllocationBadge({ status }: { status: AllocationStatus }) {
   return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
 }
 
+function PickReleaseBadge({ status }: { status: PickReleaseStatus }) {
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+}
+
 export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail' }) {
   const { id, action } = useParams();
   const navigate = useNavigate();
@@ -49,6 +56,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const mutations = useOutboundMutations();
   const order = orderQuery.data ?? null;
   const allocationsQuery = useOutboundAllocations(order?.id ?? null);
+  const releasesQuery = useOutboundPickReleases(order?.id ?? null);
   const [sourceSystem, setSourceSystem] = useState('OMS');
   const [sourceReference, setSourceReference] = useState('');
   const [customerExternalReference, setCustomerExternalReference] = useState('');
@@ -63,6 +71,8 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const [evidenceRefs, setEvidenceRefs] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState('');
   const [allocationPolicy, setAllocationPolicy] = useState<AllocationPolicy>('PartialBackorder');
+  const [releaseMode, setReleaseMode] = useState<PickReleaseMode>('Discrete');
+  const [batchSize, setBatchSize] = useState('50');
 
   useEffect(() => {
     if (action && !ACTIONS.has(action)) {
@@ -119,14 +129,51 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     }),
     [allocationPolicy, evidenceRefs, idempotencyKey, reasonCode, reasonNote],
   );
-  const canAllocate = Boolean(order && order.documentStatus === 'Validated' && allocationPayload.idempotencyKey);
+  const canAllocate = Boolean(
+    order && order.documentStatus === 'Validated' && allocationPayload.idempotencyKey,
+  );
+  const hasReleasableAllocation = Boolean(
+    allocationsQuery.data?.items.some(
+      (allocation) =>
+        (allocation.status === 'Allocated' || allocation.status === 'PartiallyAllocated') &&
+        allocation.totalAllocatedQuantity > 0,
+    ),
+  );
+  const hasActiveRelease = Boolean(
+    releasesQuery.data?.items.some(
+      (release) => release.status === 'Released' || release.status === 'Blocked',
+    ),
+  );
+  const releasePayload = useMemo(
+    () => ({
+      releaseMode,
+      batchSize: Number(batchSize),
+      reasonCode: reasonCode.trim() || undefined,
+      reasonNote: reasonNote.trim() || undefined,
+      evidenceRefs: evidence(evidenceRefs),
+      idempotencyKey: idempotencyKey.trim(),
+    }),
+    [batchSize, evidenceRefs, idempotencyKey, reasonCode, reasonNote, releaseMode],
+  );
+  const canRelease = Boolean(
+    order &&
+    order.documentStatus === 'Validated' &&
+    hasReleasableAllocation &&
+    !hasActiveRelease &&
+    releasePayload.idempotencyKey &&
+    Number.isInteger(releasePayload.batchSize) &&
+    releasePayload.batchSize >= 1 &&
+    releasePayload.batchSize <= 100 &&
+    !mutations.releaseOrder.isPending,
+  );
   const mutationError =
     errorMessage(mutations.importOrder.error) ??
     errorMessage(mutations.validateOrder.error) ??
     errorMessage(mutations.holdOrder.error) ??
     errorMessage(mutations.rejectOrder.error) ??
     errorMessage(mutations.cancelOrder.error) ??
-    errorMessage(mutations.allocateOrder.error);
+    errorMessage(mutations.allocateOrder.error) ??
+    errorMessage(mutations.releaseOrder.error);
 
   const handleImport = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -177,6 +224,14 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     if (!order) return;
     mutations.allocateOrder.mutate(
       { id: order.id, payload: allocationPayload },
+      { onSuccess: () => setIdempotencyKey('') },
+    );
+  };
+
+  const runRelease = () => {
+    if (!order) return;
+    mutations.releaseOrder.mutate(
+      { id: order.id, payload: releasePayload },
       { onSuccess: () => setIdempotencyKey('') },
     );
   };
@@ -367,6 +422,56 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               )}
             </div>
           ) : null}
+
+          {order ? (
+            <div className="space-y-3 rounded-md border p-4 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold">Pick releases</h2>
+                <span className="text-muted-foreground text-xs">
+                  {releasesQuery.data?.totalItems ?? 0} records
+                </span>
+              </div>
+              {releasesQuery.isLoading ? (
+                <div className="text-muted-foreground">Loading pick releases...</div>
+              ) : releasesQuery.data?.items.length ? (
+                releasesQuery.data.items.map((release) => (
+                  <div key={release.id} className="space-y-2 rounded-md border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">{release.releaseNumber}</div>
+                      <PickReleaseBadge status={release.status} />
+                    </div>
+                    <div className="text-muted-foreground grid gap-1 sm:grid-cols-4">
+                      <span>Mode: {release.releaseMode}</span>
+                      <span>Batch size: {release.batchSize}</span>
+                      <span>Tasks: {release.totalTaskCount}</span>
+                      <span>Released: {release.totalReleasedQuantity}</span>
+                    </div>
+                    {release.blockReason ? (
+                      <div className="text-destructive">{release.blockReason}</div>
+                    ) : null}
+                    <div className="space-y-1">
+                      {release.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="grid gap-1 rounded-md bg-muted/40 p-2 sm:grid-cols-6"
+                        >
+                          <span>{task.taskNumber}</span>
+                          <span>Seq {task.sequence}</span>
+                          <span>{task.skuCode ?? task.skuId}</span>
+                          <span>Qty {task.quantity}</span>
+                          <span>Task status {task.status}</span>
+                          <span>From {task.sourceLocationId}</span>
+                          <span>{task.batchNumber ?? 'Discrete'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-muted-foreground">No pick releases recorded.</div>
+              )}
+            </div>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
@@ -410,6 +515,25 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   <option value="PartialBackorder">Partial backorder</option>
                   <option value="FullOnly">Full only</option>
                 </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Release mode
+                <select
+                  className="rounded-md border bg-transparent px-3 py-2 text-sm"
+                  value={releaseMode}
+                  onChange={(event) => setReleaseMode(event.target.value as PickReleaseMode)}
+                >
+                  <option value="Discrete">Discrete</option>
+                  <option value="Batch">Batch</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                Batch size
+                <Input
+                  value={batchSize}
+                  onChange={(event) => setBatchSize(event.target.value)}
+                  inputMode="numeric"
+                />
               </label>
             </div>
             {mode === 'detail' ? (
@@ -458,6 +582,10 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 >
                   <PackageCheck className="size-4" aria-hidden="true" />
                   Allocate
+                </Button>
+                <Button type="button" variant="outline" disabled={!canRelease} onClick={runRelease}>
+                  <PackageCheck className="size-4" aria-hidden="true" />
+                  Release
                 </Button>
               </div>
             ) : null}

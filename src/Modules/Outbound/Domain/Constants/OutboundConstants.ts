@@ -17,3 +17,9 @@ export const OUTBOUND_ALLOCATION_STATUSES = [
   'Backordered',
   'Failed',
 ] as const;
+
+export const OUTBOUND_PICK_RELEASE_MODES = ['Discrete', 'Batch'] as const;
+
+export const OUTBOUND_PICK_RELEASE_STATUSES = ['Released', 'Blocked', 'Cancelled'] as const;
+
+export const OUTBOUND_PICK_TASK_STATUSES = ['Released', 'Cancelled', 'Completed'] as const;

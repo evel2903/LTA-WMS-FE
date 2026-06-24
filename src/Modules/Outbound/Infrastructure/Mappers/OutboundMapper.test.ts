@@ -4,6 +4,7 @@ import { OutboundMapper } from '@modules/Outbound/Infrastructure/Mappers/Outboun
 import type {
   AllocationDto,
   OutboundOrderDto,
+  PickReleaseDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
 
 const dto: OutboundOrderDto = {
@@ -96,6 +97,60 @@ const allocationDto: AllocationDto = {
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
 
+const releaseDto: PickReleaseDto = {
+  Id: 'release-1',
+  ReleaseNumber: 'REL-001',
+  OutboundOrderId: 'outbound-1',
+  AllocationId: 'allocation-1',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-01',
+  ReleaseMode: 'Batch',
+  BatchSize: 50,
+  Status: 'Released',
+  BlockReason: null,
+  TotalTaskCount: 1,
+  TotalReleasedQuantity: 8,
+  OutboxMessageId: 'outbox-release-1',
+  ReasonCode: null,
+  ReasonCodeId: null,
+  ReasonNote: null,
+  EvidenceRefs: [],
+  IsDuplicate: false,
+  Tasks: [
+    {
+      Id: 'pick-task-1',
+      PickReleaseId: 'release-1',
+      OutboundOrderId: 'outbound-1',
+      AllocationId: 'allocation-1',
+      AllocationLineId: 'allocation-line-1',
+      OutboundOrderLineId: 'line-1',
+      TaskNumber: 'PT-001',
+      Status: 'Released',
+      Sequence: 1,
+      BatchNumber: 'REL-001-B1',
+      SourceBalanceId: 'balance-1',
+      SourceDimensionId: 'dimension-1',
+      SourceLocationId: 'location-1',
+      TargetLocationId: null,
+      TargetReference: 'SHIP-01',
+      SkuId: 'sku-1',
+      SkuCode: 'SKU-001',
+      UomId: 'uom-1',
+      UomCode: 'EA',
+      Quantity: 8,
+      InventoryStatusCode: 'AVAILABLE',
+      LotNumber: 'LOT-1',
+      SerialNumber: null,
+      ExpiryDate: '2026-12-31',
+      CreatedAt: '2026-06-24T00:00:00.000Z',
+    },
+  ],
+  CreatedAt: '2026-06-24T00:00:00.000Z',
+  UpdatedAt: '2026-06-24T00:00:00.000Z',
+};
+
 describe('OutboundMapper', () => {
   it('maps outbound order DTO and paged metadata to domain response', () => {
     const order = OutboundMapper.toOrder(dto);
@@ -148,6 +203,44 @@ describe('OutboundMapper', () => {
       ReasonCode: 'RC-V1-DISCREPANCY',
       EvidenceRefs: ['shortage:1'],
       IdempotencyKey: 'allocate-1',
+    });
+  });
+
+  it('maps pick release DTOs, pages and release payloads', () => {
+    const release = OutboundMapper.toPickRelease(releaseDto);
+    const page = OutboundMapper.toPagedPickReleases({
+      Items: [releaseDto],
+      Meta: { Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1 },
+    });
+
+    expect(release).toMatchObject({
+      id: 'release-1',
+      releaseMode: 'Batch',
+      status: 'Released',
+      totalTaskCount: 1,
+      totalReleasedQuantity: 8,
+    });
+    expect(release.tasks[0]).toMatchObject({
+      taskNumber: 'PT-001',
+      sourceLocationId: 'location-1',
+      batchNumber: 'REL-001-B1',
+    });
+    expect(page.items[0].id).toBe('release-1');
+    expect(
+      OutboundMapper.toReleaseRequest({
+        releaseMode: 'Batch',
+        batchSize: 50,
+        reasonCode: 'RC-V1-DISCREPANCY',
+        reasonNote: '',
+        evidenceRefs: ['cutoff:1'],
+        idempotencyKey: 'release-1',
+      }),
+    ).toEqual({
+      ReleaseMode: 'Batch',
+      BatchSize: 50,
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      EvidenceRefs: ['cutoff:1'],
+      IdempotencyKey: 'release-1',
     });
   });
 

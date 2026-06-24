@@ -7,6 +7,8 @@ import type {
   PagedAllocationDto,
   OutboundOrderDto,
   PagedOutboundOrderDto,
+  PagedPickReleaseDto,
+  PickReleaseDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
 
 const orderDto: OutboundOrderDto = {
@@ -65,6 +67,32 @@ const allocationDto: AllocationDto = {
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
 
+const releaseDto: PickReleaseDto = {
+  Id: 'release-1',
+  ReleaseNumber: 'REL-001',
+  OutboundOrderId: 'outbound-1',
+  AllocationId: 'allocation-1',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-01',
+  ReleaseMode: 'Batch',
+  BatchSize: 50,
+  Status: 'Released',
+  BlockReason: null,
+  TotalTaskCount: 1,
+  TotalReleasedQuantity: 12,
+  OutboxMessageId: 'outbox-release-1',
+  ReasonCode: null,
+  ReasonCodeId: null,
+  ReasonNote: null,
+  EvidenceRefs: [],
+  IsDuplicate: false,
+  Tasks: [],
+  CreatedAt: '2026-06-24T00:00:00.000Z',
+  UpdatedAt: '2026-06-24T00:00:00.000Z',
+};
+
 class FakeHttpClient implements HttpClient {
   public calls: Array<{ method: string; url: string; body?: unknown; config?: unknown }> = [];
 
@@ -78,6 +106,12 @@ class FakeHttpClient implements HttpClient {
       Items: [allocationDto],
       Meta: { Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1 },
     };
+    const releasePage: PagedPickReleaseDto = {
+      Items: [releaseDto],
+      Meta: { Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1 },
+    };
+    if (url.includes('/outbound-orders/releases/')) return Promise.resolve(releaseDto as T);
+    if (url.endsWith('/releases')) return Promise.resolve(releasePage as T);
     if (url.includes('/outbound-orders/allocations/')) return Promise.resolve(allocationDto as T);
     if (url.endsWith('/allocations')) return Promise.resolve(allocationPage as T);
     return Promise.resolve((url.includes('/outbound-orders/') ? orderDto : page) as T);
@@ -85,7 +119,9 @@ class FakeHttpClient implements HttpClient {
 
   post<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
     this.calls.push({ method: 'post', url, body, config });
-    return Promise.resolve((url.endsWith('/allocate') ? allocationDto : orderDto) as T);
+    if (url.endsWith('/allocate')) return Promise.resolve(allocationDto as T);
+    if (url.endsWith('/release')) return Promise.resolve(releaseDto as T);
+    return Promise.resolve(orderDto as T);
   }
 
   put<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
@@ -124,7 +160,7 @@ describe('OutboundRepository', () => {
     });
   });
 
-  it('uses BE endpoints for import, validate, hold, reject, cancel and allocation actions', async () => {
+  it('uses BE endpoints for import, validate, hold, reject, cancel, allocation and release actions', async () => {
     const http = new FakeHttpClient();
     const repository = new OutboundRepository(http);
 
@@ -160,6 +196,15 @@ describe('OutboundRepository', () => {
       idempotencyKey: 'allocate-1',
     });
     await repository.listAllocations('outbound-1', { pageSize: 500, status: 'Allocated' });
+    await repository.release('outbound-1', {
+      releaseMode: 'Batch',
+      batchSize: 50,
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['cutoff:1'],
+      idempotencyKey: 'release-1',
+    });
+    await repository.listReleases('outbound-1', { pageSize: 500, status: 'Released' });
+    await repository.getRelease('release-1');
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['post', '/outbound-orders'],
@@ -169,6 +214,9 @@ describe('OutboundRepository', () => {
       ['post', '/outbound-orders/outbound-1/cancel'],
       ['post', '/outbound-orders/outbound-1/allocate'],
       ['get', '/outbound-orders/outbound-1/allocations'],
+      ['post', '/outbound-orders/outbound-1/release'],
+      ['get', '/outbound-orders/outbound-1/releases'],
+      ['get', '/outbound-orders/releases/release-1'],
     ]);
     expect(http.calls[0].body).toMatchObject({
       SourceSystem: 'ERP',
@@ -186,6 +234,15 @@ describe('OutboundRepository', () => {
     });
     expect(http.calls[6].config).toMatchObject({
       params: { Page: 1, PageSize: 100, Status: 'Allocated' },
+    });
+    expect(http.calls[7].body).toMatchObject({
+      ReleaseMode: 'Batch',
+      BatchSize: 50,
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      IdempotencyKey: 'release-1',
+    });
+    expect(http.calls[8].config).toMatchObject({
+      params: { Page: 1, PageSize: 100, Status: 'Released' },
     });
   });
 });
