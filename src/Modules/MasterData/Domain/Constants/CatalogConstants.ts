@@ -1,7 +1,8 @@
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type { SkuControlFlagKey, SkuStatus } from '@modules/MasterData/Domain/Types/CatalogEntities';
 
-export const CATALOG_DEFAULT_PAGE_SIZE = 100;
+export const CATALOG_DEFAULT_PAGE_SIZE = 50;
+export const CATALOG_MAX_PAGE_SIZE = 100;
 
 export const SKU_STATUSES: readonly SkuStatus[] = ['Draft', 'Active', 'Blocked', 'Discontinued'];
 

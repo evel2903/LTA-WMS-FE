@@ -10,7 +10,7 @@ class FakeHttpClient implements HttpClient {
     this.calls.push({ method: 'get', url, config });
     return Promise.resolve({
       Items: [],
-      Meta: { Page: 1, PageSize: 20, TotalItems: 0, TotalPages: 1 },
+      Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
     } as T);
   }
 
@@ -44,8 +44,8 @@ describe('ApprovalRepository', () => {
     await repository.list({ page: -3, pageSize: -10 });
     await repository.list({ page: 2, pageSize: 500 });
 
-    expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 20 } });
-    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 20 } });
+    expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
+    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
     expect(http.calls[2]?.config).toMatchObject({ params: { Page: 2, PageSize: 100 } });
   });
 });

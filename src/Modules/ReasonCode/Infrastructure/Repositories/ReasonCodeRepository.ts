@@ -11,7 +11,7 @@ import { REASON_CODE_ENDPOINTS } from '@modules/ReasonCode/Infrastructure/Api/Re
 import type { PagedDto, ReasonCodeDto } from '@modules/ReasonCode/Infrastructure/Dtos/ReasonCodeDtos';
 import { ReasonCodeMapper } from '@modules/ReasonCode/Infrastructure/Mappers/ReasonCodeMapper';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
 function page(value?: number): number {

@@ -10,7 +10,7 @@ class FakeHttpClient implements HttpClient {
     this.calls.push({ method: 'get', url, config });
     return Promise.resolve({
       Items: [],
-      Meta: { Page: 1, PageSize: 100, TotalItems: 0, TotalPages: 1 },
+      Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
     } as T);
   }
 
@@ -72,7 +72,7 @@ describe('CatalogRepository', () => {
     expect(http.calls[0]?.config).toEqual({
       params: {
         Page: 1,
-        PageSize: 100,
+        PageSize: 50,
         DefaultOwnerId: 'owner-1',
         ItemStatus: 'Active',
         SkuCode: 'SKU-01',
@@ -89,7 +89,7 @@ describe('CatalogRepository', () => {
     expect(http.calls[0]?.config).toEqual({
       params: {
         Page: 1,
-        PageSize: 100,
+        PageSize: 50,
         Status: 'Active',
         OwnerCode: 'OWN-01',
       },
@@ -115,7 +115,7 @@ describe('CatalogRepository', () => {
     expect(http.calls[1]?.config).toEqual({
       params: {
         Page: 1,
-        PageSize: 100,
+        PageSize: 50,
         Status: undefined,
         OwnerCode: undefined,
         OwnerName: undefined,

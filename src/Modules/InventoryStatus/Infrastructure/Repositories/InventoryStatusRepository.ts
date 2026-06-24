@@ -13,7 +13,7 @@ import type {
 } from '@modules/InventoryStatus/Infrastructure/Dtos/InventoryStatusDtos';
 import { InventoryStatusMapper } from '@modules/InventoryStatus/Infrastructure/Mappers/InventoryStatusMapper';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
 function page(value?: number): number {

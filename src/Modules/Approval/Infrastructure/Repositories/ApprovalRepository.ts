@@ -13,7 +13,7 @@ import type {
 } from '@modules/Approval/Infrastructure/Dtos/ApprovalDtos';
 import { ApprovalMapper } from '@modules/Approval/Infrastructure/Mappers/ApprovalMapper';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
 function paging(filter: { page?: number; pageSize?: number } = {}) {
