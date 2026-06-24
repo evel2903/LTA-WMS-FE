@@ -1,0 +1,109 @@
+import type { PaginatedResponse } from '@shared/Types/Api';
+import type { ShipmentPackageStaging } from '@modules/Shipping/Domain/Types/Shipping';
+import type {
+  AssignDockInput,
+  AssignTruckInput,
+  StagePackageInput,
+} from '@modules/Shipping/Domain/Types/ShippingQuery';
+import type {
+  AssignDockRequestDto,
+  AssignTruckRequestDto,
+  PagedShipmentPackageStagingDto,
+  ShipmentPackageStagingDto,
+  StagePackageRequestDto,
+} from '@modules/Shipping/Infrastructure/Dtos/ShippingDtos';
+
+function removeEmpty<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined && item !== null && item !== ''),
+  ) as T;
+}
+
+export class ShippingMapper {
+  static toStaging(dto: ShipmentPackageStagingDto): ShipmentPackageStaging {
+    return {
+      id: dto.Id,
+      stagingCode: dto.StagingCode,
+      packageId: dto.PackageId,
+      packageCode: dto.PackageCode,
+      outboundOrderId: dto.OutboundOrderId,
+      warehouseProfileId: dto.WarehouseProfileId,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      status: dto.Status,
+      inventoryStatusCode: dto.InventoryStatusCode,
+      shipmentReference: dto.ShipmentReference,
+      stagingLaneCode: dto.StagingLaneCode,
+      stagingLocationId: dto.StagingLocationId,
+      stagingLocationCode: dto.StagingLocationCode,
+      dockDoorId: dto.DockDoorId,
+      dockDoorCode: dto.DockDoorCode,
+      truckReference: dto.TruckReference,
+      vehicleNumber: dto.VehicleNumber,
+      driverName: dto.DriverName,
+      carrierId: dto.CarrierId,
+      carrierCode: dto.CarrierCode,
+      coreFlowInstanceId: dto.CoreFlowInstanceId,
+      stagedAt: dto.StagedAt,
+      stagedBy: dto.StagedBy,
+      dockAssignedAt: dto.DockAssignedAt,
+      dockAssignedBy: dto.DockAssignedBy,
+      truckAssignedAt: dto.TruckAssignedAt,
+      truckAssignedBy: dto.TruckAssignedBy,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  }
+
+  static toPaged(dto: PagedShipmentPackageStagingDto): PaginatedResponse<ShipmentPackageStaging> {
+    return {
+      items: dto.Items.map((item) => ShippingMapper.toStaging(item)),
+      page: dto.Meta?.Page ?? dto.Page ?? 1,
+      pageSize: dto.Meta?.PageSize ?? dto.PageSize ?? 50,
+      totalItems: dto.Meta?.TotalItems ?? dto.TotalItems ?? dto.Items.length,
+      totalPages: dto.Meta?.TotalPages ?? dto.TotalPages ?? 1,
+    };
+  }
+
+  static toStagePackageRequest(input: StagePackageInput): StagePackageRequestDto {
+    return removeEmpty({
+      PackageId: input.packageId,
+      ShipmentReference: input.shipmentReference,
+      StagingLaneCode: input.stagingLaneCode,
+      StagingLocationId: input.stagingLocationId,
+      StagingLocationCode: input.stagingLocationCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toAssignDockRequest(input: AssignDockInput): AssignDockRequestDto {
+    return removeEmpty({
+      DockDoorId: input.dockDoorId,
+      DockDoorCode: input.dockDoorCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toAssignTruckRequest(input: AssignTruckInput): AssignTruckRequestDto {
+    return removeEmpty({
+      TruckReference: input.truckReference,
+      VehicleNumber: input.vehicleNumber,
+      DriverName: input.driverName,
+      CarrierId: input.carrierId,
+      CarrierCode: input.carrierCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+}
+

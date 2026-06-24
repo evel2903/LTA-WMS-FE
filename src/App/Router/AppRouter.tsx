@@ -31,6 +31,7 @@ import { cycleCountRoutes } from '@modules/CycleCount/Presentation/Routes/CycleC
 import { replenishmentRoutes } from '@modules/Replenishment/Presentation/Routes/ReplenishmentRoutes';
 import { outboundRoutes } from '@modules/Outbound/Presentation/Routes/OutboundRoutes';
 import { packingRoutes } from '@modules/Packing/Presentation/Routes/PackingRoutes';
+import { shippingRoutes } from '@modules/Shipping/Presentation/Routes/ShippingRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -77,6 +78,7 @@ const router = createBrowserRouter([
           ...replenishmentRoutes,
           ...outboundRoutes,
           ...packingRoutes,
+          ...shippingRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,
