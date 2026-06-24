@@ -8,6 +8,8 @@ import {
 import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
 import type {
   ClaimMobileTaskInput,
+  ConfirmPickTaskInput,
+  ConfirmPickTaskResult,
   MobileTaskListFilter,
   RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
@@ -16,6 +18,7 @@ import type {
   MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
+  ConfirmPickTaskResultDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
 import { MobileTaskMapper } from '@modules/TaskExecution/Infrastructure/Mappers/MobileTaskMapper';
 
@@ -71,5 +74,16 @@ export class TaskExecutionRepository implements ITaskExecutionRepository {
       MobileTaskMapper.toRecordScanRequest(input),
     );
     return MobileTaskMapper.toScanEvent(dto);
+  }
+
+  async confirmPickTask(
+    mobileTaskId: string,
+    input: ConfirmPickTaskInput,
+  ): Promise<ConfirmPickTaskResult> {
+    const dto = await this.http.post<ConfirmPickTaskResultDto>(
+      TASK_EXECUTION_ENDPOINTS.CONFIRM_PICK_TASK(mobileTaskId),
+      MobileTaskMapper.toConfirmPickTaskRequest(input),
+    );
+    return MobileTaskMapper.toConfirmPickTaskResult(dto);
   }
 }

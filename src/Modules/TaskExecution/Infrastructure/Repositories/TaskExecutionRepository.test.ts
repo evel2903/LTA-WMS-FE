@@ -45,6 +45,11 @@ describe('TaskExecutionRepository', () => {
     await repository.claim('task-a', { deviceCode: 'RF-01', sessionId: 'session-1' });
     await repository.recordScan('task-a', { scanType: 'Item', rawValue: '(01)01234567890128' });
     await repository.release('task-a');
+    await repository.confirmPickTask('task-a', {
+      mobileTaskId: 'task-a',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      idempotencyKey: 'pick-confirm-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/mobile/tasks'],
@@ -52,6 +57,7 @@ describe('TaskExecutionRepository', () => {
       ['post', '/mobile/tasks/task-a/claim'],
       ['post', '/mobile/tasks/task-a/scans'],
       ['post', '/mobile/tasks/task-a/release'],
+      ['post', '/mobile/tasks/task-a/confirm'],
     ]);
   });
 
@@ -122,6 +128,31 @@ describe('TaskExecutionRepository', () => {
         ManualEntry: false,
         DeviceCode: 'RF-01',
         SessionId: 'session-1',
+      },
+    });
+  });
+
+  it('posts pick confirmation to the mobile task endpoint with PascalCase payload', async () => {
+    const http = new FakeHttpClient();
+    const repository = new TaskExecutionRepository(http);
+
+    await repository.confirmPickTask('task-a', {
+      mobileTaskId: 'task-a',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: 'RF evidence accepted',
+      deviceCode: 'RF-01',
+      idempotencyKey: 'pick-confirm-1',
+    });
+
+    expect(http.calls[0]).toMatchObject({
+      method: 'post',
+      url: '/mobile/tasks/task-a/confirm',
+      body: {
+        MobileTaskId: 'task-a',
+        ReasonCode: 'RC-V1-DISCREPANCY',
+        ReasonNote: 'RF evidence accepted',
+        DeviceCode: 'RF-01',
+        IdempotencyKey: 'pick-confirm-1',
       },
     });
   });

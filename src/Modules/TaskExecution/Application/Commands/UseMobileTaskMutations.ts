@@ -5,6 +5,7 @@ import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands
 import { taskExecutionQueryKeys } from '@modules/TaskExecution/Application/Queries/TaskExecutionQueryKeys';
 import type {
   ClaimMobileTaskInput,
+  ConfirmPickTaskInput,
   RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import { taskExecutionRepository } from '@modules/TaskExecution/Infrastructure/Repositories/TaskExecutionRepositoryInstance';
@@ -30,6 +31,17 @@ export function useMobileTaskMutations() {
     recordScan: useMutation({
       mutationFn: ({ id, input }: { id: string; input: RecordMobileScanInput }) =>
         taskExecutionRepository.recordScan(id, input),
+      onSuccess: invalidateTasks,
+      onError: notifyError,
+    }),
+    confirmPickTask: useMutation({
+      mutationFn: ({
+        mobileTaskId,
+        input,
+      }: {
+        mobileTaskId: string;
+        input: ConfirmPickTaskInput;
+      }) => taskExecutionRepository.confirmPickTask(mobileTaskId, input),
       onSuccess: invalidateTasks,
       onError: notifyError,
     }),

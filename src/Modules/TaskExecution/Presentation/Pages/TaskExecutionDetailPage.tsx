@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { RefreshCw, ScanLine, Smartphone } from 'lucide-react';
+import { CheckCircle2, RefreshCw, ScanLine, Smartphone } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -18,7 +18,8 @@ import type {
   MobileTaskStatus,
 } from '@modules/TaskExecution/Domain/Types/MobileTask';
 
-const TASK_ACTIONS = new Set(['claim', 'release', 'scan']);
+const TASK_ACTIONS = new Set(['claim', 'release', 'scan', 'confirm']);
+const DEFAULT_PICK_CONFIRM_REASON = 'RC-V1-DISCREPANCY';
 
 function taskPayloadText(task: MobileTask): string {
   if (!task.taskPayload || Object.keys(task.taskPayload).length === 0) return 'No task payload';
@@ -37,6 +38,66 @@ function parsedScanText(scan: MobileScanEvent): string {
   return entries.map(([key, value]) => `${key}: ${String(value)}`).join(' | ');
 }
 
+function payloadValue(task: MobileTask, key: string): string | number | null {
+  const value = task.taskPayload?.[key];
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  return null;
+}
+
+function pickTaskId(task: MobileTask): string | null {
+  const payloadId = payloadValue(task, 'PickTaskId');
+  if (typeof payloadId === 'string' && payloadId.trim()) return payloadId;
+  return task.sourceDocumentType === 'PickTask' ? task.sourceDocumentId : null;
+}
+
+function scanHasQuantity(scan: MobileScanEvent | null): boolean {
+  if (!scan || scan.result !== 'Accepted') return false;
+  if (scan.scanType === 'Quantity')
+    return Number.isFinite(Number(scan.normalizedValue ?? scan.rawValue));
+  return typeof scan.parsedValueJson?.Quantity === 'number';
+}
+
+function normalizedText(value: string | number | null): string {
+  return String(value ?? '')
+    .trim()
+    .toUpperCase();
+}
+
+function scanActualValue(scan: MobileScanEvent | null, key?: string): string | number | null {
+  if (!scan) return null;
+  if (key && typeof scan.parsedValueJson?.[key] === 'number') return scan.parsedValueJson[key];
+  if (key && typeof scan.parsedValueJson?.[key] === 'string') return scan.parsedValueJson[key];
+  return scan.resolvedObjectId ?? scan.normalizedValue ?? scan.rawValue;
+}
+
+function scanMatchesExpected(
+  scan: MobileScanEvent | null,
+  expected: string | number | null,
+  key?: string,
+): boolean {
+  if (!scan || scan.result !== 'Accepted') return false;
+  const actual = scanActualValue(scan, key);
+  if (typeof expected === 'number')
+    return typeof actual === 'number' && Math.abs(actual - expected) < 0.000001;
+  return normalizedText(actual) === normalizedText(expected);
+}
+
+function optionalScanMatches(
+  scan: MobileScanEvent | null,
+  expected: string | number | null,
+  key: string,
+): boolean {
+  if (expected === null) return true;
+  return scanMatchesExpected(scan, expected, key);
+}
+
+function acceptedScanSummary(scans: Partial<Record<MobileScanType, MobileScanEvent>>): string {
+  const labels = Object.entries(scans)
+    .filter(([, scan]) => scan?.result === 'Accepted')
+    .map(([type]) => type);
+  return labels.length > 0 ? labels.join(', ') : 'No accepted scan in this session';
+}
+
 export function TaskExecutionDetailPage() {
   const { id, action } = useParams();
   const navigate = useNavigate();
@@ -48,7 +109,13 @@ export function TaskExecutionDetailPage() {
   const [scanValue, setScanValue] = useState('');
   const [manualEntry, setManualEntry] = useState(false);
   const [reasonCode, setReasonCode] = useState('');
+  const [confirmReasonCode, setConfirmReasonCode] = useState(DEFAULT_PICK_CONFIRM_REASON);
+  const [confirmReasonNote, setConfirmReasonNote] = useState('');
   const [latestScan, setLatestScan] = useState<MobileScanEvent | null>(null);
+  const [acceptedScans, setAcceptedScans] = useState<
+    Partial<Record<MobileScanType, MobileScanEvent>>
+  >({});
+  const [lastConfirmMessage, setLastConfirmMessage] = useState<string | null>(null);
 
   const task = taskQuery.data ?? null;
   const apiError = taskQuery.error instanceof ApiError ? taskQuery.error : null;
@@ -58,32 +125,59 @@ export function TaskExecutionDetailPage() {
       ? 'forbidden'
       : apiError?.status === 404
         ? 'notFound'
-      : taskQuery.isLoading
-        ? 'loading'
-        : taskQuery.error
-          ? 'error'
-          : !task
-            ? 'notFound'
-            : null;
+        : taskQuery.isLoading
+          ? 'loading'
+          : taskQuery.error
+            ? 'error'
+            : !task
+              ? 'notFound'
+              : null;
 
   const canClaim = Boolean(task && task.taskStatus === 'Released' && !task.assignedUserId);
   const canRelease = Boolean(
     task &&
-      ['Claimed', 'InProgress'].includes(task.taskStatus) &&
-      task.assignedUserId &&
-      task.assignedUserId === currentUser?.id,
+    ['Claimed', 'InProgress'].includes(task.taskStatus) &&
+    task.assignedUserId &&
+    task.assignedUserId === currentUser?.id,
   );
   const canOperateScan = Boolean(
     task &&
-      ['Claimed', 'InProgress'].includes(task.taskStatus) &&
-      task.assignedUserId &&
-      task.assignedUserId === currentUser?.id,
+    ['Claimed', 'InProgress'].includes(task.taskStatus) &&
+    task.assignedUserId &&
+    task.assignedUserId === currentUser?.id,
   );
   const canRecordScan = Boolean(
     task &&
-      canOperateScan &&
-      scanValue.trim().length > 0 &&
-      (!manualEntry || reasonCode.trim().length > 0),
+    canOperateScan &&
+    scanValue.trim().length > 0 &&
+    (!manualEntry || reasonCode.trim().length > 0),
+  );
+  const currentPickTaskId = task ? pickTaskId(task) : null;
+  const itemScan = acceptedScans.Item ?? null;
+  const quantityScan = acceptedScans.Quantity ?? null;
+  const expectedSourceLocationId = task ? payloadValue(task, 'SourceLocationId') : null;
+  const expectedSkuId = task ? payloadValue(task, 'SkuId') : null;
+  const expectedQuantity = task ? payloadValue(task, 'Quantity') : null;
+  const expectedLot = task ? payloadValue(task, 'LotNumber') : null;
+  const expectedSerial = task ? payloadValue(task, 'SerialNumber') : null;
+  const expectedExpiry = task ? payloadValue(task, 'ExpiryDate') : null;
+  const hasPickEvidence = Boolean(
+    scanMatchesExpected(acceptedScans.Location ?? null, expectedSourceLocationId) &&
+    scanMatchesExpected(itemScan, expectedSkuId) &&
+    (scanMatchesExpected(quantityScan, expectedQuantity) ||
+      scanMatchesExpected(itemScan, expectedQuantity, 'Quantity')) &&
+    optionalScanMatches(itemScan, expectedLot, 'Lot') &&
+    optionalScanMatches(itemScan, expectedSerial, 'Serial') &&
+    optionalScanMatches(itemScan, expectedExpiry, 'ExpiryDate') &&
+    (scanHasQuantity(quantityScan) || scanHasQuantity(itemScan)),
+  );
+  const canConfirmPick = Boolean(
+    task &&
+    task.taskType === 'Pick' &&
+    currentPickTaskId &&
+    canOperateScan &&
+    hasPickEvidence &&
+    confirmReasonCode.trim().length > 0,
   );
 
   useEffect(() => {
@@ -94,9 +188,13 @@ export function TaskExecutionDetailPage() {
 
   useEffect(() => {
     setLatestScan(null);
+    setAcceptedScans({});
+    setLastConfirmMessage(null);
     setScanValue('');
     setManualEntry(false);
     setReasonCode('');
+    setConfirmReasonCode(DEFAULT_PICK_CONFIRM_REASON);
+    setConfirmReasonNote('');
   }, [task?.id]);
 
   return (
@@ -111,7 +209,9 @@ export function TaskExecutionDetailPage() {
           <>
             <span>{task.taskType}</span>
             <span>{task.warehouseCode}</span>
-            <span>{task.sourceDocumentCode ?? task.sourceDocumentType ?? 'No source document'}</span>
+            <span>
+              {task.sourceDocumentCode ?? task.sourceDocumentType ?? 'No source document'}
+            </span>
           </>
         ) : null
       }
@@ -154,6 +254,34 @@ export function TaskExecutionDetailPage() {
                 ) : null}
               </CardContent>
             </Card>
+            {task.taskType === 'Pick' ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Pick execution expectation</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
+                  {[
+                    ['Pick task', currentPickTaskId],
+                    ['Source location', payloadValue(task, 'SourceLocationId')],
+                    ['Item', payloadValue(task, 'SkuCode') ?? payloadValue(task, 'SkuId')],
+                    ['Quantity', payloadValue(task, 'Quantity')],
+                    ['Lot', payloadValue(task, 'LotNumber')],
+                    ['Serial', payloadValue(task, 'SerialNumber')],
+                    ['Expiry', payloadValue(task, 'ExpiryDate')],
+                    [
+                      'Target',
+                      payloadValue(task, 'TargetReference') ??
+                        payloadValue(task, 'TargetLocationId'),
+                    ],
+                  ].map(([label, value]) => (
+                    <div key={label} className="grid gap-1">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span>{value ?? 'Not required'}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
           </section>
 
           <Card>
@@ -275,6 +403,13 @@ export function TaskExecutionDetailPage() {
                       {
                         onSuccess: (scan) => {
                           setLatestScan(scan);
+                          setAcceptedScans((current) => {
+                            if (scan.result === 'Accepted')
+                              return { ...current, [scan.scanType]: scan };
+                            const next = { ...current };
+                            delete next[scan.scanType];
+                            return next;
+                          });
                           setScanValue('');
                         },
                         onError: () => {
@@ -304,11 +439,89 @@ export function TaskExecutionDetailPage() {
                     <div className="text-muted-foreground mt-1 space-y-1">
                       {latestScan.normalizedValue ? <div>{latestScan.normalizedValue}</div> : null}
                       {parsedScanText(latestScan) ? <div>{parsedScanText(latestScan)}</div> : null}
-                      {latestScan.rejectionMessage ? <div>{latestScan.rejectionMessage}</div> : null}
+                      {latestScan.rejectionMessage ? (
+                        <div>{latestScan.rejectionMessage}</div>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
               </div>
+              {task.taskType === 'Pick' ? (
+                <div className="space-y-3 rounded-md border p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <CheckCircle2 className="size-4" />
+                    Pick confirmation
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {acceptedScanSummary(acceptedScans)}
+                  </div>
+                  <label className="grid gap-1 text-sm">
+                    Reason code
+                    <Input
+                      value={confirmReasonCode}
+                      onChange={(event) => setConfirmReasonCode(event.target.value)}
+                      placeholder={DEFAULT_PICK_CONFIRM_REASON}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Reason note
+                    <Input
+                      value={confirmReasonNote}
+                      onChange={(event) => setConfirmReasonNote(event.target.value)}
+                      placeholder="RF pick scan confirmed"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!canConfirmPick || mutations.confirmPickTask.isPending}
+                    onClick={() => {
+                      if (!currentPickTaskId) return;
+                      setLastConfirmMessage(null);
+                      mutations.confirmPickTask.mutate(
+                        {
+                          mobileTaskId: task.id,
+                          input: {
+                            mobileTaskId: task.id,
+                            reasonCode: confirmReasonCode.trim(),
+                            reasonNote: confirmReasonNote.trim() || undefined,
+                            deviceCode: deviceCode || undefined,
+                            sessionId: task.sessionId || undefined,
+                            idempotencyKey: `pick-confirm:${currentPickTaskId}:${task.id}`,
+                          },
+                        },
+                        {
+                          onSuccess: (result) => {
+                            setLastConfirmMessage(
+                              result.isDuplicate
+                                ? 'Pick confirmation already posted'
+                                : 'Pick confirmation posted',
+                            );
+                          },
+                          onError: () => setLastConfirmMessage(null),
+                        },
+                      );
+                    }}
+                  >
+                    Confirm pick
+                  </button>
+                  {!canConfirmPick ? (
+                    <p className="text-muted-foreground text-xs">
+                      Confirm requires claimed task plus accepted location, item and quantity
+                      evidence in this session.
+                    </p>
+                  ) : null}
+                  {mutations.confirmPickTask.isPending ? (
+                    <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <RefreshCw className="size-4 animate-spin" />
+                      Confirming pick
+                    </p>
+                  ) : null}
+                  {lastConfirmMessage ? (
+                    <p className="text-sm font-medium">{lastConfirmMessage}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

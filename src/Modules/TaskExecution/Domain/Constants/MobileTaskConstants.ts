@@ -15,6 +15,7 @@ export const MOBILE_SCAN_TYPES = [
   'Document',
   'Location',
   'Item',
+  'Quantity',
   'Lpn',
   'Package',
   'Load',

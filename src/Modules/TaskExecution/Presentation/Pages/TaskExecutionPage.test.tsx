@@ -13,6 +13,8 @@ import type { ITaskExecutionRepository } from '@modules/TaskExecution/Applicatio
 import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
 import type {
   ClaimMobileTaskInput,
+  ConfirmPickTaskInput,
+  ConfirmPickTaskResult,
   MobileTaskListFilter,
   RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
@@ -137,8 +139,34 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
         rawValue: input.rawValue,
         deviceCode: input.deviceCode ?? null,
         sessionId: input.sessionId ?? null,
+        normalizedValue: input.scanType === 'Quantity' ? input.rawValue : '01234567890128',
+        resolvedObjectId:
+          input.scanType === 'Location' ? 'loc-source' : input.scanType === 'Item' ? 'sku-1' : null,
+        result: input.rawValue.includes('wrong') ? 'Rejected' : 'Accepted',
+        parsedValueJson:
+          input.scanType === 'Item'
+            ? { gtin: '01234567890128', Quantity: 5, Lot: 'LOT-A' }
+            : input.scanType === 'Quantity'
+              ? {}
+              : undefined,
       }),
     ),
+  );
+
+  confirmPickTask = vi.fn(
+    (mobileTaskId: string, _input: ConfirmPickTaskInput): Promise<ConfirmPickTaskResult> => {
+      const mobileTask = this.items.find((item) => item.id === mobileTaskId) ?? null;
+      return Promise.resolve({
+        pickTask: { Id: 'pick-task-1', Status: 'Completed' },
+        mobileTask: mobileTask ? { ...mobileTask, taskStatus: 'Completed' } : null,
+        inventoryControl: {
+          InventoryTransaction: { ToInventoryStatusCode: 'PICKED' },
+        },
+        scanEvidence: [],
+        outboxMessageId: 'outbox-1',
+        isDuplicate: false,
+      });
+    },
   );
 }
 
@@ -221,7 +249,10 @@ describe('TaskExecution list/detail pages', () => {
 
     await waitFor(() => expect(fake.claim).toHaveBeenCalledWith('task-a', { deviceCode: 'RF-01' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty('disabled', false),
+      expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty(
+        'disabled',
+        false,
+      ),
     );
     await actor.click(screen.getByRole('button', { name: 'Release task' }));
     await waitFor(() => expect(fake.release).toHaveBeenCalledWith('task-a'));
@@ -284,6 +315,109 @@ describe('TaskExecution list/detail pages', () => {
         }),
       ),
     );
+  });
+
+  it('confirms a pick task from detail route after accepted location, item and quantity scans', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        sourceDocumentCode: 'PT-001',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          SkuCode: 'SKU-1',
+          Quantity: 5,
+          LotNumber: 'LOT-A',
+          TargetReference: 'SHIP_TO:CUST-1',
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Pick execution expectation');
+    expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty('disabled', true);
+
+    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Location');
+    await actor.type(screen.getByLabelText('Scan value'), 'loc-source');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await screen.findByText(/Accepted scan/i);
+
+    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
+    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A(30)5');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty(
+        'disabled',
+        false,
+      ),
+    );
+    await actor.click(screen.getByRole('button', { name: 'Confirm pick' }));
+
+    await waitFor(() =>
+      expect(fake.confirmPickTask).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({
+          mobileTaskId: 'task-a',
+          reasonCode: 'RC-V1-DISCREPANCY',
+          idempotencyKey: 'pick-confirm:pick-task-1:task-a',
+        }),
+      ),
+    );
+    expect(await screen.findByText('Pick confirmation posted')).toBeTruthy();
+  });
+
+  it('disables pick confirmation when a later item scan is rejected', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          Quantity: 5,
+          LotNumber: 'LOT-A',
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Pick execution expectation');
+    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Location');
+    await actor.type(screen.getByLabelText('Scan value'), 'loc-source');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await screen.findByText(/Accepted scan/i);
+
+    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
+    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A(30)5');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty(
+        'disabled',
+        false,
+      ),
+    );
+
+    await actor.type(screen.getByLabelText('Scan value'), 'wrong-item');
+    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await screen.findByText(/Rejected scan/i);
+
+    expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty('disabled', true);
   });
 
   it('disables task actions when detail task state is terminal', async () => {

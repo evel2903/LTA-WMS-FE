@@ -128,4 +128,48 @@ describe('MobileTaskMapper', () => {
       DeviceCode: 'RF-01',
     });
   });
+
+  it('maps pick confirmation payload and response without leaking DTO casing', () => {
+    expect(
+      MobileTaskMapper.toConfirmPickTaskRequest({
+        mobileTaskId: 'task-a',
+        reasonCode: 'RC-V1-DISCREPANCY',
+        reasonNote: '',
+        evidenceRefs: ['mobile-scan:scan-1'],
+        idempotencyKey: 'pick-confirm-1',
+      }),
+    ).toEqual({
+      MobileTaskId: 'task-a',
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      EvidenceRefs: ['mobile-scan:scan-1'],
+      IdempotencyKey: 'pick-confirm-1',
+    });
+
+    expect(
+      MobileTaskMapper.toConfirmPickTaskResult({
+        PickTask: { Id: 'pick-task-1', Status: 'Completed' },
+        MobileTask: { ...dto, TaskStatus: 'Completed' },
+        InventoryControl: { InventoryTransaction: { ToInventoryStatusCode: 'PICKED' } },
+        ScanEvidence: [
+          {
+            ScanType: 'Location',
+            ScanEventId: 'scan-location',
+            RawValue: 'loc-source',
+            ExpectedValue: 'loc-source',
+            ActualValue: 'loc-source',
+            Result: 'Accepted',
+            RejectionCode: null,
+          },
+        ],
+        OutboxMessageId: 'outbox-1',
+        IsDuplicate: false,
+      }),
+    ).toMatchObject({
+      pickTask: { Id: 'pick-task-1', Status: 'Completed' },
+      mobileTask: { id: 'task-a', taskStatus: 'Completed' },
+      scanEvidence: [{ scanType: 'Location', result: 'Accepted' }],
+      outboxMessageId: 'outbox-1',
+      isDuplicate: false,
+    });
+  });
 });

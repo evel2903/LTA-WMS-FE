@@ -2,10 +2,14 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type { MobileScanEvent, MobileTask } from '@modules/TaskExecution/Domain/Types/MobileTask';
 import type {
   ClaimMobileTaskInput,
+  ConfirmPickTaskInput,
+  ConfirmPickTaskResult,
   RecordMobileScanInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import type {
   ClaimMobileTaskRequestDto,
+  ConfirmPickTaskRequestDto,
+  ConfirmPickTaskResultDto,
   MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
@@ -102,5 +106,37 @@ export const MobileTaskMapper = {
       DeviceCode: input.deviceCode,
       SessionId: input.sessionId,
     }) as RecordMobileScanRequestDto;
+  },
+
+  toConfirmPickTaskRequest(input: ConfirmPickTaskInput): ConfirmPickTaskRequestDto {
+    return removeNullish({
+      MobileTaskId: input.mobileTaskId,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      DeviceCode: input.deviceCode,
+      SessionId: input.sessionId,
+      IdempotencyKey: input.idempotencyKey,
+    }) as ConfirmPickTaskRequestDto;
+  },
+
+  toConfirmPickTaskResult(dto: ConfirmPickTaskResultDto): ConfirmPickTaskResult {
+    return {
+      pickTask: dto.PickTask ?? {},
+      mobileTask: dto.MobileTask ? MobileTaskMapper.toTask(dto.MobileTask) : null,
+      inventoryControl: dto.InventoryControl ?? null,
+      scanEvidence:
+        dto.ScanEvidence?.map((scan) => ({
+          scanType: scan.ScanType,
+          scanEventId: scan.ScanEventId,
+          rawValue: scan.RawValue,
+          expectedValue: scan.ExpectedValue,
+          actualValue: scan.ActualValue,
+          result: scan.Result,
+          rejectionCode: scan.RejectionCode ?? null,
+        })) ?? [],
+      outboxMessageId: dto.OutboxMessageId,
+      isDuplicate: dto.IsDuplicate,
+    };
   },
 };

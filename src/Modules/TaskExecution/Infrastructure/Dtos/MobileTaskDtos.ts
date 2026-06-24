@@ -38,7 +38,15 @@ export interface MobileScanEventDto {
   TaskCode: string;
   WarehouseId: string;
   OwnerId: string | null;
-  ScanType: 'Document' | 'Location' | 'Item' | 'Lpn' | 'Package' | 'Load' | 'ManualEntry';
+  ScanType:
+    | 'Document'
+    | 'Location'
+    | 'Item'
+    | 'Quantity'
+    | 'Lpn'
+    | 'Package'
+    | 'Load'
+    | 'ManualEntry';
   RawValue: string;
   NormalizedValue: string | null;
   Result: 'Accepted' | 'Rejected' | 'ManualOverrideAccepted';
@@ -62,10 +70,47 @@ export interface ClaimMobileTaskRequestDto {
 export type ReleaseMobileTaskRequestDto = Record<string, never>;
 
 export interface RecordMobileScanRequestDto {
-  ScanType: 'Document' | 'Location' | 'Item' | 'Lpn' | 'Package' | 'Load' | 'ManualEntry';
+  ScanType:
+    | 'Document'
+    | 'Location'
+    | 'Item'
+    | 'Quantity'
+    | 'Lpn'
+    | 'Package'
+    | 'Load'
+    | 'ManualEntry';
   RawValue: string;
   ManualEntry?: boolean;
   ReasonCode?: string;
   DeviceCode?: string;
   SessionId?: string;
+}
+
+export interface ConfirmPickTaskRequestDto {
+  MobileTaskId?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  DeviceCode?: string;
+  SessionId?: string;
+  IdempotencyKey: string;
+}
+
+export interface PickTaskScanEvidenceDto {
+  ScanType: 'Location' | 'Item' | 'Quantity' | 'Lot' | 'Serial' | 'ExpiryDate';
+  ScanEventId: string | null;
+  RawValue: string | null;
+  ExpectedValue: string | number | null;
+  ActualValue: string | number | null;
+  Result: 'Accepted' | 'Rejected' | 'Missing';
+  RejectionCode?: string | null;
+}
+
+export interface ConfirmPickTaskResultDto {
+  PickTask: Record<string, unknown>;
+  MobileTask: MobileTaskDto | null;
+  InventoryControl: Record<string, unknown> | null;
+  ScanEvidence: PickTaskScanEvidenceDto[];
+  OutboxMessageId: string | null;
+  IsDuplicate: boolean;
 }
