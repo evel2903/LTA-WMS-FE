@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useOutboundMutations } from '@modules/Outbound/Application/Commands/UseOutboundMutations';
 import {
+  useOutboundAllocations,
   useOutboundOrder,
   useOutboundOrders,
 } from '@modules/Outbound/Application/Queries/UseOutboundOrders';
@@ -23,6 +24,7 @@ vi.mock('@modules/Outbound/Application/Commands/UseOutboundMutations', () => ({
 vi.mock('@modules/Outbound/Application/Queries/UseOutboundOrders', () => ({
   useOutboundOrders: vi.fn(),
   useOutboundOrder: vi.fn(),
+  useOutboundAllocations: vi.fn(),
 }));
 
 function makeOrder(overrides: Partial<OutboundOrder> = {}): OutboundOrder {
@@ -78,6 +80,7 @@ function mutationState() {
     holdOrder: { mutate: vi.fn(), isPending: false, error: null },
     rejectOrder: { mutate: vi.fn(), isPending: false, error: null },
     cancelOrder: { mutate: vi.fn(), isPending: false, error: null },
+    allocateOrder: { mutate: vi.fn(), isPending: false, error: null },
   };
 }
 
@@ -102,6 +105,42 @@ describe('Outbound list/detail pages', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useOutboundOrder>);
+    vi.mocked(useOutboundAllocations).mockReturnValue({
+      data: {
+        items: [
+          {
+            id: 'allocation-1',
+            allocationNumber: 'AL-001',
+            outboundOrderId: 'outbound-1',
+            warehouseId: 'warehouse-1',
+            warehouseCode: 'WH-1',
+            ownerId: 'owner-1',
+            ownerCode: 'OWN',
+            policy: 'PartialBackorder',
+            status: 'PartiallyAllocated',
+            totalOrderedQuantity: 12,
+            totalAllocatedQuantity: 8,
+            totalBackorderedQuantity: 4,
+            shortageReason: 'Insufficient eligible Available inventory in order warehouse',
+            outboxMessageId: 'outbox-allocation-1',
+            reasonCode: 'RC-V1-DISCREPANCY',
+            reasonCodeId: 'reason-1',
+            reasonNote: 'Thiếu tồn',
+            evidenceRefs: ['shortage:1'],
+            isDuplicate: false,
+            lines: [],
+            createdAt: '2026-06-24T00:00:00.000Z',
+            updatedAt: '2026-06-24T00:00:00.000Z',
+          },
+        ],
+        page: 1,
+        pageSize: 50,
+        totalItems: 1,
+        totalPages: 1,
+      },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useOutboundAllocations>);
     vi.mocked(useOutboundMutations).mockReturnValue(
       mutationState() as unknown as ReturnType<typeof useOutboundMutations>,
     );
@@ -206,6 +245,45 @@ describe('Outbound list/detail pages', () => {
           reasonNote: undefined,
           evidenceRefs: ['case:1'],
           idempotencyKey: 'hold-1',
+        },
+      },
+      expect.any(Object),
+    );
+  });
+
+  it('submits allocation action from the outbound action route', () => {
+    const mutations = mutationState();
+    vi.mocked(useOutboundMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useOutboundMutations>,
+    );
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/outbound/:id/:action" element={<OutboundDetailPage />} />
+      </Routes>,
+      ['/outbound/outbound-1/allocate'],
+    );
+
+    expect(useOutboundAllocations).toHaveBeenCalledWith('outbound-1');
+    expect(screen.getByText('AL-001')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'shortage:1' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+      target: { value: 'allocate-1' },
+    });
+    fireEvent.change(screen.getByLabelText('Allocation policy'), {
+      target: { value: 'PartialBackorder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Allocate$/i }));
+
+    expect(mutations.allocateOrder.mutate).toHaveBeenCalledWith(
+      {
+        id: 'outbound-1',
+        payload: {
+          policy: 'PartialBackorder',
+          reasonCode: 'RC-V1-DISCREPANCY',
+          reasonNote: undefined,
+          evidenceRefs: ['shortage:1'],
+          idempotencyKey: 'allocate-1',
         },
       },
       expect.any(Object),

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { outboundQueryKeys } from '@modules/Outbound/Application/Queries/OutboundQueryKeys';
 import type {
+  AllocateOutboundOrderInput,
   ImportOutboundOrderInput,
   ReasonOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
@@ -45,6 +46,15 @@ export function useOutboundMutations() {
       onSuccess: (_data, input) => {
         void invalidateOutbound();
         void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.detail(input.id) });
+      },
+    }),
+    allocateOrder: useMutation({
+      mutationFn: (input: { id: string; payload: AllocateOutboundOrderInput }) =>
+        outboundRepository.allocate(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateOutbound();
+        void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.detail(input.id) });
+        void queryClient.invalidateQueries({ queryKey: outboundQueryKeys.allocationLists(input.id) });
       },
     }),
   };

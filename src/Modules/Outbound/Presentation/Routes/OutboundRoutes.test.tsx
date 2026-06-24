@@ -21,5 +21,6 @@ describe('outboundRoutes', () => {
       ROUTES.OUTBOUND.ACTION(),
     ]);
     expect(ROUTES.OUTBOUND.ACTION('outbound-1', 'hold')).toBe('/outbound/outbound-1/hold');
+    expect(ROUTES.OUTBOUND.ACTION('outbound-1', 'allocate')).toBe('/outbound/outbound-1/allocate');
   });
 });

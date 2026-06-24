@@ -1,15 +1,21 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
+  Allocation,
+  AllocationLine,
   OutboundOrder,
   OutboundOrderLine,
 } from '@modules/Outbound/Domain/Types/OutboundOrder';
 import type {
+  AllocateOutboundOrderInput,
   ImportOutboundOrderInput,
   ReasonOutboundOrderInput,
 } from '@modules/Outbound/Domain/Types/OutboundOrderQuery';
 import type {
+  AllocationDto,
+  AllocationLineDto,
   OutboundOrderDto,
   OutboundOrderLineDto,
+  PagedAllocationDto,
   PagedOutboundOrderDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
 
@@ -77,6 +83,67 @@ export class OutboundMapper {
     };
   }
 
+  static toAllocationLine(dto: AllocationLineDto): AllocationLine {
+    return {
+      id: dto.Id,
+      outboundOrderLineId: dto.OutboundOrderLineId,
+      lineNumber: dto.LineNumber,
+      skuId: dto.SkuId,
+      skuCode: dto.SkuCode,
+      uomId: dto.UomId,
+      uomCode: dto.UomCode,
+      orderedQuantity: dto.OrderedQuantity,
+      allocatedQuantity: dto.AllocatedQuantity,
+      backorderedQuantity: dto.BackorderedQuantity,
+      sourceBalanceId: dto.SourceBalanceId,
+      sourceDimensionId: dto.SourceDimensionId,
+      sourceLocationId: dto.SourceLocationId,
+      inventoryStatusCode: dto.InventoryStatusCode,
+      lotNumber: dto.LotNumber,
+      serialNumber: dto.SerialNumber,
+      expiryDate: dto.ExpiryDate,
+      status: dto.Status,
+      shortageReason: dto.ShortageReason,
+    };
+  }
+
+  static toAllocation(dto: AllocationDto): Allocation {
+    return {
+      id: dto.Id,
+      allocationNumber: dto.AllocationNumber,
+      outboundOrderId: dto.OutboundOrderId,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      policy: dto.Policy,
+      status: dto.Status,
+      totalOrderedQuantity: dto.TotalOrderedQuantity,
+      totalAllocatedQuantity: dto.TotalAllocatedQuantity,
+      totalBackorderedQuantity: dto.TotalBackorderedQuantity,
+      shortageReason: dto.ShortageReason,
+      outboxMessageId: dto.OutboxMessageId,
+      reasonCode: dto.ReasonCode,
+      reasonCodeId: dto.ReasonCodeId,
+      reasonNote: dto.ReasonNote,
+      evidenceRefs: dto.EvidenceRefs,
+      isDuplicate: dto.IsDuplicate,
+      lines: dto.Lines.map((line) => OutboundMapper.toAllocationLine(line)),
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+    };
+  }
+
+  static toPagedAllocations(dto: PagedAllocationDto): PaginatedResponse<Allocation> {
+    return {
+      items: dto.Items.map((item) => OutboundMapper.toAllocation(item)),
+      page: dto.Meta?.Page ?? dto.Page ?? 1,
+      pageSize: dto.Meta?.PageSize ?? dto.PageSize ?? 50,
+      totalItems: dto.Meta?.TotalItems ?? dto.TotalItems ?? dto.Items.length,
+      totalPages: dto.Meta?.TotalPages ?? dto.TotalPages ?? 1,
+    };
+  }
+
   static toImportRequest(input: ImportOutboundOrderInput) {
     return removeEmpty({
       SourceSystem: input.sourceSystem,
@@ -107,6 +174,16 @@ export class OutboundMapper {
 
   static toReasonRequest(input: ReasonOutboundOrderInput) {
     return removeEmpty({
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toAllocateRequest(input: AllocateOutboundOrderInput) {
+    return removeEmpty({
+      Policy: input.policy,
       ReasonCode: input.reasonCode,
       ReasonNote: input.reasonNote,
       EvidenceRefs: input.evidenceRefs,

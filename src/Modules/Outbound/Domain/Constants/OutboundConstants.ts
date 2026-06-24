@@ -8,3 +8,12 @@ export const OUTBOUND_ORDER_STATUSES = [
   'Rejected',
   'Cancelled',
 ] as const;
+
+export const OUTBOUND_ALLOCATION_POLICIES = ['FullOnly', 'PartialBackorder'] as const;
+
+export const OUTBOUND_ALLOCATION_STATUSES = [
+  'Allocated',
+  'PartiallyAllocated',
+  'Backordered',
+  'Failed',
+] as const;
