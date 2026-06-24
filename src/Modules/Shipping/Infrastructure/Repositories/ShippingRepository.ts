@@ -7,6 +7,8 @@ import type {
   AssignDockInput,
   AssignTruckInput,
   ConfirmShipmentInput,
+  EvaluateGoodsIssueTriggerInput,
+  RecordGateOutInput,
   ScanLoadingInput,
   ShippingStagingListFilter,
   StagePackageInput,
@@ -99,6 +101,25 @@ export class ShippingRepository implements IShippingRepository {
     const dto = await this.http.post<ShipmentPackageStagingDto>(
       SHIPPING_ENDPOINTS.CONFIRM_SHIPMENT(id),
       ShippingMapper.toConfirmShipmentRequest(input),
+    );
+    return ShippingMapper.toStaging(dto);
+  }
+
+  async recordGateOut(id: string, input: RecordGateOutInput): Promise<ShipmentPackageStaging> {
+    const dto = await this.http.post<ShipmentPackageStagingDto>(
+      SHIPPING_ENDPOINTS.RECORD_GATE_OUT(id),
+      ShippingMapper.toRecordGateOutRequest(input),
+    );
+    return ShippingMapper.toStaging(dto);
+  }
+
+  async evaluateGoodsIssueTrigger(
+    id: string,
+    input: EvaluateGoodsIssueTriggerInput,
+  ): Promise<ShipmentPackageStaging> {
+    const dto = await this.http.post<ShipmentPackageStagingDto>(
+      SHIPPING_ENDPOINTS.EVALUATE_GOODS_ISSUE_TRIGGER(id),
+      ShippingMapper.toEvaluateGoodsIssueTriggerRequest(input),
     );
     return ShippingMapper.toStaging(dto);
   }

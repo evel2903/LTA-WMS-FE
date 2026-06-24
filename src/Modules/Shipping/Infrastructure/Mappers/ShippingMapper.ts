@@ -4,6 +4,8 @@ import type {
   AssignDockInput,
   AssignTruckInput,
   ConfirmShipmentInput,
+  EvaluateGoodsIssueTriggerInput,
+  RecordGateOutInput,
   ScanLoadingInput,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
@@ -11,7 +13,9 @@ import type {
   AssignDockRequestDto,
   AssignTruckRequestDto,
   ConfirmShipmentRequestDto,
+  EvaluateGoodsIssueTriggerRequestDto,
   PagedShipmentPackageStagingDto,
+  RecordGateOutRequestDto,
   ScanLoadingRequestDto,
   ShipmentPackageStagingDto,
   StagePackageRequestDto,
@@ -61,8 +65,17 @@ export class ShippingMapper {
       loadedBy: dto.LoadedBy,
       shipmentConfirmedAt: dto.ShipmentConfirmedAt,
       shipmentConfirmedBy: dto.ShipmentConfirmedBy,
+      gateOutReference: dto.GateOutReference,
+      gateOutAt: dto.GateOutAt,
+      gateOutBy: dto.GateOutBy,
+      goodsIssueTrigger: dto.GoodsIssueTrigger,
+      goodsIssueTriggerStatus: dto.GoodsIssueTriggerStatus,
+      goodsIssueTriggeredAt: dto.GoodsIssueTriggeredAt,
+      goodsIssueTriggeredBy: dto.GoodsIssueTriggeredBy,
       loadingOutboxMessageId: dto.LoadingOutboxMessageId,
       shipmentConfirmOutboxMessageId: dto.ShipmentConfirmOutboxMessageId,
+      gateOutOutboxMessageId: dto.GateOutOutboxMessageId,
+      goodsIssueTriggerOutboxMessageId: dto.GoodsIssueTriggerOutboxMessageId,
       createdAt: dto.CreatedAt,
       updatedAt: dto.UpdatedAt,
     };
@@ -142,5 +155,30 @@ export class ShippingMapper {
       IdempotencyKey: input.idempotencyKey,
     });
   }
-}
 
+  static toRecordGateOutRequest(input: RecordGateOutInput): RecordGateOutRequestDto {
+    return removeEmpty({
+      GateOutReference: input.gateOutReference,
+      TruckReference: input.truckReference,
+      VehicleNumber: input.vehicleNumber,
+      InventoryStatusCode: input.inventoryStatusCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toEvaluateGoodsIssueTriggerRequest(
+    input: EvaluateGoodsIssueTriggerInput,
+  ): EvaluateGoodsIssueTriggerRequestDto {
+    return removeEmpty({
+      GoodsIssueTrigger: input.goodsIssueTrigger,
+      InventoryStatusCode: input.inventoryStatusCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+}

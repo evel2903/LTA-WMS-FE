@@ -43,8 +43,17 @@ const stagingDto: ShipmentPackageStagingDto = {
   LoadedBy: null,
   ShipmentConfirmedAt: null,
   ShipmentConfirmedBy: null,
+  GateOutReference: null,
+  GateOutAt: null,
+  GateOutBy: null,
+  GoodsIssueTrigger: null,
+  GoodsIssueTriggerStatus: null,
+  GoodsIssueTriggeredAt: null,
+  GoodsIssueTriggeredBy: null,
   LoadingOutboxMessageId: null,
   ShipmentConfirmOutboxMessageId: null,
+  GateOutOutboxMessageId: null,
+  GoodsIssueTriggerOutboxMessageId: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -134,6 +143,16 @@ describe('ShippingRepository', () => {
       requireFullLoad: true,
       idempotencyKey: 'confirm-1',
     });
+    await repository.recordGateOut('staging-1', {
+      gateOutReference: 'GATE-OUT-001',
+      truckReference: 'TRUCK-001',
+      idempotencyKey: 'gate-out-1',
+    });
+    await repository.evaluateGoodsIssueTrigger('staging-1', {
+      goodsIssueTrigger: 'at_gate_out',
+      evidenceRefs: ['gi:evidence'],
+      idempotencyKey: 'gi-trigger-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['post', '/shipping/staging/packages'],
@@ -141,6 +160,8 @@ describe('ShippingRepository', () => {
       ['post', '/shipping/staging/packages/staging-1/truck'],
       ['post', '/shipping/staging/packages/staging-1/loading'],
       ['post', '/shipping/staging/packages/staging-1/confirm'],
+      ['post', '/shipping/staging/packages/staging-1/gate-out'],
+      ['post', '/shipping/staging/packages/staging-1/goods-issue-trigger'],
     ]);
     expect(http.calls[0].body).toMatchObject({
       PackageId: 'package-1',
@@ -167,6 +188,16 @@ describe('ShippingRepository', () => {
       ShipmentReference: 'SHIP-001',
       RequireFullLoad: true,
       IdempotencyKey: 'confirm-1',
+    });
+    expect(http.calls[5].body).toMatchObject({
+      GateOutReference: 'GATE-OUT-001',
+      TruckReference: 'TRUCK-001',
+      IdempotencyKey: 'gate-out-1',
+    });
+    expect(http.calls[6].body).toMatchObject({
+      GoodsIssueTrigger: 'at_gate_out',
+      EvidenceRefs: ['gi:evidence'],
+      IdempotencyKey: 'gi-trigger-1',
     });
   });
 });

@@ -1,4 +1,7 @@
-import type { ShipmentPackageStagingStatus } from '@modules/Shipping/Domain/Types/Shipping';
+import type {
+  GoodsIssueTrigger,
+  ShipmentPackageStagingStatus,
+} from '@modules/Shipping/Domain/Types/Shipping';
 
 export interface ShippingStagingListFilter {
   page?: number;
@@ -66,3 +69,22 @@ export interface ConfirmShipmentInput {
   idempotencyKey: string;
 }
 
+export interface RecordGateOutInput {
+  gateOutReference?: string;
+  truckReference?: string;
+  vehicleNumber?: string;
+  inventoryStatusCode?: string;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface EvaluateGoodsIssueTriggerInput {
+  goodsIssueTrigger?: GoodsIssueTrigger;
+  inventoryStatusCode?: string;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
