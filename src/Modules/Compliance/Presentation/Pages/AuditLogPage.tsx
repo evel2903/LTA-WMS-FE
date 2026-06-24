@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import {
-  DetailQueryAlert,
-  ListRefetchWarning,
-} from '@shared/Components/Feedback/QueryResilience';
+import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
 import {
   resolveListViewState,
   useResilientQueryData,
 } from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
+import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import {
   ACTION_CODES,
@@ -19,14 +18,8 @@ import {
   type ActionCode,
   type ObjectType,
 } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
-import {
-  useAuditLogDetail,
-  useAuditLogs,
-} from '@modules/Compliance/Application/Queries/UseComplianceQueries';
-import { useComplianceStore } from '@modules/Compliance/Application/Stores/ComplianceStore';
-import { AuditLogDetailPanel } from '@modules/Compliance/Presentation/Components/AuditLogDetailPanel';
+import { useAuditLogs } from '@modules/Compliance/Application/Queries/UseComplianceQueries';
 import { AuditLogTable } from '@modules/Compliance/Presentation/Components/AuditLogTable';
-import { ComplianceStateView } from '@modules/Compliance/Presentation/Components/StateViews';
 
 interface AuditFilters {
   actorUserId: string;
@@ -46,38 +39,96 @@ const EMPTY_FILTERS: AuditFilters = {
   to: '',
 };
 
-export function AuditLogPage() {
-  const store = useComplianceStore();
-  const [filters, setFilters] = useState<AuditFilters>(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-  // Filters live in local state (reset on navigation; never go stale vs the catalog).
-  const patch = (next: Partial<AuditFilters>) => {
-    setFilters((current) => ({ ...current, ...next }));
-    setPage(1); // any filter change returns to the first page
+function readDateParam(value: string | null): string {
+  if (!value || !DATE_PARAM_PATTERN.test(value)) return '';
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10) === value ? value : '';
+}
+
+function readFilters(search: string): AuditFilters {
+  const params = new URLSearchParams(search);
+  const action = params.get('action');
+  const objectType = params.get('objectType');
+  const from = readDateParam(params.get('from'));
+  const to = readDateParam(params.get('to'));
+  const hasValidRange = !from || !to || from <= to;
+  return {
+    actorUserId: params.get('actorUserId') ?? '',
+    action: action && ACTION_CODES.includes(action as ActionCode) ? (action as ActionCode) : '',
+    objectType:
+      objectType && OBJECT_TYPES.includes(objectType as ObjectType) ? (objectType as ObjectType) : '',
+    reasonCodeId: params.get('reasonCodeId') ?? '',
+    from: hasValidRange ? from : '',
+    to: hasValidRange ? to : '',
+  };
+}
+
+function readPage(search: string): number {
+  const parsed = Number(new URLSearchParams(search).get('page') ?? 1);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function buildSearchParams(filters: AuditFilters, page: number): URLSearchParams {
+  const params = new URLSearchParams();
+  const setIfPresent = (key: string, value: string) => {
+    if (value) params.set(key, value);
+  };
+  setIfPresent('actorUserId', filters.actorUserId);
+  setIfPresent('action', filters.action);
+  setIfPresent('objectType', filters.objectType);
+  setIfPresent('reasonCodeId', filters.reasonCodeId);
+  setIfPresent('from', filters.from);
+  setIfPresent('to', filters.to);
+  if (page > 1) params.set('page', String(page));
+  return params;
+}
+
+function buildReturnTo(filters: AuditFilters, page: number): string {
+  const params = buildSearchParams(filters, page);
+  const query = params.toString();
+  return query ? `${ROUTES.FOUNDATION.AUDIT}?${query}` : ROUTES.FOUNDATION.AUDIT;
+}
+
+export function AuditLogPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchKey = searchParams.toString();
+  const filters = useMemo<AuditFilters>(
+    () => ({
+      ...EMPTY_FILTERS,
+      ...readFilters(searchKey),
+    }),
+    [searchKey],
+  );
+  const page = useMemo(() => readPage(searchKey), [searchKey]);
+
+  const updateSearch = (nextFilters: AuditFilters, nextPage: number, replace = true) => {
+    setSearchParams(buildSearchParams(nextFilters, nextPage), { replace });
   };
 
-  // Debounce so free-text filters don't fire a request per keystroke (project pattern).
+  const patch = (next: Partial<AuditFilters>) => {
+    updateSearch({ ...filters, ...next }, 1);
+  };
+
   const debounced = useDebouncedValue(filters, 300);
+  const isFilterSettled = debounced === filters;
+  const requestKey = useMemo(() => JSON.stringify({ filters: debounced, page }), [debounced, page]);
+  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useAuditLogs({
     page,
+    pageSize: 50,
     actorUserId: debounced.actorUserId || undefined,
     action: debounced.action || undefined,
     objectType: debounced.objectType || undefined,
     reasonCodeId: debounced.reasonCodeId || undefined,
     from: debounced.from || undefined,
-    // Make the selected end date inclusive of the whole day (date-only -> end-of-day).
     to: debounced.to ? `${debounced.to}T23:59:59.999Z` : undefined,
   });
-  const selectedId = store.selectedAuditLogId;
-  const detailQuery = useAuditLogDetail(selectedId);
-  const auditData = useResilientQueryData(query.data);
-  // Only trust the detail query when it is for the current selection (guard vs a stale id).
-  const selected =
-    (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    auditData?.items.find((entry) => entry.id === selectedId) ??
-    null;
 
+  const auditData = useResilientQueryData(query.data);
   const entries = auditData?.items ?? [];
   const meta = auditData;
   const apiError = query.error instanceof ApiError ? query.error : null;
@@ -86,130 +137,136 @@ export function AuditLogPage() {
     isLoading: query.isLoading,
     itemCount: entries.length,
   });
+  const boundaryState =
+    listState === 'ready' ? null : listState === 'denied' ? 'forbidden' : listState;
+  const canOpenRows = isFilterSettled && !query.isFetching && activeDataKey === requestKey;
+
+  useEffect(() => {
+    if (query.data && !query.error && !query.isPlaceholderData) {
+      setActiveDataKey(requestKey);
+    }
+  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+
+  useEffect(() => {
+    const canonicalSearch = buildSearchParams(filters, page).toString();
+    if (canonicalSearch !== searchKey) {
+      setSearchParams(canonicalSearch, { replace: true });
+    }
+  }, [filters, page, searchKey, setSearchParams]);
+
+  useEffect(() => {
+    if (!query.data) return;
+
+    const totalPages = query.data.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      setSearchParams(buildSearchParams(filters, totalPages), { replace: true });
+    } else if (totalPages === 0 && page > 1) {
+      setSearchParams(buildSearchParams(filters, 1), { replace: true });
+    }
+  }, [filters, page, query.data, setSearchParams]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Audit Log</h1>
-        <p className="text-muted-foreground">
-          Tra cứu immutable mọi thao tác ghi V0. Chỉ đọc — không sửa/xóa.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="grid gap-1 text-sm">
-          Actor user id
-          <Input value={filters.actorUserId} onChange={(e) => patch({ actorUserId: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          Action
-          <select
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            value={filters.action}
-            onChange={(e) => patch({ action: e.target.value as ActionCode | '' })}
-          >
-            <option value="">All</option>
-            {ACTION_CODES.map((action) => (
-              <option key={action} value={action}>
-                {action}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          Object type
-          <select
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            value={filters.objectType}
-            onChange={(e) => patch({ objectType: e.target.value as ObjectType | '' })}
-          >
-            <option value="">All</option>
-            {OBJECT_TYPES.map((objectType) => (
-              <option key={objectType} value={objectType}>
-                {objectType}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          Reason code id
-          <Input value={filters.reasonCodeId} onChange={(e) => patch({ reasonCodeId: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          From
-          <Input type="date" value={filters.from} onChange={(e) => patch({ from: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          To
-          <Input type="date" value={filters.to} onChange={(e) => patch({ to: e.target.value })} />
-        </label>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_480px]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Events</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {listState === 'ready' ? (
-              <>
-                <ListRefetchWarning error={query.error} hasData={entries.length > 0} />
-                <AuditLogTable
-                  entries={entries}
-                  selectedId={selectedId}
-                  onSelect={(entry) => store.setSelectedAuditLogId(entry.id)}
-                />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page <= 1}
-                      onClick={() => setPage((value) => Math.max(1, value - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page >= (meta?.totalPages ?? 1)}
-                      onClick={() => setPage((value) => value + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <ComplianceStateView
-                state={listState}
-                emptyLabel="No audit events match the filters."
-                errorMessage={apiError?.message ?? 'Unable to load audit log.'}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Detail</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <DetailQueryAlert
-              error={detailQuery.error}
-              fallback="Không tải được chi tiết audit. Đang hiển thị dữ liệu từ danh sách."
-            />
-            {selected ? (
-              <AuditLogDetailPanel entry={selected} />
-            ) : (
-              <p className="text-muted-foreground text-sm">Chọn một sự kiện để xem before/after.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <ListPageShell
+      title="Audit Log"
+      description="Read-only audit events. Open a row to inspect before/after snapshots on a dedicated detail page."
+      state={boundaryState}
+      stateTitle={listState === 'error' ? 'Unable to load audit log' : undefined}
+      stateMessage={
+        listState === 'empty'
+          ? 'No audit events match the filters.'
+          : listState === 'error'
+            ? apiError?.message ?? 'Unable to load audit log.'
+            : undefined
+      }
+      filters={
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 text-sm">
+            Actor user id
+            <Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Action
+            <select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={filters.action}
+              onChange={(event) => patch({ action: event.target.value as ActionCode | '' })}
+            >
+              <option value="">All</option>
+              {ACTION_CODES.map((action) => (
+                <option key={action} value={action}>
+                  {action}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Object type
+            <select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={filters.objectType}
+              onChange={(event) => patch({ objectType: event.target.value as ObjectType | '' })}
+            >
+              <option value="">All</option>
+              {OBJECT_TYPES.map((objectType) => (
+                <option key={objectType} value={objectType}>
+                  {objectType}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Reason code id
+            <Input value={filters.reasonCodeId} onChange={(event) => patch({ reasonCodeId: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            From
+            <Input type="date" value={filters.from} onChange={(event) => patch({ from: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            To
+            <Input type="date" value={filters.to} onChange={(event) => patch({ to: event.target.value })} />
+          </label>
+        </div>
+      }
+      pagination={
+        listState === 'ready' ? (
+          <div className="flex w-full items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">
+              Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
+              >
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= (meta?.totalPages ?? 1)}
+                onClick={() => updateSearch(filters, page + 1, false)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null
+      }
+    >
+      <ListRefetchWarning error={query.error} hasData={entries.length > 0} />
+      <AuditLogTable
+        entries={entries}
+        selectedId={null}
+        isSelectionDisabled={!canOpenRows}
+        onSelect={(entry) =>
+          navigate(ROUTES.FOUNDATION.AUDIT_DETAIL(entry.id), {
+            state: { returnTo: buildReturnTo(filters, page) },
+          })
+        }
+      />
+    </ListPageShell>
   );
 }

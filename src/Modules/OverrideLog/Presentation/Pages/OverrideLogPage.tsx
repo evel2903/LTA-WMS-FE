@@ -1,30 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import {
-  DetailQueryAlert,
-  ListRefetchWarning,
-} from '@shared/Components/Feedback/QueryResilience';
+import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
 import {
   resolveListViewState,
   useResilientQueryData,
 } from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
+import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import {
   OBJECT_TYPES,
   type ObjectType,
 } from '@modules/OverrideLog/Domain/Enums/OverrideLogEnums';
-import {
-  useOverrideLogDetail,
-  useOverrideLogs,
-} from '@modules/OverrideLog/Application/Queries/UseOverrideLogQueries';
-import { useOverrideLogStore } from '@modules/OverrideLog/Application/Stores/OverrideLogStore';
-import { OverrideLogStateView } from '@modules/OverrideLog/Presentation/Components/StateViews';
+import { useOverrideLogs } from '@modules/OverrideLog/Application/Queries/UseOverrideLogQueries';
 import { OverrideLogTable } from '@modules/OverrideLog/Presentation/Components/OverrideLogTable';
-import { OverrideLogDetailPanel } from '@modules/OverrideLog/Presentation/Components/OverrideLogDetailPanel';
 
 interface Filters {
   ruleId: string;
@@ -42,38 +35,94 @@ const EMPTY_FILTERS: Filters = {
   to: '',
 };
 
-export function OverrideLogPage() {
-  const store = useOverrideLogStore();
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-  // Filters live in local state (reset on navigation; never go stale vs the log).
-  const patch = (next: Partial<Filters>) => {
-    setFilters((current) => ({ ...current, ...next }));
-    setPage(1); // any filter change returns to the first page
+function readDateParam(value: string | null): string {
+  if (!value || !DATE_PARAM_PATTERN.test(value)) return '';
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10) === value ? value : '';
+}
+
+function readFilters(search: string): Filters {
+  const params = new URLSearchParams(search);
+  const targetObjectType = params.get('targetObjectType');
+  const from = readDateParam(params.get('from'));
+  const to = readDateParam(params.get('to'));
+  const hasValidRange = !from || !to || from <= to;
+  return {
+    ruleId: params.get('ruleId') ?? '',
+    actorUserId: params.get('actorUserId') ?? '',
+    targetObjectType:
+      targetObjectType && OBJECT_TYPES.includes(targetObjectType as ObjectType)
+        ? (targetObjectType as ObjectType)
+        : '',
+    from: hasValidRange ? from : '',
+    to: hasValidRange ? to : '',
+  };
+}
+
+function readPage(search: string): number {
+  const parsed = Number(new URLSearchParams(search).get('page') ?? 1);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function buildSearchParams(filters: Filters, page: number): URLSearchParams {
+  const params = new URLSearchParams();
+  const setIfPresent = (key: string, value: string) => {
+    if (value) params.set(key, value);
+  };
+  setIfPresent('ruleId', filters.ruleId);
+  setIfPresent('actorUserId', filters.actorUserId);
+  setIfPresent('targetObjectType', filters.targetObjectType);
+  setIfPresent('from', filters.from);
+  setIfPresent('to', filters.to);
+  if (page > 1) params.set('page', String(page));
+  return params;
+}
+
+function buildReturnTo(filters: Filters, page: number): string {
+  const params = buildSearchParams(filters, page);
+  const query = params.toString();
+  return query ? `${ROUTES.FOUNDATION.OVERRIDES}?${query}` : ROUTES.FOUNDATION.OVERRIDES;
+}
+
+export function OverrideLogPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchKey = searchParams.toString();
+  const filters = useMemo<Filters>(
+    () => ({
+      ...EMPTY_FILTERS,
+      ...readFilters(searchKey),
+    }),
+    [searchKey],
+  );
+  const page = useMemo(() => readPage(searchKey), [searchKey]);
+
+  const updateSearch = (nextFilters: Filters, nextPage: number, replace = true) => {
+    setSearchParams(buildSearchParams(nextFilters, nextPage), { replace });
   };
 
-  // Debounce the free-text fields so they don't fire a request per keystroke.
-  const debouncedRuleId = useDebouncedValue(filters.ruleId, 300);
-  const debouncedActor = useDebouncedValue(filters.actorUserId, 300);
+  const patch = (next: Partial<Filters>) => {
+    updateSearch({ ...filters, ...next }, 1);
+  };
+
+  const debounced = useDebouncedValue(filters, 300);
+  const isFilterSettled = debounced === filters;
+  const requestKey = useMemo(() => JSON.stringify({ filters: debounced, page }), [debounced, page]);
+  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useOverrideLogs({
     page,
-    ruleId: debouncedRuleId || undefined,
-    actorUserId: debouncedActor || undefined,
-    targetObjectType: filters.targetObjectType || undefined,
-    from: filters.from || undefined,
-    // Make the selected end date inclusive of the whole day (date-only -> end-of-day).
-    to: filters.to ? `${filters.to}T23:59:59.999Z` : undefined,
+    pageSize: 50,
+    ruleId: debounced.ruleId || undefined,
+    actorUserId: debounced.actorUserId || undefined,
+    targetObjectType: debounced.targetObjectType || undefined,
+    from: debounced.from || undefined,
+    to: debounced.to ? `${debounced.to}T23:59:59.999Z` : undefined,
   });
-  const selectedId = store.selectedLogId;
-  const detailQuery = useOverrideLogDetail(selectedId);
-  const overrideLogData = useResilientQueryData(query.data);
-  // Only trust the detail query when it is for the current selection (guard vs a stale id).
-  const selected =
-    (detailQuery.data?.id === selectedId ? detailQuery.data : null) ??
-    overrideLogData?.items.find((log) => log.id === selectedId) ??
-    null;
 
+  const overrideLogData = useResilientQueryData(query.data);
   const logs = overrideLogData?.items ?? [];
   const meta = overrideLogData;
   const apiError = query.error instanceof ApiError ? query.error : null;
@@ -82,116 +131,121 @@ export function OverrideLogPage() {
     isLoading: query.isLoading,
     itemCount: logs.length,
   });
+  const boundaryState =
+    listState === 'ready' ? null : listState === 'denied' ? 'forbidden' : listState;
+  const canOpenRows = isFilterSettled && !query.isFetching && activeDataKey === requestKey;
+
+  useEffect(() => {
+    if (query.data && !query.error && !query.isPlaceholderData) {
+      setActiveDataKey(requestKey);
+    }
+  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+
+  useEffect(() => {
+    const canonicalSearch = buildSearchParams(filters, page).toString();
+    if (canonicalSearch !== searchKey) {
+      setSearchParams(canonicalSearch, { replace: true });
+    }
+  }, [filters, page, searchKey, setSearchParams]);
+
+  useEffect(() => {
+    if (!query.data) return;
+
+    const totalPages = query.data.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      setSearchParams(buildSearchParams(filters, totalPages), { replace: true });
+    } else if (totalPages === 0 && page > 1) {
+      setSearchParams(buildSearchParams(filters, 1), { replace: true });
+    }
+  }, [filters, page, query.data, setSearchParams]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Override Log</h1>
-        <p className="text-muted-foreground">
-          Tra cứu immutable mọi override rule (rule, actor, target, reason, approval). Chỉ đọc —
-          không sửa/xóa. Lọc theo scope được áp dụng ở backend.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="grid gap-1 text-sm">
-          Rule id
-          <Input value={filters.ruleId} onChange={(e) => patch({ ruleId: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          Actor user id
-          <Input value={filters.actorUserId} onChange={(e) => patch({ actorUserId: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          Target type
-          <select
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            value={filters.targetObjectType}
-            onChange={(e) => patch({ targetObjectType: e.target.value as ObjectType | '' })}
-          >
-            <option value="">All</option>
-            {OBJECT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          From
-          <Input type="date" value={filters.from} onChange={(e) => patch({ from: e.target.value })} />
-        </label>
-        <label className="grid gap-1 text-sm">
-          To
-          <Input type="date" value={filters.to} onChange={(e) => patch({ to: e.target.value })} />
-        </label>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_480px]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Overrides</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {listState === 'ready' ? (
-              <>
-                <ListRefetchWarning error={query.error} hasData={logs.length > 0} />
-                <OverrideLogTable
-                  logs={logs}
-                  selectedId={selectedId}
-                  onSelect={(log) => store.setSelectedLogId(log.id)}
-                />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page <= 1}
-                      onClick={() => setPage((value) => Math.max(1, value - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={page >= (meta?.totalPages ?? 1)}
-                      onClick={() => setPage((value) => value + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <OverrideLogStateView
-                state={listState}
-                emptyLabel="No override logs match the filters."
-                errorMessage={apiError?.message ?? 'Unable to load override logs.'}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Detail</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <DetailQueryAlert
-              error={detailQuery.error}
-              fallback="Không tải được chi tiết override. Đang hiển thị dữ liệu từ danh sách."
-            />
-            {selected ? (
-              <OverrideLogDetailPanel log={selected} />
-            ) : (
-              <p className="text-muted-foreground text-sm">Chọn một override để xem before/after.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    <ListPageShell
+      title="Override Log"
+      description="Read-only override records. Open a row to inspect reason, approval, evidence and before/after snapshots."
+      state={boundaryState}
+      stateTitle={listState === 'error' ? 'Unable to load override logs' : undefined}
+      stateMessage={
+        listState === 'empty'
+          ? 'No override logs match the filters.'
+          : listState === 'error'
+            ? apiError?.message ?? 'Unable to load override logs.'
+            : undefined
+      }
+      filters={
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 text-sm">
+            Rule id
+            <Input value={filters.ruleId} onChange={(event) => patch({ ruleId: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Actor user id
+            <Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Target type
+            <select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={filters.targetObjectType}
+              onChange={(event) => patch({ targetObjectType: event.target.value as ObjectType | '' })}
+            >
+              <option value="">All</option>
+              {OBJECT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            From
+            <Input type="date" value={filters.from} onChange={(event) => patch({ from: event.target.value })} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            To
+            <Input type="date" value={filters.to} onChange={(event) => patch({ to: event.target.value })} />
+          </label>
+        </div>
+      }
+      pagination={
+        listState === 'ready' ? (
+          <div className="flex w-full items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">
+              Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
+              >
+                Previous
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= (meta?.totalPages ?? 1)}
+                onClick={() => updateSearch(filters, page + 1, false)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        ) : null
+      }
+    >
+      <ListRefetchWarning error={query.error} hasData={logs.length > 0} />
+      <OverrideLogTable
+        logs={logs}
+        selectedId={null}
+        isSelectionDisabled={!canOpenRows}
+        onSelect={(log) =>
+          navigate(ROUTES.FOUNDATION.OVERRIDE_DETAIL(log.id), {
+            state: { returnTo: buildReturnTo(filters, page) },
+          })
+        }
+      />
+    </ListPageShell>
   );
 }

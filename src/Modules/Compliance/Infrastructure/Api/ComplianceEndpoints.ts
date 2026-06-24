@@ -1,7 +1,11 @@
+function pathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
+
 /** Root-path endpoint constants for Audit Log + Exception Case (no /api/v1 prefix). */
 export const COMPLIANCE_ENDPOINTS = {
   AUDIT_LOGS: '/audit-logs',
-  AUDIT_LOG_BY_ID: (id: string) => `/audit-logs/${id}`,
+  AUDIT_LOG_BY_ID: (id: string) => `/audit-logs/${pathSegment(id)}`,
   EXCEPTIONS: '/exceptions',
   EXCEPTION_BY_ID: (id: string) => `/exceptions/${id}`,
   EXCEPTION_LOG: (id: string) => `/exceptions/${id}/log`,

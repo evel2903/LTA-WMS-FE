@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
-import { ComplianceRepository } from '@modules/Compliance/Infrastructure/Repositories/ComplianceRepository';
+import { OverrideLogRepository } from '@modules/OverrideLog/Infrastructure/Repositories/OverrideLogRepository';
 
 class FakeHttpClient implements HttpClient {
   public calls: Array<{ method: string; url: string; body?: unknown; config?: unknown }> = [];
@@ -10,13 +10,13 @@ class FakeHttpClient implements HttpClient {
     this.calls.push({ method: 'get', url, config });
     return Promise.resolve({
       Items: [],
-      Meta: { Page: 1, PageSize: 20, TotalItems: 0, TotalPages: 1 },
+      Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
     } as T);
   }
 
   post<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
     this.calls.push({ method: 'post', url, body, config });
-    return Promise.resolve({ Id: 'exception-1', ...(body as object) } as T);
+    return Promise.resolve({} as T);
   }
 
   put<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
@@ -35,28 +35,26 @@ class FakeHttpClient implements HttpClient {
   }
 }
 
-describe('ComplianceRepository', () => {
-  it('normalizes audit and exception list paging to default 50 and max 100', async () => {
+describe('OverrideLogRepository', () => {
+  it('normalizes override list paging to default 50 and max 100', async () => {
     const http = new FakeHttpClient();
-    const repository = new ComplianceRepository(http);
+    const repository = new OverrideLogRepository(http);
 
-    await repository.listAuditLogs({ page: 0, pageSize: 0 });
-    await repository.listExceptions({ page: -3, pageSize: -10 });
-    await repository.listExceptions({ page: 2, pageSize: 500 });
-    await repository.listAuditLogs({ page: 1.5, pageSize: 50.5 });
+    await repository.list({ page: 0, pageSize: 0 });
+    await repository.list({ page: 2, pageSize: 500 });
+    await repository.list({ page: 1.5, pageSize: 50.5 });
 
     expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
-    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
-    expect(http.calls[2]?.config).toMatchObject({ params: { Page: 2, PageSize: 100 } });
-    expect(http.calls[3]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
+    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 2, PageSize: 100 } });
+    expect(http.calls[2]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
   });
 
-  it('encodes audit detail ids in endpoint paths', async () => {
+  it('encodes override detail ids in endpoint paths', async () => {
     const http = new FakeHttpClient();
-    const repository = new ComplianceRepository(http);
+    const repository = new OverrideLogRepository(http);
 
-    await repository.getAuditLog('audit/a?#1');
+    await repository.getById('override/a?#1');
 
-    expect(http.calls[0]?.url).toBe('/audit-logs/audit%2Fa%3F%231');
+    expect(http.calls[0]?.url).toBe('/overrides/override%2Fa%3F%231');
   });
 });

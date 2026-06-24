@@ -12,9 +12,15 @@ interface AuditLogTableProps {
   entries: AuditLogEntry[];
   selectedId: string | null;
   onSelect: (entry: AuditLogEntry) => void;
+  isSelectionDisabled?: boolean;
 }
 
-export function AuditLogTable({ entries, selectedId, onSelect }: AuditLogTableProps) {
+export function AuditLogTable({
+  entries,
+  selectedId,
+  onSelect,
+  isSelectionDisabled = false,
+}: AuditLogTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -34,7 +40,11 @@ export function AuditLogTable({ entries, selectedId, onSelect }: AuditLogTablePr
             className="data-[selected=true]:bg-muted"
           >
             <TableCell className="whitespace-nowrap tabular-nums">
-              <button className="underline-offset-2 hover:underline" onClick={() => onSelect(entry)}>
+              <button
+                className="underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSelectionDisabled}
+                onClick={() => onSelect(entry)}
+              >
                 {new Date(entry.occurredAt).toLocaleString()}
               </button>
             </TableCell>
