@@ -50,10 +50,18 @@ const stagingDto: ShipmentPackageStagingDto = {
   GoodsIssueTriggerStatus: null,
   GoodsIssueTriggeredAt: null,
   GoodsIssueTriggeredBy: null,
+  GoodsIssueStatus: null,
+  GoodsIssuePostedAt: null,
+  GoodsIssuePostedBy: null,
+  GoodsIssueInventoryTransactionId: null,
+  GoodsIssueInventoryMovementId: null,
   LoadingOutboxMessageId: null,
   ShipmentConfirmOutboxMessageId: null,
   GateOutOutboxMessageId: null,
   GoodsIssueTriggerOutboxMessageId: null,
+  GoodsIssueOutboxMessageId: null,
+  ShipmentClosedOutboxMessageId: null,
+  ShipmentClosedAt: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -92,7 +100,7 @@ class FakeHttpClient implements HttpClient {
 }
 
 describe('ShippingRepository', () => {
-  it('uses default PageSize but passes oversize values through for BE rejection', async () => {
+  it('uses default PageSize and clamps oversize values to the V1 max', async () => {
     const http = new FakeHttpClient();
     const repository = new ShippingRepository(http);
 
@@ -107,7 +115,7 @@ describe('ShippingRepository', () => {
     expect(http.calls[1]).toMatchObject({
       method: 'get',
       url: '/shipping/staging/packages',
-      config: { params: { Page: 2, PageSize: 500, Status: 'Staged', PackageId: 'package-1' } },
+      config: { params: { Page: 2, PageSize: 100, Status: 'Staged', PackageId: 'package-1' } },
     });
   });
 
@@ -153,6 +161,11 @@ describe('ShippingRepository', () => {
       evidenceRefs: ['gi:evidence'],
       idempotencyKey: 'gi-trigger-1',
     });
+    await repository.postGoodsIssue('staging-1', {
+      reasonCode: 'RC-V1-GOODS-ISSUE-CORRECTION',
+      evidenceRefs: ['gi:post'],
+      idempotencyKey: 'gi-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['post', '/shipping/staging/packages'],
@@ -162,6 +175,7 @@ describe('ShippingRepository', () => {
       ['post', '/shipping/staging/packages/staging-1/confirm'],
       ['post', '/shipping/staging/packages/staging-1/gate-out'],
       ['post', '/shipping/staging/packages/staging-1/goods-issue-trigger'],
+      ['post', '/shipping/staging/packages/staging-1/goods-issue'],
     ]);
     expect(http.calls[0].body).toMatchObject({
       PackageId: 'package-1',
@@ -198,6 +212,11 @@ describe('ShippingRepository', () => {
       GoodsIssueTrigger: 'at_gate_out',
       EvidenceRefs: ['gi:evidence'],
       IdempotencyKey: 'gi-trigger-1',
+    });
+    expect(http.calls[7].body).toMatchObject({
+      ReasonCode: 'RC-V1-GOODS-ISSUE-CORRECTION',
+      EvidenceRefs: ['gi:post'],
+      IdempotencyKey: 'gi-1',
     });
   });
 });

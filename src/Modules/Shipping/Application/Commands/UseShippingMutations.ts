@@ -5,6 +5,7 @@ import type {
   AssignTruckInput,
   ConfirmShipmentInput,
   EvaluateGoodsIssueTriggerInput,
+  PostGoodsIssueInput,
   RecordGateOutInput,
   ScanLoadingInput,
   StagePackageInput,
@@ -64,6 +65,14 @@ export function useShippingMutations() {
     evaluateGoodsIssueTrigger: useMutation({
       mutationFn: (input: { id: string; payload: EvaluateGoodsIssueTriggerInput }) =>
         shippingRepository.evaluateGoodsIssueTrigger(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateShipping();
+        void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
+      },
+    }),
+    postGoodsIssue: useMutation({
+      mutationFn: (input: { id: string; payload: PostGoodsIssueInput }) =>
+        shippingRepository.postGoodsIssue(input.id, input.payload),
       onSuccess: (_data, input) => {
         void invalidateShipping();
         void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });

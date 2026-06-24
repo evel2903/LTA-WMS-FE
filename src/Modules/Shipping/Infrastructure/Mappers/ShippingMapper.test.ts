@@ -46,10 +46,18 @@ const stagingDto: ShipmentPackageStagingDto = {
   GoodsIssueTriggerStatus: null,
   GoodsIssueTriggeredAt: null,
   GoodsIssueTriggeredBy: null,
+  GoodsIssueStatus: null,
+  GoodsIssuePostedAt: null,
+  GoodsIssuePostedBy: null,
+  GoodsIssueInventoryTransactionId: null,
+  GoodsIssueInventoryMovementId: null,
   LoadingOutboxMessageId: null,
   ShipmentConfirmOutboxMessageId: null,
   GateOutOutboxMessageId: null,
   GoodsIssueTriggerOutboxMessageId: null,
+  GoodsIssueOutboxMessageId: null,
+  ShipmentClosedOutboxMessageId: null,
+  ShipmentClosedAt: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -63,6 +71,8 @@ describe('ShippingMapper', () => {
       status: 'Staged',
       inventoryStatusCode: 'STAGED',
       stagingLaneCode: 'STAGE-A',
+      goodsIssueStatus: null,
+      goodsIssueOutboxMessageId: null,
     });
   });
 
@@ -144,6 +154,17 @@ describe('ShippingMapper', () => {
       GoodsIssueTrigger: 'at_gate_out',
       EvidenceRefs: ['gi:evidence'],
       IdempotencyKey: 'gi-trigger-1',
+    });
+    expect(
+      ShippingMapper.toPostGoodsIssueRequest({
+        evidenceRefs: ['gi:post'],
+        reasonCode: 'RC-V1-GOODS-ISSUE-CORRECTION',
+        idempotencyKey: 'gi-1',
+      }),
+    ).toEqual({
+      ReasonCode: 'RC-V1-GOODS-ISSUE-CORRECTION',
+      EvidenceRefs: ['gi:post'],
+      IdempotencyKey: 'gi-1',
     });
   });
 });

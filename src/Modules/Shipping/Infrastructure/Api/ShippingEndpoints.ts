@@ -8,4 +8,5 @@ export const SHIPPING_ENDPOINTS = {
   RECORD_GATE_OUT: (id: string) => `/shipping/staging/packages/${id}/gate-out`,
   EVALUATE_GOODS_ISSUE_TRIGGER: (id: string) =>
     `/shipping/staging/packages/${id}/goods-issue-trigger`,
+  POST_GOODS_ISSUE: (id: string) => `/shipping/staging/packages/${id}/goods-issue`,
 } as const;

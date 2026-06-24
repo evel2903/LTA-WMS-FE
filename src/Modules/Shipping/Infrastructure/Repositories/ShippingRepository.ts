@@ -1,13 +1,17 @@
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IShippingRepository } from '@modules/Shipping/Application/Interfaces/IShippingRepository';
-import { SHIPPING_DEFAULT_PAGE_SIZE } from '@modules/Shipping/Domain/Constants/ShippingConstants';
+import {
+  SHIPPING_DEFAULT_PAGE_SIZE,
+  SHIPPING_MAX_PAGE_SIZE,
+} from '@modules/Shipping/Domain/Constants/ShippingConstants';
 import type { ShipmentPackageStaging } from '@modules/Shipping/Domain/Types/Shipping';
 import type {
   AssignDockInput,
   AssignTruckInput,
   ConfirmShipmentInput,
   EvaluateGoodsIssueTriggerInput,
+  PostGoodsIssueInput,
   RecordGateOutInput,
   ScanLoadingInput,
   ShippingStagingListFilter,
@@ -22,7 +26,7 @@ import { ShippingMapper } from '@modules/Shipping/Infrastructure/Mappers/Shippin
 
 function pageSize(value?: number): number {
   if (!value || value < 1) return SHIPPING_DEFAULT_PAGE_SIZE;
-  return value;
+  return Math.min(value, SHIPPING_MAX_PAGE_SIZE);
 }
 
 function pageNumber(value?: number): number {
@@ -120,6 +124,14 @@ export class ShippingRepository implements IShippingRepository {
     const dto = await this.http.post<ShipmentPackageStagingDto>(
       SHIPPING_ENDPOINTS.EVALUATE_GOODS_ISSUE_TRIGGER(id),
       ShippingMapper.toEvaluateGoodsIssueTriggerRequest(input),
+    );
+    return ShippingMapper.toStaging(dto);
+  }
+
+  async postGoodsIssue(id: string, input: PostGoodsIssueInput): Promise<ShipmentPackageStaging> {
+    const dto = await this.http.post<ShipmentPackageStagingDto>(
+      SHIPPING_ENDPOINTS.POST_GOODS_ISSUE(id),
+      ShippingMapper.toPostGoodsIssueRequest(input),
     );
     return ShippingMapper.toStaging(dto);
   }

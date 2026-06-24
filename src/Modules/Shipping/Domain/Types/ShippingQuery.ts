@@ -88,3 +88,11 @@ export interface EvaluateGoodsIssueTriggerInput {
   evidenceRefs?: string[];
   idempotencyKey: string;
 }
+
+export interface PostGoodsIssueInput {
+  inventoryStatusCode?: string;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}

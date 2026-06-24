@@ -5,6 +5,7 @@ import type {
   AssignTruckInput,
   ConfirmShipmentInput,
   EvaluateGoodsIssueTriggerInput,
+  PostGoodsIssueInput,
   RecordGateOutInput,
   ScanLoadingInput,
   StagePackageInput,
@@ -15,6 +16,7 @@ import type {
   ConfirmShipmentRequestDto,
   EvaluateGoodsIssueTriggerRequestDto,
   PagedShipmentPackageStagingDto,
+  PostGoodsIssueRequestDto,
   RecordGateOutRequestDto,
   ScanLoadingRequestDto,
   ShipmentPackageStagingDto,
@@ -72,10 +74,18 @@ export class ShippingMapper {
       goodsIssueTriggerStatus: dto.GoodsIssueTriggerStatus,
       goodsIssueTriggeredAt: dto.GoodsIssueTriggeredAt,
       goodsIssueTriggeredBy: dto.GoodsIssueTriggeredBy,
+      goodsIssueStatus: dto.GoodsIssueStatus,
+      goodsIssuePostedAt: dto.GoodsIssuePostedAt,
+      goodsIssuePostedBy: dto.GoodsIssuePostedBy,
+      goodsIssueInventoryTransactionId: dto.GoodsIssueInventoryTransactionId,
+      goodsIssueInventoryMovementId: dto.GoodsIssueInventoryMovementId,
       loadingOutboxMessageId: dto.LoadingOutboxMessageId,
       shipmentConfirmOutboxMessageId: dto.ShipmentConfirmOutboxMessageId,
       gateOutOutboxMessageId: dto.GateOutOutboxMessageId,
       goodsIssueTriggerOutboxMessageId: dto.GoodsIssueTriggerOutboxMessageId,
+      goodsIssueOutboxMessageId: dto.GoodsIssueOutboxMessageId,
+      shipmentClosedOutboxMessageId: dto.ShipmentClosedOutboxMessageId,
+      shipmentClosedAt: dto.ShipmentClosedAt,
       createdAt: dto.CreatedAt,
       updatedAt: dto.UpdatedAt,
     };
@@ -174,6 +184,16 @@ export class ShippingMapper {
   ): EvaluateGoodsIssueTriggerRequestDto {
     return removeEmpty({
       GoodsIssueTrigger: input.goodsIssueTrigger,
+      InventoryStatusCode: input.inventoryStatusCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toPostGoodsIssueRequest(input: PostGoodsIssueInput): PostGoodsIssueRequestDto {
+    return removeEmpty({
       InventoryStatusCode: input.inventoryStatusCode,
       ReasonCode: input.reasonCode,
       ReasonNote: input.reasonNote,
