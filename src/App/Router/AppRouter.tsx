@@ -32,6 +32,7 @@ import { replenishmentRoutes } from '@modules/Replenishment/Presentation/Routes/
 import { outboundRoutes } from '@modules/Outbound/Presentation/Routes/OutboundRoutes';
 import { packingRoutes } from '@modules/Packing/Presentation/Routes/PackingRoutes';
 import { shippingRoutes } from '@modules/Shipping/Presentation/Routes/ShippingRoutes';
+import { integrationRoutes } from '@modules/Integration/Presentation/Routes/IntegrationRoutes';
 
 const DashboardPage = lazy(() =>
   import('@app/Router/DashboardPage').then((m) => ({ default: m.DashboardPage })),
@@ -79,6 +80,7 @@ const router = createBrowserRouter([
           ...outboundRoutes,
           ...packingRoutes,
           ...shippingRoutes,
+          ...integrationRoutes,
           ...warehouseProfileRoutes,
           ...accessControlRoutes,
           ...complianceRoutes,

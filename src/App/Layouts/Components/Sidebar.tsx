@@ -104,6 +104,7 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Picking', to: ROUTES.PICKING.ROOT, icon: PackageCheck },
       { label: 'Packing', to: ROUTES.PACKING.ROOT, icon: PackageCheck },
       { label: 'Shipping', to: ROUTES.SHIPPING.ROOT, icon: Send },
+      { label: 'Integration', to: ROUTES.INTEGRATION.ROOT, icon: Network },
       { label: 'Mobile Tasks', to: ROUTES.MOBILE.TASKS, icon: Smartphone },
       { label: 'Labels & Print Jobs', to: ROUTES.LABELS.ROOT, icon: Tags },
       { label: 'Stock Transfer', to: ROUTES.STOCK_TRANSFER.ROOT, icon: Repeat },

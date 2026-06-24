@@ -109,6 +109,11 @@ export const ROUTES = {
     DETAIL: (id = ':id') => `/shipping/${id}`,
     ACTION: (id = ':id', action = ':action') => `/shipping/${id}/${action}`,
   },
+  INTEGRATION: {
+    ROOT: '/integration',
+    DEAD_LETTER_DETAIL: (id = ':id') => `/integration/dead-letters/${id}`,
+    DEAD_LETTER_ACTION: (id = ':id', action = ':action') => `/integration/dead-letters/${id}/${action}`,
+  },
   MOBILE: {
     TASKS: '/mobile/tasks',
     TASK_DETAIL: (id = ':id') => `/mobile/tasks/${id}`,
