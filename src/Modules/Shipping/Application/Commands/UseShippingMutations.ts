@@ -3,6 +3,8 @@ import { shippingQueryKeys } from '@modules/Shipping/Application/Queries/Shippin
 import type {
   AssignDockInput,
   AssignTruckInput,
+  ConfirmShipmentInput,
+  ScanLoadingInput,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
 import { shippingRepository } from '@modules/Shipping/Infrastructure/Repositories/ShippingRepositoryInstance';
@@ -27,6 +29,22 @@ export function useShippingMutations() {
     assignTruck: useMutation({
       mutationFn: (input: { id: string; payload: AssignTruckInput }) =>
         shippingRepository.assignTruck(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateShipping();
+        void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
+      },
+    }),
+    scanLoading: useMutation({
+      mutationFn: (input: { id: string; payload: ScanLoadingInput }) =>
+        shippingRepository.scanLoading(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateShipping();
+        void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
+      },
+    }),
+    confirmShipment: useMutation({
+      mutationFn: (input: { id: string; payload: ConfirmShipmentInput }) =>
+        shippingRepository.confirmShipment(input.id, input.payload),
       onSuccess: (_data, input) => {
         void invalidateShipping();
         void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });

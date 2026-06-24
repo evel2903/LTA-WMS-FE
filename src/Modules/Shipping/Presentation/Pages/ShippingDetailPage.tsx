@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { PackageCheck, Ship, Truck } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { CheckCircle2, PackageCheck, ScanLine, Ship, Truck } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
@@ -16,7 +16,7 @@ import type {
   ShipmentPackageStagingStatus,
 } from '@modules/Shipping/Domain/Types/Shipping';
 
-const ACTIONS = new Set(['dock', 'truck']);
+const ACTIONS = new Set(['dock', 'truck', 'loading']);
 
 function evidence(value: string): string[] {
   return value
@@ -64,6 +64,18 @@ function StagingSummary({ staging }: { staging: ShipmentPackageStaging }) {
           <div className="text-muted-foreground text-xs">Truck</div>
           <div>{staging.truckReference ?? staging.vehicleNumber ?? 'not assigned'}</div>
         </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Load</div>
+          <div>{staging.loadReference ?? 'not loaded'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Loaded at</div>
+          <div>{staging.loadedAt ?? 'not loaded'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Confirmed at</div>
+          <div>{staging.shipmentConfirmedAt ?? 'not confirmed'}</div>
+        </div>
       </div>
       <div className="text-muted-foreground text-xs">
         Inventory milestone: {staging.inventoryStatusCode ?? 'document-only'}
@@ -91,6 +103,13 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const [driverName, setDriverName] = useState('');
   const [carrierId, setCarrierId] = useState('');
   const [carrierCode, setCarrierCode] = useState('');
+  const [scannedPackageId, setScannedPackageId] = useState('');
+  const [scannedPackageCode, setScannedPackageCode] = useState('');
+  const [loadReference, setLoadReference] = useState('');
+  const [loadingShipmentReference, setLoadingShipmentReference] = useState('');
+  const [loadingTruckReference, setLoadingTruckReference] = useState('');
+  const [loadingVehicleNumber, setLoadingVehicleNumber] = useState('');
+  const [requireFullLoad, setRequireFullLoad] = useState(true);
   const [reasonCode, setReasonCode] = useState(DEFAULT_SHIPPING_REASON_CODE);
   const [reasonNote, setReasonNote] = useState('');
   const [evidenceRefs, setEvidenceRefs] = useState('');
@@ -112,11 +131,25 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     setDriverName(staging.driverName ?? '');
     setCarrierId(staging.carrierId ?? '');
     setCarrierCode(staging.carrierCode ?? '');
+    setScannedPackageId(staging.packageId);
+    setScannedPackageCode(staging.packageCode);
+    setLoadReference(staging.loadReference ?? '');
+    setLoadingShipmentReference(staging.shipmentReference ?? '');
+    setLoadingTruckReference(staging.truckReference ?? '');
+    setLoadingVehicleNumber(staging.vehicleNumber ?? '');
   }, [staging]);
 
   const apiError = stagingQuery.error instanceof ApiError ? stagingQuery.error : null;
   const isBlocked = mode === 'detail' && staging?.status === 'Blocked';
-  const isReadOnly = mode === 'detail' && staging?.status === 'ReadyForLoading';
+  const isConfirmed = mode === 'detail' && staging?.status === 'ShipmentConfirmed';
+  const isLoadingAction = action === 'loading';
+  const isReadOnly = isConfirmed;
+  const canAssignDockOrTruck = Boolean(
+    staging &&
+      staging.status !== 'ReadyForLoading' &&
+      staging.status !== 'Loaded' &&
+      staging.status !== 'ShipmentConfirmed',
+  );
   const state =
     mode === 'new'
       ? null
@@ -140,7 +173,9 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const mutationError =
     errorMessage(mutations.stagePackage.error) ??
     errorMessage(mutations.assignDock.error) ??
-    errorMessage(mutations.assignTruck.error);
+    errorMessage(mutations.assignTruck.error) ??
+    errorMessage(mutations.scanLoading.error) ??
+    errorMessage(mutations.confirmShipment.error);
   const commonPayload = {
     reasonCode: reasonCode.trim() || undefined,
     reasonNote: reasonNote.trim() || undefined,
@@ -148,8 +183,19 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     idempotencyKey: idempotencyKey.trim(),
   };
   const canStage = Boolean(packageId.trim() && stagingLaneCode.trim() && idempotencyKey.trim());
-  const canDock = Boolean(staging && (dockDoorId.trim() || dockDoorCode.trim()) && idempotencyKey.trim());
-  const canTruck = Boolean(staging && (truckReference.trim() || vehicleNumber.trim()) && idempotencyKey.trim());
+  const canDock = Boolean(
+    canAssignDockOrTruck && (dockDoorId.trim() || dockDoorCode.trim()) && idempotencyKey.trim(),
+  );
+  const canTruck = Boolean(
+    canAssignDockOrTruck && (truckReference.trim() || vehicleNumber.trim()) && idempotencyKey.trim(),
+  );
+  const canScanLoading = Boolean(
+    staging &&
+      staging.status === 'ReadyForLoading' &&
+      idempotencyKey.trim() &&
+      (scannedPackageId.trim() || scannedPackageCode.trim()),
+  );
+  const canConfirmShipment = Boolean(staging && staging.status === 'Loaded' && idempotencyKey.trim());
 
   const handleStage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -217,10 +263,56 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     );
   };
 
+  const runScanLoading = () => {
+    if (!staging) return;
+    setLastMessage(null);
+    mutations.scanLoading.mutate(
+      {
+        id: staging.id,
+        payload: {
+          scannedPackageId: scannedPackageId.trim() || undefined,
+          scannedPackageCode: scannedPackageCode.trim() || undefined,
+          shipmentReference: loadingShipmentReference.trim() || undefined,
+          loadReference: loadReference.trim() || undefined,
+          truckReference: loadingTruckReference.trim() || undefined,
+          vehicleNumber: loadingVehicleNumber.trim() || undefined,
+          ...commonPayload,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIdempotencyKey('');
+          setLastMessage('Loading scan recorded');
+        },
+      },
+    );
+  };
+
+  const runConfirmShipment = () => {
+    if (!staging) return;
+    setLastMessage(null);
+    mutations.confirmShipment.mutate(
+      {
+        id: staging.id,
+        payload: {
+          shipmentReference: loadingShipmentReference.trim() || undefined,
+          requireFullLoad: requireFullLoad,
+          ...commonPayload,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIdempotencyKey('');
+          setLastMessage('Shipment confirmation recorded');
+        },
+      },
+    );
+  };
+
   return (
     <DetailPageShell
       title={mode === 'new' ? 'Stage package' : (staging?.stagingCode ?? 'Shipping staging detail')}
-      subtitle="Package staging, dock and truck milestones before loading"
+      subtitle="Package staging, dock, truck, loading scan and shipment confirmation"
       backTo={ROUTES.SHIPPING.ROOT}
       backLabel="Back to shipping"
       status={staging ? <StatusBadge status={staging.status} /> : null}
@@ -240,7 +332,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Shipping staging blocked'
             : isReadOnly
-              ? 'Ready for loading'
+              ? 'Shipment confirmed'
               : stagingQuery.error
                 ? 'Unable to load shipping staging'
                 : undefined
@@ -251,7 +343,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Resolve the blocking condition before changing this staging record.'
             : isReadOnly
-              ? 'Dock and truck milestones are complete; loading belongs to the next story.'
+              ? 'Shipment loading has already been confirmed.'
               : stagingQuery.error
                 ? (errorMessage(stagingQuery.error) ?? 'The shipping staging record could not be loaded.')
                 : 'The requested shipping staging record was not found.'
@@ -309,16 +401,28 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           ) : null}
 
           {staging ? <StagingSummary staging={staging} /> : null}
+          {staging?.status === 'ReadyForLoading' || staging?.status === 'Loaded' ? (
+            <Button asChild variant="outline">
+              <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'loading')}>
+                <ScanLine className="size-4" aria-hidden="true" />
+                Open loading
+              </Link>
+            </Button>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
           <ActionPanel
-            title="Shipping actions"
-            description="Dock and truck milestones require reason/evidence when policy requires it and an idempotency key."
+            title={isLoadingAction ? 'Loading actions' : 'Shipping actions'}
+            description={
+              isLoadingAction
+                ? 'Scan package loading and confirm shipment with reason/evidence and an idempotency key.'
+                : 'Dock and truck milestones require reason/evidence when policy requires it and an idempotency key.'
+            }
             state={isReadOnly ? 'disabled' : mutationError ? 'error' : 'idle'}
             stateMessage={
               isReadOnly
-                ? 'Ready for loading; loading scan is out of scope for this story.'
+                ? 'Shipment is already confirmed; gate-out and Goods Issue are out of scope for this story.'
                 : (mutationError ?? undefined)
             }
           >
@@ -343,7 +447,77 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 Idempotency key
                 <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
               </label>
-              {mode === 'detail' ? (
+              {mode === 'detail' && isLoadingAction ? (
+                <>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      Scanned package id
+                      <Input
+                        value={scannedPackageId}
+                        onChange={(event) => setScannedPackageId(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Scanned package code
+                      <Input
+                        value={scannedPackageCode}
+                        onChange={(event) => setScannedPackageCode(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Shipment reference
+                      <Input
+                        value={loadingShipmentReference}
+                        onChange={(event) => setLoadingShipmentReference(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Load reference
+                      <Input value={loadReference} onChange={(event) => setLoadReference(event.target.value)} />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Truck reference
+                      <Input
+                        value={loadingTruckReference}
+                        onChange={(event) => setLoadingTruckReference(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Vehicle number
+                      <Input
+                        value={loadingVehicleNumber}
+                        onChange={(event) => setLoadingVehicleNumber(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canScanLoading || isReadOnly || mutations.scanLoading.isPending}
+                    onClick={runScanLoading}
+                  >
+                    <ScanLine className="size-4" aria-hidden="true" />
+                    Scan loading
+                  </Button>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={requireFullLoad}
+                      onChange={(event) => setRequireFullLoad(event.target.checked)}
+                    />
+                    Require full load
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canConfirmShipment || isReadOnly || mutations.confirmShipment.isPending}
+                    onClick={runConfirmShipment}
+                  >
+                    <CheckCircle2 className="size-4" aria-hidden="true" />
+                    Confirm shipment
+                  </Button>
+                </>
+              ) : mode === 'detail' ? (
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">

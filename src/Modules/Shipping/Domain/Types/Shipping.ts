@@ -33,6 +33,13 @@ export interface ShipmentPackageStaging {
   dockAssignedBy: string | null;
   truckAssignedAt: string | null;
   truckAssignedBy: string | null;
+  loadReference: string | null;
+  loadedAt: string | null;
+  loadedBy: string | null;
+  shipmentConfirmedAt: string | null;
+  shipmentConfirmedBy: string | null;
+  loadingOutboxMessageId: string | null;
+  shipmentConfirmOutboxMessageId: string | null;
   createdAt: string;
   updatedAt: string;
 }

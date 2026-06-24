@@ -31,6 +31,13 @@ export interface ShipmentPackageStagingDto {
   DockAssignedBy: string | null;
   TruckAssignedAt: string | null;
   TruckAssignedBy: string | null;
+  LoadReference: string | null;
+  LoadedAt: string | null;
+  LoadedBy: string | null;
+  ShipmentConfirmedAt: string | null;
+  ShipmentConfirmedBy: string | null;
+  LoadingOutboxMessageId: string | null;
+  ShipmentConfirmOutboxMessageId: string | null;
   CreatedAt: string;
   UpdatedAt: string;
 }
@@ -78,6 +85,28 @@ export interface AssignTruckRequestDto {
   DriverName?: string;
   CarrierId?: string;
   CarrierCode?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}
+
+export interface ScanLoadingRequestDto {
+  ScannedPackageId?: string;
+  ScannedPackageCode?: string;
+  ShipmentReference?: string;
+  LoadReference?: string;
+  TruckReference?: string;
+  VehicleNumber?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}
+
+export interface ConfirmShipmentRequestDto {
+  ShipmentReference?: string;
+  RequireFullLoad?: boolean;
   ReasonCode?: string;
   ReasonNote?: string;
   EvidenceRefs?: string[];

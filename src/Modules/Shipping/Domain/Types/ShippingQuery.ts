@@ -44,3 +44,25 @@ export interface AssignTruckInput {
   idempotencyKey: string;
 }
 
+export interface ScanLoadingInput {
+  scannedPackageId?: string;
+  scannedPackageCode?: string;
+  shipmentReference?: string;
+  loadReference?: string;
+  truckReference?: string;
+  vehicleNumber?: string;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface ConfirmShipmentInput {
+  shipmentReference?: string;
+  requireFullLoad?: boolean;
+  reasonCode?: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+

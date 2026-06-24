@@ -6,6 +6,8 @@ import type { ShipmentPackageStaging } from '@modules/Shipping/Domain/Types/Ship
 import type {
   AssignDockInput,
   AssignTruckInput,
+  ConfirmShipmentInput,
+  ScanLoadingInput,
   ShippingStagingListFilter,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
@@ -81,6 +83,22 @@ export class ShippingRepository implements IShippingRepository {
     const dto = await this.http.post<ShipmentPackageStagingDto>(
       SHIPPING_ENDPOINTS.ASSIGN_TRUCK(id),
       ShippingMapper.toAssignTruckRequest(input),
+    );
+    return ShippingMapper.toStaging(dto);
+  }
+
+  async scanLoading(id: string, input: ScanLoadingInput): Promise<ShipmentPackageStaging> {
+    const dto = await this.http.post<ShipmentPackageStagingDto>(
+      SHIPPING_ENDPOINTS.SCAN_LOADING(id),
+      ShippingMapper.toScanLoadingRequest(input),
+    );
+    return ShippingMapper.toStaging(dto);
+  }
+
+  async confirmShipment(id: string, input: ConfirmShipmentInput): Promise<ShipmentPackageStaging> {
+    const dto = await this.http.post<ShipmentPackageStagingDto>(
+      SHIPPING_ENDPOINTS.CONFIRM_SHIPMENT(id),
+      ShippingMapper.toConfirmShipmentRequest(input),
     );
     return ShippingMapper.toStaging(dto);
   }

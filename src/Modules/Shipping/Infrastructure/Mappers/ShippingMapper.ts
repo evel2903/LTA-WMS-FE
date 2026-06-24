@@ -3,12 +3,16 @@ import type { ShipmentPackageStaging } from '@modules/Shipping/Domain/Types/Ship
 import type {
   AssignDockInput,
   AssignTruckInput,
+  ConfirmShipmentInput,
+  ScanLoadingInput,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
 import type {
   AssignDockRequestDto,
   AssignTruckRequestDto,
+  ConfirmShipmentRequestDto,
   PagedShipmentPackageStagingDto,
+  ScanLoadingRequestDto,
   ShipmentPackageStagingDto,
   StagePackageRequestDto,
 } from '@modules/Shipping/Infrastructure/Dtos/ShippingDtos';
@@ -52,6 +56,13 @@ export class ShippingMapper {
       dockAssignedBy: dto.DockAssignedBy,
       truckAssignedAt: dto.TruckAssignedAt,
       truckAssignedBy: dto.TruckAssignedBy,
+      loadReference: dto.LoadReference,
+      loadedAt: dto.LoadedAt,
+      loadedBy: dto.LoadedBy,
+      shipmentConfirmedAt: dto.ShipmentConfirmedAt,
+      shipmentConfirmedBy: dto.ShipmentConfirmedBy,
+      loadingOutboxMessageId: dto.LoadingOutboxMessageId,
+      shipmentConfirmOutboxMessageId: dto.ShipmentConfirmOutboxMessageId,
       createdAt: dto.CreatedAt,
       updatedAt: dto.UpdatedAt,
     };
@@ -99,6 +110,32 @@ export class ShippingMapper {
       DriverName: input.driverName,
       CarrierId: input.carrierId,
       CarrierCode: input.carrierCode,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toScanLoadingRequest(input: ScanLoadingInput): ScanLoadingRequestDto {
+    return removeEmpty({
+      ScannedPackageId: input.scannedPackageId,
+      ScannedPackageCode: input.scannedPackageCode,
+      ShipmentReference: input.shipmentReference,
+      LoadReference: input.loadReference,
+      TruckReference: input.truckReference,
+      VehicleNumber: input.vehicleNumber,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    });
+  }
+
+  static toConfirmShipmentRequest(input: ConfirmShipmentInput): ConfirmShipmentRequestDto {
+    return removeEmpty({
+      ShipmentReference: input.shipmentReference,
+      RequireFullLoad: input.requireFullLoad,
       ReasonCode: input.reasonCode,
       ReasonNote: input.reasonNote,
       EvidenceRefs: input.evidenceRefs,

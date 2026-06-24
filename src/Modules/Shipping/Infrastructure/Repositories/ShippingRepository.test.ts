@@ -38,6 +38,13 @@ const stagingDto: ShipmentPackageStagingDto = {
   DockAssignedBy: null,
   TruckAssignedAt: null,
   TruckAssignedBy: null,
+  LoadReference: null,
+  LoadedAt: null,
+  LoadedBy: null,
+  ShipmentConfirmedAt: null,
+  ShipmentConfirmedBy: null,
+  LoadingOutboxMessageId: null,
+  ShipmentConfirmOutboxMessageId: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -116,11 +123,24 @@ describe('ShippingRepository', () => {
       vehicleNumber: '51C-001',
       idempotencyKey: 'truck-1',
     });
+    await repository.scanLoading('staging-1', {
+      scannedPackageCode: 'PKG-001',
+      shipmentReference: 'SHIP-001',
+      loadReference: 'LOAD-001',
+      idempotencyKey: 'loading-1',
+    });
+    await repository.confirmShipment('staging-1', {
+      shipmentReference: 'SHIP-001',
+      requireFullLoad: true,
+      idempotencyKey: 'confirm-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['post', '/shipping/staging/packages'],
       ['post', '/shipping/staging/packages/staging-1/dock'],
       ['post', '/shipping/staging/packages/staging-1/truck'],
+      ['post', '/shipping/staging/packages/staging-1/loading'],
+      ['post', '/shipping/staging/packages/staging-1/confirm'],
     ]);
     expect(http.calls[0].body).toMatchObject({
       PackageId: 'package-1',
@@ -136,6 +156,17 @@ describe('ShippingRepository', () => {
       TruckReference: 'TRUCK-001',
       VehicleNumber: '51C-001',
       IdempotencyKey: 'truck-1',
+    });
+    expect(http.calls[3].body).toMatchObject({
+      ScannedPackageCode: 'PKG-001',
+      ShipmentReference: 'SHIP-001',
+      LoadReference: 'LOAD-001',
+      IdempotencyKey: 'loading-1',
+    });
+    expect(http.calls[4].body).toMatchObject({
+      ShipmentReference: 'SHIP-001',
+      RequireFullLoad: true,
+      IdempotencyKey: 'confirm-1',
     });
   });
 });

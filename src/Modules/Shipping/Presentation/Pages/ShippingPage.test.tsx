@@ -57,6 +57,13 @@ function makeStaging(overrides: Partial<ShipmentPackageStaging> = {}): ShipmentP
     dockAssignedBy: null,
     truckAssignedAt: null,
     truckAssignedBy: null,
+    loadReference: null,
+    loadedAt: null,
+    loadedBy: null,
+    shipmentConfirmedAt: null,
+    shipmentConfirmedBy: null,
+    loadingOutboxMessageId: null,
+    shipmentConfirmOutboxMessageId: null,
     createdAt: '2026-06-24T00:00:00.000Z',
     updatedAt: '2026-06-24T00:00:00.000Z',
     ...overrides,
@@ -68,6 +75,8 @@ function mutationState(overrides: Record<string, unknown> = {}) {
     stagePackage: { mutate: vi.fn(), isPending: false, error: null },
     assignDock: { mutate: vi.fn(), isPending: false, error: null },
     assignTruck: { mutate: vi.fn(), isPending: false, error: null },
+    scanLoading: { mutate: vi.fn(), isPending: false, error: null },
+    confirmShipment: { mutate: vi.fn(), isPending: false, error: null },
     ...overrides,
   };
 }
@@ -263,9 +272,13 @@ describe('Shipping list/detail pages', () => {
     expect(screen.queryByText('Shipping actions')).toBeNull();
   });
 
-  it('keeps ReadyForLoading staging read-only and does not expose loading scan', () => {
+  it('opens loading action for ReadyForLoading staging without putting actions on the list', () => {
     vi.mocked(useShippingStaging).mockReturnValue({
-      data: makeStaging({ status: 'ReadyForLoading' }),
+      data: makeStaging({
+        status: 'ReadyForLoading',
+        dockDoorCode: 'DOCK-01',
+        truckReference: 'TRUCK-001',
+      }),
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useShippingStaging>);
@@ -277,23 +290,153 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1'],
     );
 
-    expect(screen.getByText('Ready for loading')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Load/i })).toBeNull();
-    expect(
-      screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled'),
-    ).not.toBeNull();
+    expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
+      '/shipping/staging-1/loading',
+    );
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'dock-after-ready' } });
+    expect(screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled')).not.toBeNull();
   });
 
-  it('does not open a V1-25 loading action route from the V1-24 shell', async () => {
+  it('keeps the loading action available for Loaded staging and blocks dock regression', () => {
+    vi.mocked(useShippingStaging).mockReturnValue({
+      data: makeStaging({
+        status: 'Loaded',
+        dockDoorCode: 'DOCK-01',
+        truckReference: 'TRUCK-001',
+        loadedAt: '2026-06-24T01:00:00.000Z',
+      }),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useShippingStaging>);
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/shipping/:id" element={<ShippingDetailPage />} />
+      </Routes>,
+      ['/shipping/staging-1'],
+    );
+
+    expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
+      '/shipping/staging-1/loading',
+    );
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'dock-after-loaded' } });
+    expect(screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled')).not.toBeNull();
+  });
+
+  it('submits loading scan and shipment confirmation from the loading action route', async () => {
+    const mutations = mutationState({
+      scanLoading: {
+        mutate: vi.fn(
+          (_payload: unknown, options?: MockMutationOptions<ShipmentPackageStaging>) => {
+            options?.onSuccess?.(
+              makeStaging({
+                status: 'Loaded',
+                loadReference: 'LOAD-001',
+                loadedAt: '2026-06-24T01:00:00.000Z',
+              }),
+            );
+          },
+        ),
+        isPending: false,
+        error: null,
+      },
+      confirmShipment: {
+        mutate: vi.fn(
+          (_payload: unknown, options?: MockMutationOptions<ShipmentPackageStaging>) => {
+            options?.onSuccess?.(
+              makeStaging({
+                status: 'ShipmentConfirmed',
+                shipmentConfirmedAt: '2026-06-24T01:05:00.000Z',
+              }),
+            );
+          },
+        ),
+        isPending: false,
+        error: null,
+      },
+    });
+    vi.mocked(useShippingMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useShippingMutations>,
+    );
+    vi.mocked(useShippingStaging).mockReturnValue({
+      data: makeStaging({
+        status: 'ReadyForLoading',
+        dockDoorCode: 'DOCK-01',
+        truckReference: 'TRUCK-001',
+      }),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useShippingStaging>);
+
     renderWithRouter(
       <Routes>
         <Route path="/shipping/:id/:action" element={<ShippingDetailPage />} />
-        <Route path="/shipping/:id" element={<ShippingDetailPage />} />
       </Routes>,
       ['/shipping/staging-1/loading'],
     );
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'STG-001' })).toBeTruthy());
-    expect(screen.queryByRole('button', { name: /Load/i })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'loading:scan' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'loading-1' } });
+    fireEvent.change(screen.getByLabelText('Load reference'), { target: { value: 'LOAD-001' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Scan loading$/i }));
+
+    expect(mutations.scanLoading.mutate).toHaveBeenCalledWith(
+      {
+        id: 'staging-1',
+        payload: {
+          scannedPackageId: 'package-1',
+          scannedPackageCode: 'PKG-001',
+          shipmentReference: 'SHIP-001',
+          loadReference: 'LOAD-001',
+          truckReference: 'TRUCK-001',
+          vehicleNumber: undefined,
+          reasonCode: 'RC-V1-DISCREPANCY',
+          reasonNote: undefined,
+          evidenceRefs: ['loading:scan'],
+          idempotencyKey: 'loading-1',
+        },
+      },
+      expect.any(Object),
+    );
+
+    vi.mocked(useShippingStaging).mockReturnValue({
+      data: makeStaging({
+        status: 'Loaded',
+        dockDoorCode: 'DOCK-01',
+        truckReference: 'TRUCK-001',
+        loadReference: 'LOAD-001',
+        loadedAt: '2026-06-24T01:00:00.000Z',
+      }),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useShippingStaging>);
+    cleanup();
+    renderWithRouter(
+      <Routes>
+        <Route path="/shipping/:id/:action" element={<ShippingDetailPage />} />
+      </Routes>,
+      ['/shipping/staging-1/loading'],
+    );
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'confirm:shipment' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'confirm-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm shipment$/i }));
+
+    expect(mutations.confirmShipment.mutate).toHaveBeenCalledWith(
+      {
+        id: 'staging-1',
+        payload: {
+          shipmentReference: 'SHIP-001',
+          requireFullLoad: true,
+          reasonCode: 'RC-V1-DISCREPANCY',
+          reasonNote: undefined,
+          evidenceRefs: ['confirm:shipment'],
+          idempotencyKey: 'confirm-1',
+        },
+      },
+      expect.any(Object),
+    );
+    expect(screen.queryByRole('button', { name: /Gate out/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Goods Issue/i })).toBeNull();
   });
 });

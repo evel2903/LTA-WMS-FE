@@ -3,6 +3,8 @@ import type { ShipmentPackageStaging } from '@modules/Shipping/Domain/Types/Ship
 import type {
   AssignDockInput,
   AssignTruckInput,
+  ConfirmShipmentInput,
+  ScanLoadingInput,
   ShippingStagingListFilter,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
@@ -13,5 +15,7 @@ export interface IShippingRepository {
   stagePackage(input: StagePackageInput): Promise<ShipmentPackageStaging>;
   assignDock(id: string, input: AssignDockInput): Promise<ShipmentPackageStaging>;
   assignTruck(id: string, input: AssignTruckInput): Promise<ShipmentPackageStaging>;
+  scanLoading(id: string, input: ScanLoadingInput): Promise<ShipmentPackageStaging>;
+  confirmShipment(id: string, input: ConfirmShipmentInput): Promise<ShipmentPackageStaging>;
 }
 

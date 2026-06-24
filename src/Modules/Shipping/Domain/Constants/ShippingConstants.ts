@@ -3,6 +3,8 @@ export const SHIPPING_STAGING_STATUSES = [
   'DockAssigned',
   'TruckAssigned',
   'ReadyForLoading',
+  'Loaded',
+  'ShipmentConfirmed',
   'Blocked',
 ] as const;
 

@@ -34,6 +34,13 @@ const stagingDto: ShipmentPackageStagingDto = {
   DockAssignedBy: null,
   TruckAssignedAt: null,
   TruckAssignedBy: null,
+  LoadReference: null,
+  LoadedAt: null,
+  LoadedBy: null,
+  ShipmentConfirmedAt: null,
+  ShipmentConfirmedBy: null,
+  LoadingOutboxMessageId: null,
+  ShipmentConfirmOutboxMessageId: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -82,6 +89,30 @@ describe('ShippingMapper', () => {
       TruckReference: 'TRUCK-001',
       VehicleNumber: '51C-001',
       IdempotencyKey: 'truck-1',
+    });
+    expect(
+      ShippingMapper.toScanLoadingRequest({
+        scannedPackageCode: 'PKG-001',
+        shipmentReference: 'SHIP-001',
+        loadReference: 'LOAD-001',
+        idempotencyKey: 'loading-1',
+      }),
+    ).toEqual({
+      ScannedPackageCode: 'PKG-001',
+      ShipmentReference: 'SHIP-001',
+      LoadReference: 'LOAD-001',
+      IdempotencyKey: 'loading-1',
+    });
+    expect(
+      ShippingMapper.toConfirmShipmentRequest({
+        shipmentReference: 'SHIP-001',
+        requireFullLoad: true,
+        idempotencyKey: 'confirm-1',
+      }),
+    ).toEqual({
+      ShipmentReference: 'SHIP-001',
+      RequireFullLoad: true,
+      IdempotencyKey: 'confirm-1',
     });
   });
 });
