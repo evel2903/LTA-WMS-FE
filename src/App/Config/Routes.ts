@@ -103,7 +103,12 @@ export const ROUTES = {
     DETAIL: (id = ':id') => `/packing/${id}`,
     ACTION: (id = ':id', action = ':action') => `/packing/${id}/${action}`,
   },
-  SHIPPING: { ROOT: '/shipping' },
+  SHIPPING: {
+    ROOT: '/shipping',
+    NEW: '/shipping/new',
+    DETAIL: (id = ':id') => `/shipping/${id}`,
+    ACTION: (id = ':id', action = ':action') => `/shipping/${id}/${action}`,
+  },
   MOBILE: {
     TASKS: '/mobile/tasks',
     TASK_DETAIL: (id = ':id') => `/mobile/tasks/${id}`,
