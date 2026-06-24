@@ -15,7 +15,21 @@ const UsersAssignmentsPage = lazy(() =>
   })),
 );
 
+const UserAssignmentDetailPage = lazy(() =>
+  import('@modules/AccessControl/Presentation/Pages/UserAssignmentDetailPage').then((module) => ({
+    default: module.UserAssignmentDetailPage,
+  })),
+);
+
 export const accessControlRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.ACCESS.ROLES, element: <RolePermissionMatrixPage /> },
   { path: ROUTES.FOUNDATION.ACCESS.USERS, element: <UsersAssignmentsPage /> },
+  {
+    path: ROUTES.FOUNDATION.ACCESS.USER_DETAIL(),
+    element: <UserAssignmentDetailPage mode="detail" />,
+  },
+  {
+    path: ROUTES.FOUNDATION.ACCESS.USER_EDIT(),
+    element: <UserAssignmentDetailPage mode="edit" />,
+  },
 ];

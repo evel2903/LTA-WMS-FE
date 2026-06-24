@@ -15,7 +15,21 @@ const ExceptionQueuePage = lazy(() =>
   })),
 );
 
+const ExceptionDetailPage = lazy(() =>
+  import('@modules/Compliance/Presentation/Pages/ExceptionDetailPage').then((module) => ({
+    default: module.ExceptionDetailPage,
+  })),
+);
+
 export const complianceRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.AUDIT, element: <AuditLogPage /> },
   { path: ROUTES.FOUNDATION.EXCEPTIONS, element: <ExceptionQueuePage /> },
+  {
+    path: ROUTES.FOUNDATION.EXCEPTION_DETAIL(),
+    element: <ExceptionDetailPage mode="detail" />,
+  },
+  {
+    path: ROUTES.FOUNDATION.EXCEPTION_ACTION(),
+    element: <ExceptionDetailPage mode="action" />,
+  },
 ];

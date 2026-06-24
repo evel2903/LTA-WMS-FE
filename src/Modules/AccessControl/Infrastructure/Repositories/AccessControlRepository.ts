@@ -28,6 +28,16 @@ import { AccessControlMapper } from '@modules/AccessControl/Infrastructure/Mappe
 
 const MAX_PAGE_SIZE = 100;
 
+function paging(filter: { page?: number; pageSize?: number } = {}) {
+  return {
+    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
+    PageSize:
+      !filter.pageSize || filter.pageSize < 1
+        ? MAX_PAGE_SIZE
+        : Math.min(filter.pageSize, MAX_PAGE_SIZE),
+  };
+}
+
 /** The single place that touches `httpClient` for the access-control surface. */
 export class AccessControlRepository implements IAccessControlRepository {
   constructor(private readonly http: HttpClient) {}
@@ -56,7 +66,7 @@ export class AccessControlRepository implements IAccessControlRepository {
 
   async listUsers(filter: UserListFilter = {}): Promise<PaginatedResponse<UserSummary>> {
     const dto = await this.http.get<PagedDto<UserDto>>(ACCESS_CONTROL_ENDPOINTS.USERS, {
-      params: { Page: filter.page ?? 1, PageSize: filter.pageSize ?? MAX_PAGE_SIZE },
+      params: paging(filter),
     });
     return AccessControlMapper.toPaged(dto, (item) => AccessControlMapper.toUser(item));
   }

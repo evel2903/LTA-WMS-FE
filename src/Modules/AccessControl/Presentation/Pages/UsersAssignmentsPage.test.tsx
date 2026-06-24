@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
@@ -25,6 +27,7 @@ const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { UsersAssignmentsPage } from '@modules/AccessControl/Presentation/Pages/UsersAssignmentsPage';
+import { UserAssignmentDetailPage } from '@modules/AccessControl/Presentation/Pages/UserAssignmentDetailPage';
 import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -71,13 +74,25 @@ class FakeRepository implements Partial<IAccessControlRepository> {
   removeDataScope = vi.fn(() => Promise.resolve());
 }
 
-function renderPage() {
+function renderPage(initialPath = ROUTES.FOUNDATION.ACCESS.USERS) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <UsersAssignmentsPage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.ACCESS.USERS} element={<UsersAssignmentsPage />} />
+          <Route
+            path={ROUTES.FOUNDATION.ACCESS.USER_DETAIL()}
+            element={<UserAssignmentDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.ACCESS.USER_EDIT()}
+            element={<UserAssignmentDetailPage mode="edit" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -96,6 +111,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
+    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
     expect(await screen.findByText('Chưa gán role nào.')).toBeTruthy();
 
     await actor.click(screen.getByRole('button', { name: 'Gán role' }));
@@ -113,6 +129,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
+    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
     expect(await screen.findByText('Chưa gán data scope nào.')).toBeTruthy();
 
     // IncludeAll satisfies the XOR validation without a value (default scopeType = WAREHOUSE).
@@ -151,6 +168,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
+    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
     // IncludeAll satisfies the XOR validation without a value.
     await actor.click(await screen.findByLabelText(/IncludeAll/i));
     await actor.click(screen.getByRole('button', { name: 'Gán scope' }));

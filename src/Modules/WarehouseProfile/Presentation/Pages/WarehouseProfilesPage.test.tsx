@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { IWarehouseProfileRepository } from '@modules/WarehouseProfile/Application/Interfaces/IWarehouseProfileRepository';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
@@ -28,6 +30,7 @@ vi.mock('@shared/Components/Ui/Toast', () => ({
 }));
 
 import { WarehouseProfilesPage } from '@modules/WarehouseProfile/Presentation/Pages/WarehouseProfilesPage';
+import { WarehouseProfileDetailPage } from '@modules/WarehouseProfile/Presentation/Pages/WarehouseProfileDetailPage';
 import { useWarehouseProfileStore } from '@modules/WarehouseProfile/Application/Stores/WarehouseProfileStore';
 
 const now = '2026-06-18T00:00:00.000Z';
@@ -119,13 +122,29 @@ class FakeRepository implements Partial<IWarehouseProfileRepository> {
   preview = vi.fn(() => Promise.resolve(emptyPreview));
 }
 
-function renderPage() {
+function renderPage(initialPath = ROUTES.FOUNDATION.WAREHOUSE_PROFILES) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <WarehouseProfilesPage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.WAREHOUSE_PROFILES} element={<WarehouseProfilesPage />} />
+          <Route
+            path={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_NEW}
+            element={<WarehouseProfileDetailPage mode="create" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_DETAIL()}
+            element={<WarehouseProfileDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_EDIT()}
+            element={<WarehouseProfileDetailPage mode="edit" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -183,6 +202,7 @@ describe('WarehouseProfilesPage detail refresh after activate (Finding #1)', () 
 
     // Select the only profile row.
     await user.click(await screen.findByText('WP-01'));
+    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
 
     // The lifecycle panel shows the detail; Activate is enabled for a DRAFT.
     const activate = await screen.findByRole('button', { name: 'Activate' });
@@ -218,6 +238,7 @@ describe('WarehouseProfilesPage conflict routing (AC5)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
+    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
     await user.click(await screen.findByRole('button', { name: 'Activate' }));
 
     expect(await screen.findByText('Conflict')).toBeTruthy();
@@ -289,6 +310,7 @@ describe('WarehouseProfilesPage rule assignment UI (Finding #2)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
+    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
 
     // The rule panel renders with the attachable definition offered.
     const select = await screen.findByRole('combobox', { name: /attach rule/i });
@@ -314,6 +336,7 @@ describe('WarehouseProfilesPage lifecycle error surfacing (Finding #4)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
+    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
     await user.click(await screen.findByRole('button', { name: 'Activate' }));
 
     // Inline message present...

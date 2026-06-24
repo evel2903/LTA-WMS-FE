@@ -2,8 +2,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { IWarehouseProfileRepository } from '@modules/WarehouseProfile/Application/Interfaces/IWarehouseProfileRepository';
 import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
@@ -22,6 +24,7 @@ vi.mock(
 );
 
 import { RuleMatrixPage } from '@modules/WarehouseProfile/Presentation/Pages/RuleMatrixPage';
+import { RuleMatrixPreviewPage } from '@modules/WarehouseProfile/Presentation/Pages/RuleMatrixPreviewPage';
 
 const now = '2026-06-18T00:00:00.000Z';
 
@@ -93,13 +96,18 @@ class FakeRepository implements Partial<IWarehouseProfileRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialPath: string = ROUTES.FOUNDATION.RULE_MATRIX) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <RuleMatrixPage />
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.RULE_MATRIX} element={<RuleMatrixPage />} />
+          <Route path={ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW} element={<RuleMatrixPreviewPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -136,7 +144,7 @@ describe('RuleMatrixPage preview panel (AC4)', () => {
     const user = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake as unknown as IWarehouseProfileRepository;
-    renderPage();
+    renderPage(ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW);
 
     const wtInput = await screen.findByRole('textbox', { name: /warehouse type code/i });
     await user.type(wtInput, 'DC');

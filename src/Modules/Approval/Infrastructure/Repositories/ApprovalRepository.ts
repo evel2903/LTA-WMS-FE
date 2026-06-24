@@ -14,6 +14,17 @@ import type {
 import { ApprovalMapper } from '@modules/Approval/Infrastructure/Mappers/ApprovalMapper';
 
 const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function paging(filter: { page?: number; pageSize?: number } = {}) {
+  return {
+    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
+    PageSize:
+      !filter.pageSize || filter.pageSize < 1
+        ? DEFAULT_PAGE_SIZE
+        : Math.min(filter.pageSize, MAX_PAGE_SIZE),
+  };
+}
 
 /** The single place that touches `httpClient` for the approval queue. */
 export class ApprovalRepository implements IApprovalRepository {
@@ -24,8 +35,7 @@ export class ApprovalRepository implements IApprovalRepository {
       APPROVAL_ENDPOINTS.APPROVAL_REQUESTS,
       {
         params: {
-          Page: filter.page ?? 1,
-          PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+          ...paging(filter),
           Decision: filter.decision,
           RequesterUserId: filter.requesterUserId,
           TargetObjectType: filter.targetObjectType,

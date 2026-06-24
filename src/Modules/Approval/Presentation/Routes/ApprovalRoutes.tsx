@@ -9,6 +9,20 @@ const ApprovalQueuePage = lazy(() =>
   })),
 );
 
+const ApprovalRequestDetailPage = lazy(() =>
+  import('@modules/Approval/Presentation/Pages/ApprovalRequestDetailPage').then((module) => ({
+    default: module.ApprovalRequestDetailPage,
+  })),
+);
+
 export const approvalRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.APPROVALS, element: <ApprovalQueuePage /> },
+  {
+    path: ROUTES.FOUNDATION.APPROVAL_DETAIL(),
+    element: <ApprovalRequestDetailPage mode="detail" />,
+  },
+  {
+    path: ROUTES.FOUNDATION.APPROVAL_ACTION(),
+    element: <ApprovalRequestDetailPage mode="action" />,
+  },
 ];
