@@ -4,8 +4,15 @@ import { ROUTES } from '@app/Config/Routes';
 import { inboundRoutes } from '@modules/Inbound/Presentation/Routes/InboundRoutes';
 
 describe('Inbound routes', () => {
-  it('registers the real inbound route on /inbound', () => {
+  it('registers root, create, detail and action routes', () => {
     expect(ROUTES.INBOUND.ROOT).toBe('/inbound');
-    expect(inboundRoutes.map((route) => route.path)).toContain('/inbound');
+    expect(inboundRoutes.map((route) => route.path)).toEqual(
+      expect.arrayContaining([
+        '/inbound',
+        '/inbound/new',
+        '/inbound/:id',
+        '/inbound/:id/:action',
+      ]),
+    );
   });
 });

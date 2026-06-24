@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
@@ -38,7 +39,8 @@ vi.mock('@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance'
   },
 }));
 
-import { InboundPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
+import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
+import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -120,9 +122,14 @@ class FakeRepository implements Partial<IInboundRepository> {
     ),
   );
 
-  getById = vi.fn((id: string) =>
-    Promise.resolve(this.items.find((item) => item.id === id) ?? this.items[0]),
-  );
+  getById = vi.fn((id: string) => {
+    const item = this.items.find((plan) => plan.id === id);
+    return item
+      ? Promise.resolve(item)
+      : Promise.reject(
+          new ApiError({ status: 404, code: 'NOT_FOUND', message: `Inbound plan ${id} not found` }),
+        );
+  });
 
   create = vi.fn((input: CreateInboundPlanInput) => {
     const created = makePlan({
@@ -412,14 +419,46 @@ class FakeRepository implements Partial<IInboundRepository> {
   );
 }
 
-function renderPage() {
+function renderPage(entry = '/inbound/inbound-plan-1') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <InboundPage />
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/inbound/new" element={<InboundDetailPage />} />
+          <Route path="/inbound/:id" element={<InboundDetailPage />} />
+          <Route path="/inbound/:id/:action" element={<InboundDetailPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
+  );
+}
+
+function renderListPage(entry = '/inbound') {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/inbound" element={<InboundListPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <span data-testid="location-probe" hidden>
+      {location.pathname}
+    </span>
   );
 }
 
@@ -431,7 +470,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     expect(screen.getByText('SKU-A')).toBeTruthy();
     expect(screen.getByText(/ETA: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
     expect(screen.getByText(/CoreFlow trace: core-flow-1/i)).toBeTruthy();
@@ -446,7 +485,7 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderPage('/inbound/new');
 
     await actor.type(await screen.findByLabelText('Source system'), 'ERP');
     await actor.type(screen.getByLabelText('Source document number'), 'ASN-10001');
@@ -470,6 +509,9 @@ describe('InboundPage', () => {
         }),
       ),
     );
+    await waitFor(() =>
+      expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/inbound-plan-1'),
+    );
     const createInput = fake.create.mock.calls[0][0];
     expect(createInput.expectedArrivalAt).toMatch(/^2026-06-22T/);
 
@@ -492,7 +534,7 @@ describe('InboundPage', () => {
     const fake = new FakeRepository();
     fake.create.mockResolvedValueOnce(makePlan({ isDuplicate: true }));
     repo.current = fake;
-    renderPage();
+    renderPage('/inbound/new');
 
     await actor.type(await screen.findByLabelText('Source system'), 'ERP');
     await actor.type(screen.getByLabelText('Source document number'), 'ASN-10001');
@@ -511,7 +553,7 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderPage('/inbound/new');
 
     await actor.type(await screen.findByLabelText('Source system'), 'ERP');
     await actor.clear(screen.getByLabelText('Source document type'));
@@ -559,7 +601,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     expect(screen.getByRole('button', { name: 'Override readiness' })).toHaveProperty(
       'disabled',
       true,
@@ -583,7 +625,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.clear(screen.getByLabelText('Receiving session key'));
     await actor.type(screen.getByLabelText('Receiving session key'), 'dock-1:user-1');
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
@@ -624,7 +666,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
 
@@ -664,7 +706,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
 
@@ -699,7 +741,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
 
@@ -764,7 +806,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
 
@@ -800,7 +842,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
 
@@ -861,7 +903,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     await actor.clear(screen.getByLabelText('Actual quantity'));
     await actor.type(screen.getByLabelText('Actual quantity'), '14');
@@ -914,7 +956,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     await actor.type(screen.getByLabelText('Raw scan value'), 'wrong-sku-barcode');
     await actor.clear(screen.getByLabelText('Idempotency key'));
@@ -960,7 +1002,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     await actor.clear(screen.getByLabelText('Actual quantity'));
     await actor.type(screen.getByLabelText('Actual quantity'), '14');
@@ -986,7 +1028,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
     await actor.clear(screen.getByLabelText('Actual quantity'));
     await actor.type(screen.getByLabelText('Actual quantity'), '14');
@@ -1014,7 +1056,7 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText(/CoreFlow trace: core-flow-1/i);
     await actor.type(screen.getByLabelText('Readiness reason code'), 'RC-V1-HANDOFF');
     await actor.click(screen.getByRole('button', { name: 'Override readiness' }));
     expect(await screen.findByText(/override accepted/i)).toBeTruthy();
@@ -1032,9 +1074,9 @@ describe('InboundPage', () => {
     );
   });
 
-  it('shows permission denied read-only state when list is forbidden', async () => {
+  it('shows permission denied read-only state when detail read is forbidden', async () => {
     const fake = new FakeRepository();
-    fake.list = vi.fn(() =>
+    fake.getById = vi.fn(() =>
       Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'No inbound read' })),
     );
     repo.current = fake;
@@ -1055,9 +1097,16 @@ describe('InboundPage', () => {
       }),
     ]);
     repo.current = fake;
-    renderPage();
+    renderListPage();
 
-    await screen.findByRole('button', { name: 'ASN-10001' });
+    await screen.findByText('ASN-10001');
+    expect(screen.getByRole('link', { name: 'New inbound plan' })).toBeTruthy();
+    expect(screen.getAllByRole('link', { name: 'Open detail' })[0]).toHaveProperty(
+      'href',
+      expect.stringContaining('/inbound/inbound-plan-1'),
+    );
+    expect(screen.queryByRole('button', { name: 'Create inbound plan' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Record gate-in' })).toBeNull();
     await actor.type(screen.getByLabelText('Source system filter'), 'ERP');
     await actor.type(screen.getByLabelText('Document number filter'), 'ASN-10001');
 

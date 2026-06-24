@@ -9,3 +9,11 @@ export function usePutawayTasks(filter: PutawayTaskListFilter = {}) {
     queryFn: () => putawayRepository.list(filter),
   });
 }
+
+export function usePutawayTask(id: string | null) {
+  return useQuery({
+    queryKey: putawayQueryKeys.detail(id ?? ''),
+    queryFn: () => putawayRepository.getById(id as string),
+    enabled: Boolean(id),
+  });
+}

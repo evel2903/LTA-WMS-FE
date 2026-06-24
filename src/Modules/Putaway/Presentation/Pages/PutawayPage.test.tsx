@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
@@ -24,7 +25,8 @@ vi.mock('@modules/Putaway/Infrastructure/Repositories/PutawayRepositoryInstance'
   },
 }));
 
-import { PutawayPage } from '@modules/Putaway/Presentation/Pages/PutawayPage';
+import { PutawayDetailPage } from '@modules/Putaway/Presentation/Pages/PutawayDetailPage';
+import { PutawayPage as PutawayListPage } from '@modules/Putaway/Presentation/Pages/PutawayPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -199,9 +201,14 @@ class FakeRepository implements Partial<IPutawayRepository> {
     ),
   );
 
-  getById = vi.fn((id: string) =>
-    Promise.resolve(this.items.find((item) => item.id === id) ?? this.items[0]),
-  );
+  getById = vi.fn((id: string) => {
+    const item = this.items.find((task) => task.id === id);
+    return item
+      ? Promise.resolve(item)
+      : Promise.reject(
+          new ApiError({ status: 404, code: 'NOT_FOUND', message: `Putaway task ${id} not found` }),
+        );
+  });
 
   release = vi.fn((input: ReleasePutawayTaskInput) => {
     const created = makeTask({
@@ -225,20 +232,73 @@ class FakeRepository implements Partial<IPutawayRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(entry = '/putaway/putaway-1') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <PutawayPage />
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/putaway/:id" element={<PutawayDetailPage />} />
+          <Route path="/putaway/:id/:action" element={<PutawayDetailPage />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
+  );
+}
+
+function renderListPage(entry = '/putaway') {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[entry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/putaway" element={<PutawayListPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <span data-testid="location-probe" hidden>
+      {location.pathname}
+    </span>
   );
 }
 
 afterEach(() => cleanup());
 
 describe('PutawayPage', () => {
+  it('keeps putaway root list-only and routes actions to detail pages', async () => {
+    const fake = new FakeRepository([makeTask()]);
+    repo.current = fake;
+
+    renderListPage();
+
+    expect(await screen.findByText('PUT-001')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open detail' })).toHaveProperty(
+      'href',
+      expect.stringContaining('/putaway/putaway-1'),
+    );
+    expect(screen.getByRole('link', { name: /Confirm scan/i })).toHaveProperty(
+      'href',
+      expect.stringContaining('/putaway/putaway-1/confirm'),
+    );
+    expect(screen.queryByRole('button', { name: /Release putaway task/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Confirm putaway scan/i })).toBeNull();
+    expect(fake.list).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, taskStatus: 'Released' }),
+    );
+  });
+
   it('renders putaway tasks and releases a new task through repository layer', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makeTask()]);
@@ -265,12 +325,15 @@ describe('PutawayPage', () => {
         idempotencyKey: 'putaway-key-2',
       }),
     );
+    await waitFor(() =>
+      expect(screen.getByTestId('location-probe').textContent).toBe('/putaway/putaway-new'),
+    );
     expect(await screen.findByText(/PUT-001 released/i)).toBeTruthy();
   });
 
   it('shows backend blocked reason from ApiError', async () => {
     const actor = userEvent.setup();
-    const fake = new FakeRepository();
+    const fake = new FakeRepository([makeTask()]);
     fake.release = vi.fn(() =>
       Promise.reject(
         new ApiError({
