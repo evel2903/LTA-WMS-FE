@@ -51,6 +51,12 @@ class FakeCatalogRepository implements ICatalogRepository {
   listUoms(): Promise<PaginatedResponse<Uom>> {
     return Promise.resolve(page<Uom>([]));
   }
+  getOwner(): Promise<Owner> {
+    return Promise.reject(new Error('not used'));
+  }
+  getUom(): Promise<Uom> {
+    return Promise.reject(new Error('not used'));
+  }
   listSkus(_filter?: SkuListFilter): Promise<PaginatedResponse<Sku>> {
     return Promise.resolve(page(this.skus));
   }

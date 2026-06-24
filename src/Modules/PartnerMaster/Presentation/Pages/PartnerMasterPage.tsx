@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
-import { ApiError } from '@shared/Services/Http/ApiError';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { ROUTES } from '@app/Config/Routes';
+import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
-import { conflictMessage } from '@modules/MasterData/Application/Commands/CatalogConflictError';
 import {
   CatalogListView,
   type CatalogColumn,
@@ -15,36 +16,24 @@ import {
   PARTNER_STATUSES,
   PARTNER_TYPES,
 } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
-import type {
-  Partner,
-  PartnerStatus,
-  PartnerType,
-} from '@modules/PartnerMaster/Domain/Types/Partner';
-import { usePartnerMutations } from '@modules/PartnerMaster/Application/Commands/UsePartnerMutations';
+import type { Partner, PartnerStatus, PartnerType } from '@modules/PartnerMaster/Domain/Types/Partner';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
-import { PartnerForm } from '@modules/PartnerMaster/Presentation/Forms/PartnerForm';
 
 type PartnerTypeFilter = 'All' | PartnerType;
 type PartnerStatusFilter = 'All' | PartnerStatus;
 
 function StatusBadge({ status }: { status: PartnerStatus }) {
-  return (
-    <span className="rounded-md border px-2 py-1 text-xs font-medium">
-      {status}
-    </span>
-  );
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
 }
 
 export function PartnerMasterPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [codeFilter, setCodeFilter] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const [externalReferenceFilter, setExternalReferenceFilter] = useState('');
   const [partnerType, setPartnerType] = useState<PartnerTypeFilter>('All');
   const [status, setStatus] = useState<PartnerStatusFilter>('All');
-  const [selected, setSelected] = useState<Partner | null>(null);
-  const [createNonce, setCreateNonce] = useState(0);
-  const [submitError, setSubmitError] = useState<unknown>(null);
 
   const partnerCode = useDebouncedValue(codeFilter, 300);
   const partnerName = useDebouncedValue(nameFilter, 300);
@@ -57,7 +46,6 @@ export function PartnerMasterPage() {
     partnerType: partnerType === 'All' ? undefined : partnerType,
     status: status === 'All' ? undefined : status,
   });
-  const mutations = usePartnerMutations();
 
   const partners = query.data?.items ?? [];
   const apiError = query.error instanceof ApiError ? query.error : null;
@@ -70,7 +58,7 @@ export function PartnerMasterPage() {
         : partners.length === 0
           ? 'empty'
           : 'ready';
-  const canEdit = !apiError?.isForbidden;
+  const canCreate = !apiError?.isForbidden;
 
   const columns: CatalogColumn<Partner>[] = [
     {
@@ -78,10 +66,7 @@ export function PartnerMasterPage() {
       render: (partner) => (
         <button
           className="underline-offset-2 hover:underline"
-          onClick={() => {
-            setSelected(partner);
-            setSubmitError(null);
-          }}
+          onClick={() => navigate(ROUTES.FOUNDATION.MASTER_DATA.PARTNER_DETAIL(partner.id))}
         >
           {partner.partnerCode}
         </button>
@@ -94,179 +79,99 @@ export function PartnerMasterPage() {
   ];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-      <CatalogListView
-        title="Partners"
-        description="Manage minimal Supplier, Customer and Carrier records for V1 flows."
-        state={state}
-        columns={columns}
-        rows={partners}
-        rowKey={(partner) => partner.id}
-        page={page}
-        totalPages={query.data?.totalPages ?? 1}
-        onPageChange={setPage}
-        canCreate={canEdit}
-        emptyLabel={PARTNER_EMPTY_LABEL}
-        errorMessage={apiError?.message ?? (query.error ? 'Unable to load partners.' : undefined)}
-        toolbar={
-          <>
-            <label className="grid gap-1 text-sm">
-              Partner code filter
-              <Input
-                value={codeFilter}
-                onChange={(event) => {
-                  setCodeFilter(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search code"
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              Partner name filter
-              <Input
-                value={nameFilter}
-                onChange={(event) => {
-                  setNameFilter(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search name"
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              External reference filter
-              <Input
-                value={externalReferenceFilter}
-                onChange={(event) => {
-                  setExternalReferenceFilter(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search reference"
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              Partner type filter
-              <select
-                className="h-9 rounded-md border bg-transparent px-3 text-sm"
-                value={partnerType}
-                onChange={(event) => {
-                  setPartnerType(event.target.value as PartnerTypeFilter);
-                  setPage(1);
-                }}
-              >
-                <option value="All">All</option>
-                {PARTNER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm">
-              Status filter
-              <select
-                className="h-9 rounded-md border bg-transparent px-3 text-sm"
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as PartnerStatusFilter);
-                  setPage(1);
-                }}
-              >
-                <option value="All">All</option>
-                {PARTNER_STATUSES.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        }
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {selected ? 'Edit partner' : 'Create partner'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {!canEdit ? (
-            <p className="text-muted-foreground text-sm">Read only</p>
-          ) : selected ? (
-            <PartnerForm
-              key={`partner-${selected.id}`}
-              initialValue={selected}
-              submitLabel="Update partner"
-              disabled={!canEdit}
-              pending={mutations.updatePartner.isPending}
-              deactivatePending={mutations.deactivatePartner.isPending}
-              conflict={conflictMessage(submitError) ?? undefined}
-              onSubmit={(values) => {
-                mutations.updatePartner.mutate(
-                  {
-                    id: selected.id,
-                    input: {
-                      partnerCode: values.partnerCode,
-                      partnerName: values.partnerName,
-                      status: values.status,
-                      sourceSystem: values.sourceSystem,
-                      externalReference: values.externalReference,
-                      referenceText: values.referenceText,
-                    },
-                  },
-                  {
-                    onError: setSubmitError,
-                    onSuccess: (partner) => {
-                      setSubmitError(null);
-                      setSelected(partner);
-                    },
-                  },
-                );
+    <CatalogListView
+      title="Partners"
+      description="Manage minimal Supplier, Customer and Carrier records for V1 flows."
+      state={state}
+      columns={columns}
+      rows={partners}
+      rowKey={(partner) => partner.id}
+      page={page}
+      totalPages={query.data?.totalPages ?? 1}
+      onPageChange={setPage}
+      canCreate={canCreate}
+      emptyLabel={PARTNER_EMPTY_LABEL}
+      errorMessage={apiError?.message ?? (query.error ? 'Unable to load partners.' : undefined)}
+      headerAction={
+        canCreate ? (
+          <Button asChild size="sm">
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_NEW}>New partner</Link>
+          </Button>
+        ) : null
+      }
+      toolbar={
+        <>
+          <label className="grid gap-1 text-sm">
+            Partner code filter
+            <Input
+              value={codeFilter}
+              onChange={(event) => {
+                setCodeFilter(event.target.value);
+                setPage(1);
               }}
-              onDeactivate={(values) =>
-                mutations.deactivatePartner.mutate(
-                  { id: selected.id, input: values },
-                  {
-                    onError: setSubmitError,
-                    onSuccess: (partner) => {
-                      setSubmitError(null);
-                      setSelected(partner);
-                    },
-                  },
-                )
-              }
+              placeholder="Search code"
             />
-          ) : (
-            <PartnerForm
-              key={`create-partner-${createNonce}`}
-              submitLabel="Create partner"
-              disabled={!canEdit}
-              pending={mutations.createPartner.isPending}
-              conflict={conflictMessage(submitError) ?? undefined}
-              onSubmit={(values) =>
-                mutations.createPartner.mutate(values, {
-                  onError: setSubmitError,
-                  onSuccess: (partner) => {
-                    setSubmitError(null);
-                    setSelected(partner);
-                    setCreateNonce((value) => value + 1);
-                  },
-                })
-              }
+          </label>
+          <label className="grid gap-1 text-sm">
+            Partner name filter
+            <Input
+              value={nameFilter}
+              onChange={(event) => {
+                setNameFilter(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search name"
             />
-          )}
-          {selected && (
-            <button
-              className="text-muted-foreground text-xs underline"
-              onClick={() => {
-                setSelected(null);
-                setSubmitError(null);
+          </label>
+          <label className="grid gap-1 text-sm">
+            External reference filter
+            <Input
+              value={externalReferenceFilter}
+              onChange={(event) => {
+                setExternalReferenceFilter(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Search reference"
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Partner type filter
+            <select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={partnerType}
+              onChange={(event) => {
+                setPartnerType(event.target.value as PartnerTypeFilter);
+                setPage(1);
               }}
             >
-              Cancel edit / create new
-            </button>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              <option value="All">All</option>
+              {PARTNER_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">
+            Status filter
+            <select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as PartnerStatusFilter);
+                setPage(1);
+              }}
+            >
+              <option value="All">All</option>
+              {PARTNER_STATUSES.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      }
+    />
   );
 }

@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IPartnerRepository } from '@modules/PartnerMaster/Application/Interfaces/IPartnerRepository';
@@ -22,6 +24,7 @@ vi.mock('@modules/PartnerMaster/Infrastructure/Repositories/PartnerRepositoryIns
 }));
 
 import { PartnerMasterPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterPage';
+import { PartnerMasterDetailPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -104,13 +107,29 @@ class FakeRepository implements Partial<IPartnerRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.MASTER_DATA.PARTNERS]) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <PartnerMasterPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} element={<PartnerMasterPage />} />
+          <Route
+            path={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_NEW}
+            element={<PartnerMasterDetailPage mode="create" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_DETAIL()}
+            element={<PartnerMasterDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_EDIT()}
+            element={<PartnerMasterDetailPage mode="edit" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -124,6 +143,7 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
+    await actor.click(await screen.findByRole('link', { name: 'New partner' }));
     await actor.type(await screen.findByLabelText('Partner code'), 'SUP-001');
     await actor.type(screen.getByLabelText('Partner name'), 'Acme Supplier');
     await actor.selectOptions(screen.getByLabelText('Partner type'), 'Supplier');
@@ -141,8 +161,9 @@ describe('PartnerMasterPage', () => {
         }),
       ),
     );
-    await screen.findByRole('button', { name: 'SUP-001' });
+    await screen.findByRole('heading', { name: 'SUP-001' });
 
+    await actor.click(screen.getByRole('link', { name: 'Edit partner' }));
     const updateButton = await screen.findByRole('button', { name: 'Update partner' });
     const editForm = updateButton.closest('form') as HTMLFormElement;
     await actor.clear(within(editForm).getByLabelText('Partner name'));
@@ -155,15 +176,18 @@ describe('PartnerMasterPage', () => {
         expect.objectContaining({ partnerName: 'Acme Supplier Updated' }),
       ),
     );
-    expect(await within(screen.getByRole('table')).findByText('Acme Supplier Updated')).toBeTruthy();
+    expect(await screen.findByDisplayValue('Acme Supplier Updated')).toBeTruthy();
 
-    await actor.type(within(editForm).getByLabelText('Reason code'), 'RC-V1-CANCEL');
-    await actor.click(within(editForm).getByRole('button', { name: 'Deactivate partner' }));
+    await actor.click(screen.getByRole('link', { name: 'Edit partner' }));
+    const refreshedUpdateButton = await screen.findByRole('button', { name: 'Update partner' });
+    const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
+    await actor.type(within(refreshedForm).getByLabelText('Reason code'), 'RC-V1-CANCEL');
+    await actor.click(within(refreshedForm).getByRole('button', { name: 'Deactivate partner' }));
 
     await waitFor(() =>
       expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-V1-CANCEL' }),
     );
-    expect(await within(screen.getByRole('table')).findByText('Inactive')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0));
   });
 
   it('shows read-only denied behavior when list is forbidden', async () => {
@@ -175,7 +199,7 @@ describe('PartnerMasterPage', () => {
     renderPage();
 
     expect(await screen.findByText(/permission denied/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Create partner' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'New partner' })).toBeNull();
   });
 
   it('passes partner name filter to the repository', async () => {

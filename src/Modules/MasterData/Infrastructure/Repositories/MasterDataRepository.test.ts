@@ -65,6 +65,17 @@ describe('MasterDataRepository', () => {
     expect(http.calls[4]?.config).toEqual({ params: { WarehouseId: 'wh-1', ZoneId: 'zone-1' } });
   });
 
+  it('normalizes page and page size for master-data list endpoints', async () => {
+    const http = new FakeHttpClient();
+    const repository = new MasterDataRepository(http);
+
+    await repository.listSites({ page: -2, pageSize: 500 });
+    await repository.listSites({ page: 0, pageSize: 0 });
+
+    expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
+    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
+  });
+
   it('returns an empty location tree when the backend responds with a null payload', async () => {
     class NullTreeHttpClient extends FakeHttpClient {
       override get<T>(url: string, config?: unknown): Promise<T> {

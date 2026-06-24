@@ -12,6 +12,16 @@ import type { PagedDto, ReasonCodeDto } from '@modules/ReasonCode/Infrastructure
 import { ReasonCodeMapper } from '@modules/ReasonCode/Infrastructure/Mappers/ReasonCodeMapper';
 
 const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function page(value?: number): number {
+  return !value || value < 1 ? 1 : value;
+}
+
+function pageSize(value?: number): number {
+  if (!value || value < 1) return DEFAULT_PAGE_SIZE;
+  return Math.min(value, MAX_PAGE_SIZE);
+}
 
 /** The single place that touches `httpClient` for the reason-code catalog. */
 export class ReasonCodeRepository implements IReasonCodeRepository {
@@ -20,8 +30,8 @@ export class ReasonCodeRepository implements IReasonCodeRepository {
   async list(filter: ReasonCodeFilter = {}): Promise<PaginatedResponse<ReasonCode>> {
     const dto = await this.http.get<PagedDto<ReasonCodeDto>>(REASON_CODE_ENDPOINTS.REASON_CODES, {
       params: {
-        Page: filter.page ?? 1,
-        PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+        Page: page(filter.page),
+        PageSize: pageSize(filter.pageSize),
         ReasonGroup: filter.reasonGroup,
         Status: filter.status,
         Action: filter.action,

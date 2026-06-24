@@ -16,6 +16,14 @@ export function useOwners(filter: OwnerListFilter = {}) {
   });
 }
 
+export function useOwner(id: string | null) {
+  return useQuery({
+    queryKey: catalogQueryKeys.owner(id ?? ''),
+    queryFn: () => catalogRepository.getOwner(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useUoms(filter: UomListFilter = {}) {
   return useQuery({
     queryKey: catalogQueryKeys.uoms(filter),
@@ -23,10 +31,26 @@ export function useUoms(filter: UomListFilter = {}) {
   });
 }
 
+export function useUom(id: string | null) {
+  return useQuery({
+    queryKey: catalogQueryKeys.uom(id ?? ''),
+    queryFn: () => catalogRepository.getUom(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useSkus(filter: SkuListFilter = {}) {
   return useQuery({
     queryKey: catalogQueryKeys.skus(filter),
     queryFn: () => catalogRepository.listSkus(filter),
+  });
+}
+
+export function useSku(id: string | null) {
+  return useQuery({
+    queryKey: catalogQueryKeys.sku(id ?? ''),
+    queryFn: () => catalogRepository.getSku(id as string),
+    enabled: Boolean(id),
   });
 }
 

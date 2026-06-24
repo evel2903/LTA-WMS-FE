@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IReasonCodeRepository } from '@modules/ReasonCode/Application/Interfaces/IReasonCodeRepository';
@@ -23,6 +25,7 @@ const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { ReasonCodeCatalogPage } from '@modules/ReasonCode/Presentation/Pages/ReasonCodeCatalogPage';
+import { ReasonCodeDetailPage } from '@modules/ReasonCode/Presentation/Pages/ReasonCodeDetailPage';
 import { useReasonCodeStore } from '@modules/ReasonCode/Application/Stores/ReasonCodeStore';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -73,13 +76,20 @@ class FakeRepository implements Partial<IReasonCodeRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.REASON_CODES]) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <ReasonCodeCatalogPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.REASON_CODES} element={<ReasonCodeCatalogPage />} />
+          <Route path={ROUTES.FOUNDATION.REASON_CODE_NEW} element={<ReasonCodeDetailPage mode="create" />} />
+          <Route path={ROUTES.FOUNDATION.REASON_CODE_DETAIL()} element={<ReasonCodeDetailPage mode="detail" />} />
+          <Route path={ROUTES.FOUNDATION.REASON_CODE_EDIT()} element={<ReasonCodeDetailPage mode="edit" />} />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -97,6 +107,7 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
+    await actor.click(await screen.findByRole('link', { name: 'New reason code' }));
     await actor.type(await screen.findByLabelText('Reason code'), 'RC-NEW-1');
     await actor.click(screen.getByLabelText('Update')); // an applies-to action
     await actor.click(screen.getByLabelText('SKU')); // an applies-to object
@@ -113,6 +124,7 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'RC-ADJ-01' }));
+    await actor.click(await screen.findByRole('link', { name: 'Edit reason code' }));
     // Scope to the edit form — a 'Status' filter select also exists in the toolbar.
     const updateBtn = await screen.findByRole('button', { name: 'Update reason code' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
@@ -122,8 +134,9 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     await waitFor(() =>
       expect(fake.update).toHaveBeenCalledWith('r1', expect.objectContaining({ status: 'INACTIVE' })),
     );
-    // UI re-reads the inactivated status (badge in the table, scoped to avoid the filter/form options).
-    expect(await within(screen.getByRole('table')).findByText('INACTIVE')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLSelectElement>('Status').value).toBe('INACTIVE'),
+    );
   });
 
   it('shows a permission-denied state when the list 403s (AC4)', async () => {
@@ -144,10 +157,10 @@ describe('ReasonCodeCatalogPage (C13)', () => {
       ),
     );
     repo.current = fake;
-    renderPage();
+    renderPage([ROUTES.FOUNDATION.REASON_CODE_DETAIL('missing-reason')]);
 
-    expect(await screen.findByText('Reason detail unavailable')).toBeTruthy();
-    expect(screen.getByText('Không tải được reason code đã chọn.')).toBeTruthy();
+    expect(await screen.findByText('Unable to load page')).toBeTruthy();
+    expect(screen.getByText('Reason detail unavailable')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Create reason code' })).toBeNull();
   });
 
@@ -162,6 +175,7 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
+    await actor.click(await screen.findByRole('link', { name: 'New reason code' }));
     await actor.type(await screen.findByLabelText('Reason code'), 'RC-DUP');
     await actor.click(screen.getByLabelText('Update'));
     await actor.click(screen.getByLabelText('SKU'));

@@ -172,8 +172,42 @@ describe('Catalog components', () => {
 
   it('registers the catalog routes and route constants', () => {
     expect(ROUTES.FOUNDATION.MASTER_DATA.OWNERS).toBe('/foundation/master-data/owners');
+    expect(ROUTES.FOUNDATION.MASTER_DATA.OWNER_NEW).toBe('/foundation/master-data/owners/new');
+    expect(ROUTES.FOUNDATION.MASTER_DATA.OWNER_DETAIL('owner-1')).toBe(
+      '/foundation/master-data/owners/owner-1',
+    );
+    expect(ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT('owner-1')).toBe(
+      '/foundation/master-data/owners/owner-1/edit',
+    );
     expect(ROUTES.FOUNDATION.MASTER_DATA.UOMS).toBe('/foundation/master-data/uoms');
+    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW).toBe('/foundation/master-data/uoms/new');
+    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL('uom-1')).toBe(
+      '/foundation/master-data/uoms/uom-1',
+    );
+    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT('uom-1')).toBe(
+      '/foundation/master-data/uoms/uom-1/edit',
+    );
     expect(ROUTES.FOUNDATION.MASTER_DATA.SKUS).toBe('/foundation/master-data/skus');
-    expect(catalogRoutes).toHaveLength(3);
+    expect(ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW).toBe('/foundation/master-data/skus/new');
+    expect(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL('sku-1')).toBe(
+      '/foundation/master-data/skus/sku-1',
+    );
+    expect(ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT('sku-1')).toBe(
+      '/foundation/master-data/skus/sku-1/edit',
+    );
+    expect(catalogRoutes.map((route) => route.path)).toEqual([
+      ROUTES.FOUNDATION.MASTER_DATA.OWNERS,
+      ROUTES.FOUNDATION.MASTER_DATA.OWNER_NEW,
+      ROUTES.FOUNDATION.MASTER_DATA.OWNER_DETAIL(),
+      ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(),
+      ROUTES.FOUNDATION.MASTER_DATA.UOMS,
+      ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW,
+      ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL(),
+      ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(),
+      ROUTES.FOUNDATION.MASTER_DATA.SKUS,
+      ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW,
+      ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(),
+      ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT(),
+    ]);
   });
 });

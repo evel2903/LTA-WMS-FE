@@ -96,6 +96,33 @@ describe('CatalogRepository', () => {
     });
   });
 
+  it('normalizes page and caps catalog list page size at the V1 API guardrail max of 100', async () => {
+    const http = new FakeHttpClient();
+    const repository = new CatalogRepository(http);
+
+    await repository.listOwners({ page: -2, pageSize: 500 });
+    await repository.listOwners({ page: 0, pageSize: 0 });
+
+    expect(http.calls[0]?.config).toEqual({
+      params: {
+        Page: 1,
+        PageSize: 100,
+        Status: undefined,
+        OwnerCode: undefined,
+        OwnerName: undefined,
+      },
+    });
+    expect(http.calls[1]?.config).toEqual({
+      params: {
+        Page: 1,
+        PageSize: 100,
+        Status: undefined,
+        OwnerCode: undefined,
+        OwnerName: undefined,
+      },
+    });
+  });
+
   it('sends PascalCase create/update payloads to the backend', async () => {
     const http = new FakeHttpClient();
     const repository = new CatalogRepository(http);
