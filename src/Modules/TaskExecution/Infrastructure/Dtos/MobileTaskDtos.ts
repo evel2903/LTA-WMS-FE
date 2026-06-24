@@ -114,3 +114,43 @@ export interface ConfirmPickTaskResultDto {
   OutboxMessageId: string | null;
   IsDuplicate: boolean;
 }
+
+export interface ReportPickExceptionRequestDto {
+  MobileTaskId?: string;
+  ExceptionType: 'ShortPick' | 'NoStock' | 'Damaged' | 'WrongItem';
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  ObservedQuantity?: number;
+  DamagedQuantity?: number;
+  ObservedSkuId?: string;
+  ObservedSkuCode?: string;
+  ReplenishmentTargetLocationId?: string;
+  IdempotencyKey: string;
+}
+
+export interface RequestPickSubstitutionRequestDto {
+  MobileTaskId?: string;
+  SubstituteSkuId: string;
+  SubstituteSkuCode?: string;
+  SubstituteUomId?: string;
+  SubstituteUomCode?: string;
+  Quantity: number;
+  PolicyDecision: 'Allow' | 'RequireApproval' | 'Disallow';
+  PolicyReason?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}
+
+export interface PickExceptionResultDto {
+  PickTask: Record<string, unknown>;
+  MobileTask: MobileTaskDto | null;
+  ExceptionCase: Record<string, unknown> | null;
+  ReplenishmentRequired: boolean;
+  ReplenishmentTask: Record<string, unknown> | null;
+  SubstitutionStatus: 'Rejected' | 'PendingApproval' | 'AutoApplied' | null;
+  ApprovalRequest: Record<string, unknown> | null;
+  IsDuplicate: boolean;
+}

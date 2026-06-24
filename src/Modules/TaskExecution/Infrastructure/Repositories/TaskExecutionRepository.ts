@@ -11,7 +11,10 @@ import type {
   ConfirmPickTaskInput,
   ConfirmPickTaskResult,
   MobileTaskListFilter,
+  PickExceptionResult,
   RecordMobileScanInput,
+  ReportPickExceptionInput,
+  RequestPickSubstitutionInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import { TASK_EXECUTION_ENDPOINTS } from '@modules/TaskExecution/Infrastructure/Api/TaskExecutionEndpoints';
 import type {
@@ -19,6 +22,7 @@ import type {
   MobileTaskDto,
   PagedMobileTaskDto,
   ConfirmPickTaskResultDto,
+  PickExceptionResultDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
 import { MobileTaskMapper } from '@modules/TaskExecution/Infrastructure/Mappers/MobileTaskMapper';
 
@@ -85,5 +89,27 @@ export class TaskExecutionRepository implements ITaskExecutionRepository {
       MobileTaskMapper.toConfirmPickTaskRequest(input),
     );
     return MobileTaskMapper.toConfirmPickTaskResult(dto);
+  }
+
+  async reportPickException(
+    mobileTaskId: string,
+    input: ReportPickExceptionInput,
+  ): Promise<PickExceptionResult> {
+    const dto = await this.http.post<PickExceptionResultDto>(
+      TASK_EXECUTION_ENDPOINTS.REPORT_PICK_EXCEPTION(mobileTaskId),
+      MobileTaskMapper.toReportPickExceptionRequest(input),
+    );
+    return MobileTaskMapper.toPickExceptionResult(dto);
+  }
+
+  async requestPickSubstitution(
+    mobileTaskId: string,
+    input: RequestPickSubstitutionInput,
+  ): Promise<PickExceptionResult> {
+    const dto = await this.http.post<PickExceptionResultDto>(
+      TASK_EXECUTION_ENDPOINTS.REQUEST_PICK_SUBSTITUTION(mobileTaskId),
+      MobileTaskMapper.toRequestPickSubstitutionRequest(input),
+    );
+    return MobileTaskMapper.toPickExceptionResult(dto);
   }
 }

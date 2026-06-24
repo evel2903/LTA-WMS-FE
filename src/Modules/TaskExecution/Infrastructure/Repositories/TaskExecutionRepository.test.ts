@@ -50,6 +50,21 @@ describe('TaskExecutionRepository', () => {
       reasonCode: 'RC-V1-DISCREPANCY',
       idempotencyKey: 'pick-confirm-1',
     });
+    await repository.reportPickException('task-a', {
+      mobileTaskId: 'task-a',
+      exceptionType: 'ShortPick',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['scan:1'],
+      idempotencyKey: 'pick-exception-1',
+    });
+    await repository.requestPickSubstitution('task-a', {
+      mobileTaskId: 'task-a',
+      substituteSkuId: 'sku-sub',
+      quantity: 1,
+      policyDecision: 'RequireApproval',
+      evidenceRefs: ['scan:1'],
+      idempotencyKey: 'pick-substitution-1',
+    });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/mobile/tasks'],
@@ -58,6 +73,8 @@ describe('TaskExecutionRepository', () => {
       ['post', '/mobile/tasks/task-a/scans'],
       ['post', '/mobile/tasks/task-a/release'],
       ['post', '/mobile/tasks/task-a/confirm'],
+      ['post', '/mobile/tasks/task-a/exceptions'],
+      ['post', '/mobile/tasks/task-a/substitution'],
     ]);
   });
 
@@ -153,6 +170,61 @@ describe('TaskExecutionRepository', () => {
         ReasonNote: 'RF evidence accepted',
         DeviceCode: 'RF-01',
         IdempotencyKey: 'pick-confirm-1',
+      },
+    });
+  });
+
+  it('posts pick exception and substitution actions with PascalCase payloads', async () => {
+    const http = new FakeHttpClient();
+    const repository = new TaskExecutionRepository(http);
+
+    await repository.reportPickException('task-a', {
+      mobileTaskId: 'task-a',
+      exceptionType: 'NoStock',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      reasonNote: 'empty pick face',
+      evidenceRefs: ['scan:no-stock'],
+      observedQuantity: 0,
+      replenishmentTargetLocationId: 'loc-pick-face',
+      idempotencyKey: 'pick-exception-1',
+    });
+    await repository.requestPickSubstitution('task-a', {
+      mobileTaskId: 'task-a',
+      substituteSkuId: 'sku-sub',
+      substituteSkuCode: 'SKU-SUB',
+      quantity: 1,
+      policyDecision: 'RequireApproval',
+      policyReason: 'customer allows with approval',
+      evidenceRefs: ['scan:no-stock'],
+      idempotencyKey: 'pick-substitution-1',
+    });
+
+    expect(http.calls[0]).toMatchObject({
+      method: 'post',
+      url: '/mobile/tasks/task-a/exceptions',
+      body: {
+        MobileTaskId: 'task-a',
+        ExceptionType: 'NoStock',
+        ReasonCode: 'RC-V1-DISCREPANCY',
+        ReasonNote: 'empty pick face',
+        EvidenceRefs: ['scan:no-stock'],
+        ObservedQuantity: 0,
+        ReplenishmentTargetLocationId: 'loc-pick-face',
+        IdempotencyKey: 'pick-exception-1',
+      },
+    });
+    expect(http.calls[1]).toMatchObject({
+      method: 'post',
+      url: '/mobile/tasks/task-a/substitution',
+      body: {
+        MobileTaskId: 'task-a',
+        SubstituteSkuId: 'sku-sub',
+        SubstituteSkuCode: 'SKU-SUB',
+        Quantity: 1,
+        PolicyDecision: 'RequireApproval',
+        PolicyReason: 'customer allows with approval',
+        EvidenceRefs: ['scan:no-stock'],
+        IdempotencyKey: 'pick-substitution-1',
       },
     });
   });

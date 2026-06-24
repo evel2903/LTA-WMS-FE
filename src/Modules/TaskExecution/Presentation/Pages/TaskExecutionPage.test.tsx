@@ -16,7 +16,10 @@ import type {
   ConfirmPickTaskInput,
   ConfirmPickTaskResult,
   MobileTaskListFilter,
+  PickExceptionResult,
   RecordMobileScanInput,
+  ReportPickExceptionInput,
+  RequestPickSubstitutionInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as ITaskExecutionRepository }));
@@ -164,6 +167,39 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
         },
         scanEvidence: [],
         outboxMessageId: 'outbox-1',
+        isDuplicate: false,
+      });
+    },
+  );
+
+  reportPickException = vi.fn(
+    (mobileTaskId: string, _input: ReportPickExceptionInput): Promise<PickExceptionResult> => {
+      const mobileTask = this.items.find((item) => item.id === mobileTaskId) ?? null;
+      return Promise.resolve({
+        pickTask: { Id: 'pick-task-1', ExceptionType: 'ShortPick' },
+        mobileTask: mobileTask ? { ...mobileTask, taskStatus: 'Blocked' } : null,
+        exceptionCase: { Id: 'exception-1' },
+        replenishmentRequired: true,
+        replenishmentTask: null,
+        substitutionStatus: null,
+        approvalRequest: null,
+        isDuplicate: false,
+      });
+    },
+  );
+
+  requestPickSubstitution = vi.fn(
+    (mobileTaskId: string, input: RequestPickSubstitutionInput): Promise<PickExceptionResult> => {
+      const mobileTask = this.items.find((item) => item.id === mobileTaskId) ?? null;
+      return Promise.resolve({
+        pickTask: { Id: 'pick-task-1', SubstitutionStatus: input.policyDecision },
+        mobileTask,
+        exceptionCase: null,
+        replenishmentRequired: false,
+        replenishmentTask: null,
+        substitutionStatus:
+          input.policyDecision === 'RequireApproval' ? 'PendingApproval' : 'AutoApplied',
+        approvalRequest: input.policyDecision === 'RequireApproval' ? { Id: 'approval-1' } : null,
         isDuplicate: false,
       });
     },
@@ -373,6 +409,69 @@ describe('TaskExecution list/detail pages', () => {
       ),
     );
     expect(await screen.findByText('Pick confirmation posted')).toBeTruthy();
+  });
+
+  it('reports pick exception and requests substitution from the detail route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        sourceDocumentCode: 'PT-001',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          Quantity: 5,
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/exception');
+
+    await screen.findByText('Pick exception');
+    await actor.selectOptions(screen.getByLabelText('Exception type'), 'Damaged');
+    await actor.type(screen.getByLabelText('Evidence reference'), 'scan:damaged');
+    await actor.type(screen.getByLabelText('Damaged quantity'), '1');
+    await actor.click(screen.getByRole('button', { name: 'Report exception' }));
+
+    await waitFor(() =>
+      expect(fake.reportPickException).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({
+          mobileTaskId: 'task-a',
+          exceptionType: 'Damaged',
+          evidenceRefs: ['scan:damaged'],
+          damagedQuantity: 1,
+          idempotencyKey: 'pick-exception:pick-task-1:Damaged:scan:damaged',
+        }),
+      ),
+    );
+    expect(await screen.findByText(/Pick exception recorded/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Substitute SKU ID'), 'sku-sub');
+    await actor.type(screen.getByLabelText(/^Quantity$/), '2');
+    await actor.selectOptions(screen.getByLabelText('Policy decision'), 'Allow');
+    await actor.click(screen.getByRole('button', { name: 'Request substitution' }));
+
+    await waitFor(() =>
+      expect(fake.requestPickSubstitution).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({
+          mobileTaskId: 'task-a',
+          substituteSkuId: 'sku-sub',
+          quantity: 2,
+          policyDecision: 'Allow',
+          evidenceRefs: ['scan:damaged'],
+          idempotencyKey: 'pick-substitution:pick-task-1:sku-sub:scan:damaged',
+        }),
+      ),
+    );
+    expect(await screen.findByText(/Substitution context recorded/i)).toBeTruthy();
   });
 
   it('disables pick confirmation when a later item scan is rejected', async () => {

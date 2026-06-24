@@ -6,4 +6,8 @@ export const TASK_EXECUTION_ENDPOINTS = {
   SCANS: (id: string) => `/mobile/tasks/${encodeURIComponent(id)}/scans`,
   CONFIRM_PICK_TASK: (mobileTaskId: string) =>
     `/mobile/tasks/${encodeURIComponent(mobileTaskId)}/confirm`,
+  REPORT_PICK_EXCEPTION: (mobileTaskId: string) =>
+    `/mobile/tasks/${encodeURIComponent(mobileTaskId)}/exceptions`,
+  REQUEST_PICK_SUBSTITUTION: (mobileTaskId: string) =>
+    `/mobile/tasks/${encodeURIComponent(mobileTaskId)}/substitution`,
 } as const;

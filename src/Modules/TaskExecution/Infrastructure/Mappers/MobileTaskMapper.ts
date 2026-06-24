@@ -4,7 +4,10 @@ import type {
   ClaimMobileTaskInput,
   ConfirmPickTaskInput,
   ConfirmPickTaskResult,
+  PickExceptionResult,
   RecordMobileScanInput,
+  ReportPickExceptionInput,
+  RequestPickSubstitutionInput,
 } from '@modules/TaskExecution/Domain/Types/MobileTaskQuery';
 import type {
   ClaimMobileTaskRequestDto,
@@ -13,7 +16,10 @@ import type {
   MobileScanEventDto,
   MobileTaskDto,
   PagedMobileTaskDto,
+  PickExceptionResultDto,
   RecordMobileScanRequestDto,
+  ReportPickExceptionRequestDto,
+  RequestPickSubstitutionRequestDto,
   ReleaseMobileTaskRequestDto,
 } from '@modules/TaskExecution/Infrastructure/Dtos/MobileTaskDtos';
 
@@ -136,6 +142,54 @@ export const MobileTaskMapper = {
           rejectionCode: scan.RejectionCode ?? null,
         })) ?? [],
       outboxMessageId: dto.OutboxMessageId,
+      isDuplicate: dto.IsDuplicate,
+    };
+  },
+
+  toReportPickExceptionRequest(input: ReportPickExceptionInput): ReportPickExceptionRequestDto {
+    return removeNullish({
+      MobileTaskId: input.mobileTaskId,
+      ExceptionType: input.exceptionType,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      ObservedQuantity: input.observedQuantity,
+      DamagedQuantity: input.damagedQuantity,
+      ObservedSkuId: input.observedSkuId,
+      ObservedSkuCode: input.observedSkuCode,
+      ReplenishmentTargetLocationId: input.replenishmentTargetLocationId,
+      IdempotencyKey: input.idempotencyKey,
+    }) as ReportPickExceptionRequestDto;
+  },
+
+  toRequestPickSubstitutionRequest(
+    input: RequestPickSubstitutionInput,
+  ): RequestPickSubstitutionRequestDto {
+    return removeNullish({
+      MobileTaskId: input.mobileTaskId,
+      SubstituteSkuId: input.substituteSkuId,
+      SubstituteSkuCode: input.substituteSkuCode,
+      SubstituteUomId: input.substituteUomId,
+      SubstituteUomCode: input.substituteUomCode,
+      Quantity: input.quantity,
+      PolicyDecision: input.policyDecision,
+      PolicyReason: input.policyReason,
+      ReasonCode: input.reasonCode,
+      ReasonNote: input.reasonNote,
+      EvidenceRefs: input.evidenceRefs,
+      IdempotencyKey: input.idempotencyKey,
+    }) as RequestPickSubstitutionRequestDto;
+  },
+
+  toPickExceptionResult(dto: PickExceptionResultDto): PickExceptionResult {
+    return {
+      pickTask: dto.PickTask ?? {},
+      mobileTask: dto.MobileTask ? MobileTaskMapper.toTask(dto.MobileTask) : null,
+      exceptionCase: dto.ExceptionCase ?? null,
+      replenishmentRequired: dto.ReplenishmentRequired,
+      replenishmentTask: dto.ReplenishmentTask ?? null,
+      substitutionStatus: dto.SubstitutionStatus,
+      approvalRequest: dto.ApprovalRequest ?? null,
       isDuplicate: dto.IsDuplicate,
     };
   },
