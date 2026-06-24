@@ -64,6 +64,7 @@ const migratedRootPages = [
   ['Modules/BarcodeLabel/Presentation/Pages/BarcodeLabelPage.tsx', 'ListPageShell'],
   ['Modules/CycleCount/Presentation/Pages/CycleCountPage.tsx', 'ListPageShell'],
   ['Modules/Replenishment/Presentation/Pages/ReplenishmentPage.tsx', 'ListPageShell'],
+  ['Modules/Outbound/Presentation/Pages/OutboundPage.tsx', 'ListPageShell'],
   ['Modules/Compliance/Presentation/Pages/AuditLogPage.tsx', 'ListPageShell'],
   ['Modules/OverrideLog/Presentation/Pages/OverrideLogPage.tsx', 'ListPageShell'],
 ] as const;
@@ -86,6 +87,7 @@ const representativeDetailPages = [
   'Modules/BarcodeLabel/Presentation/Pages/BarcodeLabelDetailPage.tsx',
   'Modules/CycleCount/Presentation/Pages/CycleCountDetailPage.tsx',
   'Modules/Replenishment/Presentation/Pages/ReplenishmentDetailPage.tsx',
+  'Modules/Outbound/Presentation/Pages/OutboundDetailPage.tsx',
   'Modules/Compliance/Presentation/Pages/AuditLogDetailPage.tsx',
   'Modules/OverrideLog/Presentation/Pages/OverrideLogDetailPage.tsx',
 ] as const;
@@ -110,7 +112,11 @@ const rootPageActionFormTokens = [
 ] as const;
 
 const pageSizeGuardrailSources = [
-  ['Modules/MasterData/Domain/Constants/CatalogConstants.ts', /CATALOG_DEFAULT_PAGE_SIZE = 50/, /CATALOG_MAX_PAGE_SIZE = 100/],
+  [
+    'Modules/MasterData/Domain/Constants/CatalogConstants.ts',
+    /CATALOG_DEFAULT_PAGE_SIZE = 50/,
+    /CATALOG_MAX_PAGE_SIZE = 100/,
+  ],
   [
     'Modules/MasterData/Domain/Constants/MasterDataConstants.ts',
     /MASTER_DATA_DEFAULT_PAGE_SIZE = 50/,
@@ -131,18 +137,46 @@ const pageSizeGuardrailSources = [
     /WAREHOUSE_PROFILE_DEFAULT_PAGE_SIZE/,
     /MAX_PAGE_SIZE = 100/,
   ],
-  ['Modules/AccessControl/Infrastructure/Repositories/AccessControlRepository.ts', /DEFAULT_PAGE_SIZE = 50/, /MAX_PAGE_SIZE = 100/],
-  ['Modules/Approval/Infrastructure/Repositories/ApprovalRepository.ts', /DEFAULT_PAGE_SIZE = 50/, /MAX_PAGE_SIZE = 100/],
-  ['Modules/Compliance/Infrastructure/Repositories/ComplianceRepository.ts', /DEFAULT_PAGE_SIZE = 50/, /MAX_PAGE_SIZE = 100/],
-  ['Modules/ReasonCode/Infrastructure/Repositories/ReasonCodeRepository.ts', /DEFAULT_PAGE_SIZE = 50/, /MAX_PAGE_SIZE = 100/],
+  [
+    'Modules/AccessControl/Infrastructure/Repositories/AccessControlRepository.ts',
+    /DEFAULT_PAGE_SIZE = 50/,
+    /MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/Approval/Infrastructure/Repositories/ApprovalRepository.ts',
+    /DEFAULT_PAGE_SIZE = 50/,
+    /MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/Compliance/Infrastructure/Repositories/ComplianceRepository.ts',
+    /DEFAULT_PAGE_SIZE = 50/,
+    /MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/ReasonCode/Infrastructure/Repositories/ReasonCodeRepository.ts',
+    /DEFAULT_PAGE_SIZE = 50/,
+    /MAX_PAGE_SIZE = 100/,
+  ],
   [
     'Modules/InventoryStatus/Infrastructure/Repositories/InventoryStatusRepository.ts',
     /DEFAULT_PAGE_SIZE = 50/,
     /MAX_PAGE_SIZE = 100/,
   ],
-  ['Modules/OverrideLog/Infrastructure/Repositories/OverrideLogRepository.ts', /DEFAULT_PAGE_SIZE = 50/, /MAX_PAGE_SIZE = 100/],
-  ['Modules/Inbound/Domain/Constants/InboundConstants.ts', /INBOUND_DEFAULT_PAGE_SIZE = 50/, /INBOUND_MAX_PAGE_SIZE = 100/],
-  ['Modules/Putaway/Domain/Constants/PutawayConstants.ts', /PUTAWAY_DEFAULT_PAGE_SIZE = 50/, /PUTAWAY_MAX_PAGE_SIZE = 100/],
+  [
+    'Modules/OverrideLog/Infrastructure/Repositories/OverrideLogRepository.ts',
+    /DEFAULT_PAGE_SIZE = 50/,
+    /MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/Inbound/Domain/Constants/InboundConstants.ts',
+    /INBOUND_DEFAULT_PAGE_SIZE = 50/,
+    /INBOUND_MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/Putaway/Domain/Constants/PutawayConstants.ts',
+    /PUTAWAY_DEFAULT_PAGE_SIZE = 50/,
+    /PUTAWAY_MAX_PAGE_SIZE = 100/,
+  ],
   [
     'Modules/BarcodeLabel/Domain/Constants/BarcodeLabelConstants.ts',
     /BARCODE_LABEL_DEFAULT_PAGE_SIZE = 50/,
@@ -162,6 +196,11 @@ const pageSizeGuardrailSources = [
     'Modules/Replenishment/Domain/Constants/ReplenishmentConstants.ts',
     /REPLENISHMENT_DEFAULT_PAGE_SIZE = 50/,
     /REPLENISHMENT_MAX_PAGE_SIZE = 100/,
+  ],
+  [
+    'Modules/Outbound/Domain/Constants/OutboundConstants.ts',
+    /OUTBOUND_DEFAULT_PAGE_SIZE = 50/,
+    /OUTBOUND_MAX_PAGE_SIZE = 100/,
   ],
 ] as const;
 
@@ -185,6 +224,8 @@ describe('V1-UX list/detail guardrails', () => {
       labelPrintJobAction: ROUTES.LABELS.PRINT_JOB_ACTION('job-1', 'reprint'),
       cycleCountAction: ROUTES.CYCLE_COUNT.ACTION('count-1', 'submit'),
       replenishmentAction: ROUTES.REPLENISHMENT.ACTION('replenishment-1', 'confirm'),
+      outboundCreate: ROUTES.OUTBOUND.NEW,
+      outboundAction: ROUTES.OUTBOUND.ACTION('outbound-1', 'hold'),
     }).toEqual({
       partnerList: '/foundation/master-data/partners',
       partnerCreate: '/foundation/master-data/partners/new',
@@ -203,13 +244,17 @@ describe('V1-UX list/detail guardrails', () => {
       labelPrintJobAction: '/labels/print-jobs/job-1/reprint',
       cycleCountAction: '/cycle-count/count-1/submit',
       replenishmentAction: '/replenishment/replenishment-1/confirm',
+      outboundCreate: '/outbound/new',
+      outboundAction: '/outbound/outbound-1/hold',
     });
   });
 
   it('keeps migrated root pages as list-only entry points without embedded action forms', () => {
     const violations = migratedRootPages.flatMap(([relativePath, listToken]) => {
       const text = readSource(relativePath);
-      const missingToken = text.includes(listToken) ? [] : [`${relativePath}: missing ${listToken}`];
+      const missingToken = text.includes(listToken)
+        ? []
+        : [`${relativePath}: missing ${listToken}`];
       const actionTokens = rootPageActionFormTokens
         .filter((token) => token.test(text))
         .map((token) => `${relativePath}: embedded action token ${token.source}`);
@@ -223,7 +268,9 @@ describe('V1-UX list/detail guardrails', () => {
     const violations = representativeDetailPages.flatMap((relativePath) => {
       if (!sourceExists(relativePath)) return [`${relativePath}: missing detail/action page`];
       const text = readSource(relativePath);
-      return text.includes('DetailPageShell') || text.includes('ActionPanel') || text.includes('useParams')
+      return text.includes('DetailPageShell') ||
+        text.includes('ActionPanel') ||
+        text.includes('useParams')
         ? []
         : [`${relativePath}: missing DetailPageShell, ActionPanel or route params`];
     });
@@ -232,13 +279,15 @@ describe('V1-UX list/detail guardrails', () => {
   });
 
   it('keeps migrated list defaults at PageSize 50 and caps PageSize at 100', () => {
-    const violations = pageSizeGuardrailSources.flatMap(([relativePath, defaultPattern, maxPattern]) => {
-      const text = readSource(relativePath);
-      return [
-        ...(defaultPattern.test(text) ? [] : [`${relativePath}: missing default PageSize 50`]),
-        ...(maxPattern.test(text) ? [] : [`${relativePath}: missing max PageSize 100`]),
-      ];
-    });
+    const violations = pageSizeGuardrailSources.flatMap(
+      ([relativePath, defaultPattern, maxPattern]) => {
+        const text = readSource(relativePath);
+        return [
+          ...(defaultPattern.test(text) ? [] : [`${relativePath}: missing default PageSize 50`]),
+          ...(maxPattern.test(text) ? [] : [`${relativePath}: missing max PageSize 100`]),
+        ];
+      },
+    );
 
     expect(violations).toEqual([]);
   });
@@ -248,16 +297,22 @@ describe('V1-UX list/detail guardrails', () => {
     const productionFiles = collectSourceFiles('Modules')
       .concat(collectSourceFiles('App'))
       .filter((path) => !path.endsWith('.test.ts') && !path.endsWith('.test.tsx'));
-    const violations = productionFiles.filter((path) => forbiddenStatusPattern.test(readSource(path)));
+    const violations = productionFiles.filter((path) =>
+      forbiddenStatusPattern.test(readSource(path)),
+    );
 
     expect(violations).toEqual([]);
   });
 
   it('keeps Presentation away from HttpClient and Infrastructure adapters', () => {
     const presentationFiles = collectSourceFiles('Modules').filter(
-      (path) => path.includes('/Presentation/') && !path.endsWith('.test.ts') && !path.endsWith('.test.tsx'),
+      (path) =>
+        path.includes('/Presentation/') &&
+        !path.endsWith('.test.ts') &&
+        !path.endsWith('.test.tsx'),
     );
-    const forbiddenImports = /from\s+['"]@modules\/[^'"]+\/Infrastructure\/(Api|Dtos|Mappers|Repositories)|from\s+['"]@shared\/Services\/Http\/ApiClient|from\s+['"]axios['"]/;
+    const forbiddenImports =
+      /from\s+['"]@modules\/[^'"]+\/Infrastructure\/(Api|Dtos|Mappers|Repositories)|from\s+['"]@shared\/Services\/Http\/ApiClient|from\s+['"]axios['"]/;
     const violations = presentationFiles.filter((path) => forbiddenImports.test(readSource(path)));
 
     expect(violations).toEqual([]);
