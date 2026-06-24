@@ -9,4 +9,14 @@ const PutawayPage = lazy(() =>
   })),
 );
 
-export const putawayRoutes: RouteObject[] = [{ path: ROUTES.PUTAWAY.ROOT, element: <PutawayPage /> }];
+const PutawayDetailPage = lazy(() =>
+  import('@modules/Putaway/Presentation/Pages/PutawayDetailPage').then((module) => ({
+    default: module.PutawayDetailPage,
+  })),
+);
+
+export const putawayRoutes: RouteObject[] = [
+  { path: ROUTES.PUTAWAY.ROOT, element: <PutawayPage /> },
+  { path: ROUTES.PUTAWAY.DETAIL(), element: <PutawayDetailPage /> },
+  { path: ROUTES.PUTAWAY.ACTION(), element: <PutawayDetailPage /> },
+];
