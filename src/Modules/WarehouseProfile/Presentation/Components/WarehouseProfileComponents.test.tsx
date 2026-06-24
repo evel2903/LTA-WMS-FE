@@ -79,13 +79,17 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
 });
 
 describe('warehouse profile routes', () => {
-  it('registers both screen routes under the foundation namespace', () => {
+  it('registers list/detail and rule screen routes under the foundation namespace', () => {
     expect(ROUTES.FOUNDATION.WAREHOUSE_PROFILES).toBe('/foundation/warehouse-profiles');
     expect(ROUTES.FOUNDATION.RULE_MATRIX).toBe('/foundation/rule-matrix');
-    expect(warehouseProfileRoutes).toHaveLength(2);
+    expect(warehouseProfileRoutes).toHaveLength(6);
     expect(warehouseProfileRoutes.map((route) => route.path)).toEqual([
       ROUTES.FOUNDATION.WAREHOUSE_PROFILES,
+      ROUTES.FOUNDATION.WAREHOUSE_PROFILE_NEW,
+      ROUTES.FOUNDATION.WAREHOUSE_PROFILE_DETAIL(),
+      ROUTES.FOUNDATION.WAREHOUSE_PROFILE_EDIT(),
       ROUTES.FOUNDATION.RULE_MATRIX,
+      ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW,
     ]);
   });
 });

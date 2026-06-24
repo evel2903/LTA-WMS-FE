@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle2, FileInput, PauseCircle, ShieldX, XCircle } from 'lucide-react';
+import { CheckCircle2, FileInput, PackageCheck, PauseCircle, ShieldX, XCircle } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
@@ -9,10 +9,17 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useOutboundMutations } from '@modules/Outbound/Application/Commands/UseOutboundMutations';
-import { useOutboundOrder } from '@modules/Outbound/Application/Queries/UseOutboundOrders';
-import type { OutboundOrderStatus } from '@modules/Outbound/Domain/Types/OutboundOrder';
+import {
+  useOutboundAllocations,
+  useOutboundOrder,
+} from '@modules/Outbound/Application/Queries/UseOutboundOrders';
+import type {
+  AllocationPolicy,
+  AllocationStatus,
+  OutboundOrderStatus,
+} from '@modules/Outbound/Domain/Types/OutboundOrder';
 
-const ACTIONS = new Set(['hold', 'reject', 'cancel', 'validate']);
+const ACTIONS = new Set(['hold', 'reject', 'cancel', 'validate', 'allocate']);
 
 function evidence(value: string): string[] {
   return value
@@ -31,12 +38,17 @@ function StatusBadge({ status }: { status: OutboundOrderStatus }) {
   return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
 }
 
+function AllocationBadge({ status }: { status: AllocationStatus }) {
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+}
+
 export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail' }) {
   const { id, action } = useParams();
   const navigate = useNavigate();
   const orderQuery = useOutboundOrder(mode === 'detail' ? (id ?? null) : null);
   const mutations = useOutboundMutations();
   const order = orderQuery.data ?? null;
+  const allocationsQuery = useOutboundAllocations(order?.id ?? null);
   const [sourceSystem, setSourceSystem] = useState('OMS');
   const [sourceReference, setSourceReference] = useState('');
   const [customerExternalReference, setCustomerExternalReference] = useState('');
@@ -50,6 +62,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const [reasonNote, setReasonNote] = useState('');
   const [evidenceRefs, setEvidenceRefs] = useState('');
   const [idempotencyKey, setIdempotencyKey] = useState('');
+  const [allocationPolicy, setAllocationPolicy] = useState<AllocationPolicy>('PartialBackorder');
 
   useEffect(() => {
     if (action && !ACTIONS.has(action)) {
@@ -96,12 +109,24 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const canReasonAction = Boolean(
     order && actionPayload.reasonCode && actionPayload.idempotencyKey,
   );
+  const allocationPayload = useMemo(
+    () => ({
+      policy: allocationPolicy,
+      reasonCode: reasonCode.trim() || undefined,
+      reasonNote: reasonNote.trim() || undefined,
+      evidenceRefs: evidence(evidenceRefs),
+      idempotencyKey: idempotencyKey.trim(),
+    }),
+    [allocationPolicy, evidenceRefs, idempotencyKey, reasonCode, reasonNote],
+  );
+  const canAllocate = Boolean(order && order.documentStatus === 'Validated' && allocationPayload.idempotencyKey);
   const mutationError =
     errorMessage(mutations.importOrder.error) ??
     errorMessage(mutations.validateOrder.error) ??
     errorMessage(mutations.holdOrder.error) ??
     errorMessage(mutations.rejectOrder.error) ??
-    errorMessage(mutations.cancelOrder.error);
+    errorMessage(mutations.cancelOrder.error) ??
+    errorMessage(mutations.allocateOrder.error);
 
   const handleImport = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -146,6 +171,14 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       mutations.rejectOrder.mutate(input, { onSuccess: () => setIdempotencyKey('') });
     if (name === 'cancel')
       mutations.cancelOrder.mutate(input, { onSuccess: () => setIdempotencyKey('') });
+  };
+
+  const runAllocate = () => {
+    if (!order) return;
+    mutations.allocateOrder.mutate(
+      { id: order.id, payload: allocationPayload },
+      { onSuccess: () => setIdempotencyKey('') },
+    );
   };
 
   return (
@@ -288,6 +321,52 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               ) : null}
             </div>
           ) : null}
+
+          {order ? (
+            <div className="space-y-3 rounded-md border p-4 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold">Allocations</h2>
+                <span className="text-muted-foreground text-xs">
+                  {allocationsQuery.data?.totalItems ?? 0} records
+                </span>
+              </div>
+              {allocationsQuery.isLoading ? (
+                <div className="text-muted-foreground">Loading allocations...</div>
+              ) : allocationsQuery.data?.items.length ? (
+                allocationsQuery.data.items.map((allocation) => (
+                  <div key={allocation.id} className="space-y-2 rounded-md border p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">{allocation.allocationNumber}</div>
+                      <AllocationBadge status={allocation.status} />
+                    </div>
+                    <div className="text-muted-foreground grid gap-1 sm:grid-cols-3">
+                      <span>Policy: {allocation.policy}</span>
+                      <span>Allocated: {allocation.totalAllocatedQuantity}</span>
+                      <span>Backorder: {allocation.totalBackorderedQuantity}</span>
+                    </div>
+                    {allocation.shortageReason ? (
+                      <div className="text-destructive">{allocation.shortageReason}</div>
+                    ) : null}
+                    <div className="space-y-1">
+                      {allocation.lines.map((line) => (
+                        <div
+                          key={line.id}
+                          className="grid gap-1 rounded-md bg-muted/40 p-2 sm:grid-cols-4"
+                        >
+                          <span>Line {line.lineNumber}</span>
+                          <span>{line.skuCode ?? line.skuId}</span>
+                          <span>Allocated {line.allocatedQuantity}</span>
+                          <span>Backorder {line.backorderedQuantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-muted-foreground">No allocations recorded.</div>
+              )}
+            </div>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
@@ -320,6 +399,17 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   value={idempotencyKey}
                   onChange={(event) => setIdempotencyKey(event.target.value)}
                 />
+              </label>
+              <label className="grid gap-1 text-sm">
+                Allocation policy
+                <select
+                  className="rounded-md border bg-transparent px-3 py-2 text-sm"
+                  value={allocationPolicy}
+                  onChange={(event) => setAllocationPolicy(event.target.value as AllocationPolicy)}
+                >
+                  <option value="PartialBackorder">Partial backorder</option>
+                  <option value="FullOnly">Full only</option>
+                </select>
               </label>
             </div>
             {mode === 'detail' ? (
@@ -359,6 +449,15 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 >
                   <XCircle className="size-4" aria-hidden="true" />
                   Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canAllocate}
+                  onClick={runAllocate}
+                >
+                  <PackageCheck className="size-4" aria-hidden="true" />
+                  Allocate
                 </Button>
               </div>
             ) : null}

@@ -5,4 +5,7 @@ export const OUTBOUND_ENDPOINTS = {
   HOLD: (id: string) => `/outbound-orders/${id}/hold`,
   REJECT: (id: string) => `/outbound-orders/${id}/reject`,
   CANCEL: (id: string) => `/outbound-orders/${id}/cancel`,
+  ALLOCATE: (id: string) => `/outbound-orders/${id}/allocate`,
+  ALLOCATIONS: (id: string) => `/outbound-orders/${id}/allocations`,
+  ALLOCATION_BY_ID: (id: string) => `/outbound-orders/allocations/${id}`,
 } as const;

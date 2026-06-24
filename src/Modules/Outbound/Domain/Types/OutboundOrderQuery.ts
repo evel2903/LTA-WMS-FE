@@ -1,4 +1,8 @@
-import type { OutboundOrderStatus } from '@modules/Outbound/Domain/Types/OutboundOrder';
+import type {
+  AllocationPolicy,
+  AllocationStatus,
+  OutboundOrderStatus,
+} from '@modules/Outbound/Domain/Types/OutboundOrder';
 
 export interface OutboundOrderListFilter {
   page?: number;
@@ -39,6 +43,20 @@ export interface ImportOutboundOrderInput {
 
 export interface ReasonOutboundOrderInput {
   reasonCode: string;
+  reasonNote?: string;
+  evidenceRefs?: string[];
+  idempotencyKey: string;
+}
+
+export interface AllocationListFilter {
+  page?: number;
+  pageSize?: number;
+  status?: AllocationStatus;
+}
+
+export interface AllocateOutboundOrderInput {
+  policy?: AllocationPolicy;
+  reasonCode?: string;
   reasonNote?: string;
   evidenceRefs?: string[];
   idempotencyKey: string;

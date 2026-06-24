@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
 import { OutboundRepository } from '@modules/Outbound/Infrastructure/Repositories/OutboundRepository';
 import type {
+  AllocationDto,
+  PagedAllocationDto,
   OutboundOrderDto,
   PagedOutboundOrderDto,
 } from '@modules/Outbound/Infrastructure/Dtos/OutboundDtos';
@@ -38,6 +40,31 @@ const orderDto: OutboundOrderDto = {
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
 
+const allocationDto: AllocationDto = {
+  Id: 'allocation-1',
+  AllocationNumber: 'AL-001',
+  OutboundOrderId: 'outbound-1',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-01',
+  Policy: 'PartialBackorder',
+  Status: 'Allocated',
+  TotalOrderedQuantity: 12,
+  TotalAllocatedQuantity: 12,
+  TotalBackorderedQuantity: 0,
+  ShortageReason: null,
+  OutboxMessageId: 'outbox-allocation-1',
+  ReasonCode: null,
+  ReasonCodeId: null,
+  ReasonNote: null,
+  EvidenceRefs: [],
+  IsDuplicate: false,
+  Lines: [],
+  CreatedAt: '2026-06-24T00:00:00.000Z',
+  UpdatedAt: '2026-06-24T00:00:00.000Z',
+};
+
 class FakeHttpClient implements HttpClient {
   public calls: Array<{ method: string; url: string; body?: unknown; config?: unknown }> = [];
 
@@ -47,12 +74,18 @@ class FakeHttpClient implements HttpClient {
       Items: [orderDto],
       Meta: { Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1 },
     };
+    const allocationPage: PagedAllocationDto = {
+      Items: [allocationDto],
+      Meta: { Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1 },
+    };
+    if (url.includes('/outbound-orders/allocations/')) return Promise.resolve(allocationDto as T);
+    if (url.endsWith('/allocations')) return Promise.resolve(allocationPage as T);
     return Promise.resolve((url.includes('/outbound-orders/') ? orderDto : page) as T);
   }
 
   post<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
     this.calls.push({ method: 'post', url, body, config });
-    return Promise.resolve(orderDto as T);
+    return Promise.resolve((url.endsWith('/allocate') ? allocationDto : orderDto) as T);
   }
 
   put<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
@@ -91,7 +124,7 @@ describe('OutboundRepository', () => {
     });
   });
 
-  it('uses BE endpoints for import, validate, hold, reject and cancel actions', async () => {
+  it('uses BE endpoints for import, validate, hold, reject, cancel and allocation actions', async () => {
     const http = new FakeHttpClient();
     const repository = new OutboundRepository(http);
 
@@ -120,6 +153,13 @@ describe('OutboundRepository', () => {
       idempotencyKey: 'cancel-1',
       evidenceRefs: ['cancel:1'],
     });
+    await repository.allocate('outbound-1', {
+      policy: 'PartialBackorder',
+      reasonCode: 'RC-V1-DISCREPANCY',
+      evidenceRefs: ['shortage:1'],
+      idempotencyKey: 'allocate-1',
+    });
+    await repository.listAllocations('outbound-1', { pageSize: 500, status: 'Allocated' });
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['post', '/outbound-orders'],
@@ -127,6 +167,8 @@ describe('OutboundRepository', () => {
       ['post', '/outbound-orders/outbound-1/hold'],
       ['post', '/outbound-orders/outbound-1/reject'],
       ['post', '/outbound-orders/outbound-1/cancel'],
+      ['post', '/outbound-orders/outbound-1/allocate'],
+      ['get', '/outbound-orders/outbound-1/allocations'],
     ]);
     expect(http.calls[0].body).toMatchObject({
       SourceSystem: 'ERP',
@@ -136,6 +178,14 @@ describe('OutboundRepository', () => {
     expect(http.calls[2].body).toMatchObject({
       ReasonCode: 'RC-V1-DISCREPANCY',
       IdempotencyKey: 'hold-1',
+    });
+    expect(http.calls[5].body).toMatchObject({
+      Policy: 'PartialBackorder',
+      ReasonCode: 'RC-V1-DISCREPANCY',
+      IdempotencyKey: 'allocate-1',
+    });
+    expect(http.calls[6].config).toMatchObject({
+      params: { Page: 1, PageSize: 100, Status: 'Allocated' },
     });
   });
 });
