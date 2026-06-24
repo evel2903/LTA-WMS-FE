@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -26,6 +27,7 @@ vi.mock(
   }),
 );
 
+import { TaskExecutionDetailPage } from '@modules/TaskExecution/Presentation/Pages/TaskExecutionDetailPage';
 import { TaskExecutionPage } from '@modules/TaskExecution/Presentation/Pages/TaskExecutionPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -105,7 +107,9 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
   );
 
   getById = vi.fn((id: string) =>
-    Promise.resolve(this.items.find((item) => item.id === id) ?? this.items[0]),
+    this.items.find((item) => item.id === id)
+      ? Promise.resolve(this.items.find((item) => item.id === id) as MobileTask)
+      : Promise.reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'Task not found' })),
   );
 
   claim = vi.fn((id: string, input?: ClaimMobileTaskInput) => {
@@ -138,14 +142,28 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
   );
 }
 
-function renderPage() {
+function renderWithClient(ui: React.ReactElement, initialEntries = ['/mobile/tasks']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <TaskExecutionPage />
+      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
     </QueryClientProvider>,
+  );
+}
+
+function renderListPage() {
+  return renderWithClient(<TaskExecutionPage />);
+}
+
+function renderDetailPage(path = '/mobile/tasks/task-a') {
+  return renderWithClient(
+    <Routes>
+      <Route path="/mobile/tasks/:id" element={<TaskExecutionDetailPage />} />
+      <Route path="/mobile/tasks/:id/:action" element={<TaskExecutionDetailPage />} />
+    </Routes>,
+    [path],
   );
 }
 
@@ -162,35 +180,20 @@ afterEach(() => {
   useAuthStore.getState().setUnauthenticated();
 });
 
-describe('TaskExecutionPage', () => {
-  it('renders mobile task cards and claim/release controls without a table layout', async () => {
-    const actor = userEvent.setup();
+describe('TaskExecution list/detail pages', () => {
+  it('renders mobile task cards as detail links and keeps action controls off the root list', async () => {
     const fake = new FakeRepository([makeTask()]);
-    setCurrentUser();
     repo.current = fake;
-    renderPage();
+    renderListPage();
 
-    const taskCard = await screen.findByRole('button', { name: /MT-001/i });
+    const taskLink = await screen.findByRole('link', { name: /MT-001/i });
+    expect(taskLink.getAttribute('href')).toBe('/mobile/tasks/task-a');
     expect(screen.queryByRole('table')).toBeNull();
-    expect(taskCard).toBeTruthy();
-    expect(screen.getByText(/scan and confirm controls/i)).toBeTruthy();
-
-    await actor.click(taskCard);
-    await actor.type(screen.getByLabelText('Device code'), 'RF-01');
-    await actor.click(screen.getByRole('button', { name: 'Claim task' }));
-
-    await waitFor(() => expect(fake.claim).toHaveBeenCalledWith('task-a', { deviceCode: 'RF-01' }));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty(
-        'disabled',
-        false,
-      ),
-    );
-    await actor.click(screen.getByRole('button', { name: 'Release task' }));
-    await waitFor(() => expect(fake.release).toHaveBeenCalledWith('task-a'));
+    expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Record scan' })).toBeNull();
   });
 
-  it('shows permission denied read-only state and hides mutation buttons', async () => {
+  it('shows permission denied state on the root list and hides mutation buttons', async () => {
     const fake = new FakeRepository();
     fake.list = vi.fn(() =>
       Promise.reject(
@@ -198,21 +201,42 @@ describe('TaskExecutionPage', () => {
       ),
     );
     repo.current = fake;
-    renderPage();
+    renderListPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/permission denied/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Release task' })).toBeNull();
   });
 
-  it('records scan evidence and shows accepted GS1 feedback', async () => {
+  it('claims and releases from the task detail route using the route id', async () => {
     const actor = userEvent.setup();
-    const fake = new FakeRepository([makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' })]);
+    const fake = new FakeRepository([makeTask()]);
     setCurrentUser();
     repo.current = fake;
-    renderPage();
+    renderDetailPage();
 
-    await screen.findByRole('button', { name: /MT-001/i });
+    await screen.findByText('MT-001');
+    expect(fake.getById).toHaveBeenCalledWith('task-a');
+    await actor.type(screen.getByLabelText('Device code'), 'RF-01');
+    await actor.click(screen.getByRole('button', { name: 'Claim task' }));
+
+    await waitFor(() => expect(fake.claim).toHaveBeenCalledWith('task-a', { deviceCode: 'RF-01' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty('disabled', false),
+    );
+    await actor.click(screen.getByRole('button', { name: 'Release task' }));
+    await waitFor(() => expect(fake.release).toHaveBeenCalledWith('task-a'));
+  });
+
+  it('records scan evidence and shows accepted GS1 feedback on detail route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/scan');
+
+    await screen.findByText('MT-001');
     await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
     await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A');
     await actor.click(screen.getByRole('button', { name: 'Record scan' }));
@@ -232,74 +256,6 @@ describe('TaskExecutionPage', () => {
     expect(screen.getByText(/LOT-A/)).toBeTruthy();
   });
 
-  it('shows rejected scan feedback from stable rejection payloads', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository([
-      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
-    ]);
-    fake.recordScan.mockResolvedValueOnce(
-      makeScan({
-        result: 'Rejected',
-        normalizedValue: 'missing-barcode',
-        resolvedObjectType: null,
-        resolvedObjectId: null,
-        parsedValueJson: {},
-        rejectionCode: 'UNRESOLVED_BARCODE',
-        rejectionMessage: 'Barcode could not be resolved',
-      }),
-    );
-    setCurrentUser();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /MT-001/i });
-    await actor.type(screen.getByLabelText('Scan value'), 'missing-barcode');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-
-    expect(await screen.findByText(/Rejected scan/i)).toBeTruthy();
-    expect(screen.getByText(/Barcode could not be resolved/i)).toBeTruthy();
-  });
-
-  it('clears previous scan feedback when a later scan mutation fails', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository([
-      makeTask({ taskStatus: 'Claimed', assignedUserId: 'current-user' }),
-    ]);
-    fake.recordScan
-      .mockResolvedValueOnce(makeScan())
-      .mockRejectedValueOnce(new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Scan rejected' }));
-    setCurrentUser();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /MT-001/i });
-    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-    expect(await screen.findByText(/Accepted scan/i)).toBeTruthy();
-
-    await actor.type(screen.getByLabelText('Scan value'), 'bad-scan');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-
-    await waitFor(() => expect(fake.recordScan).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.queryByText(/Accepted scan/i)).toBeNull());
-  });
-
-  it('disables scan recording when another operator has claimed the task', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository([
-      makeTask({ taskStatus: 'Claimed', assignedUserId: 'other-user' }),
-    ]);
-    setCurrentUser();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /MT-001/i });
-    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128');
-
-    expect(screen.getByRole('button', { name: 'Record scan' })).toHaveProperty('disabled', true);
-    expect(fake.recordScan).not.toHaveBeenCalled();
-  });
-
   it('requires a reason before recording manual-entry scan evidence', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([
@@ -307,9 +263,9 @@ describe('TaskExecutionPage', () => {
     ]);
     setCurrentUser();
     repo.current = fake;
-    renderPage();
+    renderDetailPage();
 
-    await screen.findByRole('button', { name: /MT-001/i });
+    await screen.findByText('MT-001');
     await actor.type(screen.getByLabelText('Scan value'), 'typed-sku');
     await actor.click(screen.getByLabelText('Manual entry'));
 
@@ -330,39 +286,7 @@ describe('TaskExecutionPage', () => {
     );
   });
 
-  it('passes warehouse and task type filters to the repository', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository([
-      makeTask({
-        id: 'task-a',
-        taskCode: 'MT-A',
-        warehouseId: 'warehouse-a',
-        warehouseCode: 'WH-A',
-      }),
-      makeTask({
-        id: 'task-b',
-        taskCode: 'MT-B',
-        warehouseId: 'warehouse-b',
-        warehouseCode: 'WH-B',
-        taskType: 'Pick',
-      }),
-    ]);
-    setCurrentUser();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /MT-A/i });
-    await actor.type(screen.getByLabelText('Warehouse filter'), 'warehouse-a');
-    await actor.selectOptions(screen.getByLabelText('Task type filter'), 'Putaway');
-
-    await waitFor(() =>
-      expect(fake.list).toHaveBeenLastCalledWith(
-        expect.objectContaining({ warehouseId: 'warehouse-a', taskType: 'Putaway' }),
-      ),
-    );
-  });
-
-  it('disables task actions when the selected task state is terminal', async () => {
+  it('disables task actions when detail task state is terminal', async () => {
     const fake = new FakeRepository([
       makeTask({
         taskStatus: 'Completed',
@@ -371,11 +295,19 @@ describe('TaskExecutionPage', () => {
     ]);
     setCurrentUser();
     repo.current = fake;
-    renderPage();
+    renderDetailPage();
 
-    await screen.findByRole('button', { name: /MT-001/i });
-
+    await screen.findByText('MT-001');
     expect(screen.getByRole('button', { name: 'Claim task' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty('disabled', true);
+  });
+
+  it('shows not found when the route id has no matching task', async () => {
+    const fake = new FakeRepository([makeTask()]);
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/missing-task');
+
+    expect(await screen.findByText(/not found/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
   });
 });

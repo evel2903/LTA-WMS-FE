@@ -16,10 +16,12 @@ import type {
 
 export interface IBarcodeLabelRepository {
   listTemplates(filter?: LabelTemplateListFilter): Promise<PaginatedResponse<LabelTemplate>>;
+  getTemplateById(id: string): Promise<LabelTemplate>;
   createTemplate(input: CreateLabelTemplateInput): Promise<LabelTemplate>;
   createTemplateVersion(id: string, input: CreateLabelTemplateVersionInput): Promise<LabelTemplate>;
   previewPrintJob(input: PreviewPrintJobInput): Promise<PrintJob>;
   listPrintJobs(filter?: PrintJobListFilter): Promise<PaginatedResponse<PrintJob>>;
+  getPrintJobById(id: string): Promise<PrintJob>;
   reprintPrintJob(id: string, input: ReprintPrintJobInput): Promise<PrintJob>;
   validateLabelBlocking(
     input: ValidateLabelBlockingInput,

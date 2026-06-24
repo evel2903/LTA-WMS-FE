@@ -59,6 +59,11 @@ export class BarcodeLabelRepository implements IBarcodeLabelRepository {
     return BarcodeLabelMapper.toPagedTemplates(dto);
   }
 
+  async getTemplateById(id: string): Promise<LabelTemplate> {
+    const dto = await this.http.get<LabelTemplateDto>(BARCODE_LABEL_ENDPOINTS.LABEL_TEMPLATE_BY_ID(id));
+    return BarcodeLabelMapper.toLabelTemplate(dto);
+  }
+
   async createTemplate(input: CreateLabelTemplateInput): Promise<LabelTemplate> {
     const dto = await this.http.post<LabelTemplateDto>(
       BARCODE_LABEL_ENDPOINTS.LABEL_TEMPLATES,
@@ -98,6 +103,11 @@ export class BarcodeLabelRepository implements IBarcodeLabelRepository {
       }),
     });
     return BarcodeLabelMapper.toPagedPrintJobs(dto);
+  }
+
+  async getPrintJobById(id: string): Promise<PrintJob> {
+    const dto = await this.http.get<PrintJobDto>(BARCODE_LABEL_ENDPOINTS.PRINT_JOB_BY_ID(id));
+    return BarcodeLabelMapper.toPrintJob(dto);
   }
 
   async reprintPrintJob(id: string, input: ReprintPrintJobInput): Promise<PrintJob> {

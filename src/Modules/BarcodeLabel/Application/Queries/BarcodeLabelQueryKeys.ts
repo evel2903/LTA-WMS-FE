@@ -9,7 +9,9 @@ export const barcodeLabelQueryKeys = {
   templateLists: () => [...barcodeLabelQueryKeys.all, 'labelTemplates'] as const,
   templateList: (filter: LabelTemplateListFilter) =>
     [...barcodeLabelQueryKeys.templateLists(), filter] as const,
+  templateDetail: (id: string) => [...barcodeLabelQueryKeys.all, 'labelTemplate', id] as const,
   printJobLists: () => [...barcodeLabelQueryKeys.all, 'printJobs'] as const,
   printJobList: (filter: PrintJobListFilter) =>
     [...barcodeLabelQueryKeys.printJobLists(), filter] as const,
+  printJobDetail: (id: string) => [...barcodeLabelQueryKeys.all, 'printJob', id] as const,
 };

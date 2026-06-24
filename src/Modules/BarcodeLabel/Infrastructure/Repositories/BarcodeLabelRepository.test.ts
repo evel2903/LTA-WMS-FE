@@ -7,6 +7,38 @@ class FakeHttpClient implements HttpClient {
 
   get<T>(url: string, config?: unknown): Promise<T> {
     this.calls.push({ method: 'get', url, config });
+    if (url.startsWith('/label-templates/') && url !== '/label-templates') {
+      return Promise.resolve({
+        Id: 'template-1',
+        TemplateCode: 'LPN-STD',
+        TemplateName: 'LPN Standard',
+        LabelType: 'LPN',
+        Status: 'Active',
+        RequiredFields: ['BarcodeValue'],
+        TemplateBody: '{{BarcodeValue}}',
+        ActiveVersionId: 'version-1',
+        CreatedAt: '2026-06-22T08:00:00.000Z',
+        UpdatedAt: '2026-06-22T08:00:00.000Z',
+      } as T);
+    }
+    if (url.startsWith('/print-jobs/') && url !== '/print-jobs') {
+      return Promise.resolve({
+        Id: 'job-1',
+        TemplateId: 'template-1',
+        TemplateVersionId: 'version-1',
+        JobCode: 'PJ-001',
+        BusinessObjectType: 'LPN',
+        BusinessObjectId: 'lpn-1',
+        PayloadJson: {},
+        PreviewContent: 'preview',
+        Status: 'Previewed',
+        ValidationErrors: null,
+        ReprintCount: 0,
+        RequestedAt: '2026-06-22T08:00:00.000Z',
+        CreatedAt: '2026-06-22T08:00:00.000Z',
+        UpdatedAt: '2026-06-22T08:00:00.000Z',
+      } as T);
+    }
     return Promise.resolve({
       Items: [],
       Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0 },
@@ -56,6 +88,7 @@ describe('BarcodeLabelRepository', () => {
     const repository = new BarcodeLabelRepository(http);
 
     await repository.listTemplates();
+    await repository.getTemplateById('template-1');
     await repository.createTemplate({
       templateCode: 'LPN-STD',
       templateName: 'LPN Standard',
@@ -74,6 +107,7 @@ describe('BarcodeLabelRepository', () => {
       payloadJson: { BarcodeValue: 'SSCC-1' },
     });
     await repository.listPrintJobs({ templateId: 'template-1' });
+    await repository.getPrintJobById('job-1');
     await repository.reprintPrintJob('job-1', { reasonCode: 'RC-V1-REPRINT' });
     await repository.validateLabelBlocking({
       downstreamAction: 'putaway',
@@ -84,10 +118,12 @@ describe('BarcodeLabelRepository', () => {
 
     expect(http.calls.map((call) => [call.method, call.url])).toEqual([
       ['get', '/label-templates'],
+      ['get', '/label-templates/template-1'],
       ['post', '/label-templates'],
       ['post', '/label-templates/template-1/versions'],
       ['post', '/print-jobs/preview'],
       ['get', '/print-jobs'],
+      ['get', '/print-jobs/job-1'],
       ['post', '/print-jobs/job-1/reprint'],
       ['post', '/label-blocking/validate'],
     ]);
