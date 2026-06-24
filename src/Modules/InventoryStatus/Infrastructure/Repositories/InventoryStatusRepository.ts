@@ -14,6 +14,16 @@ import type {
 import { InventoryStatusMapper } from '@modules/InventoryStatus/Infrastructure/Mappers/InventoryStatusMapper';
 
 const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function page(value?: number): number {
+  return !value || value < 1 ? 1 : value;
+}
+
+function pageSize(value?: number): number {
+  if (!value || value < 1) return DEFAULT_PAGE_SIZE;
+  return Math.min(value, MAX_PAGE_SIZE);
+}
 
 /** The single place that touches `httpClient` for the inventory-status catalog. */
 export class InventoryStatusRepository implements IInventoryStatusRepository {
@@ -24,8 +34,8 @@ export class InventoryStatusRepository implements IInventoryStatusRepository {
       INVENTORY_STATUS_ENDPOINTS.INVENTORY_STATUSES,
       {
         params: {
-          Page: filter.page ?? 1,
-          PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+          Page: page(filter.page),
+          PageSize: pageSize(filter.pageSize),
           StatusCode: filter.statusCode,
           StageGroup: filter.stageGroup,
           Status: filter.status,

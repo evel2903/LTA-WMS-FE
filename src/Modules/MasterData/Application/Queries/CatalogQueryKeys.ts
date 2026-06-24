@@ -13,8 +13,11 @@ export const catalogQueryKeys = {
   all: [QUERY_NAMESPACES.MASTER_DATA] as const,
   owners: (filter?: OwnerListFilter) =>
     [...catalogQueryKeys.all, 'owners', filter ?? {}] as const,
+  owner: (id: string) => [...catalogQueryKeys.all, 'owners', 'detail', id] as const,
   uoms: (filter?: UomListFilter) => [...catalogQueryKeys.all, 'uoms', filter ?? {}] as const,
+  uom: (id: string) => [...catalogQueryKeys.all, 'uoms', 'detail', id] as const,
   skus: (filter?: SkuListFilter) => [...catalogQueryKeys.all, 'skus', filter ?? {}] as const,
+  sku: (id: string) => [...catalogQueryKeys.all, 'skus', 'detail', id] as const,
   skuBarcodes: (filter?: SkuBarcodeListFilter) =>
     [...catalogQueryKeys.all, 'skuRelations', 'barcodes', filter ?? {}] as const,
   packDefinitions: (filter?: PackDefinitionListFilter) =>

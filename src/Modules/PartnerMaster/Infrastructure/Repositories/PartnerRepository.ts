@@ -22,6 +22,11 @@ function pageSize(value?: number): number {
   return Math.min(value, PARTNER_MAX_PAGE_SIZE);
 }
 
+function page(value?: number): number {
+  if (!value || value < 1) return 1;
+  return value;
+}
+
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
 }
@@ -32,7 +37,7 @@ export class PartnerRepository implements IPartnerRepository {
   async list(filter: PartnerListFilter = {}): Promise<PaginatedResponse<Partner>> {
     const dto = await this.http.get<PagedPartnerDto>(PARTNER_ENDPOINTS.PARTNERS, {
       params: removeUndefined({
-        Page: filter.page ?? 1,
+        Page: page(filter.page),
         PageSize: pageSize(filter.pageSize),
         PartnerType: filter.partnerType,
         Status: filter.status,

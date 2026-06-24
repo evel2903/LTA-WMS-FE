@@ -96,6 +96,11 @@ describe('PartnerRepository', () => {
 
     await repository.list();
     expect(http.calls[1]?.config).toEqual({ params: { Page: 1, PageSize: 50 } });
+
+    await repository.list({ page: 0, pageSize: 0 });
+    await repository.list({ page: -5, pageSize: -10 });
+    expect(http.calls[2]?.config).toEqual({ params: { Page: 1, PageSize: 50 } });
+    expect(http.calls[3]?.config).toEqual({ params: { Page: 1, PageSize: 50 } });
   });
 
   it('builds PascalCase mutation and resolve payloads', async () => {

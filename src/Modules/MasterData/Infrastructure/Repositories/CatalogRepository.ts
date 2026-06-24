@@ -48,9 +48,14 @@ import type {
 import { CatalogMapper } from '@modules/MasterData/Infrastructure/Mappers/CatalogMapper';
 
 function paging(filter: { page?: number; pageSize?: number } = {}) {
+  const requestedPageSize = filter.pageSize ?? CATALOG_DEFAULT_PAGE_SIZE;
+
   return {
-    Page: filter.page ?? 1,
-    PageSize: filter.pageSize ?? CATALOG_DEFAULT_PAGE_SIZE,
+    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
+    PageSize:
+      requestedPageSize < 1
+        ? CATALOG_DEFAULT_PAGE_SIZE
+        : Math.min(requestedPageSize, CATALOG_DEFAULT_PAGE_SIZE),
   };
 }
 
@@ -170,6 +175,16 @@ export class CatalogRepository implements ICatalogRepository {
       },
     );
     return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toItemCoverage(item));
+  }
+
+  async getOwner(id: string): Promise<Owner> {
+    const dto = await this.http.get<OwnerDto>(CATALOG_ENDPOINTS.OWNER_BY_ID(id));
+    return CatalogMapper.toOwner(dto);
+  }
+
+  async getUom(id: string): Promise<Uom> {
+    const dto = await this.http.get<UomDto>(CATALOG_ENDPOINTS.UOM_BY_ID(id));
+    return CatalogMapper.toUom(dto);
   }
 
   async getSku(id: string): Promise<Sku> {

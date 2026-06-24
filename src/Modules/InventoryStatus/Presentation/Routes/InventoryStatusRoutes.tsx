@@ -9,6 +9,14 @@ const InventoryStatusCatalogPage = lazy(() =>
   })),
 );
 
+const InventoryStatusDetailPage = lazy(() =>
+  import('@modules/InventoryStatus/Presentation/Pages/InventoryStatusDetailPage').then((module) => ({
+    default: module.InventoryStatusDetailPage,
+  })),
+);
+
 export const inventoryStatusRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.INVENTORY_STATUS, element: <InventoryStatusCatalogPage /> },
+  { path: ROUTES.FOUNDATION.INVENTORY_STATUS_DETAIL(), element: <InventoryStatusDetailPage mode="detail" /> },
+  { path: ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT(), element: <InventoryStatusDetailPage mode="edit" /> },
 ];

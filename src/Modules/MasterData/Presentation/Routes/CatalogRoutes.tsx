@@ -9,9 +9,21 @@ const OwnerMasterPage = lazy(() =>
   })),
 );
 
+const OwnerMasterDetailPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/OwnerMasterDetailPage').then((module) => ({
+    default: module.OwnerMasterDetailPage,
+  })),
+);
+
 const UomMasterPage = lazy(() =>
   import('@modules/MasterData/Presentation/Pages/UomMasterPage').then((module) => ({
     default: module.UomMasterPage,
+  })),
+);
+
+const UomMasterDetailPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/UomMasterDetailPage').then((module) => ({
+    default: module.UomMasterDetailPage,
   })),
 );
 
@@ -21,8 +33,23 @@ const SkuMasterPage = lazy(() =>
   })),
 );
 
+const SkuMasterDetailPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/SkuMasterDetailPage').then((module) => ({
+    default: module.SkuMasterDetailPage,
+  })),
+);
+
 export const catalogRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, element: <OwnerMasterPage /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.OWNER_NEW, element: <OwnerMasterDetailPage mode="create" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.OWNER_DETAIL(), element: <OwnerMasterDetailPage mode="detail" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(), element: <OwnerMasterDetailPage mode="edit" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.UOMS, element: <UomMasterPage /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW, element: <UomMasterDetailPage mode="create" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL(), element: <UomMasterDetailPage mode="detail" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(), element: <UomMasterDetailPage mode="edit" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.SKUS, element: <SkuMasterPage /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW, element: <SkuMasterDetailPage mode="create" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(), element: <SkuMasterDetailPage mode="detail" /> },
+  { path: ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT(), element: <SkuMasterDetailPage mode="edit" /> },
 ];

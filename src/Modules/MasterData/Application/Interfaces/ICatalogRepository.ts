@@ -41,6 +41,8 @@ export interface ICatalogRepository {
   listUomConversions(filter?: UomConversionListFilter): Promise<PaginatedResponse<UomConversion>>;
   listItemCoverages(filter?: ItemCoverageListFilter): Promise<PaginatedResponse<ItemCoverage>>;
 
+  getOwner(id: string): Promise<Owner>;
+  getUom(id: string): Promise<Uom>;
   getSku(id: string): Promise<Sku>;
   getPackDefinition(id: string): Promise<PackDefinition>;
 

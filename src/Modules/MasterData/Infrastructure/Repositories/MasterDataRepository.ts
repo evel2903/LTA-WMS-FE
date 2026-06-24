@@ -39,12 +39,14 @@ import type {
 import { MasterDataMapper } from '@modules/MasterData/Infrastructure/Mappers/MasterDataMapper';
 
 function listParams(filter: MasterDataListFilter = {}) {
+  const requestedPageSize = filter.pageSize ?? MASTER_DATA_DEFAULT_PAGE_SIZE;
+
   return {
-    Page: filter.page ?? 1,
-    PageSize: Math.min(
-      filter.pageSize ?? MASTER_DATA_DEFAULT_PAGE_SIZE,
-      MASTER_DATA_DEFAULT_PAGE_SIZE,
-    ),
+    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
+    PageSize:
+      requestedPageSize < 1
+        ? MASTER_DATA_DEFAULT_PAGE_SIZE
+        : Math.min(requestedPageSize, MASTER_DATA_DEFAULT_PAGE_SIZE),
     Status: filter.status,
     SiteId: filter.siteId,
     SiteCode: filter.siteCode,

@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
@@ -21,6 +23,7 @@ vi.mock('@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryIns
 }));
 
 import { LocationProfileCatalogPage } from '@modules/MasterData/Presentation/Pages/LocationProfileCatalogPage';
+import { LocationProfileDetailPage } from '@modules/MasterData/Presentation/Pages/LocationProfileDetailPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 100, totalItems: items.length, totalPages: 1 };
@@ -111,13 +114,29 @@ class FakeRepository implements Partial<IMasterDataRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.LOCATION_PROFILES]) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <LocationProfileCatalogPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.LOCATION_PROFILES} element={<LocationProfileCatalogPage />} />
+          <Route
+            path={ROUTES.FOUNDATION.LOCATION_PROFILE_NEW}
+            element={<LocationProfileDetailPage mode="create" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.LOCATION_PROFILE_DETAIL()}
+            element={<LocationProfileDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.LOCATION_PROFILE_EDIT()}
+            element={<LocationProfileDetailPage mode="edit" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -131,6 +150,7 @@ describe('LocationProfileCatalogPage (A10)', () => {
     repo.current = fake as unknown as IMasterDataRepository;
     renderPage();
 
+    await actor.click(await screen.findByRole('link', { name: 'New profile' }));
     await actor.type(await screen.findByLabelText('Profile code'), 'BIN-STD');
     await actor.type(screen.getByLabelText('Profile name'), 'Standard Bin');
     await actor.type(screen.getByLabelText('Location type'), 'Bin');
@@ -148,8 +168,9 @@ describe('LocationProfileCatalogPage (A10)', () => {
         }),
       ),
     );
-    await screen.findByRole('button', { name: 'BIN-STD' });
+    await screen.findByRole('heading', { name: 'BIN-STD' });
 
+    await actor.click(screen.getByRole('link', { name: 'Edit profile' }));
     const updateButton = await screen.findByRole('button', { name: 'Update profile' });
     const editForm = updateButton.closest('form') as HTMLFormElement;
     await actor.clear(within(editForm).getByLabelText('Profile name'));
@@ -162,8 +183,9 @@ describe('LocationProfileCatalogPage (A10)', () => {
         expect.objectContaining({ profileName: 'Standard Bin Updated' }),
       ),
     );
-    expect(await screen.findByText('Standard Bin Updated')).toBeTruthy();
+    expect(await screen.findByDisplayValue('Standard Bin Updated')).toBeTruthy();
 
+    await actor.click(screen.getByRole('link', { name: 'Edit profile' }));
     const refreshedUpdateButton = await screen.findByRole('button', { name: 'Update profile' });
     const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
     await actor.click(within(refreshedForm).getByRole('button', { name: 'Inactivate profile' }));
@@ -174,7 +196,7 @@ describe('LocationProfileCatalogPage (A10)', () => {
         expect.objectContaining({ status: 'Inactive' }),
       ),
     );
-    expect(await within(screen.getByRole('table')).findByText('Inactive')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0));
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
   });
 });

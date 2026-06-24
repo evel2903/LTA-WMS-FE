@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInventoryStatusRepository } from '@modules/InventoryStatus/Application/Interfaces/IInventoryStatusRepository';
@@ -20,6 +22,7 @@ const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
 
 import { InventoryStatusCatalogPage } from '@modules/InventoryStatus/Presentation/Pages/InventoryStatusCatalogPage';
+import { InventoryStatusDetailPage } from '@modules/InventoryStatus/Presentation/Pages/InventoryStatusDetailPage';
 import { useInventoryStatusStore } from '@modules/InventoryStatus/Application/Stores/InventoryStatusStore';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -64,13 +67,25 @@ class FakeRepository implements Partial<IInventoryStatusRepository> {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.INVENTORY_STATUS]) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <InventoryStatusCatalogPage />
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.INVENTORY_STATUS} element={<InventoryStatusCatalogPage />} />
+          <Route
+            path={ROUTES.FOUNDATION.INVENTORY_STATUS_DETAIL()}
+            element={<InventoryStatusDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT()}
+            element={<InventoryStatusDetailPage mode="edit" />}
+          />
+        </Routes>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -89,6 +104,7 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
+    await actor.click(await screen.findByRole('link', { name: 'Edit status' }));
     const updateBtn = await screen.findByRole('button', { name: 'Update inventory status' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
 
@@ -102,8 +118,7 @@ describe('InventoryStatusCatalogPage (C14)', () => {
         expect.objectContaining({ hold: true, reasonCode: 'RC-MD-UPDATE' }),
       ),
     );
-    // UI re-reads the held status — the table Hold flag flips to ✓ (aria-label "Hold: yes").
-    expect(await within(screen.getByRole('table')).findByLabelText('Hold: yes')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'AVAILABLE' })).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
   });
 
@@ -132,6 +147,7 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
+    await actor.click(await screen.findByRole('link', { name: 'Edit status' }));
     const updateBtn = await screen.findByRole('button', { name: 'Update inventory status' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
     await actor.type(within(editForm).getByLabelText('Reason code'), 'RC-WRONG');
