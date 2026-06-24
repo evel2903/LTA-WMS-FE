@@ -1,4 +1,5 @@
 import type {
+  GoodsIssueStatus,
   GoodsIssueTrigger,
   GoodsIssueTriggerStatus,
   ShipmentPackageStagingStatus,
@@ -47,10 +48,18 @@ export interface ShipmentPackageStagingDto {
   GoodsIssueTriggerStatus: GoodsIssueTriggerStatus | null;
   GoodsIssueTriggeredAt: string | null;
   GoodsIssueTriggeredBy: string | null;
+  GoodsIssueStatus: GoodsIssueStatus | null;
+  GoodsIssuePostedAt: string | null;
+  GoodsIssuePostedBy: string | null;
+  GoodsIssueInventoryTransactionId: string | null;
+  GoodsIssueInventoryMovementId: string | null;
   LoadingOutboxMessageId: string | null;
   ShipmentConfirmOutboxMessageId: string | null;
   GateOutOutboxMessageId: string | null;
   GoodsIssueTriggerOutboxMessageId: string | null;
+  GoodsIssueOutboxMessageId: string | null;
+  ShipmentClosedOutboxMessageId: string | null;
+  ShipmentClosedAt: string | null;
   CreatedAt: string;
   UpdatedAt: string;
 }
@@ -139,6 +148,14 @@ export interface RecordGateOutRequestDto {
 
 export interface EvaluateGoodsIssueTriggerRequestDto {
   GoodsIssueTrigger?: GoodsIssueTrigger;
+  InventoryStatusCode?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}
+
+export interface PostGoodsIssueRequestDto {
   InventoryStatusCode?: string;
   ReasonCode?: string;
   ReasonNote?: string;

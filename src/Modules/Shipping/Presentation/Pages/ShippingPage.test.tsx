@@ -69,10 +69,18 @@ function makeStaging(overrides: Partial<ShipmentPackageStaging> = {}): ShipmentP
     goodsIssueTriggerStatus: null,
     goodsIssueTriggeredAt: null,
     goodsIssueTriggeredBy: null,
+    goodsIssueStatus: null,
+    goodsIssuePostedAt: null,
+    goodsIssuePostedBy: null,
+    goodsIssueInventoryTransactionId: null,
+    goodsIssueInventoryMovementId: null,
     loadingOutboxMessageId: null,
     shipmentConfirmOutboxMessageId: null,
     gateOutOutboxMessageId: null,
     goodsIssueTriggerOutboxMessageId: null,
+    goodsIssueOutboxMessageId: null,
+    shipmentClosedOutboxMessageId: null,
+    shipmentClosedAt: null,
     createdAt: '2026-06-24T00:00:00.000Z',
     updatedAt: '2026-06-24T00:00:00.000Z',
     ...overrides,
@@ -88,6 +96,7 @@ function mutationState(overrides: Record<string, unknown> = {}) {
     confirmShipment: { mutate: vi.fn(), isPending: false, error: null },
     recordGateOut: { mutate: vi.fn(), isPending: false, error: null },
     evaluateGoodsIssueTrigger: { mutate: vi.fn(), isPending: false, error: null },
+    postGoodsIssue: { mutate: vi.fn(), isPending: false, error: null },
     ...overrides,
   };
 }
@@ -520,6 +529,70 @@ describe('Shipping list/detail pages', () => {
           reasonNote: undefined,
           evidenceRefs: ['gate:out'],
           idempotencyKey: 'gate-out-1',
+        },
+      },
+      expect.any(Object),
+    );
+  });
+
+  it('posts Goods Issue from the dedicated action route after trigger is ready', () => {
+    const mutations = mutationState({
+      postGoodsIssue: {
+        mutate: vi.fn(
+          (_payload: unknown, options?: MockMutationOptions<ShipmentPackageStaging>) => {
+            options?.onSuccess?.(
+              makeStaging({
+                status: 'GateOutRecorded',
+                goodsIssueTrigger: 'at_gate_out',
+                goodsIssueTriggerStatus: 'Ready',
+                goodsIssueStatus: 'Posted',
+                goodsIssuePostedAt: '2026-06-24T02:05:00.000Z',
+                goodsIssueInventoryTransactionId: 'gi-txn-1',
+                goodsIssueOutboxMessageId: 'outbox-gi-1',
+                shipmentClosedOutboxMessageId: 'outbox-close-1',
+              }),
+            );
+          },
+        ),
+        isPending: false,
+        error: null,
+      },
+    });
+    vi.mocked(useShippingMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useShippingMutations>,
+    );
+    vi.mocked(useShippingStaging).mockReturnValue({
+      data: makeStaging({
+        status: 'GateOutRecorded',
+        goodsIssueTrigger: 'at_gate_out',
+        goodsIssueTriggerStatus: 'Ready',
+        goodsIssueStatus: null,
+      }),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useShippingStaging>);
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/shipping/:id/:action" element={<ShippingDetailPage />} />
+      </Routes>,
+      ['/shipping/staging-1/goods-issue'],
+    );
+
+    expect(screen.getByRole('heading', { name: 'Goods Issue posting' })).toBeTruthy();
+    expect(screen.getByText('Pending downstream event')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'gi:post' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'gi-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Post Goods Issue$/i }));
+
+    expect(mutations.postGoodsIssue.mutate).toHaveBeenCalledWith(
+      {
+        id: 'staging-1',
+        payload: {
+          reasonCode: 'RC-V1-GOODS-ISSUE-CORRECTION',
+          reasonNote: undefined,
+          evidenceRefs: ['gi:post'],
+          idempotencyKey: 'gi-1',
         },
       },
       expect.any(Object),

@@ -16,7 +16,7 @@ import type {
   ShipmentPackageStagingStatus,
 } from '@modules/Shipping/Domain/Types/Shipping';
 
-const ACTIONS = new Set(['dock', 'truck', 'loading', 'gate-out', 'goods-issue-trigger']);
+const ACTIONS = new Set(['dock', 'truck', 'loading', 'gate-out', 'goods-issue-trigger', 'goods-issue']);
 
 function evidence(value: string): string[] {
   return value
@@ -83,6 +83,18 @@ function StagingSummary({ staging }: { staging: ShipmentPackageStaging }) {
         <div>
           <div className="text-muted-foreground text-xs">Goods Issue trigger</div>
           <div>{staging.goodsIssueTriggerStatus ?? 'not evaluated'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Goods Issue status</div>
+          <div>{staging.goodsIssueStatus ?? 'not posted'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">GI transaction</div>
+          <div>{staging.goodsIssueInventoryTransactionId ?? 'pending'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Pending event</div>
+          <div>{staging.goodsIssueOutboxMessageId ?? staging.shipmentClosedOutboxMessageId ?? 'pending'}</div>
         </div>
       </div>
       <div className="text-muted-foreground text-xs">
@@ -155,20 +167,20 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
   const apiError = stagingQuery.error instanceof ApiError ? stagingQuery.error : null;
   const isBlocked = mode === 'detail' && staging?.status === 'Blocked';
-  const isGateOutRecorded = mode === 'detail' && staging?.status === 'GateOutRecorded';
-  const isActionComplete = Boolean(
-    isGateOutRecorded && staging?.goodsIssueTriggerStatus === 'Ready',
-  );
+  const isGoodsIssuePosted = mode === 'detail' && staging?.goodsIssueStatus === 'Posted';
   const isLoadingAction = action === 'loading';
   const isGateOutAction = action === 'gate-out';
   const isGoodsIssueTriggerAction = action === 'goods-issue-trigger';
-  const isReadOnly = isActionComplete;
+  const isGoodsIssueAction = action === 'goods-issue';
+  const isReadOnly = isGoodsIssuePosted;
 
   useEffect(() => {
     setReasonCode(
-      isGoodsIssueTriggerAction ? 'RC-V1-GOODS-ISSUE-CORRECTION' : DEFAULT_SHIPPING_REASON_CODE,
+      isGoodsIssueTriggerAction || isGoodsIssueAction
+        ? 'RC-V1-GOODS-ISSUE-CORRECTION'
+        : DEFAULT_SHIPPING_REASON_CODE,
     );
-  }, [isGoodsIssueTriggerAction]);
+  }, [isGoodsIssueAction, isGoodsIssueTriggerAction]);
 
   const canAssignDockOrTruck = Boolean(
     staging &&
@@ -204,7 +216,8 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     errorMessage(mutations.scanLoading.error) ??
     errorMessage(mutations.confirmShipment.error) ??
     errorMessage(mutations.recordGateOut.error) ??
-    errorMessage(mutations.evaluateGoodsIssueTrigger.error);
+    errorMessage(mutations.evaluateGoodsIssueTrigger.error) ??
+    errorMessage(mutations.postGoodsIssue.error);
   const commonPayload = {
     reasonCode: reasonCode.trim() || undefined,
     reasonNote: reasonNote.trim() || undefined,
@@ -235,10 +248,19 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const canEvaluateGoodsIssueTrigger = Boolean(
     staging && staging.goodsIssueTriggerStatus !== 'Ready' && idempotencyKey.trim(),
   );
+  const canPostGoodsIssue = Boolean(
+    staging &&
+    staging.goodsIssueTriggerStatus === 'Ready' &&
+    staging.goodsIssueStatus !== 'Posted' &&
+    idempotencyKey.trim(),
+  );
   const canOpenGoodsIssueTrigger = Boolean(
     staging &&
     staging.goodsIssueTriggerStatus !== 'Ready' &&
     ['Loaded', 'ShipmentConfirmed', 'GateOutRecorded'].includes(staging.status),
+  );
+  const canOpenGoodsIssue = Boolean(
+    staging && staging.goodsIssueTriggerStatus === 'Ready' && staging.goodsIssueStatus !== 'Posted',
   );
 
   const handleStage = (event: FormEvent<HTMLFormElement>) => {
@@ -392,6 +414,23 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     );
   };
 
+  const runPostGoodsIssue = () => {
+    if (!staging) return;
+    setLastMessage(null);
+    mutations.postGoodsIssue.mutate(
+      {
+        id: staging.id,
+        payload: commonPayload,
+      },
+      {
+        onSuccess: () => {
+          setIdempotencyKey('');
+          setLastMessage('Goods Issue posted and pending events queued');
+        },
+      },
+    );
+  };
+
   return (
     <DetailPageShell
       title={mode === 'new' ? 'Stage package' : (staging?.stagingCode ?? 'Shipping staging detail')}
@@ -415,7 +454,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Shipping staging blocked'
             : isReadOnly
-              ? 'Gate-out recorded'
+              ? 'Goods Issue posted'
               : stagingQuery.error
                 ? 'Unable to load shipping staging'
                 : undefined
@@ -426,7 +465,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Resolve the blocking condition before changing this staging record.'
             : isReadOnly
-              ? 'Gate-out and Goods Issue trigger are already recorded.'
+              ? 'Goods Issue has been posted; this shipping record is read-only.'
               : stagingQuery.error
                 ? (errorMessage(stagingQuery.error) ??
                   'The shipping staging record could not be loaded.')
@@ -512,6 +551,14 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               </Link>
             </Button>
           ) : null}
+          {staging && canOpenGoodsIssue ? (
+            <Button asChild variant="outline">
+              <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'goods-issue')}>
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                Open Goods Issue
+              </Link>
+            </Button>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
@@ -523,6 +570,8 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   ? 'Gate-out actions'
                   : isGoodsIssueTriggerAction
                     ? 'Goods Issue trigger'
+                    : isGoodsIssueAction
+                      ? 'Goods Issue posting'
                     : 'Shipping actions'
             }
             description={
@@ -532,12 +581,14 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   ? 'Record gate-out after shipment confirmation and trigger Goods Issue when profile strategy requires it.'
                   : isGoodsIssueTriggerAction
                     ? 'Evaluate the Goods Issue trigger using the WarehouseProfile strategy.'
+                    : isGoodsIssueAction
+                      ? 'Post WMS Goods Issue once and queue pending downstream events.'
                     : 'Dock and truck milestones require reason/evidence when policy requires it and an idempotency key.'
             }
             state={isReadOnly ? 'disabled' : mutationError ? 'error' : 'idle'}
             stateMessage={
               isReadOnly
-                ? 'Gate-out and Goods Issue trigger are already recorded.'
+                ? 'Goods Issue has been posted; this shipping record is read-only.'
                 : (mutationError ?? undefined)
             }
           >
@@ -689,6 +740,26 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   <CheckCircle2 className="size-4" aria-hidden="true" />
                   Evaluate Goods Issue trigger
                 </Button>
+              ) : mode === 'detail' && isGoodsIssueAction ? (
+                <>
+                  <div className="space-y-1 rounded-md border p-3 text-sm">
+                    <div className="font-medium">Pending downstream event</div>
+                    <div className="text-muted-foreground">
+                      Goods Issue and Shipment Closed events remain pending until Integration dispatch handles them.
+                    </div>
+                    <div>Owner: {staging?.ownerCode ?? staging?.ownerId ?? 'n/a'}</div>
+                    <div>Warehouse: {staging?.warehouseCode ?? staging?.warehouseId ?? 'n/a'}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canPostGoodsIssue || isReadOnly || mutations.postGoodsIssue.isPending}
+                    onClick={runPostGoodsIssue}
+                  >
+                    <CheckCircle2 className="size-4" aria-hidden="true" />
+                    Post Goods Issue
+                  </Button>
+                </>
               ) : mode === 'detail' ? (
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">

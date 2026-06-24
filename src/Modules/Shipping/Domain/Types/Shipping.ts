@@ -3,6 +3,7 @@ import type { SHIPPING_STAGING_STATUSES } from '@modules/Shipping/Domain/Constan
 export type ShipmentPackageStagingStatus = (typeof SHIPPING_STAGING_STATUSES)[number];
 export type GoodsIssueTrigger = 'at_loading' | 'at_gate_out';
 export type GoodsIssueTriggerStatus = 'Pending' | 'Ready';
+export type GoodsIssueStatus = 'Pending' | 'Posted' | 'Failed';
 
 export interface ShipmentPackageStaging {
   id: string;
@@ -47,10 +48,18 @@ export interface ShipmentPackageStaging {
   goodsIssueTriggerStatus: GoodsIssueTriggerStatus | null;
   goodsIssueTriggeredAt: string | null;
   goodsIssueTriggeredBy: string | null;
+  goodsIssueStatus: GoodsIssueStatus | null;
+  goodsIssuePostedAt: string | null;
+  goodsIssuePostedBy: string | null;
+  goodsIssueInventoryTransactionId: string | null;
+  goodsIssueInventoryMovementId: string | null;
   loadingOutboxMessageId: string | null;
   shipmentConfirmOutboxMessageId: string | null;
   gateOutOutboxMessageId: string | null;
   goodsIssueTriggerOutboxMessageId: string | null;
+  goodsIssueOutboxMessageId: string | null;
+  shipmentClosedOutboxMessageId: string | null;
+  shipmentClosedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
