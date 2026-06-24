@@ -10,7 +10,7 @@ class FakeHttpClient implements HttpClient {
     this.calls.push({ method: 'get', url, config });
     return Promise.resolve({
       Items: [],
-      Meta: { Page: 1, PageSize: 100, TotalItems: 0, TotalPages: 1 },
+      Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
     } as T);
   }
 
@@ -72,7 +72,7 @@ describe('WarehouseProfileRepository', () => {
     expect(http.calls[0]?.config).toEqual({
       params: {
         Page: 1,
-        PageSize: 100,
+        PageSize: 50,
         Status: 'ACTIVE',
         WarehouseTypeCode: 'DC',
         WarehouseId: 'wh-1',
@@ -82,7 +82,7 @@ describe('WarehouseProfileRepository', () => {
     await repository.listProfiles({ page: 0, pageSize: 500 });
     await repository.listProfiles({ page: -4, pageSize: -10 });
     expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
-    expect(http.calls[2]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
+    expect(http.calls[2]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
   });
 
   it('builds only the whitelisted rule-definition list params (tier/control mode filter)', async () => {
@@ -98,7 +98,7 @@ describe('WarehouseProfileRepository', () => {
     expect(http.calls[0]?.config).toEqual({
       params: {
         Page: 1,
-        PageSize: 100,
+        PageSize: 50,
         RuleGroupId: 'g-1',
         PrecedenceTier: 'PHYSICAL',
         ControlMode: 'HARD_BLOCK',

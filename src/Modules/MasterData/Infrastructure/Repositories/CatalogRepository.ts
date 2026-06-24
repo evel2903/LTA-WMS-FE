@@ -1,7 +1,10 @@
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { ICatalogRepository } from '@modules/MasterData/Application/Interfaces/ICatalogRepository';
-import { CATALOG_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import {
+  CATALOG_DEFAULT_PAGE_SIZE,
+  CATALOG_MAX_PAGE_SIZE,
+} from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type {
   ItemCoverage,
   Owner,
@@ -55,7 +58,7 @@ function paging(filter: { page?: number; pageSize?: number } = {}) {
     PageSize:
       requestedPageSize < 1
         ? CATALOG_DEFAULT_PAGE_SIZE
-        : Math.min(requestedPageSize, CATALOG_DEFAULT_PAGE_SIZE),
+        : Math.min(requestedPageSize, CATALOG_MAX_PAGE_SIZE),
   };
 }
 

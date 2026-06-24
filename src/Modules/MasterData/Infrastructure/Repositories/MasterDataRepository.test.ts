@@ -13,7 +13,7 @@ class FakeHttpClient implements HttpClient {
         ? []
         : {
             Items: [],
-            Meta: { Page: 1, PageSize: 100, TotalItems: 0, TotalPages: 1 },
+            Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
           }) as T,
     );
   }
@@ -73,7 +73,7 @@ describe('MasterDataRepository', () => {
     await repository.listSites({ page: 0, pageSize: 0 });
 
     expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
-    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
+    expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
   });
 
   it('returns an empty location tree when the backend responds with a null payload', async () => {

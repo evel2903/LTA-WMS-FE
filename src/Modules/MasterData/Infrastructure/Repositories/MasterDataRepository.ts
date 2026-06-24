@@ -1,7 +1,10 @@
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
-import { MASTER_DATA_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/MasterDataConstants';
+import {
+  MASTER_DATA_DEFAULT_PAGE_SIZE,
+  MASTER_DATA_MAX_PAGE_SIZE,
+} from '@modules/MasterData/Domain/Constants/MasterDataConstants';
 import type {
   Location,
   LocationProfile,
@@ -46,7 +49,7 @@ function listParams(filter: MasterDataListFilter = {}) {
     PageSize:
       requestedPageSize < 1
         ? MASTER_DATA_DEFAULT_PAGE_SIZE
-        : Math.min(requestedPageSize, MASTER_DATA_DEFAULT_PAGE_SIZE),
+        : Math.min(requestedPageSize, MASTER_DATA_MAX_PAGE_SIZE),
     Status: filter.status,
     SiteId: filter.siteId,
     SiteCode: filter.siteCode,

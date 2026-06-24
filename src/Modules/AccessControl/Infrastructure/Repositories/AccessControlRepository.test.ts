@@ -10,7 +10,7 @@ class FakeHttpClient implements HttpClient {
     this.calls.push({ method: 'get', url, config });
     return Promise.resolve({
       Items: [],
-      Meta: { Page: 1, PageSize: 100, TotalItems: 0, TotalPages: 1 },
+      Meta: { Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 1 },
     } as T);
   }
 
@@ -45,7 +45,7 @@ describe('AccessControlRepository', () => {
     await repository.listUsers();
 
     expect(http.calls[0]?.config).toEqual({ params: { Page: 1, PageSize: 100 } });
-    expect(http.calls[1]?.config).toEqual({ params: { Page: 1, PageSize: 100 } });
-    expect(http.calls[2]?.config).toEqual({ params: { Page: 1, PageSize: 100 } });
+    expect(http.calls[1]?.config).toEqual({ params: { Page: 1, PageSize: 50 } });
+    expect(http.calls[2]?.config).toEqual({ params: { Page: 1, PageSize: 50 } });
   });
 });

@@ -85,4 +85,4 @@ export function skippedReasonLabel(reason: SkippedReason): string {
   return SKIPPED_REASON_LABELS[reason] ?? reason;
 }
 
-export const WAREHOUSE_PROFILE_DEFAULT_PAGE_SIZE = 100;
+export const WAREHOUSE_PROFILE_DEFAULT_PAGE_SIZE = 50;

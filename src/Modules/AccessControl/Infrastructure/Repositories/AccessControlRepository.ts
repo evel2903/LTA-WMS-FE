@@ -26,6 +26,7 @@ import type {
 } from '@modules/AccessControl/Infrastructure/Dtos/AccessControlDtos';
 import { AccessControlMapper } from '@modules/AccessControl/Infrastructure/Mappers/AccessControlMapper';
 
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
 function paging(filter: { page?: number; pageSize?: number } = {}) {
@@ -33,7 +34,7 @@ function paging(filter: { page?: number; pageSize?: number } = {}) {
     Page: !filter.page || filter.page < 1 ? 1 : filter.page,
     PageSize:
       !filter.pageSize || filter.pageSize < 1
-        ? MAX_PAGE_SIZE
+        ? DEFAULT_PAGE_SIZE
         : Math.min(filter.pageSize, MAX_PAGE_SIZE),
   };
 }
