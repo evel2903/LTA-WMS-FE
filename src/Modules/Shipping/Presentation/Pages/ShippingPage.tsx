@@ -118,7 +118,10 @@ export function ShippingPage() {
           </label>
           <label className="grid gap-1 text-sm">
             Outbound order
-            <Input value={outboundOrderId} onChange={(event) => setOutboundOrderId(event.target.value)} />
+            <Input
+              value={outboundOrderId}
+              onChange={(event) => setOutboundOrderId(event.target.value)}
+            />
           </label>
           <label className="grid gap-1 text-sm">
             Status
@@ -153,4 +156,3 @@ export function ShippingPage() {
     </ListPageShell>
   );
 }
-

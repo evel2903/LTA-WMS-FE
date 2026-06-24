@@ -16,7 +16,7 @@ import type {
   ShipmentPackageStagingStatus,
 } from '@modules/Shipping/Domain/Types/Shipping';
 
-const ACTIONS = new Set(['dock', 'truck', 'loading']);
+const ACTIONS = new Set(['dock', 'truck', 'loading', 'gate-out', 'goods-issue-trigger']);
 
 function evidence(value: string): string[] {
   return value
@@ -76,6 +76,14 @@ function StagingSummary({ staging }: { staging: ShipmentPackageStaging }) {
           <div className="text-muted-foreground text-xs">Confirmed at</div>
           <div>{staging.shipmentConfirmedAt ?? 'not confirmed'}</div>
         </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Gate-out</div>
+          <div>{staging.gateOutAt ?? 'not recorded'}</div>
+        </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Goods Issue trigger</div>
+          <div>{staging.goodsIssueTriggerStatus ?? 'not evaluated'}</div>
+        </div>
       </div>
       <div className="text-muted-foreground text-xs">
         Inventory milestone: {staging.inventoryStatusCode ?? 'document-only'}
@@ -109,6 +117,9 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
   const [loadingShipmentReference, setLoadingShipmentReference] = useState('');
   const [loadingTruckReference, setLoadingTruckReference] = useState('');
   const [loadingVehicleNumber, setLoadingVehicleNumber] = useState('');
+  const [gateOutReference, setGateOutReference] = useState('');
+  const [gateOutTruckReference, setGateOutTruckReference] = useState('');
+  const [gateOutVehicleNumber, setGateOutVehicleNumber] = useState('');
   const [requireFullLoad, setRequireFullLoad] = useState(true);
   const [reasonCode, setReasonCode] = useState(DEFAULT_SHIPPING_REASON_CODE);
   const [reasonNote, setReasonNote] = useState('');
@@ -137,18 +148,34 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     setLoadingShipmentReference(staging.shipmentReference ?? '');
     setLoadingTruckReference(staging.truckReference ?? '');
     setLoadingVehicleNumber(staging.vehicleNumber ?? '');
+    setGateOutReference(staging.gateOutReference ?? '');
+    setGateOutTruckReference(staging.truckReference ?? '');
+    setGateOutVehicleNumber(staging.vehicleNumber ?? '');
   }, [staging]);
 
   const apiError = stagingQuery.error instanceof ApiError ? stagingQuery.error : null;
   const isBlocked = mode === 'detail' && staging?.status === 'Blocked';
-  const isConfirmed = mode === 'detail' && staging?.status === 'ShipmentConfirmed';
+  const isGateOutRecorded = mode === 'detail' && staging?.status === 'GateOutRecorded';
+  const isActionComplete = Boolean(
+    isGateOutRecorded && staging?.goodsIssueTriggerStatus === 'Ready',
+  );
   const isLoadingAction = action === 'loading';
-  const isReadOnly = isConfirmed;
+  const isGateOutAction = action === 'gate-out';
+  const isGoodsIssueTriggerAction = action === 'goods-issue-trigger';
+  const isReadOnly = isActionComplete;
+
+  useEffect(() => {
+    setReasonCode(
+      isGoodsIssueTriggerAction ? 'RC-V1-GOODS-ISSUE-CORRECTION' : DEFAULT_SHIPPING_REASON_CODE,
+    );
+  }, [isGoodsIssueTriggerAction]);
+
   const canAssignDockOrTruck = Boolean(
     staging &&
-      staging.status !== 'ReadyForLoading' &&
-      staging.status !== 'Loaded' &&
-      staging.status !== 'ShipmentConfirmed',
+    staging.status !== 'ReadyForLoading' &&
+    staging.status !== 'Loaded' &&
+    staging.status !== 'ShipmentConfirmed' &&
+    staging.status !== 'GateOutRecorded',
   );
   const state =
     mode === 'new'
@@ -175,7 +202,9 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     errorMessage(mutations.assignDock.error) ??
     errorMessage(mutations.assignTruck.error) ??
     errorMessage(mutations.scanLoading.error) ??
-    errorMessage(mutations.confirmShipment.error);
+    errorMessage(mutations.confirmShipment.error) ??
+    errorMessage(mutations.recordGateOut.error) ??
+    errorMessage(mutations.evaluateGoodsIssueTrigger.error);
   const commonPayload = {
     reasonCode: reasonCode.trim() || undefined,
     reasonNote: reasonNote.trim() || undefined,
@@ -187,15 +216,30 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     canAssignDockOrTruck && (dockDoorId.trim() || dockDoorCode.trim()) && idempotencyKey.trim(),
   );
   const canTruck = Boolean(
-    canAssignDockOrTruck && (truckReference.trim() || vehicleNumber.trim()) && idempotencyKey.trim(),
+    canAssignDockOrTruck &&
+    (truckReference.trim() || vehicleNumber.trim()) &&
+    idempotencyKey.trim(),
   );
   const canScanLoading = Boolean(
     staging &&
-      staging.status === 'ReadyForLoading' &&
-      idempotencyKey.trim() &&
-      (scannedPackageId.trim() || scannedPackageCode.trim()),
+    staging.status === 'ReadyForLoading' &&
+    idempotencyKey.trim() &&
+    (scannedPackageId.trim() || scannedPackageCode.trim()),
   );
-  const canConfirmShipment = Boolean(staging && staging.status === 'Loaded' && idempotencyKey.trim());
+  const canConfirmShipment = Boolean(
+    staging && staging.status === 'Loaded' && idempotencyKey.trim(),
+  );
+  const canRecordGateOut = Boolean(
+    staging && staging.status === 'ShipmentConfirmed' && idempotencyKey.trim(),
+  );
+  const canEvaluateGoodsIssueTrigger = Boolean(
+    staging && staging.goodsIssueTriggerStatus !== 'Ready' && idempotencyKey.trim(),
+  );
+  const canOpenGoodsIssueTrigger = Boolean(
+    staging &&
+    staging.goodsIssueTriggerStatus !== 'Ready' &&
+    ['Loaded', 'ShipmentConfirmed', 'GateOutRecorded'].includes(staging.status),
+  );
 
   const handleStage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -309,10 +353,49 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
     );
   };
 
+  const runRecordGateOut = () => {
+    if (!staging) return;
+    setLastMessage(null);
+    mutations.recordGateOut.mutate(
+      {
+        id: staging.id,
+        payload: {
+          gateOutReference: gateOutReference.trim() || undefined,
+          truckReference: gateOutTruckReference.trim() || undefined,
+          vehicleNumber: gateOutVehicleNumber.trim() || undefined,
+          ...commonPayload,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIdempotencyKey('');
+          setLastMessage('Gate-out recorded');
+        },
+      },
+    );
+  };
+
+  const runEvaluateGoodsIssueTrigger = () => {
+    if (!staging) return;
+    setLastMessage(null);
+    mutations.evaluateGoodsIssueTrigger.mutate(
+      {
+        id: staging.id,
+        payload: commonPayload,
+      },
+      {
+        onSuccess: () => {
+          setIdempotencyKey('');
+          setLastMessage('Goods Issue trigger evaluated');
+        },
+      },
+    );
+  };
+
   return (
     <DetailPageShell
       title={mode === 'new' ? 'Stage package' : (staging?.stagingCode ?? 'Shipping staging detail')}
-      subtitle="Package staging, dock, truck, loading scan and shipment confirmation"
+      subtitle="Package staging, dock, truck, loading scan, shipment confirmation and gate-out"
       backTo={ROUTES.SHIPPING.ROOT}
       backLabel="Back to shipping"
       status={staging ? <StatusBadge status={staging.status} /> : null}
@@ -332,7 +415,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Shipping staging blocked'
             : isReadOnly
-              ? 'Shipment confirmed'
+              ? 'Gate-out recorded'
               : stagingQuery.error
                 ? 'Unable to load shipping staging'
                 : undefined
@@ -343,9 +426,10 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           : isBlocked
             ? 'Resolve the blocking condition before changing this staging record.'
             : isReadOnly
-              ? 'Shipment loading has already been confirmed.'
+              ? 'Gate-out and Goods Issue trigger are already recorded.'
               : stagingQuery.error
-                ? (errorMessage(stagingQuery.error) ?? 'The shipping staging record could not be loaded.')
+                ? (errorMessage(stagingQuery.error) ??
+                  'The shipping staging record could not be loaded.')
                 : 'The requested shipping staging record was not found.'
       }
     >
@@ -361,7 +445,10 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm">
                     Package id
-                    <Input value={packageId} onChange={(event) => setPackageId(event.target.value)} />
+                    <Input
+                      value={packageId}
+                      onChange={(event) => setPackageId(event.target.value)}
+                    />
                   </label>
                   <label className="grid gap-1 text-sm">
                     Shipment reference
@@ -409,20 +496,48 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               </Link>
             </Button>
           ) : null}
+          {staging?.status === 'ShipmentConfirmed' ? (
+            <Button asChild variant="outline">
+              <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'gate-out')}>
+                <Ship className="size-4" aria-hidden="true" />
+                Open gate-out
+              </Link>
+            </Button>
+          ) : null}
+          {staging && canOpenGoodsIssueTrigger ? (
+            <Button asChild variant="outline">
+              <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'goods-issue-trigger')}>
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                Open Goods Issue trigger
+              </Link>
+            </Button>
+          ) : null}
         </section>
 
         <aside className="space-y-4">
           <ActionPanel
-            title={isLoadingAction ? 'Loading actions' : 'Shipping actions'}
+            title={
+              isLoadingAction
+                ? 'Loading actions'
+                : isGateOutAction
+                  ? 'Gate-out actions'
+                  : isGoodsIssueTriggerAction
+                    ? 'Goods Issue trigger'
+                    : 'Shipping actions'
+            }
             description={
               isLoadingAction
                 ? 'Scan package loading and confirm shipment with reason/evidence and an idempotency key.'
-                : 'Dock and truck milestones require reason/evidence when policy requires it and an idempotency key.'
+                : isGateOutAction
+                  ? 'Record gate-out after shipment confirmation and trigger Goods Issue when profile strategy requires it.'
+                  : isGoodsIssueTriggerAction
+                    ? 'Evaluate the Goods Issue trigger using the WarehouseProfile strategy.'
+                    : 'Dock and truck milestones require reason/evidence when policy requires it and an idempotency key.'
             }
             state={isReadOnly ? 'disabled' : mutationError ? 'error' : 'idle'}
             stateMessage={
               isReadOnly
-                ? 'Shipment is already confirmed; gate-out and Goods Issue are out of scope for this story.'
+                ? 'Gate-out and Goods Issue trigger are already recorded.'
                 : (mutationError ?? undefined)
             }
           >
@@ -445,7 +560,10 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               </label>
               <label className="grid gap-1 text-sm">
                 Idempotency key
-                <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
+                <Input
+                  value={idempotencyKey}
+                  onChange={(event) => setIdempotencyKey(event.target.value)}
+                />
               </label>
               {mode === 'detail' && isLoadingAction ? (
                 <>
@@ -473,7 +591,10 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                     </label>
                     <label className="grid gap-1 text-sm">
                       Load reference
-                      <Input value={loadReference} onChange={(event) => setLoadReference(event.target.value)} />
+                      <Input
+                        value={loadReference}
+                        onChange={(event) => setLoadReference(event.target.value)}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm">
                       Truck reference
@@ -510,23 +631,80 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!canConfirmShipment || isReadOnly || mutations.confirmShipment.isPending}
+                    disabled={
+                      !canConfirmShipment || isReadOnly || mutations.confirmShipment.isPending
+                    }
                     onClick={runConfirmShipment}
                   >
                     <CheckCircle2 className="size-4" aria-hidden="true" />
                     Confirm shipment
                   </Button>
                 </>
+              ) : mode === 'detail' && isGateOutAction ? (
+                <>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm">
+                      Gate-out reference
+                      <Input
+                        value={gateOutReference}
+                        onChange={(event) => setGateOutReference(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                      Truck reference
+                      <Input
+                        value={gateOutTruckReference}
+                        onChange={(event) => setGateOutTruckReference(event.target.value)}
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm sm:col-span-2">
+                      Vehicle number
+                      <Input
+                        value={gateOutVehicleNumber}
+                        onChange={(event) => setGateOutVehicleNumber(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!canRecordGateOut || isReadOnly || mutations.recordGateOut.isPending}
+                    onClick={runRecordGateOut}
+                  >
+                    <Ship className="size-4" aria-hidden="true" />
+                    Record gate-out
+                  </Button>
+                </>
+              ) : mode === 'detail' && isGoodsIssueTriggerAction ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    !canEvaluateGoodsIssueTrigger ||
+                    isReadOnly ||
+                    mutations.evaluateGoodsIssueTrigger.isPending
+                  }
+                  onClick={runEvaluateGoodsIssueTrigger}
+                >
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                  Evaluate Goods Issue trigger
+                </Button>
               ) : mode === 'detail' ? (
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
                       Dock door id
-                      <Input value={dockDoorId} onChange={(event) => setDockDoorId(event.target.value)} />
+                      <Input
+                        value={dockDoorId}
+                        onChange={(event) => setDockDoorId(event.target.value)}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm">
                       Dock door code
-                      <Input value={dockDoorCode} onChange={(event) => setDockDoorCode(event.target.value)} />
+                      <Input
+                        value={dockDoorCode}
+                        onChange={(event) => setDockDoorCode(event.target.value)}
+                      />
                     </label>
                   </div>
                   <Button
@@ -548,19 +726,31 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                     </label>
                     <label className="grid gap-1 text-sm">
                       Vehicle number
-                      <Input value={vehicleNumber} onChange={(event) => setVehicleNumber(event.target.value)} />
+                      <Input
+                        value={vehicleNumber}
+                        onChange={(event) => setVehicleNumber(event.target.value)}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm">
                       Driver name
-                      <Input value={driverName} onChange={(event) => setDriverName(event.target.value)} />
+                      <Input
+                        value={driverName}
+                        onChange={(event) => setDriverName(event.target.value)}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm">
                       Carrier code
-                      <Input value={carrierCode} onChange={(event) => setCarrierCode(event.target.value)} />
+                      <Input
+                        value={carrierCode}
+                        onChange={(event) => setCarrierCode(event.target.value)}
+                      />
                     </label>
                     <label className="grid gap-1 text-sm sm:col-span-2">
                       Carrier id
-                      <Input value={carrierId} onChange={(event) => setCarrierId(event.target.value)} />
+                      <Input
+                        value={carrierId}
+                        onChange={(event) => setCarrierId(event.target.value)}
+                      />
                     </label>
                   </div>
                   <Button
@@ -586,4 +776,3 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 export function ShippingCreatePage() {
   return <ShippingDetailPage mode="new" />;
 }
-

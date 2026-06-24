@@ -17,4 +17,3 @@ export function useShippingStaging(id: string | null) {
     enabled: Boolean(id),
   });
 }
-

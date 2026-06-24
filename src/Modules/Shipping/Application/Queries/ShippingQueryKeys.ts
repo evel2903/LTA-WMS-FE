@@ -6,4 +6,3 @@ export const shippingQueryKeys = {
   list: (filter: ShippingStagingListFilter) => [...shippingQueryKeys.lists(), filter] as const,
   detail: (id: string) => [...shippingQueryKeys.all, 'detail', id] as const,
 };
-

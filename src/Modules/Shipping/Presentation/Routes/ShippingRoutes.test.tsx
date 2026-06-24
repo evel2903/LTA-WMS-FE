@@ -23,4 +23,3 @@ describe('shippingRoutes', () => {
     expect(ROUTES.SHIPPING.ACTION('staging-1', 'truck')).toBe('/shipping/staging-1/truck');
   });
 });
-

@@ -1,4 +1,8 @@
-import type { ShipmentPackageStagingStatus } from '@modules/Shipping/Domain/Types/Shipping';
+import type {
+  GoodsIssueTrigger,
+  GoodsIssueTriggerStatus,
+  ShipmentPackageStagingStatus,
+} from '@modules/Shipping/Domain/Types/Shipping';
 
 export interface ShipmentPackageStagingDto {
   Id: string;
@@ -36,8 +40,17 @@ export interface ShipmentPackageStagingDto {
   LoadedBy: string | null;
   ShipmentConfirmedAt: string | null;
   ShipmentConfirmedBy: string | null;
+  GateOutReference: string | null;
+  GateOutAt: string | null;
+  GateOutBy: string | null;
+  GoodsIssueTrigger: GoodsIssueTrigger | null;
+  GoodsIssueTriggerStatus: GoodsIssueTriggerStatus | null;
+  GoodsIssueTriggeredAt: string | null;
+  GoodsIssueTriggeredBy: string | null;
   LoadingOutboxMessageId: string | null;
   ShipmentConfirmOutboxMessageId: string | null;
+  GateOutOutboxMessageId: string | null;
+  GoodsIssueTriggerOutboxMessageId: string | null;
   CreatedAt: string;
   UpdatedAt: string;
 }
@@ -113,3 +126,22 @@ export interface ConfirmShipmentRequestDto {
   IdempotencyKey: string;
 }
 
+export interface RecordGateOutRequestDto {
+  GateOutReference?: string;
+  TruckReference?: string;
+  VehicleNumber?: string;
+  InventoryStatusCode?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}
+
+export interface EvaluateGoodsIssueTriggerRequestDto {
+  GoodsIssueTrigger?: GoodsIssueTrigger;
+  InventoryStatusCode?: string;
+  ReasonCode?: string;
+  ReasonNote?: string;
+  EvidenceRefs?: string[];
+  IdempotencyKey: string;
+}

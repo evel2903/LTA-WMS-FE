@@ -4,6 +4,8 @@ import type {
   AssignDockInput,
   AssignTruckInput,
   ConfirmShipmentInput,
+  EvaluateGoodsIssueTriggerInput,
+  RecordGateOutInput,
   ScanLoadingInput,
   ShippingStagingListFilter,
   StagePackageInput,
@@ -17,5 +19,9 @@ export interface IShippingRepository {
   assignTruck(id: string, input: AssignTruckInput): Promise<ShipmentPackageStaging>;
   scanLoading(id: string, input: ScanLoadingInput): Promise<ShipmentPackageStaging>;
   confirmShipment(id: string, input: ConfirmShipmentInput): Promise<ShipmentPackageStaging>;
+  recordGateOut(id: string, input: RecordGateOutInput): Promise<ShipmentPackageStaging>;
+  evaluateGoodsIssueTrigger(
+    id: string,
+    input: EvaluateGoodsIssueTriggerInput,
+  ): Promise<ShipmentPackageStaging>;
 }
-

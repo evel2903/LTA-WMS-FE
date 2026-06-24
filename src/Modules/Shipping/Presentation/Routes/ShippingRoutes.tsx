@@ -12,4 +12,3 @@ export const shippingRoutes: RouteObject[] = [
   { path: ROUTES.SHIPPING.DETAIL(), element: <ShippingDetailPage /> },
   { path: ROUTES.SHIPPING.ACTION(), element: <ShippingDetailPage /> },
 ];
-

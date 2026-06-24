@@ -1,6 +1,8 @@
 import type { SHIPPING_STAGING_STATUSES } from '@modules/Shipping/Domain/Constants/ShippingConstants';
 
 export type ShipmentPackageStagingStatus = (typeof SHIPPING_STAGING_STATUSES)[number];
+export type GoodsIssueTrigger = 'at_loading' | 'at_gate_out';
+export type GoodsIssueTriggerStatus = 'Pending' | 'Ready';
 
 export interface ShipmentPackageStaging {
   id: string;
@@ -38,9 +40,17 @@ export interface ShipmentPackageStaging {
   loadedBy: string | null;
   shipmentConfirmedAt: string | null;
   shipmentConfirmedBy: string | null;
+  gateOutReference: string | null;
+  gateOutAt: string | null;
+  gateOutBy: string | null;
+  goodsIssueTrigger: GoodsIssueTrigger | null;
+  goodsIssueTriggerStatus: GoodsIssueTriggerStatus | null;
+  goodsIssueTriggeredAt: string | null;
+  goodsIssueTriggeredBy: string | null;
   loadingOutboxMessageId: string | null;
   shipmentConfirmOutboxMessageId: string | null;
+  gateOutOutboxMessageId: string | null;
+  goodsIssueTriggerOutboxMessageId: string | null;
   createdAt: string;
   updatedAt: string;
 }
-

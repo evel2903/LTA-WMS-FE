@@ -4,6 +4,8 @@ import type {
   AssignDockInput,
   AssignTruckInput,
   ConfirmShipmentInput,
+  EvaluateGoodsIssueTriggerInput,
+  RecordGateOutInput,
   ScanLoadingInput,
   StagePackageInput,
 } from '@modules/Shipping/Domain/Types/ShippingQuery';
@@ -11,7 +13,8 @@ import { shippingRepository } from '@modules/Shipping/Infrastructure/Repositorie
 
 export function useShippingMutations() {
   const queryClient = useQueryClient();
-  const invalidateShipping = () => queryClient.invalidateQueries({ queryKey: shippingQueryKeys.all });
+  const invalidateShipping = () =>
+    queryClient.invalidateQueries({ queryKey: shippingQueryKeys.all });
 
   return {
     stagePackage: useMutation({
@@ -50,6 +53,21 @@ export function useShippingMutations() {
         void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
       },
     }),
+    recordGateOut: useMutation({
+      mutationFn: (input: { id: string; payload: RecordGateOutInput }) =>
+        shippingRepository.recordGateOut(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateShipping();
+        void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
+      },
+    }),
+    evaluateGoodsIssueTrigger: useMutation({
+      mutationFn: (input: { id: string; payload: EvaluateGoodsIssueTriggerInput }) =>
+        shippingRepository.evaluateGoodsIssueTrigger(input.id, input.payload),
+      onSuccess: (_data, input) => {
+        void invalidateShipping();
+        void queryClient.invalidateQueries({ queryKey: shippingQueryKeys.detail(input.id) });
+      },
+    }),
   };
 }
-

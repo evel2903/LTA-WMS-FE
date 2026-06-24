@@ -62,8 +62,17 @@ function makeStaging(overrides: Partial<ShipmentPackageStaging> = {}): ShipmentP
     loadedBy: null,
     shipmentConfirmedAt: null,
     shipmentConfirmedBy: null,
+    gateOutReference: null,
+    gateOutAt: null,
+    gateOutBy: null,
+    goodsIssueTrigger: null,
+    goodsIssueTriggerStatus: null,
+    goodsIssueTriggeredAt: null,
+    goodsIssueTriggeredBy: null,
     loadingOutboxMessageId: null,
     shipmentConfirmOutboxMessageId: null,
+    gateOutOutboxMessageId: null,
+    goodsIssueTriggerOutboxMessageId: null,
     createdAt: '2026-06-24T00:00:00.000Z',
     updatedAt: '2026-06-24T00:00:00.000Z',
     ...overrides,
@@ -77,6 +86,8 @@ function mutationState(overrides: Record<string, unknown> = {}) {
     assignTruck: { mutate: vi.fn(), isPending: false, error: null },
     scanLoading: { mutate: vi.fn(), isPending: false, error: null },
     confirmShipment: { mutate: vi.fn(), isPending: false, error: null },
+    recordGateOut: { mutate: vi.fn(), isPending: false, error: null },
+    evaluateGoodsIssueTrigger: { mutate: vi.fn(), isPending: false, error: null },
     ...overrides,
   };
 }
@@ -293,8 +304,12 @@ describe('Shipping list/detail pages', () => {
     expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
       '/shipping/staging-1/loading',
     );
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'dock-after-ready' } });
-    expect(screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled')).not.toBeNull();
+    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+      target: { value: 'dock-after-ready' },
+    });
+    expect(
+      screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled'),
+    ).not.toBeNull();
   });
 
   it('keeps the loading action available for Loaded staging and blocks dock regression', () => {
@@ -319,8 +334,12 @@ describe('Shipping list/detail pages', () => {
     expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
       '/shipping/staging-1/loading',
     );
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'dock-after-loaded' } });
-    expect(screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled')).not.toBeNull();
+    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+      target: { value: 'dock-after-loaded' },
+    });
+    expect(
+      screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled'),
+    ).not.toBeNull();
   });
 
   it('submits loading scan and shipment confirmation from the loading action route', async () => {
@@ -418,7 +437,9 @@ describe('Shipping list/detail pages', () => {
       </Routes>,
       ['/shipping/staging-1/loading'],
     );
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'confirm:shipment' } });
+    fireEvent.change(screen.getByLabelText('Evidence refs'), {
+      target: { value: 'confirm:shipment' },
+    });
     fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'confirm-1' } });
     fireEvent.click(screen.getByRole('button', { name: /^Confirm shipment$/i }));
 
@@ -438,5 +459,70 @@ describe('Shipping list/detail pages', () => {
     );
     expect(screen.queryByRole('button', { name: /Gate out/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Goods Issue/i })).toBeNull();
+  });
+
+  it('submits gate-out from the dedicated action route', () => {
+    const mutations = mutationState({
+      recordGateOut: {
+        mutate: vi.fn(
+          (_payload: unknown, options?: MockMutationOptions<ShipmentPackageStaging>) => {
+            options?.onSuccess?.(
+              makeStaging({
+                status: 'GateOutRecorded',
+                gateOutReference: 'GATE-OUT-001',
+                gateOutAt: '2026-06-24T02:00:00.000Z',
+                goodsIssueTrigger: 'at_gate_out',
+                goodsIssueTriggerStatus: 'Ready',
+              }),
+            );
+          },
+        ),
+        isPending: false,
+        error: null,
+      },
+    });
+    vi.mocked(useShippingMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useShippingMutations>,
+    );
+    vi.mocked(useShippingStaging).mockReturnValue({
+      data: makeStaging({
+        status: 'ShipmentConfirmed',
+        truckReference: 'TRUCK-001',
+        vehicleNumber: '51C-001',
+        shipmentConfirmedAt: '2026-06-24T01:05:00.000Z',
+      }),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useShippingStaging>);
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/shipping/:id/:action" element={<ShippingDetailPage />} />
+      </Routes>,
+      ['/shipping/staging-1/gate-out'],
+    );
+
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'gate:out' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'gate-out-1' } });
+    fireEvent.change(screen.getByLabelText('Gate-out reference'), {
+      target: { value: 'GATE-OUT-001' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Record gate-out$/i }));
+
+    expect(mutations.recordGateOut.mutate).toHaveBeenCalledWith(
+      {
+        id: 'staging-1',
+        payload: {
+          gateOutReference: 'GATE-OUT-001',
+          truckReference: 'TRUCK-001',
+          vehicleNumber: '51C-001',
+          reasonCode: 'RC-V1-DISCREPANCY',
+          reasonNote: undefined,
+          evidenceRefs: ['gate:out'],
+          idempotencyKey: 'gate-out-1',
+        },
+      },
+      expect.any(Object),
+    );
   });
 });

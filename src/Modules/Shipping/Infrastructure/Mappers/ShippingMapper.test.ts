@@ -39,8 +39,17 @@ const stagingDto: ShipmentPackageStagingDto = {
   LoadedBy: null,
   ShipmentConfirmedAt: null,
   ShipmentConfirmedBy: null,
+  GateOutReference: null,
+  GateOutAt: null,
+  GateOutBy: null,
+  GoodsIssueTrigger: null,
+  GoodsIssueTriggerStatus: null,
+  GoodsIssueTriggeredAt: null,
+  GoodsIssueTriggeredBy: null,
   LoadingOutboxMessageId: null,
   ShipmentConfirmOutboxMessageId: null,
+  GateOutOutboxMessageId: null,
+  GoodsIssueTriggerOutboxMessageId: null,
   CreatedAt: '2026-06-24T00:00:00.000Z',
   UpdatedAt: '2026-06-24T00:00:00.000Z',
 };
@@ -114,6 +123,27 @@ describe('ShippingMapper', () => {
       RequireFullLoad: true,
       IdempotencyKey: 'confirm-1',
     });
+    expect(
+      ShippingMapper.toRecordGateOutRequest({
+        gateOutReference: 'GATE-OUT-001',
+        truckReference: 'TRUCK-001',
+        idempotencyKey: 'gate-out-1',
+      }),
+    ).toEqual({
+      GateOutReference: 'GATE-OUT-001',
+      TruckReference: 'TRUCK-001',
+      IdempotencyKey: 'gate-out-1',
+    });
+    expect(
+      ShippingMapper.toEvaluateGoodsIssueTriggerRequest({
+        goodsIssueTrigger: 'at_gate_out',
+        evidenceRefs: ['gi:evidence'],
+        idempotencyKey: 'gi-trigger-1',
+      }),
+    ).toEqual({
+      GoodsIssueTrigger: 'at_gate_out',
+      EvidenceRefs: ['gi:evidence'],
+      IdempotencyKey: 'gi-trigger-1',
+    });
   });
 });
-
