@@ -17,6 +17,5 @@ export function useOverrideLogDetail(id: string | null) {
     queryKey: overrideLogQueryKeys.detail(id ?? ''),
     queryFn: () => overrideLogRepository.getById(id ?? ''),
     enabled: Boolean(id),
-    placeholderData: keepPreviousData,
   });
 }

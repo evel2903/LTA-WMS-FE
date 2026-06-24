@@ -18,16 +18,19 @@ import type {
 } from '@modules/Compliance/Infrastructure/Dtos/ComplianceDtos';
 import { ComplianceMapper } from '@modules/Compliance/Infrastructure/Mappers/ComplianceMapper';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
 
+function isPositiveInteger(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
 function paging(filter: { page?: number; pageSize?: number } = {}) {
+  const page = isPositiveInteger(filter.page) ? filter.page : 1;
+  const pageSize = isPositiveInteger(filter.pageSize) ? filter.pageSize : DEFAULT_PAGE_SIZE;
   return {
-    Page: !filter.page || filter.page < 1 ? 1 : filter.page,
-    PageSize:
-      !filter.pageSize || filter.pageSize < 1
-        ? DEFAULT_PAGE_SIZE
-        : Math.min(filter.pageSize, MAX_PAGE_SIZE),
+    Page: page,
+    PageSize: Math.min(pageSize, MAX_PAGE_SIZE),
   };
 }
 

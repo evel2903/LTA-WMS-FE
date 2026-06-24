@@ -1,3 +1,7 @@
+function routeParam(value: string): string {
+  return value === ':id' ? value : encodeURIComponent(value);
+}
+
 /**
  * Centralised route path registry. Reference these constants instead of
  * hard-coding string paths so refactors stay safe across modules.
@@ -50,6 +54,7 @@ export const ROUTES = {
       USER_EDIT: (id = ':id') => `/foundation/access/users/${id}/edit`,
     },
     AUDIT: '/foundation/audit',
+    AUDIT_DETAIL: (id = ':id') => `/foundation/audit/${routeParam(id)}`,
     EXCEPTIONS: '/foundation/exceptions',
     REASON_CODES: '/foundation/reason-codes',
     REASON_CODE_NEW: '/foundation/reason-codes/new',
@@ -62,6 +67,7 @@ export const ROUTES = {
     APPROVAL_DETAIL: (id = ':id') => `/foundation/approvals/${id}`,
     APPROVAL_ACTION: (id = ':id') => `/foundation/approvals/${id}/action`,
     OVERRIDES: '/foundation/overrides',
+    OVERRIDE_DETAIL: (id = ':id') => `/foundation/overrides/${routeParam(id)}`,
     CONTROL_CATALOG: '/foundation/control-catalog',
     EXCEPTION_DETAIL: (id = ':id') => `/foundation/exceptions/${id}`,
     EXCEPTION_ACTION: (id = ':id') => `/foundation/exceptions/${id}/action`,

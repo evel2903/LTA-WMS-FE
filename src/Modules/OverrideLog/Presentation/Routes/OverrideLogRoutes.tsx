@@ -9,6 +9,13 @@ const OverrideLogPage = lazy(() =>
   })),
 );
 
+const OverrideLogDetailPage = lazy(() =>
+  import('@modules/OverrideLog/Presentation/Pages/OverrideLogDetailPage').then((module) => ({
+    default: module.OverrideLogDetailPage,
+  })),
+);
+
 export const overrideLogRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.OVERRIDES, element: <OverrideLogPage /> },
+  { path: ROUTES.FOUNDATION.OVERRIDE_DETAIL(), element: <OverrideLogDetailPage /> },
 ];

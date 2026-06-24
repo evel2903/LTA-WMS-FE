@@ -13,10 +13,16 @@ interface OverrideLogTableProps {
   logs: OverrideLog[];
   selectedId: string | null;
   onSelect: (log: OverrideLog) => void;
+  isSelectionDisabled?: boolean;
 }
 
 /** Read-only override log table — no mutate controls (immutable, AC2/AC5). */
-export function OverrideLogTable({ logs, selectedId, onSelect }: OverrideLogTableProps) {
+export function OverrideLogTable({
+  logs,
+  selectedId,
+  onSelect,
+  isSelectionDisabled = false,
+}: OverrideLogTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -38,7 +44,11 @@ export function OverrideLogTable({ logs, selectedId, onSelect }: OverrideLogTabl
             className="data-[selected=true]:bg-muted"
           >
             <TableCell>
-              <button className="underline-offset-2 hover:underline" onClick={() => onSelect(log)}>
+              <button
+                className="underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSelectionDisabled}
+                onClick={() => onSelect(log)}
+              >
                 {log.ruleCode}
               </button>
             </TableCell>

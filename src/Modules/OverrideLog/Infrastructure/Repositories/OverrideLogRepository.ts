@@ -10,7 +10,21 @@ import type {
 } from '@modules/OverrideLog/Infrastructure/Dtos/OverrideLogDtos';
 import { OverrideLogMapper } from '@modules/OverrideLog/Infrastructure/Mappers/OverrideLogMapper';
 
-const DEFAULT_PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+
+function isPositiveInteger(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function paging(filter: { page?: number; pageSize?: number } = {}) {
+  const page = isPositiveInteger(filter.page) ? filter.page : 1;
+  const pageSize = isPositiveInteger(filter.pageSize) ? filter.pageSize : DEFAULT_PAGE_SIZE;
+  return {
+    Page: page,
+    PageSize: Math.min(pageSize, MAX_PAGE_SIZE),
+  };
+}
 
 /** The single place that touches `httpClient` for the override log (read-only). */
 export class OverrideLogRepository implements IOverrideLogRepository {
@@ -19,8 +33,7 @@ export class OverrideLogRepository implements IOverrideLogRepository {
   async list(filter: OverrideLogFilter = {}): Promise<PaginatedResponse<OverrideLog>> {
     const dto = await this.http.get<PagedDto<OverrideLogDto>>(OVERRIDE_LOG_ENDPOINTS.OVERRIDES, {
       params: {
-        Page: filter.page ?? 1,
-        PageSize: filter.pageSize ?? DEFAULT_PAGE_SIZE,
+        ...paging(filter),
         RuleId: filter.ruleId,
         ActorUserId: filter.actorUserId,
         TargetObjectType: filter.targetObjectType,
