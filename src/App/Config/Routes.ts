@@ -90,7 +90,12 @@ export const ROUTES = {
     DETAIL: (id = ':id') => `/replenishment/${id}`,
     ACTION: (id = ':id', action = ':action') => `/replenishment/${id}/${action}`,
   },
-  OUTBOUND: { ROOT: '/outbound' },
+  OUTBOUND: {
+    ROOT: '/outbound',
+    NEW: '/outbound/new',
+    DETAIL: (id = ':id') => `/outbound/${id}`,
+    ACTION: (id = ':id', action = ':action') => `/outbound/${id}/${action}`,
+  },
   PICKING: { ROOT: '/picking' },
   PACKING: { ROOT: '/packing' },
   SHIPPING: { ROOT: '/shipping' },
