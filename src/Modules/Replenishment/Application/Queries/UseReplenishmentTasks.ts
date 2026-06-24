@@ -10,3 +10,14 @@ export function useReplenishmentTasks(filter: ReplenishmentTaskListFilter = {}, 
     enabled: options.enabled ?? true,
   });
 }
+
+export function useReplenishmentTask(id: string | null) {
+  return useQuery({
+    queryKey: replenishmentQueryKeys.detail(id ?? ''),
+    queryFn: async () => {
+      const result = await replenishmentRepository.getById(id as string);
+      return result.replenishmentTask;
+    },
+    enabled: Boolean(id),
+  });
+}

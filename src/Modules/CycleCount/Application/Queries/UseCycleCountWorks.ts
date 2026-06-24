@@ -10,3 +10,14 @@ export function useCycleCountWorks(filter: CycleCountWorkListFilter = {}, option
     enabled: options.enabled ?? true,
   });
 }
+
+export function useCycleCountWork(id: string | null) {
+  return useQuery({
+    queryKey: cycleCountQueryKeys.detail(id ?? ''),
+    queryFn: async () => {
+      const result = await cycleCountRepository.getById(id as string);
+      return result.cycleCountWork;
+    },
+    enabled: Boolean(id),
+  });
+}

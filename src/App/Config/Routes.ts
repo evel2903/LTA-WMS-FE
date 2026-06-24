@@ -78,20 +78,39 @@ export const ROUTES = {
     DETAIL: (id = ':id') => `/putaway/${id}`,
     ACTION: (id = ':id', action = ':action') => `/putaway/${id}/${action}`,
   },
-  REPLENISHMENT: { ROOT: '/replenishment' },
+  REPLENISHMENT: {
+    ROOT: '/replenishment',
+    NEW: '/replenishment/new',
+    DETAIL: (id = ':id') => `/replenishment/${id}`,
+    ACTION: (id = ':id', action = ':action') => `/replenishment/${id}/${action}`,
+  },
   OUTBOUND: { ROOT: '/outbound' },
   PICKING: { ROOT: '/picking' },
   PACKING: { ROOT: '/packing' },
   SHIPPING: { ROOT: '/shipping' },
   MOBILE: {
     TASKS: '/mobile/tasks',
+    TASK_DETAIL: (id = ':id') => `/mobile/tasks/${id}`,
+    TASK_ACTION: (id = ':id', action = ':action') => `/mobile/tasks/${id}/${action}`,
   },
   LABELS: {
     ROOT: '/labels',
+    NEW: '/labels/new',
+    TEMPLATE_DETAIL: (templateId = ':templateId') => `/labels/templates/${templateId}`,
+    TEMPLATE_ACTION: (templateId = ':templateId', action = ':action') =>
+      `/labels/templates/${templateId}/${action}`,
+    PRINT_JOB_DETAIL: (printJobId = ':printJobId') => `/labels/print-jobs/${printJobId}`,
+    PRINT_JOB_ACTION: (printJobId = ':printJobId', action = ':action') =>
+      `/labels/print-jobs/${printJobId}/${action}`,
   },
   STOCK_TRANSFER: { ROOT: '/stock-transfer' },
   STOCK_ADJUSTMENT: { ROOT: '/stock-adjustment' },
-  CYCLE_COUNT: { ROOT: '/cycle-count' },
+  CYCLE_COUNT: {
+    ROOT: '/cycle-count',
+    NEW: '/cycle-count/new',
+    DETAIL: (id = ':id') => `/cycle-count/${id}`,
+    ACTION: (id = ':id', action = ':action') => `/cycle-count/${id}/${action}`,
+  },
   REPORTS: { ROOT: '/reports' },
 
   NOT_FOUND: '*',

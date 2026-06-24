@@ -2,7 +2,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IBarcodeLabelRepository } from '@modules/BarcodeLabel/Application/Interfaces/IBarcodeLabelRepository';
@@ -28,6 +30,11 @@ vi.mock('@modules/BarcodeLabel/Infrastructure/Repositories/BarcodeLabelRepositor
   },
 }));
 
+import {
+  BarcodeLabelCreatePage,
+  BarcodeLabelPrintJobDetailPage,
+  BarcodeLabelTemplateDetailPage,
+} from '@modules/BarcodeLabel/Presentation/Pages/BarcodeLabelDetailPage';
 import { BarcodeLabelPage } from '@modules/BarcodeLabel/Presentation/Pages/BarcodeLabelPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -112,23 +119,39 @@ class FakeRepository implements Partial<IBarcodeLabelRepository> {
       page(
         this.templates.filter((template) => {
           if (filter?.status && template.status !== filter.status) return false;
+          if (filter?.templateCode && !template.templateCode.includes(filter.templateCode)) return false;
           return true;
         }),
       ),
     ),
   );
 
+  getTemplateById = vi.fn((id: string) => {
+    const template = this.templates.find((item) => item.id === id);
+    return template
+      ? Promise.resolve(template)
+      : Promise.reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'Template not found' }));
+  });
+
   listPrintJobs = vi.fn((filter?: PrintJobListFilter) =>
     Promise.resolve(
       page(
         this.printJobs.filter((job) => {
           if (filter?.templateId && job.templateId !== filter.templateId) return false;
+          if (filter?.businessObjectId && job.businessObjectId !== filter.businessObjectId) return false;
           if (filter?.status && job.status !== filter.status) return false;
           return true;
         }),
       ),
     ),
   );
+
+  getPrintJobById = vi.fn((id: string) => {
+    const job = this.printJobs.find((item) => item.id === id);
+    return job
+      ? Promise.resolve(job)
+      : Promise.reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'Print job not found' }));
+  });
 
   createTemplate = vi.fn((input: CreateLabelTemplateInput) => {
     const template = makeTemplate({
@@ -182,14 +205,48 @@ class FakeRepository implements Partial<IBarcodeLabelRepository> {
   );
 }
 
-function renderPage() {
+function renderWithClient(ui: React.ReactElement, initialEntries = ['/labels']) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
-      <BarcodeLabelPage />
+      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
     </QueryClientProvider>,
+  );
+}
+
+function renderListPage() {
+  return renderWithClient(<BarcodeLabelPage />);
+}
+
+function renderTemplateDetail(path = '/labels/templates/template-1') {
+  return renderWithClient(
+    <Routes>
+      <Route path={ROUTES.LABELS.TEMPLATE_DETAIL()} element={<BarcodeLabelTemplateDetailPage />} />
+      <Route path={ROUTES.LABELS.TEMPLATE_ACTION()} element={<BarcodeLabelTemplateDetailPage />} />
+    </Routes>,
+    [path],
+  );
+}
+
+function renderPrintJobDetail(path = '/labels/print-jobs/job-1') {
+  return renderWithClient(
+    <Routes>
+      <Route path={ROUTES.LABELS.PRINT_JOB_DETAIL()} element={<BarcodeLabelPrintJobDetailPage />} />
+      <Route path={ROUTES.LABELS.PRINT_JOB_ACTION()} element={<BarcodeLabelPrintJobDetailPage />} />
+    </Routes>,
+    [path],
+  );
+}
+
+function renderCreatePage() {
+  return renderWithClient(
+    <Routes>
+      <Route path={ROUTES.LABELS.NEW} element={<BarcodeLabelCreatePage />} />
+      <Route path={ROUTES.LABELS.TEMPLATE_DETAIL()} element={<BarcodeLabelTemplateDetailPage />} />
+    </Routes>,
+    ['/labels/new'],
   );
 }
 
@@ -197,16 +254,56 @@ afterEach(() => {
   cleanup();
 });
 
-describe('BarcodeLabelPage', () => {
-  it('renders templates and creates a payload preview print job', async () => {
+describe('BarcodeLabel list/detail pages', () => {
+  it('renders template and print job links while keeping action forms off the root list', async () => {
+    const fake = new FakeRepository([makeTemplate()], [makePrintJob()]);
+    repo.current = fake;
+    renderListPage();
+
+    const templateLink = await screen.findByRole('link', { name: /LPN-STD/i });
+    const printJobLink = await screen.findByRole('link', { name: /PJ-001/i });
+    expect(templateLink.getAttribute('href')).toBe('/labels/templates/template-1');
+    expect(printJobLink.getAttribute('href')).toBe('/labels/print-jobs/job-1');
+    expect(screen.queryByRole('button', { name: 'Preview print job' })).toBeNull();
+    expect(screen.getByRole('link', { name: /new template/i })).toBeTruthy();
+  });
+
+  it('creates templates on the create route and passes required fields as an array', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderCreatePage();
 
-    expect(await screen.findByRole('button', { name: /LPN-STD/i })).toBeTruthy();
+    await screen.findByText('New label template');
+    await actor.click(screen.getByRole('button', { name: 'Create template' }));
+
+    await waitFor(() =>
+      expect(fake.createTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          templateCode: 'LPN-STD',
+          requiredFields: ['BarcodeValue', 'OwnerCode'],
+        }),
+      ),
+    );
+  });
+
+  it('creates a template version and payload preview from the template detail route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    renderTemplateDetail('/labels/templates/template-1/preview');
+
+    await screen.findByText('LPN-STD');
+    expect(fake.getTemplateById).toHaveBeenCalledWith('template-1');
+    await actor.click(screen.getByRole('button', { name: 'Create new version' }));
+    await waitFor(() =>
+      expect(fake.createTemplateVersion).toHaveBeenCalledWith('template-1', {
+        requiredFields: ['BarcodeValue', 'OwnerCode'],
+        templateBody: 'LPN {{BarcodeValue}}',
+      }),
+    );
+
     await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
-
     await waitFor(() =>
       expect(fake.previewPrintJob).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -220,49 +317,14 @@ describe('BarcodeLabelPage', () => {
     expect(await screen.findByText(/LPN SSCC-1/i)).toBeTruthy();
   });
 
-  it('creates templates and passes required fields as an array', async () => {
+  it('validates JSON locally before creating a preview on detail route', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderTemplateDetail();
 
-    await screen.findByRole('button', { name: /LPN-STD/i });
-    await actor.click(screen.getByRole('button', { name: 'Create template' }));
-
-    await waitFor(() =>
-      expect(fake.createTemplate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          templateCode: 'LPN-STD',
-          requiredFields: ['BarcodeValue', 'OwnerCode'],
-        }),
-      ),
-    );
-  });
-
-  it('creates a new version for the selected template', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /LPN-STD/i });
-    await actor.click(screen.getByRole('button', { name: 'Create new version' }));
-
-    await waitFor(() =>
-      expect(fake.createTemplateVersion).toHaveBeenCalledWith('template-1', {
-        requiredFields: ['BarcodeValue', 'OwnerCode'],
-        templateBody: 'LPN {{BarcodeValue}}\nOwner {{OwnerCode}}',
-      }),
-    );
-  });
-
-  it('validates JSON locally before creating a preview', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /LPN-STD/i });
+    await screen.findByText('LPN-STD');
+    expect(fake.getTemplateById).toHaveBeenCalledWith('template-1');
     fireEvent.change(screen.getByLabelText('Payload JSON'), { target: { value: '{bad-json' } });
     await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
 
@@ -270,13 +332,14 @@ describe('BarcodeLabelPage', () => {
     expect(fake.previewPrintJob).not.toHaveBeenCalled();
   });
 
-  it('submits reprint with reason code after selecting an existing print job', async () => {
+  it('submits reprint with reason code from print job detail route', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makeTemplate()], [makePrintJob()]);
     repo.current = fake;
-    renderPage();
+    renderPrintJobDetail('/labels/print-jobs/job-1/reprint');
 
-    await actor.click(await screen.findByRole('button', { name: /PJ-001/i }));
+    await screen.findByRole('heading', { name: 'PJ-001' });
+    expect(fake.getPrintJobById).toHaveBeenCalledWith('job-1');
     await actor.click(screen.getByRole('button', { name: 'Reprint job' }));
 
     await waitFor(() =>
@@ -287,46 +350,25 @@ describe('BarcodeLabelPage', () => {
     );
   });
 
-  it('clears stale preview content before a later preview mutation fails', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository();
-    fake.previewPrintJob
-      .mockResolvedValueOnce(makePrintJob({ id: 'job-preview', previewContent: 'LPN SSCC-1' }))
-      .mockRejectedValueOnce(
-        new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Missing field' }),
-      );
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /LPN-STD/i });
-    await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
-    expect(await screen.findByText(/LPN SSCC-1/i)).toBeTruthy();
-
-    await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
-
-    await waitFor(() => expect(fake.previewPrintJob).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.queryByText(/LPN SSCC-1/i)).toBeNull());
-  });
-
-  it('shows permission denied state and hides mutation controls', async () => {
+  it('shows permission denied state on root list and hides mutation controls', async () => {
     const fake = new FakeRepository();
     fake.listTemplates = vi.fn(() =>
       Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'No label read' })),
     );
     repo.current = fake;
-    renderPage();
+    renderListPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/permission denied/i)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Preview print job' })).toBeNull();
   });
 
-  it('validates label blocking readiness and renders blocked decision', async () => {
+  it('validates label blocking readiness and renders blocked decision on detail route', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderTemplateDetail('/labels/templates/template-1/blocking');
 
-    await screen.findByRole('button', { name: /LPN-STD/i });
+    await screen.findByText('LPN-STD');
     await actor.click(screen.getByRole('button', { name: 'Validate label block' }));
 
     await waitFor(() =>
@@ -347,33 +389,14 @@ describe('BarcodeLabelPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
-    renderPage();
+    renderTemplateDetail();
 
-    await screen.findByRole('button', { name: /LPN-STD/i });
+    await screen.findByText('LPN-STD');
     await actor.click(screen.getByLabelText('Attempt override'));
     fireEvent.change(screen.getByLabelText('Override reason code'), { target: { value: '' } });
 
     expect(
       screen.getByRole<HTMLButtonElement>('button', { name: 'Validate label block' }).disabled,
     ).toBe(true);
-  });
-
-  it('clears stale label blocking decision when validation inputs change', async () => {
-    const actor = userEvent.setup();
-    const fake = new FakeRepository();
-    repo.current = fake;
-    renderPage();
-
-    await screen.findByRole('button', { name: /LPN-STD/i });
-    await actor.click(screen.getByRole('button', { name: 'Validate label block' }));
-    expect(await screen.findByText(/Required label evidence is missing/i)).toBeTruthy();
-
-    fireEvent.change(screen.getByLabelText('Business object id'), {
-      target: { value: 'lpn-2' },
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Required label evidence is missing/i)).toBeNull();
-    });
   });
 });

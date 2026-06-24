@@ -13,9 +13,25 @@ export function useLabelTemplates(filter: LabelTemplateListFilter = {}) {
   });
 }
 
+export function useLabelTemplate(id: string | null, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: barcodeLabelQueryKeys.templateDetail(id ?? ''),
+    queryFn: () => barcodeLabelRepository.getTemplateById(id as string),
+    enabled: Boolean(id) && (options.enabled ?? true),
+  });
+}
+
 export function usePrintJobs(filter: PrintJobListFilter = {}) {
   return useQuery({
     queryKey: barcodeLabelQueryKeys.printJobList(filter),
     queryFn: () => barcodeLabelRepository.listPrintJobs(filter),
+  });
+}
+
+export function usePrintJob(id: string | null, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: barcodeLabelQueryKeys.printJobDetail(id ?? ''),
+    queryFn: () => barcodeLabelRepository.getPrintJobById(id as string),
+    enabled: Boolean(id) && (options.enabled ?? true),
   });
 }

@@ -8,7 +8,14 @@ const TaskExecutionPage = lazy(() =>
     default: module.TaskExecutionPage,
   })),
 );
+const TaskExecutionDetailPage = lazy(() =>
+  import('@modules/TaskExecution/Presentation/Pages/TaskExecutionDetailPage').then((module) => ({
+    default: module.TaskExecutionDetailPage,
+  })),
+);
 
 export const taskExecutionRoutes: RouteObject[] = [
   { path: ROUTES.MOBILE.TASKS, element: <TaskExecutionPage /> },
+  { path: ROUTES.MOBILE.TASK_DETAIL(), element: <TaskExecutionDetailPage /> },
+  { path: ROUTES.MOBILE.TASK_ACTION(), element: <TaskExecutionDetailPage /> },
 ];
