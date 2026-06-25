@@ -17,9 +17,7 @@ import {
   PackageOpen,
   PackagePlus,
   PackageSearch,
-  Repeat,
   Ruler,
-  ScrollText,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -96,23 +94,18 @@ const NAV_ENTRIES: NavEntry[] = [
     label: 'Operations',
     icon: Warehouse,
     children: [
-      { label: 'Warehouse', to: ROUTES.WAREHOUSE.ROOT, icon: Warehouse },
       { label: 'Inbound', to: ROUTES.INBOUND.ROOT, icon: PackageOpen },
       { label: 'Putaway', to: ROUTES.PUTAWAY.ROOT, icon: PackageCheck },
       { label: 'Replenishment', to: ROUTES.REPLENISHMENT.ROOT, icon: PackagePlus },
       { label: 'Outbound', to: ROUTES.OUTBOUND.ROOT, icon: ShoppingCart },
-      { label: 'Picking', to: ROUTES.PICKING.ROOT, icon: PackageCheck },
       { label: 'Packing', to: ROUTES.PACKING.ROOT, icon: PackageCheck },
       { label: 'Shipping', to: ROUTES.SHIPPING.ROOT, icon: Send },
       { label: 'Integration', to: ROUTES.INTEGRATION.ROOT, icon: Network },
       { label: 'Mobile Tasks', to: ROUTES.MOBILE.TASKS, icon: Smartphone },
       { label: 'Labels & Print Jobs', to: ROUTES.LABELS.ROOT, icon: Tags },
-      { label: 'Stock Transfer', to: ROUTES.STOCK_TRANSFER.ROOT, icon: Repeat },
-      { label: 'Stock Adjustment', to: ROUTES.STOCK_ADJUSTMENT.ROOT, icon: SlidersHorizontal },
       { label: 'Cycle Count', to: ROUTES.CYCLE_COUNT.ROOT, icon: ClipboardCheck },
     ],
   },
-  { label: 'Reports', to: ROUTES.REPORTS.ROOT, icon: ScrollText },
 ];
 
 const leafLinkClass = ({ isActive }: { isActive: boolean }) =>

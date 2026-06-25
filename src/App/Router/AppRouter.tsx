@@ -89,7 +89,6 @@ const router = createBrowserRouter([
           ...approvalRoutes,
           ...overrideLogRoutes,
           ...controlValidationCatalogRoutes,
-          // ...warehouseRoutes, etc. registered the same way.
         ],
       },
     ],

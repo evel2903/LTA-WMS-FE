@@ -1,19 +1,34 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 
-/** Placeholder landing page after sign-in. Replace with real KPI widgets. */
 export function DashboardPage() {
   const cards = [
-    { title: 'Open Inbound', value: '12', desc: 'Receipts awaiting putaway' },
-    { title: 'Pending Picks', value: '38', desc: 'Across 6 zones' },
-    { title: 'Low Stock SKUs', value: '7', desc: 'Below reorder point' },
-    { title: "Today's Shipments", value: '21', desc: 'Scheduled to dispatch' },
+    {
+      title: 'Core Flow Coverage',
+      value: 'Ready',
+      desc: 'Inbound, inventory control, outbound, shipping and integration screens are available for pilot review.',
+    },
+    {
+      title: 'Pilot Evidence',
+      value: 'Conditional',
+      desc: 'WT-01, WT-05 and WT-06 are covered by targeted validation evidence.',
+    },
+    {
+      title: 'Navigation',
+      value: 'Clean',
+      desc: 'Sidebar exposes only implemented module entry points.',
+    },
+    {
+      title: 'Follow-up Review',
+      value: 'Open',
+      desc: 'Run a pilot runtime review before treating dashboard data as live operational KPIs.',
+    },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Operational overview</p>
+        <p className="text-muted-foreground">Pilot readiness snapshot</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
