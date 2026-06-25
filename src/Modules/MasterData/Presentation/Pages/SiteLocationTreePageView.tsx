@@ -5,6 +5,7 @@ import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDat
 import type { SiteLocationTree } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { EntityTree } from '@modules/MasterData/Presentation/Components/EntityTree';
 import { SiteLocationDetailPanel } from '@modules/MasterData/Presentation/Components/SiteLocationDetailPanel';
+import { WarehouseMapPanel } from '@modules/MasterData/Presentation/Components/WarehouseMapPanel';
 
 export type SiteLocationTreePageState = 'loading' | 'empty' | 'ready' | 'error' | 'denied';
 
@@ -96,22 +97,28 @@ export function SiteLocationTreePageView({
   return (
     <div className="space-y-6">
       <PageHeader />
-      <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+      <div className="grid gap-6 2xl:grid-cols-[360px_minmax(0,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cây site và vị trí</CardTitle>
+            <CardTitle className="text-base">Cây kho và vị trí</CardTitle>
           </CardHeader>
           <CardContent>
             <EntityTree nodes={nodes} selectedNodeId={selectedNode?.id ?? null} onSelect={onSelect} />
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <WarehouseMapPanel nodes={nodes} selectedNode={selectedNode} onSelect={onSelect} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div>
           <SiteLocationDetailPanel
             selectedNode={selectedNode}
             locationProfiles={locationProfiles}
             canEdit={canEdit}
           />
+        </div>
+        <div>
           {formPanel}
         </div>
       </div>
