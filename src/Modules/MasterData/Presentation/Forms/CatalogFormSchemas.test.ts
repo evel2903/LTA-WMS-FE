@@ -224,7 +224,7 @@ describe('Catalog form schemas', () => {
     ];
     const merged = mergeSelectedOption(options, 'uom-9');
     expect(merged).toHaveLength(3);
-    expect(merged[0]).toEqual({ value: 'uom-9', label: 'uom-9 (unavailable)' });
+    expect(merged[0]).toEqual({ value: 'uom-9', label: 'uom-9 (không khả dụng)' });
     expect(merged.slice(1)).toEqual(options);
   });
 

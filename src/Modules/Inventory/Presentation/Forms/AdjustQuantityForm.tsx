@@ -42,13 +42,13 @@ export function AdjustQuantityForm({ itemId, onAdjusted }: AdjustQuantityFormPro
       { itemId, delta: values.delta, reason: values.reason },
       {
         onSuccess: () => {
-          toast.success('Stock adjusted');
+          toast.success('Đã điều chỉnh tồn kho');
           form.reset();
           onAdjusted?.();
         },
         onError: (error) => {
-          const message = error instanceof ApiError ? error.message : 'Adjustment failed.';
-          toast.error('Could not adjust stock', { description: message });
+          const message = error instanceof ApiError ? error.message : 'Điều chỉnh tồn kho thất bại.';
+          toast.error('Không thể điều chỉnh tồn kho', { description: message });
         },
       },
     );
@@ -62,7 +62,7 @@ export function AdjustQuantityForm({ itemId, onAdjusted }: AdjustQuantityFormPro
           name="delta"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Quantity change (+/-)</FormLabel>
+              <FormLabel>Lượng điều chỉnh (+/-)</FormLabel>
               <FormControl>
                 <Input type="number" inputMode="numeric" {...field} />
               </FormControl>
@@ -75,9 +75,9 @@ export function AdjustQuantityForm({ itemId, onAdjusted }: AdjustQuantityFormPro
           name="reason"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Reason</FormLabel>
+              <FormLabel>Lý do</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Cycle count correction" {...field} />
+                <Input placeholder="Ví dụ: điều chỉnh sau kiểm kê" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -85,7 +85,7 @@ export function AdjustQuantityForm({ itemId, onAdjusted }: AdjustQuantityFormPro
         />
         <Button type="submit" disabled={isPending}>
           {isPending && <Spinner />}
-          Apply adjustment
+          Áp dụng điều chỉnh
         </Button>
       </form>
     </Form>

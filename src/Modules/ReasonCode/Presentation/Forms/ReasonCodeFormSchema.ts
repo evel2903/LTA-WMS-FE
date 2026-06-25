@@ -52,7 +52,7 @@ const ROLE = z.enum([
 
 export const reasonCodeFormSchema = z
   .object({
-    reasonCode: z.string().trim().min(1, 'Reason code is required').max(60),
+    reasonCode: z.string().trim().min(1, 'Cần mã lý do').max(60),
     reasonGroup: z.enum([
       'RULE_OVERRIDE',
       'MASTER_DATA_CONFIG_CHANGE',
@@ -76,7 +76,7 @@ export const reasonCodeFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['effectiveTo'],
-        message: 'Effective to must be after effective from',
+        message: 'Ngày hiệu lực đến phải sau ngày hiệu lực từ',
       });
     }
   });

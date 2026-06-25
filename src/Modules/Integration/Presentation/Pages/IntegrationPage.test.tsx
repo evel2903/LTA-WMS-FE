@@ -370,7 +370,7 @@ describe('Integration list/detail pages', () => {
     fireEvent.click(screen.getByLabelText('Ảnh hưởng tồn kho'));
     fireEvent.click(screen.getByRole('button', { name: /^Xử lý dòng$/i }));
 
-    expect(screen.getByText('Blocked by workflow control')).toBeTruthy();
+    expect(screen.getByText('Bị chặn bởi kiểm soát quy trình')).toBeTruthy();
     expect(mutations.resolveReconciliationItem.mutate).not.toHaveBeenCalled();
   });
 });

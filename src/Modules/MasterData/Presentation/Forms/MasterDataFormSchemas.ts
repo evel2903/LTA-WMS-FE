@@ -31,18 +31,18 @@ export const masterDataStatusSchema = z.enum(['Active', 'Inactive']);
 export const locationStatusSchema = z.enum(['Active', 'Inactive', 'Blocked', 'Maintenance']);
 
 export const siteFormSchema = z.object({
-  siteCode: requiredText(50, 'Site code is required'),
-  siteName: requiredText(255, 'Site name is required'),
+  siteCode: requiredText(50, 'Cần mã site'),
+  siteName: requiredText(255, 'Cần tên site'),
   status: masterDataStatusSchema,
   sourceSystem: optionalText(100),
   referenceId: optionalText(100),
 });
 
 export const warehouseFormSchema = z.object({
-  siteId: requiredText(36, 'Site is required'),
-  warehouseCode: requiredText(50, 'Warehouse code is required'),
-  warehouseName: requiredText(255, 'Warehouse name is required'),
-  warehouseTypeCode: requiredText(50, 'Warehouse type is required'),
+  siteId: requiredText(36, 'Cần site'),
+  warehouseCode: requiredText(50, 'Cần mã kho'),
+  warehouseName: requiredText(255, 'Cần tên kho'),
+  warehouseTypeCode: requiredText(50, 'Cần loại kho'),
   status: masterDataStatusSchema,
   timezone: optionalText(100),
   sourceSystem: optionalText(100),
@@ -50,29 +50,29 @@ export const warehouseFormSchema = z.object({
 });
 
 export const zoneFormSchema = z.object({
-  warehouseId: requiredText(36, 'Warehouse is required'),
-  zoneCode: requiredText(50, 'Zone code is required'),
-  zoneName: requiredText(255, 'Zone name is required'),
-  zoneType: requiredText(50, 'Zone type is required'),
+  warehouseId: requiredText(36, 'Cần kho'),
+  zoneCode: requiredText(50, 'Cần mã zone'),
+  zoneName: requiredText(255, 'Cần tên zone'),
+  zoneType: requiredText(50, 'Cần loại zone'),
   status: masterDataStatusSchema,
   sequence: optionalInteger,
   temperatureClass: optionalText(50),
 });
 
 export const locationFormSchema = z.object({
-  warehouseId: requiredText(36, 'Warehouse is required'),
-  zoneId: requiredText(36, 'Zone is required'),
+  warehouseId: requiredText(36, 'Cần kho'),
+  zoneId: requiredText(36, 'Cần zone'),
   parentLocationId: z
     .string()
     .trim()
-    .min(1, 'Parent location cannot be empty')
+    .min(1, 'Vị trí cha không được để trống')
     .max(36)
     .nullable()
     .optional(),
-  locationCode: requiredText(80, 'Location code is required'),
-  locationName: requiredText(255, 'Location name is required'),
-  locationType: requiredText(50, 'Location type is required'),
-  locationProfileId: requiredText(36, 'Location profile is required'),
+  locationCode: requiredText(80, 'Cần mã vị trí'),
+  locationName: requiredText(255, 'Cần tên vị trí'),
+  locationType: requiredText(50, 'Cần loại vị trí'),
+  locationProfileId: requiredText(36, 'Cần hồ sơ vị trí'),
   locationStatus: locationStatusSchema,
   capacityQty: optionalNumber,
   capacityVolume: optionalNumber,
@@ -120,7 +120,7 @@ export function buildLocationProfileOptions(
   }));
 
   if (currentProfileId && !profiles.some((profile) => profile.id === currentProfileId)) {
-    return [{ value: currentProfileId, label: `${currentProfileId} (unavailable)`, unavailable: true }, ...options];
+    return [{ value: currentProfileId, label: `${currentProfileId} (không khả dụng)`, unavailable: true }, ...options];
   }
 
   return options;

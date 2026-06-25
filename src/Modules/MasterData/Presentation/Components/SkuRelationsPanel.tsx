@@ -102,19 +102,19 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
       </CardHeader>
       <CardContent className="grid gap-6 xl:grid-cols-2">
         <RelationSection
-          title="Pack"
+          title="Quy cách đóng gói"
           rows={packs.data?.items ?? []}
           rowKey={(pack) => pack.id}
           loading={packs.isLoading}
           error={packs.error}
-          emptyLabel="No packs"
+          emptyLabel="Chưa có quy cách đóng gói"
           disabled={readonlyPack}
           columns={[
-            { header: 'Code', render: (pack) => pack.packCode },
-            { header: 'Name', render: (pack) => pack.packName },
+            { header: 'Mã', render: (pack) => pack.packCode },
+            { header: 'Tên', render: (pack) => pack.packName },
             { header: 'UOM', render: (pack) => optionLabel(uomOptions, pack.uomId) },
-            { header: 'Qty', render: (pack) => pack.quantityPerPack },
-            { header: 'Status', render: (pack) => <MasterDataStatusBadge status={pack.status} /> },
+            { header: 'Số lượng', render: (pack) => pack.quantityPerPack },
+            { header: 'Trạng thái', render: (pack) => <MasterDataStatusBadge status={pack.status} /> },
           ]}
           onEdit={(pack) => {
             setEditingPack(pack);
@@ -168,21 +168,21 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           rowKey={(barcode) => barcode.id}
           loading={barcodes.isLoading}
           error={barcodes.error}
-          emptyLabel="No barcodes"
+          emptyLabel="Chưa có mã vạch"
           disabled={readonlyBarcode}
           columns={[
-            { header: 'Value', render: (barcode) => barcode.barcodeValue },
-            { header: 'Type', render: (barcode) => barcode.barcodeType },
+            { header: 'Giá trị', render: (barcode) => barcode.barcodeValue },
+            { header: 'Loại', render: (barcode) => barcode.barcodeType },
             { header: 'UOM', render: (barcode) => optionLabel(uomOptions, barcode.uomId) },
-            { header: 'Pack', render: (barcode) => barcode.packCode ?? '-' },
+            { header: 'Quy cách', render: (barcode) => barcode.packCode ?? '-' },
             {
-              header: 'Effective',
+              header: 'Hiệu lực',
               render: (barcode) =>
                 `${dateOnly(barcode.effectiveFrom) || '-'} / ${
                   dateOnly(barcode.effectiveTo) || '-'
                 }`,
             },
-            { header: 'Status', render: (barcode) => <MasterDataStatusBadge status={barcode.status} /> },
+            { header: 'Trạng thái', render: (barcode) => <MasterDataStatusBadge status={barcode.status} /> },
           ]}
           onEdit={(barcode) => {
             setEditingBarcode(barcode);
@@ -236,18 +236,18 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           rowKey={(conversion) => conversion.id}
           loading={conversions.isLoading}
           error={conversions.error}
-          emptyLabel="No conversions"
+          emptyLabel="Chưa có quy đổi"
           disabled={readonlyConversion}
           columns={[
             {
-              header: 'From',
+              header: 'Từ',
               render: (conversion) => optionLabel(uomOptions, conversion.fromUomId),
             },
-            { header: 'To', render: (conversion) => optionLabel(uomOptions, conversion.toUomId) },
-            { header: 'Factor', render: (conversion) => conversion.factor },
-            { header: 'From date', render: (conversion) => dateOnly(conversion.effectiveFrom) },
+            { header: 'Đến', render: (conversion) => optionLabel(uomOptions, conversion.toUomId) },
+            { header: 'Hệ số', render: (conversion) => conversion.factor },
+            { header: 'Ngày hiệu lực', render: (conversion) => dateOnly(conversion.effectiveFrom) },
             {
-              header: 'Status',
+              header: 'Trạng thái',
               render: (conversion) => <MasterDataStatusBadge status={conversion.status} />,
             },
           ]}
@@ -306,25 +306,25 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           rowKey={(coverage) => coverage.id}
           loading={coverages.isLoading}
           error={coverages.error}
-          emptyLabel="No coverage"
+          emptyLabel="Chưa có phạm vi hàng hóa"
           disabled={readonlyCoverage}
           columns={[
             {
-              header: 'Warehouse',
+              header: 'Kho',
               render: (coverage) => optionLabel(warehouseOptions, coverage.warehouseId),
             },
-            { header: 'Min/Max', render: (coverage) => `${coverage.minQty}/${coverage.maxQty}` },
-            { header: 'Multiple', render: (coverage) => coverage.multipleQty },
+            { header: 'Tối thiểu/Tối đa', render: (coverage) => `${coverage.minQty}/${coverage.maxQty}` },
+            { header: 'Bội số', render: (coverage) => coverage.multipleQty },
             {
-              header: 'Stops',
+              header: 'Dừng xử lý',
               render: (coverage) =>
                 coverage.stopReceiving || coverage.stopShipping
-                  ? [coverage.stopReceiving ? 'Receive' : null, coverage.stopShipping ? 'Ship' : null]
+                  ? [coverage.stopReceiving ? 'Nhận hàng' : null, coverage.stopShipping ? 'Xuất hàng' : null]
                       .filter(Boolean)
                       .join(', ')
                   : '-',
             },
-            { header: 'Status', render: (coverage) => <MasterDataStatusBadge status={coverage.status} /> },
+            { header: 'Trạng thái', render: (coverage) => <MasterDataStatusBadge status={coverage.status} /> },
           ]}
           onEdit={(coverage) => {
             setEditingCoverage(coverage);
@@ -434,7 +434,7 @@ function RelationSection<T extends { id: string }>({
                     type="button"
                     size="icon"
                     variant="ghost"
-                    title={`Edit ${title}`}
+                    title={`Chỉnh sửa ${title}`}
                     disabled={disabled}
                     onClick={() => onEdit(row)}
                   >
@@ -509,7 +509,7 @@ function PackForm({
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('quantityPerPack')} />
         </Field>
         <SelectField
-          label="Status"
+          label="Trạng thái"
           disabled={disabled}
           options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
           error={form.formState.errors.status?.message}
@@ -526,8 +526,8 @@ function PackForm({
         disabled={disabled}
         pending={pending}
         conflict={conflict}
-        createLabel="Add pack"
-        updateLabel="Update pack"
+        createLabel="Thêm quy cách"
+        updateLabel="Cập nhật quy cách"
         onCancel={onCancel}
       />
     </form>
@@ -601,7 +601,7 @@ function BarcodeForm({
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
-          label="Status"
+          label="Trạng thái"
           disabled={disabled}
           options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
           error={form.formState.errors.status?.message}
@@ -618,8 +618,8 @@ function BarcodeForm({
         disabled={disabled}
         pending={pending}
         conflict={conflict}
-        createLabel="Add barcode"
-        updateLabel="Update barcode"
+        createLabel="Thêm mã vạch"
+        updateLabel="Cập nhật mã vạch"
         onCancel={onCancel}
       />
     </form>
@@ -681,7 +681,7 @@ function ConversionForm({
           error={form.formState.errors.toUomId?.message}
           {...form.register('toUomId')}
         />
-        <Field label="Factor" error={form.formState.errors.factor?.message}>
+        <Field label="Hệ số" error={form.formState.errors.factor?.message}>
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('factor')} />
         </Field>
         <Field label="Hiệu lực từ" error={form.formState.errors.effectiveFrom?.message}>
@@ -691,7 +691,7 @@ function ConversionForm({
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
-          label="Status"
+          label="Trạng thái"
           disabled={disabled}
           options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
           error={form.formState.errors.status?.message}
@@ -706,8 +706,8 @@ function ConversionForm({
         disabled={disabled}
         pending={pending}
         conflict={conflict}
-        createLabel="Add conversion"
-        updateLabel="Update conversion"
+        createLabel="Thêm quy đổi"
+        updateLabel="Cập nhật quy đổi"
         onCancel={onCancel}
       />
     </form>
@@ -759,14 +759,14 @@ function CoverageForm({
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
         <SelectField
-          label="Warehouse"
+          label="Kho"
           disabled={disabled}
           options={warehouseOptions}
           error={form.formState.errors.warehouseId?.message}
           {...form.register('warehouseId')}
         />
         <SelectField
-          label="Status"
+          label="Trạng thái"
           disabled={disabled}
           options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
           error={form.formState.errors.status?.message}
@@ -799,8 +799,8 @@ function CoverageForm({
         disabled={disabled}
         pending={pending}
         conflict={conflict}
-        createLabel="Add coverage"
-        updateLabel="Update coverage"
+        createLabel="Thêm phạm vi"
+        updateLabel="Cập nhật phạm vi"
         onCancel={onCancel}
       />
     </form>
@@ -838,7 +838,7 @@ function SelectField({
   return (
     <Field label={label} error={error}>
       <select className={selectClass} {...props}>
-        <option value="">Select {label}</option>
+        <option value="">Chọn {label}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -899,9 +899,9 @@ function relationMessage({
   emptyLabel: string;
 }) {
   if (loading) return 'Đang tải...';
-  if (isForbidden(error)) return 'Permission denied. This relation is read-only.';
+  if (isForbidden(error)) return 'Không có quyền. Quan hệ này đang ở chế độ chỉ đọc.';
   if (error instanceof ApiError) return error.message;
-  if (error) return 'Unable to load relation data.';
+  if (error) return 'Không thể tải dữ liệu quan hệ.';
   if (empty) return emptyLabel;
   return null;
 }

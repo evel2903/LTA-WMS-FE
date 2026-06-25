@@ -4,7 +4,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 export function toMutationErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error && error.message) return error.message;
-  return 'Unable to complete the decision. Please try again.';
+  return 'Không thể hoàn tất quyết định. Vui lòng thử lại.';
 }
 
 /** 403 FORBIDDEN — self-approval / permission / out-of-scope. Demotes the panel to read-only. */

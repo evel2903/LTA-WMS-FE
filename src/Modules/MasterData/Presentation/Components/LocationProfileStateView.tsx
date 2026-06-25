@@ -10,18 +10,18 @@ export function LocationProfileStateView({ state, errorMessage }: LocationProfil
     state === 'denied'
       ? 'Không có quyền'
       : state === 'error'
-        ? 'Unable to load location profiles'
+        ? 'Không thể tải hồ sơ vị trí'
         : state === 'loading'
-          ? 'Loading location profiles'
-          : 'No location profiles';
+          ? 'Đang tải hồ sơ vị trí'
+          : 'Chưa có hồ sơ vị trí';
   const message =
     state === 'denied'
-      ? 'You do not have permission to view location profiles for this scope.'
+      ? 'Bạn không có quyền xem hồ sơ vị trí trong phạm vi này.'
       : state === 'error'
-        ? (errorMessage ?? 'An unexpected API error occurred.')
+        ? (errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.')
         : state === 'loading'
-          ? 'Loading location profiles...'
-          : 'No location profiles match the current filters.';
+          ? 'Đang tải hồ sơ vị trí...'
+          : 'Không có hồ sơ vị trí phù hợp với bộ lọc hiện tại.';
 
   return (
     <div className="space-y-2 py-10">

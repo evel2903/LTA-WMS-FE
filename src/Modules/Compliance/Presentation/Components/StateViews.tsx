@@ -37,7 +37,7 @@ export function ComplianceStateView({ state, emptyLabel, errorMessage }: Complia
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Loading…</CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải…</CardContent>
       </Card>
     );
   }

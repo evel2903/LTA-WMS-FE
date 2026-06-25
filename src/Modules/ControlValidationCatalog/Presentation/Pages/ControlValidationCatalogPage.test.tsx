@@ -55,7 +55,7 @@ describe('ControlValidationCatalogPage (C18)', () => {
     await actor.click(screen.getByRole('tab', { name: /Ngoại lệ kiểm soát/i }));
     expect(screen.getByText('CTRL-EX-09')).toBeTruthy();
     expect(screen.getAllByText('Deferred V1+').length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('CTRL-EX-09 evidence: required')).toBeTruthy();
+    expect(screen.getByLabelText('CTRL-EX-09 bằng chứng: bắt buộc')).toBeTruthy();
 
     expect(screen.queryByRole('button', { name: /create|update|delete/i })).toBeNull();
   });

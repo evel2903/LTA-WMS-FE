@@ -25,12 +25,12 @@ const policyJsonSchema = z
     } catch {
       return false;
     }
-  }, 'Enter a valid JSON object');
+  }, 'Nhập đối tượng JSON hợp lệ');
 
 export const locationProfileFormSchema = z.object({
-  profileCode: requiredText(50, 'Profile code is required'),
-  profileName: requiredText(255, 'Profile name is required'),
-  locationType: requiredText(50, 'Location type is required'),
+  profileCode: requiredText(50, 'Cần mã hồ sơ'),
+  profileName: requiredText(255, 'Cần tên hồ sơ'),
+  locationType: requiredText(50, 'Cần loại vị trí'),
   version: z.preprocess(
     (value) => (value === '' || Number.isNaN(value) ? undefined : value),
     z.coerce.number().int().positive().optional(),

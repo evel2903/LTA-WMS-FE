@@ -19,8 +19,8 @@ export const skuStatusSchema = z.enum(['Draft', 'Active', 'Blocked', 'Discontinu
 // ── Owner ─────────────────────────────────────────────────────────────────────
 
 export const ownerFormSchema = z.object({
-  ownerCode: requiredText(50, 'Owner code is required'),
-  ownerName: requiredText(255, 'Owner name is required'),
+  ownerCode: requiredText(50, 'Cần mã chủ hàng'),
+  ownerName: requiredText(255, 'Cần tên chủ hàng'),
   status: masterDataStatusSchema,
   sourceSystem: optionalText(100),
   referenceId: optionalText(100),
@@ -29,13 +29,13 @@ export const ownerFormSchema = z.object({
 // ── Uom ─────────────────────────────────────────────────────────────────────
 
 export const uomFormSchema = z.object({
-  uomCode: requiredText(50, 'UOM code is required'),
-  uomName: requiredText(255, 'UOM name is required'),
+  uomCode: requiredText(50, 'Cần mã đơn vị tính'),
+  uomName: requiredText(255, 'Cần tên đơn vị tính'),
   status: masterDataStatusSchema,
   uomType: optionalText(50),
   decimalPrecision: z.preprocess(
     (value) => (value === '' || value === null ? undefined : value),
-    z.coerce.number().int().min(0, 'Min 0').max(6, 'Max 6').optional(),
+    z.coerce.number().int().min(0, 'Tối thiểu 0').max(6, 'Tối đa 6').optional(),
   ),
   sourceSystem: optionalText(100),
   referenceId: optionalText(100),
@@ -45,12 +45,12 @@ export const uomFormSchema = z.object({
 
 export const skuFormSchema = z
   .object({
-    skuCode: requiredText(80, 'SKU code is required'),
-    skuName: requiredText(255, 'SKU name is required'),
-    itemClass: requiredText(50, 'Item class is required'),
+    skuCode: requiredText(80, 'Cần mã SKU'),
+    skuName: requiredText(255, 'Cần tên SKU'),
+    itemClass: requiredText(50, 'Cần phân lớp hàng'),
     itemStatus: skuStatusSchema,
-    baseUomId: requiredText(36, 'Base UOM is required'),
-    inventoryUomId: requiredText(36, 'Inventory UOM is required'),
+    baseUomId: requiredText(36, 'Cần đơn vị tính cơ sở'),
+    inventoryUomId: requiredText(36, 'Cần đơn vị tính tồn kho'),
     defaultOwnerId: optionalText(36),
     lotControlled: z.boolean().optional().default(false),
     expiryControlled: z.boolean().optional().default(false),
@@ -74,35 +74,35 @@ export const skuFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['defaultOwnerId'],
-        message: 'Default owner is required when owner controlled',
+        message: 'Cần chủ hàng mặc định khi bật kiểm soát chủ hàng',
       });
     }
     if (values.expiryControlled && !(values.shelfLifeDays && values.shelfLifeDays > 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['shelfLifeDays'],
-        message: 'Shelf life days must be greater than 0 when expiry controlled',
+        message: 'Số ngày hạn dùng phải lớn hơn 0 khi bật kiểm soát hạn dùng',
       });
     }
     if (values.temperatureControlled && !values.temperatureClass) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['temperatureClass'],
-        message: 'Temperature class is required when temperature controlled',
+        message: 'Cần nhóm nhiệt độ khi bật kiểm soát nhiệt độ',
       });
     }
     if (values.dgControlled && !values.dgClass) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['dgClass'],
-        message: 'DG class is required when DG controlled',
+        message: 'Cần nhóm hàng nguy hiểm khi bật kiểm soát hàng nguy hiểm',
       });
     }
     if (values.customsControlled && !values.bondedFlag) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['bondedFlag'],
-        message: 'Bonded flag must be true when customs controlled',
+        message: 'Cần bật cờ kho ngoại quan khi bật kiểm soát hải quan',
       });
     }
   });
@@ -111,10 +111,10 @@ export const skuFormSchema = z
 
 export const skuBarcodeFormSchema = z
   .object({
-    skuId: requiredText(36, 'SKU is required'),
-    uomId: requiredText(36, 'UOM is required'),
-    barcodeValue: requiredText(120, 'Barcode value is required'),
-    barcodeType: requiredText(30, 'Barcode type is required'),
+    skuId: requiredText(36, 'Cần SKU'),
+    uomId: requiredText(36, 'Cần đơn vị tính'),
+    barcodeValue: requiredText(120, 'Cần giá trị mã vạch'),
+    barcodeType: requiredText(30, 'Cần loại mã vạch'),
     status: masterDataStatusSchema,
     ownerId: optionalText(36),
     packCode: optionalText(50),
@@ -128,7 +128,7 @@ export const skuBarcodeFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['effectiveTo'],
-        message: 'Effective to must be greater than or equal to Effective from',
+        message: 'Ngày hiệu lực đến phải lớn hơn hoặc bằng ngày hiệu lực từ',
       });
     }
   });
@@ -136,11 +136,11 @@ export const skuBarcodeFormSchema = z
 // ── PackDefinition ───────────────────────────────────────────────────────────
 
 export const packDefinitionFormSchema = z.object({
-  skuId: requiredText(36, 'SKU is required'),
-  packCode: requiredText(50, 'Pack code is required'),
-  packName: requiredText(255, 'Pack name is required'),
-  uomId: requiredText(36, 'UOM is required'),
-  quantityPerPack: z.coerce.number().min(0.000001, 'Quantity per pack must be greater than 0'),
+  skuId: requiredText(36, 'Cần SKU'),
+  packCode: requiredText(50, 'Cần mã quy cách đóng gói'),
+  packName: requiredText(255, 'Cần tên quy cách đóng gói'),
+  uomId: requiredText(36, 'Cần đơn vị tính'),
+  quantityPerPack: z.coerce.number().min(0.000001, 'Số lượng mỗi quy cách phải lớn hơn 0'),
   status: masterDataStatusSchema,
   isDefault: z.boolean().optional().default(false),
   reasonCode: optionalText(64),
@@ -150,11 +150,11 @@ export const packDefinitionFormSchema = z.object({
 
 export const uomConversionFormSchema = z
   .object({
-    skuId: requiredText(36, 'SKU is required'),
-    fromUomId: requiredText(36, 'From UOM is required'),
-    toUomId: requiredText(36, 'To UOM is required'),
-    factor: z.coerce.number().min(0.000001, 'Factor must be greater than 0'),
-    effectiveFrom: requiredText(40, 'Effective from is required'),
+    skuId: requiredText(36, 'Cần SKU'),
+    fromUomId: requiredText(36, 'Cần đơn vị tính nguồn'),
+    toUomId: requiredText(36, 'Cần đơn vị tính đích'),
+    factor: z.coerce.number().min(0.000001, 'Hệ số quy đổi phải lớn hơn 0'),
+    effectiveFrom: requiredText(40, 'Cần ngày hiệu lực từ'),
     status: masterDataStatusSchema,
     effectiveTo: optionalText(40),
     reasonCode: optionalText(64),
@@ -164,7 +164,7 @@ export const uomConversionFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['toUomId'],
-        message: 'From and To UOM must differ',
+        message: 'Đơn vị tính nguồn và đích phải khác nhau',
       });
     }
   });
@@ -178,8 +178,8 @@ const optionalNonNegativeNumber = z.preprocess(
 
 export const itemCoverageFormSchema = z
   .object({
-    skuId: requiredText(36, 'SKU is required'),
-    warehouseId: requiredText(36, 'Warehouse is required'),
+    skuId: requiredText(36, 'Cần SKU'),
+    warehouseId: requiredText(36, 'Cần kho'),
     status: masterDataStatusSchema,
     ownerId: optionalText(36),
     minQty: optionalNonNegativeNumber,
@@ -199,14 +199,14 @@ export const itemCoverageFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['maxQty'],
-        message: 'Max quantity must be greater than or equal to Min quantity',
+        message: 'Số lượng tối đa phải lớn hơn hoặc bằng số lượng tối thiểu',
       });
     }
     if (values.multipleQty !== undefined && values.multipleQty <= 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['multipleQty'],
-        message: 'Multiple quantity must be greater than 0',
+        message: 'Bội số đặt hàng phải lớn hơn 0',
       });
     }
   });

@@ -29,13 +29,15 @@ export class ErrorBoundary extends Component<
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-          <h1 className="text-2xl font-semibold">Something went wrong</h1>
-          <p className="text-muted-foreground">{this.state.error?.message}</p>
+          <h1 className="text-2xl font-semibold">Đã xảy ra lỗi</h1>
+          <p className="text-muted-foreground">
+            Vui lòng tải lại ứng dụng hoặc liên hệ hỗ trợ nếu lỗi tiếp diễn.
+          </p>
           <button
             className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm"
             onClick={() => window.location.reload()}
           >
-            Reload application
+            Tải lại ứng dụng
           </button>
         </div>
       );

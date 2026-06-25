@@ -56,7 +56,7 @@ axiosInstance.interceptors.response.use(
   async (error: unknown) => {
     if (!axios.isAxiosError(error)) {
       return Promise.reject(
-        new ApiError({ status: 0, code: 'NETWORK_ERROR', message: 'Network error' }),
+        new ApiError({ status: 0, code: 'NETWORK_ERROR', message: 'Lỗi kết nối mạng' }),
       );
     }
 

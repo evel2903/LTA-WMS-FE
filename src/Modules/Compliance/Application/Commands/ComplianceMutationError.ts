@@ -4,7 +4,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 export function toMutationErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error && error.message) return error.message;
-  return 'Unable to complete the action. Please try again.';
+  return 'Không thể hoàn tất thao tác. Vui lòng thử lại.';
 }
 
 /** 409 CONFLICT — surfaced inline as a distinct state. */

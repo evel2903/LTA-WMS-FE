@@ -17,10 +17,10 @@ const optionalText = (max: number) =>
  */
 export const warehouseProfileFormSchema = z
   .object({
-    profileCode: requiredText(80, 'Profile code is required'),
-    profileName: requiredText(255, 'Profile name is required'),
-    warehouseTypeCode: requiredText(50, 'Warehouse type code is required'),
-    effectiveFrom: requiredText(40, 'Effective from is required'),
+    profileCode: requiredText(80, 'Cần mã hồ sơ'),
+    profileName: requiredText(255, 'Cần tên hồ sơ'),
+    warehouseTypeCode: requiredText(50, 'Cần mã loại kho'),
+    effectiveFrom: requiredText(40, 'Cần ngày hiệu lực từ'),
     effectiveTo: optionalText(40),
     // Six V0 configuration axes (architecture 5.3).
     warehouseId: optionalText(36),
@@ -38,7 +38,7 @@ export const warehouseProfileFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['effectiveTo'],
-        message: 'Effective to must be after effective from',
+        message: 'Ngày hiệu lực đến phải sau ngày hiệu lực từ',
       });
     }
   });
@@ -56,14 +56,14 @@ export const assignmentFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['warehouseId'],
-        message: 'Warehouse is required for a warehouse assignment',
+        message: 'Cần kho khi gán theo kho',
       });
     }
     if (values.assignmentType === 'WAREHOUSE_TYPE' && !values.warehouseTypeCode) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['warehouseTypeCode'],
-        message: 'Warehouse type code is required for a warehouse-type assignment',
+        message: 'Cần mã loại kho khi gán theo loại kho',
       });
     }
   });
@@ -76,7 +76,7 @@ export type AssignmentFormValues = z.infer<typeof assignmentFormSchema>;
  * self-check resolves by scope only (contract divergence — see Dev Notes).
  */
 export const previewContextFormSchema = z.object({
-  warehouseTypeCode: requiredText(50, 'Warehouse type code is required'),
+  warehouseTypeCode: requiredText(50, 'Cần mã loại kho'),
   warehouseId: optionalText(36),
   zoneId: optionalText(36),
   locationType: optionalText(50),

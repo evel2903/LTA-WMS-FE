@@ -12,17 +12,17 @@ export const partnerTypeSchema = z.enum(['Supplier', 'Customer', 'Carrier']);
 export const partnerStatusSchema = z.enum(['Active', 'Inactive']);
 
 export const partnerFormSchema = z.object({
-  partnerCode: requiredText(50, 'Partner code is required'),
-  partnerName: requiredText(255, 'Partner name is required'),
+  partnerCode: requiredText(50, 'Cần mã đối tác'),
+  partnerName: requiredText(255, 'Cần tên đối tác'),
   partnerType: partnerTypeSchema,
   status: partnerStatusSchema,
-  sourceSystem: requiredText(100, 'Source system is required'),
-  externalReference: requiredText(100, 'External reference is required'),
+  sourceSystem: requiredText(100, 'Cần hệ thống nguồn'),
+  externalReference: requiredText(100, 'Cần mã tham chiếu ngoài'),
   referenceText: optionalText(255),
 });
 
 export const partnerDeactivateSchema = z.object({
-  reasonCode: requiredText(64, 'Reason code is required'),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export type PartnerFormValues = z.infer<typeof partnerFormSchema>;
