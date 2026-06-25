@@ -194,7 +194,7 @@ export function SiteLocationTreePage() {
       locationProfiles={locationProfiles}
       canCreate={!apiError?.isForbidden}
       canEdit={!apiError?.isForbidden}
-      errorMessage={apiError?.message ?? (treeQuery.error ? 'Unable to load master data.' : undefined)}
+      errorMessage={apiError?.message ?? (treeQuery.error ? 'Không thể tải dữ liệu master.' : undefined)}
       formPanel={
         state === 'ready' || state === 'empty' ? (
           <FormPanel selectedNode={selectedNode} locationProfiles={locationProfiles} canEdit={!apiError?.isForbidden} />

@@ -10,9 +10,9 @@ export const MASTER_DATA_STATUSES: readonly MasterDataStatus[] = ['Active', 'Ina
 
 /** Entity-specific empty-state copy per AC5 ("No SKUs/Owners/UOMs yet."). */
 export const CATALOG_EMPTY_LABELS = {
-  owners: 'No Owners yet.',
-  uoms: 'No UOMs yet.',
-  skus: 'No SKUs yet.',
+  owners: 'Chưa có chủ hàng.',
+  uoms: 'Chưa có đơn vị tính.',
+  skus: 'Chưa có SKU.',
 } as const;
 
 export interface SkuControlFlag {
@@ -21,13 +21,13 @@ export interface SkuControlFlag {
 }
 
 export const SKU_CONTROL_FLAGS: readonly SkuControlFlag[] = [
-  { key: 'lotControlled', label: 'Lot controlled' },
-  { key: 'expiryControlled', label: 'Expiry controlled' },
-  { key: 'serialControlled', label: 'Serial controlled' },
-  { key: 'ownerControlled', label: 'Owner controlled' },
-  { key: 'lpnControlled', label: 'LPN controlled' },
-  { key: 'temperatureControlled', label: 'Temperature controlled' },
-  { key: 'dgControlled', label: 'DG controlled' },
-  { key: 'customsControlled', label: 'Customs controlled' },
-  { key: 'qcRequired', label: 'QC required' },
+  { key: 'lotControlled', label: 'Kiểm soát lô' },
+  { key: 'expiryControlled', label: 'Kiểm soát hạn dùng' },
+  { key: 'serialControlled', label: 'Kiểm soát serial' },
+  { key: 'ownerControlled', label: 'Kiểm soát chủ hàng' },
+  { key: 'lpnControlled', label: 'Kiểm soát LPN' },
+  { key: 'temperatureControlled', label: 'Kiểm soát nhiệt độ' },
+  { key: 'dgControlled', label: 'Kiểm soát hàng nguy hiểm' },
+  { key: 'customsControlled', label: 'Kiểm soát hải quan' },
+  { key: 'qcRequired', label: 'Yêu cầu QC' },
 ];

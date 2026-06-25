@@ -18,7 +18,7 @@ export function InventoryDetailPage() {
   const { data: item, isLoading } = useInventoryItem(id);
 
   if (isLoading) return <PageSpinner />;
-  if (!item) return <p className="text-muted-foreground">Item not found.</p>;
+  if (!item) return <p className="text-muted-foreground">Không tìm thấy tồn kho.</p>;
 
   return (
     <div className="space-y-6">
@@ -37,9 +37,9 @@ export function InventoryDetailPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4 text-sm">
             <Field label="SKU" value={item.sku} />
-            <Field label="Location" value={item.locationCode} />
-            <Field label="On hand" value={String(item.quantityOnHand)} />
-            <Field label="Reserved" value={String(item.quantityReserved)} />
+            <Field label="Vị trí" value={item.locationCode} />
+            <Field label="Tồn hiện có" value={String(item.quantityOnHand)} />
+            <Field label="Đã giữ chỗ" value={String(item.quantityReserved)} />
             <Field label="Khả dụng" value={String(availableQuantity(item))} />
             <Field label="Đơn vị" value={item.unitOfMeasure} />
           </CardContent>

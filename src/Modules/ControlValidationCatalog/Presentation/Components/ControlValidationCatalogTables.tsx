@@ -117,24 +117,24 @@ function ValidationRulesTable({
                   {linkedException ? (
                     <ControlSeverityBadge severity={linkedException.severity} />
                   ) : (
-                    <span className="text-muted-foreground">n/a</span>
+                    <span className="text-muted-foreground">Không áp dụng</span>
                   )}
                 </TableCell>
                 <TableCell>
                   {linkedException ? (
                     <ControlDefaultStateBadge state={linkedException.defaultState} />
                   ) : (
-                    <span className="text-muted-foreground">n/a</span>
+                    <span className="text-muted-foreground">Không áp dụng</span>
                   )}
                 </TableCell>
                 <TableCell>
                   {linkedException ? (
                     <BooleanRequirement
                       value={linkedException.evidenceRequired}
-                      label={`${item.code} evidence`}
+                      label={`${item.code} bằng chứng`}
                     />
                   ) : (
-                    <span className="text-muted-foreground">n/a</span>
+                    <span className="text-muted-foreground">Không áp dụng</span>
                   )}
                 </TableCell>
                 <TableCell className="text-xs">{item.ownerModule}</TableCell>
@@ -183,7 +183,7 @@ function ControlExceptionsTable({ catalog }: { catalog: ControlValidationCatalog
                 <ControlDefaultStateBadge state={item.defaultState} />
               </TableCell>
               <TableCell>
-                <BooleanRequirement value={item.evidenceRequired} label={`${item.code} evidence`} />
+                <BooleanRequirement value={item.evidenceRequired} label={`${item.code} bằng chứng`} />
               </TableCell>
               <TableCell className="text-xs">{valueOrNa(item.actionAllowed)}</TableCell>
               <TableCell>
@@ -228,8 +228,8 @@ export function ControlValidationCatalogTables({
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          Read-only C8 seed projection. Linked severity/default/evidence on validation rules comes
-          from the mapped CTRL-EX item when one exists.
+          Bản chiếu chỉ đọc từ dữ liệu khởi tạo C8. Mức độ, trạng thái mặc định và bằng chứng liên kết trên
+          quy tắc xác thực được lấy từ CTRL-EX tương ứng khi có cấu hình.
         </p>
       </CardHeader>
       <CardContent>

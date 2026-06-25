@@ -15,7 +15,7 @@ export function mergeSelectedOption(
   currentId?: string | null,
 ): SelectOption[] {
   if (currentId && !options.some((option) => option.value === currentId)) {
-    return [{ value: currentId, label: `${currentId} (unavailable)` }, ...options];
+    return [{ value: currentId, label: `${currentId} (không khả dụng)` }, ...options];
   }
   return options;
 }

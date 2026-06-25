@@ -4,7 +4,7 @@ import { cn } from '@shared/Utils/Cn';
 
 /** Inline loading indicator used for buttons, tables, and route fallbacks. */
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cn('size-4 animate-spin', className)} aria-label="Loading" />;
+  return <Loader2 className={cn('size-4 animate-spin', className)} aria-label="Đang tải" />;
 }
 
 export function PageSpinner() {

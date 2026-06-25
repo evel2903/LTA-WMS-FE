@@ -39,10 +39,11 @@ export class ApiError extends Error {
   /** Build from the backend error envelope (or fall back by HTTP status). */
   static fromBody(status: number, body?: Partial<ApiErrorBody>): ApiError {
     const first = body?.Errors?.[0];
+    const message = first?.Message?.trim();
     return new ApiError({
       status,
       code: first?.Code ?? STATUS_TO_CODE[status] ?? 'UNKNOWN',
-      message: first?.Message ?? 'An unexpected error occurred.',
+      message: message || 'Đã xảy ra lỗi không mong muốn.',
       details: first?.Details,
     });
   }

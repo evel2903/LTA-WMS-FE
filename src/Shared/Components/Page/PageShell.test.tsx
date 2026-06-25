@@ -112,13 +112,13 @@ describe('Page shell components', () => {
 
   it('renders read-only page boundary with content visible', () => {
     render(
-      <PageStateBoundary state="readOnly" title="Read-only boundary" message="Actions are disabled.">
+      <PageStateBoundary state="readOnly" title="Ranh giới chỉ đọc" message="Các thao tác đã bị tắt.">
         Visible read-only content
       </PageStateBoundary>,
     );
 
     expect(screen.getByRole('status')).toBeTruthy();
-    expect(screen.getByText('Read-only boundary')).toBeTruthy();
+    expect(screen.getByText('Ranh giới chỉ đọc')).toBeTruthy();
     expect(screen.getByText('Visible read-only content')).toBeTruthy();
   });
 
@@ -163,10 +163,10 @@ describe('Page shell components', () => {
     render(
       <ActionPanel
         title="Approve partner"
-        description="Review audit reason before approving."
+        description="Kiểm tra lý do kiểm toán trước khi phê duyệt."
         state="pending"
-        stateTitle="Submitting"
-        stateMessage="Approval request is being sent."
+        stateTitle="Đang gửi"
+        stateMessage="Yêu cầu phê duyệt đang được gửi."
         governanceState="approvalRequired"
         footer={<button type="button">Submit approval</button>}
       >
@@ -175,10 +175,10 @@ describe('Page shell components', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Approve partner' })).toBeTruthy();
-    expect(screen.getByText('Review audit reason before approving.')).toBeTruthy();
-    expect(screen.getByText('Submitting')).toBeTruthy();
-    expect(screen.getByText('Approval request is being sent.')).toBeTruthy();
-    expect(screen.getByText('Approval required')).toBeTruthy();
+    expect(screen.getByText('Kiểm tra lý do kiểm toán trước khi phê duyệt.')).toBeTruthy();
+    expect(screen.getByText('Đang gửi')).toBeTruthy();
+    expect(screen.getByText('Yêu cầu phê duyệt đang được gửi.')).toBeTruthy();
+    expect(screen.getByText('Cần phê duyệt')).toBeTruthy();
     expect(screen.getByText('Reason')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Submit approval' })).toBeTruthy();
   });
@@ -188,22 +188,22 @@ describe('Page shell components', () => {
       <ActionPanel
         title="Cancel receipt"
         state="disabled"
-        stateMessage="Receipt is already closed."
+        stateMessage="Phiếu nhận hàng đã đóng."
         footer={<button type="button">Confirm cancel</button>}
       />,
     );
 
-    expect(screen.getByText('Action disabled')).toBeTruthy();
-    expect(screen.getByText('Receipt is already closed.')).toBeTruthy();
+    expect(screen.getByText('Thao tác bị tắt')).toBeTruthy();
+    expect(screen.getByText('Phiếu nhận hàng đã đóng.')).toBeTruthy();
     expect(screen.getByRole('group').hasAttribute('disabled')).toBe(true);
 
     rerender(
-      <ActionPanel title="Cancel receipt" state="error" stateMessage="Audit reason is required." />,
+      <ActionPanel title="Hủy phiếu nhận hàng" state="error" stateMessage="Cần lý do kiểm toán." />,
     );
 
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.getByText('Action failed')).toBeTruthy();
-    expect(screen.getByText('Audit reason is required.')).toBeTruthy();
+    expect(screen.getByText('Thao tác thất bại')).toBeTruthy();
+    expect(screen.getByText('Cần lý do kiểm toán.')).toBeTruthy();
   });
 
   it('keeps read-only detail content visible while hiding action slots', () => {
@@ -219,7 +219,7 @@ describe('Page shell components', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Read-only mode')).toBeTruthy();
+    expect(screen.getByText('Chế độ chỉ đọc')).toBeTruthy();
     expect(screen.getByText('Receipt details stay visible.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Edit receipt' })).toBeNull();
   });
@@ -237,7 +237,7 @@ describe('Page shell components', () => {
       </ListPageShell>,
     );
 
-    expect(screen.getByText('Permission required')).toBeTruthy();
+    expect(screen.getByText('Cần quyền truy cập')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Create inbound' })).toBeNull();
     expect(screen.queryByText('Search inbound')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();

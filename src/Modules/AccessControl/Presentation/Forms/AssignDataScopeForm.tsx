@@ -65,9 +65,9 @@ export function AssignDataScopeForm({
       </div>
       {!includeAll && (
         <div className="grid grid-cols-2 gap-2">
-          <label className="grid gap-1 text-sm">Mã giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueCode')} placeholder="e.g. WH-01" />
+          <label className="grid gap-1 text-sm">Mã giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueCode')} placeholder="Ví dụ: WH-01" />
           </label>
-          <label className="grid gap-1 text-sm">ID giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueId')} placeholder="UUID (optional)" />
+          <label className="grid gap-1 text-sm">ID giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueId')} placeholder="UUID (không bắt buộc)" />
           </label>
         </div>
       )}

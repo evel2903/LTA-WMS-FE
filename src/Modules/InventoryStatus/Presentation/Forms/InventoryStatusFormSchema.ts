@@ -11,9 +11,9 @@ export const inventoryStatusFormSchema = z.object({
   hold: z.boolean(),
   isTerminal: z.boolean(),
   isMilestone: z.boolean(),
-  sortOrder: z.coerce.number().int('Sort order must be a whole number').min(0, 'Sort order must be ≥ 0'),
+  sortOrder: z.coerce.number().int('Thứ tự sắp xếp phải là số nguyên').min(0, 'Thứ tự sắp xếp phải >= 0'),
   status: z.enum(['Active', 'Inactive']),
-  reasonCode: z.string().trim().min(1, 'Reason code is required').max(60),
+  reasonCode: z.string().trim().min(1, 'Cần mã lý do').max(60),
 });
 
 export type InventoryStatusFormValues = z.infer<typeof inventoryStatusFormSchema>;

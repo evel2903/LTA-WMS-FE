@@ -31,26 +31,26 @@ const actionStateDefaults: Record<
   }
 > = {
   pending: {
-    title: 'Action pending',
-    message: 'The action is being processed.',
+    title: 'Đang xử lý thao tác',
+    message: 'Thao tác đang được xử lý.',
     role: 'status',
     className: 'border-blue-300 bg-blue-50 text-blue-950',
   },
   error: {
-    title: 'Action failed',
-    message: 'Review the error and retry when the workflow allows it.',
+    title: 'Thao tác thất bại',
+    message: 'Kiểm tra lỗi và thử lại khi quy trình cho phép.',
     role: 'alert',
     className: 'border-destructive/35 bg-destructive/10 text-destructive',
   },
   success: {
-    title: 'Action completed',
-    message: 'The action completed successfully.',
+    title: 'Thao tác hoàn tất',
+    message: 'Thao tác đã hoàn tất thành công.',
     role: 'status',
     className: 'border-emerald-300 bg-emerald-50 text-emerald-950',
   },
   disabled: {
-    title: 'Action disabled',
-    message: 'This action is not available in the current state.',
+    title: 'Thao tác bị tắt',
+    message: 'Thao tác này không khả dụng ở trạng thái hiện tại.',
     role: 'status',
     className: 'border-border bg-muted text-foreground',
   },

@@ -20,7 +20,7 @@ describe('toMutationErrorMessage', () => {
 
   it('falls back to a generic message for non-ApiError failures', () => {
     expect(toMutationErrorMessage(new Error('boom'))).toBe('boom');
-    expect(toMutationErrorMessage(undefined)).toBe('Unable to save changes. Please try again.');
+    expect(toMutationErrorMessage(undefined)).toBe('Không thể lưu thay đổi. Vui lòng thử lại.');
   });
 });
 

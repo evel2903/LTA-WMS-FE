@@ -3,7 +3,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 export function toMutationErrorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error && error.message) return error.message;
-  return 'Unable to save changes. Please try again.';
+  return 'Không thể lưu thay đổi. Vui lòng thử lại.';
 }
 
 /** 403 FORBIDDEN — demotes the form to read-only (no toast). */

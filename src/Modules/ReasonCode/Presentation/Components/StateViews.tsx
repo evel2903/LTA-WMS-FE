@@ -35,7 +35,7 @@ export function ReasonCodeStateView({ state, emptyLabel, errorMessage }: StateVi
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Loading…</CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải…</CardContent>
       </Card>
     );
   }

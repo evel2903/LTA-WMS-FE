@@ -15,7 +15,7 @@ describe('toMutationErrorMessage', () => {
 
   it('falls back to a generic message for unknown errors', () => {
     expect(toMutationErrorMessage(new Error('boom'))).toBe('boom');
-    expect(toMutationErrorMessage(undefined)).toBe('Unable to save changes. Please try again.');
-    expect(toMutationErrorMessage('weird')).toBe('Unable to save changes. Please try again.');
+    expect(toMutationErrorMessage(undefined)).toBe('Không thể lưu thay đổi. Vui lòng thử lại.');
+    expect(toMutationErrorMessage('weird')).toBe('Không thể lưu thay đổi. Vui lòng thử lại.');
   });
 });

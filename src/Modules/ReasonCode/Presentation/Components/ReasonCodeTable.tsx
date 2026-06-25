@@ -49,7 +49,7 @@ export function ReasonCodeTable({ items, selectedId, onSelect }: ReasonCodeTable
               <Badge variant={item.status === 'ACTIVE' ? 'success' : 'outline'}>{item.status}</Badge>
             </TableCell>
             <TableCell className="tabular-nums">{item.version}</TableCell>
-            <TableCell>{item.evidenceRequired ? 'Required' : '—'}</TableCell>
+            <TableCell>{item.evidenceRequired ? 'Bắt buộc' : '—'}</TableCell>
           </TableRow>
         ))}
       </TableBody>

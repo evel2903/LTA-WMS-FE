@@ -31,10 +31,10 @@ export function ControlDefaultStateBadge({ state }: { state: ControlExceptionDef
 export function BooleanRequirement({ value, label }: { value: boolean; label: string }) {
   return (
     <span
-      aria-label={`${label}: ${value ? 'required' : 'optional'}`}
+      aria-label={`${label}: ${value ? 'bắt buộc' : 'không bắt buộc'}`}
       className={value ? 'font-medium' : 'text-muted-foreground'}
     >
-      {value ? 'Required' : 'Optional'}
+      {value ? 'Bắt buộc' : 'Không bắt buộc'}
     </span>
   );
 }
