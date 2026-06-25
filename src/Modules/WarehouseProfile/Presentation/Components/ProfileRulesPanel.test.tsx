@@ -75,7 +75,7 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
     expect(html).toContain('COMP-001');
     expect(html).toContain('No hazmat in ambient');
     // A detach control exists for the attached rule.
-    expect(html).toContain('Remove');
+    expect(html).toContain('Gỡ bỏ');
   });
 
   it('renders an attach control offering only rules NOT already attached', () => {
@@ -93,7 +93,7 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
     // The not-yet-attached rule is offered as an option...
     expect(html).toContain('INT-002');
     // ...and the attach button is present.
-    expect(html).toContain('Add rule');
+    expect(html).toContain('Thêm quy tắc');
     // The already-attached rule must NOT appear as a selectable <option>.
     expect(html).not.toContain('<option value="rule-1"');
   });
@@ -107,7 +107,7 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
         onRemove={() => undefined}
       />,
     );
-    expect(html).toContain('No rules attached');
+    expect(html).toContain('Chưa gắn quy tắc nào.');
   });
 
   it('disables the attach + remove controls when read-only', () => {

@@ -45,8 +45,8 @@ function renderEntityDetails(node: SiteLocationTree) {
           <DetailRow label="Name" value={node.entity.locationName} />
           <DetailRow label="Type" value={node.entity.locationType} />
           <DetailRow label="Profile" value={node.entity.locationProfileId} />
-          <DetailRow label="Capacity qty" value={node.entity.capacityQty} />
-          <DetailRow label="Mix SKU" value={node.entity.mixSkuPolicy} />
+          <DetailRow label="Sức chứa" value={node.entity.capacityQty} />
+          <DetailRow label="Trộn SKU" value={node.entity.mixSkuPolicy} />
         </>
       );
     default:
@@ -71,9 +71,7 @@ export function SiteLocationDetailPanel({
         <CardHeader>
           <CardTitle className="text-base">Detail</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          Select a site, warehouse, zone, or location to view details.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Chọn site, kho, khu vực hoặc vị trí để xem chi tiết.</CardContent>
       </Card>
     );
   }
@@ -91,7 +89,7 @@ export function SiteLocationDetailPanel({
           <div className="text-muted-foreground mt-1 text-xs uppercase">{selectedNode.type}</div>
         </div>
         <div className="flex items-center gap-2">
-          {!canEdit && <span className="text-muted-foreground text-xs font-medium">Read only</span>}
+          {!canEdit && <span className="text-muted-foreground text-xs font-medium">Chỉ đọc</span>}
           <MasterDataStatusBadge status={selectedNode.status} />
         </div>
       </CardHeader>
@@ -99,12 +97,12 @@ export function SiteLocationDetailPanel({
         <div className="space-y-2">
           <DetailRow label="ID" value={selectedNode.entity.id} />
           {renderEntityDetails(selectedNode)}
-          <DetailRow label="Updated at" value={selectedNode.entity.updatedAt} />
+          <DetailRow label="Cập nhật lúc" value={selectedNode.entity.updatedAt} />
         </div>
 
         {selectedNode.type === 'location' && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold">Profile / Constraints</h2>
+            <h2 className="text-sm font-semibold">Hồ sơ / Ràng buộc</h2>
             <LocationProfileConstraintsPanel
               profile={profile}
               profileId={selectedNode.entity.locationProfileId}

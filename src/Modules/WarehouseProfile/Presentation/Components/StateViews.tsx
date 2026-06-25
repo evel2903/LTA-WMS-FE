@@ -20,11 +20,9 @@ export function ProfileStateView({ state, emptyLabel, errorMessage }: ProfileSta
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permission denied</CardTitle>
+          <CardTitle className="text-base">Không có quyền</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          You do not have permission to view this resource for the current scope.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem tài nguyên này trong phạm vi hiện tại.</CardContent>
       </Card>
     );
   }
@@ -33,10 +31,10 @@ export function ProfileStateView({ state, emptyLabel, errorMessage }: ProfileSta
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Something went wrong</CardTitle>
+          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
         </CardHeader>
         <CardContent className="text-destructive text-sm">
-          {errorMessage ?? 'An unexpected API error occurred.'}
+          {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
         </CardContent>
       </Card>
     );
@@ -45,7 +43,7 @@ export function ProfileStateView({ state, emptyLabel, errorMessage }: ProfileSta
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Loading…</CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải...</CardContent>
       </Card>
     );
   }
@@ -53,7 +51,7 @@ export function ProfileStateView({ state, emptyLabel, errorMessage }: ProfileSta
   return (
     <Card>
       <CardContent className="text-muted-foreground py-10 text-sm">
-        {emptyLabel ?? 'No records yet.'}
+        {emptyLabel ?? 'Chưa có bản ghi.'}
       </CardContent>
     </Card>
   );

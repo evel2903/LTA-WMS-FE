@@ -37,26 +37,26 @@ export function LocationProfileDetailPage({ mode }: LocationProfileDetailPagePro
   const profile = detailQuery.data;
 
   if (!isCreate && detailQuery.isLoading) {
-    return <DetailPageShell title="Location profile detail" state="loading" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
+    return <DetailPageShell title="Chi tiết hồ sơ vị trí" state="loading" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="Location profile detail" state="forbidden" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
+    return <DetailPageShell title="Chi tiết hồ sơ vị trí" state="forbidden" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
   }
 
   if (!isCreate && detailQuery.error) {
     return (
       <DetailPageShell
-        title="Location profile detail"
+        title="Chi tiết hồ sơ vị trí"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load location profile.'}
+        stateMessage={apiError?.message ?? 'Không thể tải hồ sơ vị trí.'}
         backTo={ROUTES.FOUNDATION.LOCATION_PROFILES}
       />
     );
   }
 
   if (!isCreate && !profile) {
-    return <DetailPageShell title="Location profile detail" state="notFound" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
+    return <DetailPageShell title="Chi tiết hồ sơ vị trí" state="notFound" backTo={ROUTES.FOUNDATION.LOCATION_PROFILES} />;
   }
 
   const submitCreate = (values: LocationProfileFormValues) =>
@@ -96,19 +96,19 @@ export function LocationProfileDetailPage({ mode }: LocationProfileDetailPagePro
     );
 
   const existingProfile = profile as NonNullable<typeof profile>;
-  const title = isCreate ? 'Create location profile' : existingProfile.profileCode;
+  const title = isCreate ? 'Tạo hồ sơ vị trí' : existingProfile.profileCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Location policy profile"
+      subtitle="Hồ sơ chính sách vị trí"
       backTo={ROUTES.FOUNDATION.LOCATION_PROFILES}
-      backLabel="Back to location profiles"
+      backLabel="Quay lại hồ sơ vị trí"
       status={!isCreate ? <LocationProfileStatusBadge status={existingProfile.status} /> : null}
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.LOCATION_PROFILE_EDIT(existingProfile.id)}>Edit profile</Link>
+            <Link to={ROUTES.FOUNDATION.LOCATION_PROFILE_EDIT(existingProfile.id)}>Chỉnh sửa hồ sơ</Link>
           </Button>
         ) : null
       }
@@ -116,8 +116,8 @@ export function LocationProfileDetailPage({ mode }: LocationProfileDetailPagePro
     >
       {!isCreate ? <LocationProfileDetailPanel profile={existingProfile} /> : null}
       <ActionPanel
-        title={isCreate ? 'Create location profile' : 'Location profile actions'}
-        description="Create, update and inactivate use the existing master-data audit path."
+        title={isCreate ? 'Tạo hồ sơ vị trí' : 'Hành động hồ sơ vị trí'}
+        description="Tạo, cập nhật và ngưng kích hoạt dùng audit path dữ liệu chủ hiện có."
         state={mutations.create.isPending || mutations.update.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >

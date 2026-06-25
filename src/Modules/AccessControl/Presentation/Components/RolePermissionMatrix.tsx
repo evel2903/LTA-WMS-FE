@@ -23,8 +23,8 @@ export function RolePermissionMatrix({ matrix }: RolePermissionMatrixProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Object</TableHead>
-            <TableHead>Action</TableHead>
+            <TableHead>Đối tượng</TableHead>
+            <TableHead>Hành động</TableHead>
             {CORE_ROLE_CODES.map((role) => (
               <TableHead key={role} className="text-center">
                 {ROLE_LABELS[role]}

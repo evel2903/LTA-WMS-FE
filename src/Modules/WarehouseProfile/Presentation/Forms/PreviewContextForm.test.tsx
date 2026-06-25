@@ -14,13 +14,13 @@ import { PreviewContextForm } from '@modules/WarehouseProfile/Presentation/Forms
 describe('PreviewContextForm structure', () => {
   it('exposes the required warehouse type code axis', () => {
     const html = renderToStaticMarkup(<PreviewContextForm onSubmit={() => undefined} />);
-    expect(html).toContain('Warehouse type code');
+    expect(html).toContain('Mã loại kho');
     expect(html).toContain('name="warehouseTypeCode"');
   });
 
   it('exposes the optional EvaluatedAt axis (AC4 optional field now surfaced)', () => {
     const html = renderToStaticMarkup(<PreviewContextForm onSubmit={() => undefined} />);
-    expect(html).toContain('Evaluated at');
+    expect(html).toContain('Thời điểm đánh giá');
     expect(html).toContain('name="evaluatedAt"');
   });
 
@@ -38,6 +38,6 @@ describe('PreviewContextForm structure', () => {
     );
     // The form mounts with seeded defaults; never surfaces a literal "null".
     expect(html).not.toContain('value="null"');
-    expect(html).toContain('Run preview');
+    expect(html).toContain('Chạy preview');
   });
 });

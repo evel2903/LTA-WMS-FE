@@ -164,11 +164,11 @@ describe('Site & Location Tree components', () => {
     );
 
     expect(html).toContain('A-01-01');
-    expect(html).toContain('Read only');
+    expect(html).toContain('Chỉ đọc');
     expect(html).toContain('BIN-STD');
-    expect(html).toContain('capacity');
-    expect(html).toContain('mix');
-    expect(html).toContain('operation');
+    expect(html).toContain('chính sách sức chứa');
+    expect(html).toContain('chính sách trộn');
+    expect(html).toContain('chính sách vận hành');
   });
 
   it('maps each status to a distinct badge variant', () => {
@@ -197,10 +197,10 @@ describe('Site & Location Tree components', () => {
 
   it('disables the submit button while a mutation is pending', () => {
     const idle = renderToStaticMarkup(
-      <SiteForm submitLabel="Create Site" onSubmit={() => undefined} />,
+      <SiteForm submitLabel="Tạo site" onSubmit={() => undefined} />,
     );
     const pending = renderToStaticMarkup(
-      <SiteForm submitLabel="Create Site" pending onSubmit={() => undefined} />,
+      <SiteForm submitLabel="Tạo site" pending onSubmit={() => undefined} />,
     );
 
     expect(idle).not.toContain('disabled=""');
@@ -220,7 +220,7 @@ describe('Site & Location Tree components', () => {
           onSelect={() => undefined}
         />,
       ),
-    ).toContain('Loading site and location tree');
+    ).toContain('Đang tải cây site và vị trí');
     expect(
       renderToStaticMarkup(
         <SiteLocationTreePageView
@@ -233,7 +233,7 @@ describe('Site & Location Tree components', () => {
           onSelect={() => undefined}
         />,
       ),
-    ).toContain('Create Site');
+    ).toContain('Tạo site');
     expect(
       renderToStaticMarkup(
         <SiteLocationTreePageView
@@ -260,7 +260,7 @@ describe('Site & Location Tree components', () => {
           onSelect={() => undefined}
         />,
       ),
-    ).toContain('Permission denied');
+    ).toContain('Không có quyền');
   });
 
   it('flags an assigned profile that is not in the active list instead of a generic empty message', () => {
@@ -271,8 +271,8 @@ describe('Site & Location Tree components', () => {
     );
 
     // The location references 'profile-1' but no active profile matches it.
-    expect(html).toContain('not in the active list');
-    expect(html).not.toContain('No matching location profile found');
+    expect(html).toContain('không nằm trong danh sách hoạt động');
+    expect(html).not.toContain('Không tìm thấy hồ sơ vị trí phù hợp');
   });
 
   it('keeps the manage-profile link visible when no active profile exists', () => {
@@ -282,13 +282,13 @@ describe('Site & Location Tree components', () => {
           warehouseId="wh-1"
           zoneId="zone-1"
           locationProfiles={[]}
-          submitLabel="Add Location"
+          submitLabel="Thêm vị trí"
           onSubmit={() => undefined}
         />
       </MemoryRouter>,
     );
 
     expect(html).toContain('/foundation/location-profiles');
-    expect(html).toContain('Manage profiles');
+    expect(html).toContain('Quản lý hồ sơ');
   });
 });

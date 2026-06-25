@@ -14,11 +14,9 @@ export function ApprovalStateView({ state, emptyLabel, errorMessage }: ApprovalS
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permission denied</CardTitle>
+          <CardTitle className="text-base">Không có quyền</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          You do not have permission to view approval requests for the current scope.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem yêu cầu phê duyệt trong phạm vi hiện tại.</CardContent>
       </Card>
     );
   }
@@ -26,10 +24,10 @@ export function ApprovalStateView({ state, emptyLabel, errorMessage }: ApprovalS
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Something went wrong</CardTitle>
+          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
         </CardHeader>
         <CardContent className="text-destructive text-sm">
-          {errorMessage ?? 'An unexpected API error occurred.'}
+          {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
         </CardContent>
       </Card>
     );
@@ -44,7 +42,7 @@ export function ApprovalStateView({ state, emptyLabel, errorMessage }: ApprovalS
   return (
     <Card>
       <CardContent className="text-muted-foreground py-10 text-sm">
-        {emptyLabel ?? 'No records yet.'}
+        {emptyLabel ?? 'Chưa có bản ghi.'}
       </CardContent>
     </Card>
   );

@@ -53,34 +53,24 @@ export function ApprovalDecisionForm({
 
   return (
     <form className="grid gap-2" onSubmit={decide(onApprove)}>
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input disabled={disabled} placeholder="e.g. RC-APPROVE" {...form.register('reasonCode')} />
+      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} placeholder="VD: RC-APPROVE" {...form.register('reasonCode')} />
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Reason note
-        <Input disabled={disabled} {...form.register('reasonNote')} />
+      <label className="grid gap-1 text-sm">Ghi chú lý do<Input disabled={disabled} {...form.register('reasonNote')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Evidence refs (comma-separated)
-        <Input disabled={disabled} {...form.register('evidenceRefs')} />
+      <label className="grid gap-1 text-sm">Tham chiếu bằng chứng (phân tách bằng dấu phẩy)<Input disabled={disabled} {...form.register('evidenceRefs')} />
       </label>
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={disabled || pending}>
-          Approve
-        </Button>
+        <Button type="submit" size="sm" disabled={disabled || pending}>Phê duyệt</Button>
         <Button
           type="button"
           size="sm"
           variant="outline"
           disabled={disabled || pending}
           onClick={decide(onReject)}
-        >
-          Reject
-        </Button>
+        >Từ chối</Button>
         <Blocked message={blocked} />
       </div>
     </form>

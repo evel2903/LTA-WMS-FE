@@ -24,7 +24,7 @@ function resolveState(params: {
 function errorMessage(error: unknown): string | undefined {
   if (!error) return undefined;
   if (error instanceof Error && error.message.trim()) return error.message;
-  return 'Unable to load audit detail.';
+  return 'Không thể tải chi tiết kiểm toán.';
 }
 
 export function AuditLogDetailPage() {
@@ -43,13 +43,31 @@ export function AuditLogDetailPage() {
 
   return (
     <DetailPageShell
-      title={entry?.objectCode ?? entry?.objectType ?? 'Audit Detail'}
-      subtitle="Read-only audit event detail with before/after snapshots."
+      title={entry?.objectCode ?? entry?.objectType ?? 'Chi tiết kiểm toán'}
+      subtitle="Chi tiết sự kiện kiểm toán chỉ đọc với snapshot trước/sau."
       backTo={routeState?.returnTo ?? ROUTES.FOUNDATION.AUDIT}
-      backLabel="Back to audit log"
+      backLabel="Quay lại nhật ký kiểm toán"
       state={state}
-      stateTitle={state === 'error' ? 'Unable to load audit detail' : undefined}
-      stateMessage={state === 'error' ? errorMessage(query.error) : undefined}
+      stateTitle={
+        state === 'forbidden'
+          ? 'Cần quyền truy cập'
+          : state === 'notFound'
+            ? 'Không tìm thấy bản ghi'
+            : state === 'loading'
+              ? 'Đang tải nội dung'
+              : state === 'error'
+                ? 'Không thể tải chi tiết kiểm toán'
+                : undefined
+      }
+      stateMessage={
+        state === 'notFound'
+          ? 'Bản ghi kiểm toán đã chọn không tồn tại hoặc không còn khả dụng.'
+          : state === 'forbidden'
+            ? 'Bạn không có quyền xem bản ghi kiểm toán này.'
+            : state === 'error'
+              ? errorMessage(query.error)
+              : undefined
+      }
       summary={
         entry ? (
           <>

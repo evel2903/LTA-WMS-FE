@@ -15,11 +15,9 @@ export function FoundationOverviewStateView({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permission denied</CardTitle>
+          <CardTitle className="text-base">Không có quyền</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          You do not have permission to view Foundation readiness for the current scope.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem mức sẵn sàng nền tảng trong phạm vi hiện tại.</CardContent>
       </Card>
     );
   }
@@ -27,10 +25,10 @@ export function FoundationOverviewStateView({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Something went wrong</CardTitle>
+          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
         </CardHeader>
         <CardContent className="text-destructive text-sm">
-          {errorMessage ?? 'Unable to load Foundation readiness.'}
+          {errorMessage ?? 'Không thể tải mức sẵn sàng nền tảng.'}
         </CardContent>
       </Card>
     );
@@ -44,9 +42,7 @@ export function FoundationOverviewStateView({
   }
   return (
     <Card>
-      <CardContent className="text-muted-foreground py-10 text-sm">
-        No Foundation data is visible in the current scope.
-      </CardContent>
+      <CardContent className="text-muted-foreground py-10 text-sm">Không có dữ liệu nền tảng nào hiển thị trong phạm vi hiện tại.</CardContent>
     </Card>
   );
 }

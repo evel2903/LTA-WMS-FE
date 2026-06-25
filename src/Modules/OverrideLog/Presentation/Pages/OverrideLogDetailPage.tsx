@@ -25,7 +25,7 @@ function resolveState(params: {
 function errorMessage(error: unknown): string | undefined {
   if (!error) return undefined;
   if (error instanceof Error && error.message.trim()) return error.message;
-  return 'Unable to load override detail.';
+  return 'Không thể tải chi tiết ghi đè.';
 }
 
 export function OverrideLogDetailPage() {
@@ -44,14 +44,32 @@ export function OverrideLogDetailPage() {
 
   return (
     <DetailPageShell
-      title={log?.ruleCode ?? 'Override Detail'}
-      subtitle="Read-only override evidence with reason, approval reference and before/after snapshots."
+      title={log?.ruleCode ?? 'Chi tiết ghi đè'}
+      subtitle="Bằng chứng ghi đè chỉ đọc với lý do, tham chiếu phê duyệt và snapshot trước/sau."
       backTo={routeState?.returnTo ?? ROUTES.FOUNDATION.OVERRIDES}
-      backLabel="Back to override log"
+      backLabel="Quay lại nhật ký ghi đè"
       status={log ? <OverrideControlModeBadge mode={log.controlMode} /> : null}
       state={state}
-      stateTitle={state === 'error' ? 'Unable to load override detail' : undefined}
-      stateMessage={state === 'error' ? errorMessage(query.error) : undefined}
+      stateTitle={
+        state === 'forbidden'
+          ? 'Cần quyền truy cập'
+          : state === 'notFound'
+            ? 'Không tìm thấy bản ghi'
+            : state === 'loading'
+              ? 'Đang tải nội dung'
+              : state === 'error'
+                ? 'Không thể tải chi tiết ghi đè'
+                : undefined
+      }
+      stateMessage={
+        state === 'notFound'
+          ? 'Bản ghi ghi đè đã chọn không tồn tại hoặc không còn khả dụng.'
+          : state === 'forbidden'
+            ? 'Bạn không có quyền xem bản ghi ghi đè này.'
+            : state === 'error'
+              ? errorMessage(query.error)
+              : undefined
+      }
       summary={
         log ? (
           <>

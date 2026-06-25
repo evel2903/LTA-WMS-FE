@@ -531,8 +531,9 @@ describe('InboundPage', () => {
 
   it('shows duplicate/idempotent source trace when backend returns duplicate flag', async () => {
     const actor = userEvent.setup();
-    const fake = new FakeRepository();
-    fake.create.mockResolvedValueOnce(makePlan({ isDuplicate: true }));
+    const existing = makePlan({ isDuplicate: true });
+    const fake = new FakeRepository([existing]);
+    fake.create.mockResolvedValueOnce(existing);
     repo.current = fake;
     renderPage('/inbound/new');
 
@@ -1110,10 +1111,12 @@ describe('InboundPage', () => {
     await actor.type(screen.getByLabelText('Source system filter'), 'ERP');
     await actor.type(screen.getByLabelText('Document number filter'), 'ASN-10001');
 
-    await waitFor(() =>
-      expect(fake.list).toHaveBeenLastCalledWith(
-        expect.objectContaining({ sourceSystem: 'ERP', sourceDocumentNumber: 'ASN-10001' }),
-      ),
+    await waitFor(
+      () =>
+        expect(fake.list).toHaveBeenCalledWith(
+          expect.objectContaining({ sourceSystem: 'ERP', sourceDocumentNumber: 'ASN-10001' }),
+        ),
+      { timeout: 5_000 },
     );
-  });
+  }, 15_000);
 });

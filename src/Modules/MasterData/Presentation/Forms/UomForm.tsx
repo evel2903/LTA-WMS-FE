@@ -42,9 +42,7 @@ export function UomForm({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        UOM code
-        <Input disabled={disabled} {...form.register('uomCode')} />
+      <label className="grid gap-1 text-sm">Mã đơn vị tính<Input disabled={disabled} {...form.register('uomCode')} />
         {form.formState.errors.uomCode && (
           <span className="text-destructive text-xs">{form.formState.errors.uomCode.message}</span>
         )}
@@ -54,35 +52,27 @@ export function UomForm({
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        UOM name
-        <Input disabled={disabled} {...form.register('uomName')} />
+      <label className="grid gap-1 text-sm">Tên đơn vị tính<Input disabled={disabled} {...form.register('uomName')} />
         {form.formState.errors.uomName && (
           <span className="text-destructive text-xs">{form.formState.errors.uomName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        UOM type
-        <Input disabled={disabled} {...form.register('uomType')} />
+      <label className="grid gap-1 text-sm">Loại đơn vị tính<Input disabled={disabled} {...form.register('uomType')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Decimal precision (0-6)
-        <Input type="number" min={0} max={6} disabled={disabled} {...form.register('decimalPrecision')} />
+      <label className="grid gap-1 text-sm">Số lẻ thập phân (0-6)<Input type="number" min={0} max={6} disabled={disabled} {...form.register('decimalPrecision')} />
         {form.formState.errors.decimalPrecision && (
           <span className="text-destructive text-xs">
             {form.formState.errors.decimalPrecision.message}
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select
+      <label className="grid gap-1 text-sm">Trạng thái<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('status')}
         >
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>

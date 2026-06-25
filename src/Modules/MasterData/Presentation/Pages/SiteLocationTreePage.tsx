@@ -71,13 +71,13 @@ function FormPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Configuration Form</CardTitle>
+        <CardTitle className="text-base">Biểu mẫu cấu hình</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-2">
         {!selectedNode && (
           <SiteForm
             key={`create-site-${createNonce}`}
-            submitLabel="Create Site"
+            submitLabel="Tạo site"
             disabled={!canEdit}
             pending={mutations.createSite.isPending}
             onSubmit={(values) => mutations.createSite.mutate(values, { onSuccess: onCreated })}
@@ -88,7 +88,7 @@ function FormPanel({
             <SiteForm
               key={`site-${site.id}`}
               initialValue={site}
-              submitLabel="Update Site"
+              submitLabel="Cập nhật site"
               disabled={!canEdit}
               pending={mutations.updateSite.isPending}
               onSubmit={(values) => mutations.updateSite.mutate({ id: site.id, input: values })}
@@ -96,7 +96,7 @@ function FormPanel({
             <WarehouseForm
               key={`create-warehouse-${site.id}-${createNonce}`}
               siteId={site.id}
-              submitLabel="Add Warehouse"
+              submitLabel="Thêm kho"
               disabled={!canEdit}
               pending={mutations.createWarehouse.isPending}
               onSubmit={(values) =>
@@ -110,7 +110,7 @@ function FormPanel({
             <WarehouseForm
               key={`warehouse-${warehouse.id}`}
               initialValue={warehouse}
-              submitLabel="Update Warehouse"
+              submitLabel="Cập nhật kho"
               disabled={!canEdit}
               pending={mutations.updateWarehouse.isPending}
               onSubmit={(values) => mutations.updateWarehouse.mutate({ id: warehouse.id, input: values })}
@@ -118,7 +118,7 @@ function FormPanel({
             <ZoneForm
               key={`create-zone-${warehouse.id}-${createNonce}`}
               warehouseId={warehouse.id}
-              submitLabel="Add Zone"
+              submitLabel="Thêm khu vực"
               disabled={!canEdit}
               pending={mutations.createZone.isPending}
               onSubmit={(values) => mutations.createZone.mutate(values, { onSuccess: onCreated })}
@@ -130,7 +130,7 @@ function FormPanel({
             <ZoneForm
               key={`zone-${zone.id}`}
               initialValue={zone}
-              submitLabel="Update Zone"
+              submitLabel="Cập nhật khu vực"
               disabled={!canEdit}
               pending={mutations.updateZone.isPending}
               onSubmit={(values) => mutations.updateZone.mutate({ id: zone.id, input: values })}
@@ -140,7 +140,7 @@ function FormPanel({
               warehouseId={zone.warehouseId}
               zoneId={zone.id}
               locationProfiles={locationProfiles}
-              submitLabel="Add Location"
+              submitLabel="Thêm vị trí"
               disabled={!canEdit}
               pending={mutations.createLocation.isPending}
               onSubmit={(values) =>
@@ -154,7 +154,7 @@ function FormPanel({
             key={`location-${location.id}`}
             initialValue={location}
             locationProfiles={locationProfiles}
-            submitLabel="Update Location"
+            submitLabel="Cập nhật vị trí"
             disabled={!canEdit}
             pending={mutations.updateLocation.isPending}
             onSubmit={(values) => mutations.updateLocation.mutate({ id: location.id, input: values })}

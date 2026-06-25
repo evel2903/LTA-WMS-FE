@@ -37,25 +37,19 @@ export function SiteForm({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        Site code
-        <Input disabled={disabled} {...form.register('siteCode')} />
+      <label className="grid gap-1 text-sm">Mã site<Input disabled={disabled} {...form.register('siteCode')} />
         {form.formState.errors.siteCode && (
           <span className="text-destructive text-xs">{form.formState.errors.siteCode.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Site name
-        <Input disabled={disabled} {...form.register('siteName')} />
+      <label className="grid gap-1 text-sm">Tên site<Input disabled={disabled} {...form.register('siteName')} />
         {form.formState.errors.siteName && (
           <span className="text-destructive text-xs">{form.formState.errors.siteName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+      <label className="grid gap-1 text-sm">Trạng thái<select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>

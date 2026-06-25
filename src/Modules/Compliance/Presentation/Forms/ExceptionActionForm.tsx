@@ -70,13 +70,9 @@ function LogForm({ disabled, pending, blocked, onLog }: ExceptionActionFormProps
           disabled={disabled}
           checked={hardBlock}
           onChange={(event) => setHardBlock(event.target.checked)}
-        />
-        Hard block
-      </label>
+        />Chặn cứng</label>
       <div className="flex items-center gap-2">
-        <Button size="sm" disabled={disabled || pending} onClick={() => onLog({ hardBlock })}>
-          Log
-        </Button>
+        <Button size="sm" disabled={disabled || pending} onClick={() => onLog({ hardBlock })}>Ghi log</Button>
         <Blocked message={blocked} />
       </div>
     </div>
@@ -100,17 +96,11 @@ function AssignForm({ disabled, pending, blocked, onAssign }: ExceptionActionFor
         }),
       )}
     >
-      <label className="grid gap-1 text-sm">
-        Assigned to user id
-        <Input disabled={disabled} {...form.register('assignedToUserId')} />
+      <label className="grid gap-1 text-sm">ID người dùng được gán<Input disabled={disabled} {...form.register('assignedToUserId')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Assigned role id
-        <Input disabled={disabled} {...form.register('assignedRoleId')} />
+      <label className="grid gap-1 text-sm">ID vai trò được gán<Input disabled={disabled} {...form.register('assignedRoleId')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Owner id
-        <Input disabled={disabled} {...form.register('ownerId')} />
+      <label className="grid gap-1 text-sm">ID chủ hàng<Input disabled={disabled} {...form.register('ownerId')} />
       </label>
       {errors.assignedToUserId && (
         <span className="text-destructive text-xs">{errors.assignedToUserId.message}</span>
@@ -120,9 +110,7 @@ function AssignForm({ disabled, pending, blocked, onAssign }: ExceptionActionFor
       )}
       {errors.ownerId && <span className="text-destructive text-xs">{errors.ownerId.message}</span>}
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={disabled || pending}>
-          Assign
-        </Button>
+        <Button type="submit" size="sm" disabled={disabled || pending}>Gán</Button>
         <Blocked message={blocked} />
       </div>
     </form>
@@ -146,21 +134,13 @@ function SubmitForm({ disabled, pending, blocked, onSubmit }: ExceptionActionFor
       )}
     >
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={disabled} {...form.register('requireApproval')} />
-        Require approval
+        <input type="checkbox" disabled={disabled} {...form.register('requireApproval')} />Yêu cầu phê duyệt</label>
+      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input disabled={disabled} {...form.register('reasonCode')} />
-      </label>
-      <label className="grid gap-1 text-sm">
-        Reason note
-        <Input disabled={disabled} {...form.register('reasonNote')} />
+      <label className="grid gap-1 text-sm">Ghi chú lý do<Input disabled={disabled} {...form.register('reasonNote')} />
       </label>
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={disabled || pending}>
-          Submit for review
-        </Button>
+        <Button type="submit" size="sm" disabled={disabled || pending}>Gửi để rà soát</Button>
         <Blocked message={blocked} />
       </div>
     </form>
@@ -183,22 +163,14 @@ function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionF
         }),
       )}
     >
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input disabled={disabled} {...form.register('reasonCode')} />
+      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Resolution note
-        <Input disabled={disabled} {...form.register('resolutionNote')} />
+      <label className="grid gap-1 text-sm">Ghi chú xử lý<Input disabled={disabled} {...form.register('resolutionNote')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Evidence refs (comma-separated)
-        <Input disabled={disabled} {...form.register('evidenceRefs')} />
+      <label className="grid gap-1 text-sm">Tham chiếu bằng chứng (phân tách bằng dấu phẩy)<Input disabled={disabled} {...form.register('evidenceRefs')} />
       </label>
       <div className="flex items-center gap-2">
-        <Button type="submit" size="sm" disabled={disabled || pending}>
-          Resolve
-        </Button>
+        <Button type="submit" size="sm" disabled={disabled || pending}>Xử lý</Button>
         <Blocked message={blocked} />
       </div>
     </form>
@@ -208,9 +180,7 @@ function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionF
 function CloseForm({ disabled, pending, blocked, onClose }: ExceptionActionFormProps) {
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" disabled={disabled || pending} onClick={() => onClose()}>
-        Close
-      </Button>
+      <Button size="sm" disabled={disabled || pending} onClick={() => onClose()}>Đóng</Button>
       <Blocked message={blocked} />
     </div>
   );

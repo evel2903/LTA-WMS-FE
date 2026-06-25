@@ -32,56 +32,56 @@ export function UomMasterDetailPage({ mode }: UomMasterDetailPageProps) {
   const uom = uomQuery.data;
 
   if (!isCreate && uomQuery.isLoading) {
-    return <DetailPageShell title="UOM detail" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
+    return <DetailPageShell title="Chi tiết đơn vị tính" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="UOM detail" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
+    return <DetailPageShell title="Chi tiết đơn vị tính" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
   }
 
   if (!isCreate && uomQuery.error) {
     return (
       <DetailPageShell
-        title="UOM detail"
+        title="Chi tiết đơn vị tính"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load UOM.'}
+        stateMessage={apiError?.message ?? 'Không thể tải đơn vị tính.'}
         backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS}
       />
     );
   }
 
   if (!isCreate && !uom) {
-    return <DetailPageShell title="UOM detail" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
+    return <DetailPageShell title="Chi tiết đơn vị tính" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS} />;
   }
 
   const existingUom = uom as NonNullable<typeof uom>;
-  const title = isCreate ? 'Create UOM' : existingUom.uomCode;
+  const title = isCreate ? 'Tạo đơn vị tính' : existingUom.uomCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Unit of measure master data"
+      subtitle="Dữ liệu chủ đơn vị tính"
       backTo={ROUTES.FOUNDATION.MASTER_DATA.UOMS}
-      backLabel="Back to UOMs"
+      backLabel="Quay lại đơn vị tính"
       status={!isCreate ? <MasterDataStatusBadge status={existingUom.status} /> : null}
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(existingUom.id)}>Edit UOM</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(existingUom.id)}>Chỉnh sửa đơn vị tính</Link>
           </Button>
         ) : null
       }
       state={canEdit ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Create UOM' : 'UOM actions'}
-        description="Changes use the existing master-data mutation and audit path."
+        title={isCreate ? 'Tạo đơn vị tính' : 'Hành động đơn vị tính'}
+        description="Thay đổi dùng mutation và audit path dữ liệu chủ hiện có."
         state={mutations.createUom.isPending || mutations.updateUom.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >
         {isCreate ? (
           <UomForm
-            submitLabel="Create UOM"
+            submitLabel="Tạo đơn vị tính"
             disabled={!canMutate}
             pending={mutations.createUom.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -99,7 +99,7 @@ export function UomMasterDetailPage({ mode }: UomMasterDetailPageProps) {
           <UomForm
             key={`uom-${existingUom.id}-${existingUom.updatedAt ?? ''}`}
             initialValue={existingUom}
-            submitLabel="Update UOM"
+            submitLabel="Cập nhật đơn vị tính"
             disabled={!canMutate}
             pending={mutations.updateUom.isPending}
             conflict={conflictMessage(submitError) ?? undefined}

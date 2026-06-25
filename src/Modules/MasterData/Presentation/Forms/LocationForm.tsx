@@ -32,9 +32,7 @@ function ManageProfilesLink() {
     <Link
       to={ROUTES.FOUNDATION.LOCATION_PROFILES}
       className="text-primary text-xs font-medium hover:underline"
-    >
-      Manage profiles
-    </Link>
+    >Quản lý hồ sơ</Link>
   );
 }
 
@@ -88,7 +86,7 @@ export function LocationForm({
   if (!hasProfiles) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        <span>No active location profiles. Manage profiles before adding locations.</span>
+        <span>Chưa có hồ sơ vị trí đang hoạt động. Hãy quản lý hồ sơ trước khi thêm vị trí.</span>
         <ManageProfilesLink />
       </div>
     );
@@ -99,27 +97,19 @@ export function LocationForm({
       <input type="hidden" {...form.register('warehouseId')} />
       <input type="hidden" {...form.register('zoneId')} />
       <input type="hidden" {...form.register('parentLocationId')} />
-      <label className="grid gap-1 text-sm">
-        Location code
-        <Input disabled={disabled} {...form.register('locationCode')} />
+      <label className="grid gap-1 text-sm">Mã vị trí<Input disabled={disabled} {...form.register('locationCode')} />
         {form.formState.errors.locationCode && (
           <span className="text-destructive text-xs">
             {form.formState.errors.locationCode.message}
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Location name
-        <Input disabled={disabled} {...form.register('locationName')} />
+      <label className="grid gap-1 text-sm">Tên vị trí<Input disabled={disabled} {...form.register('locationName')} />
+      </label>
+      <label className="grid gap-1 text-sm">Loại vị trí<Input disabled={disabled} {...form.register('locationType')} />
       </label>
       <label className="grid gap-1 text-sm">
-        Location type
-        <Input disabled={disabled} {...form.register('locationType')} />
-      </label>
-      <label className="grid gap-1 text-sm">
-        <span className="flex items-center justify-between gap-2">
-          Location profile
-          <ManageProfilesLink />
+        <span className="flex items-center justify-between gap-2">Hồ sơ vị trí<ManageProfilesLink />
         </span>
         <select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
@@ -133,22 +123,18 @@ export function LocationForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select
+      <label className="grid gap-1 text-sm">Trạng thái<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('locationStatus')}
         >
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-          <option value="Blocked">Blocked</option>
-          <option value="Maintenance">Maintenance</option>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
+          <option value="Blocked">Bị khóa</option>
+          <option value="Maintenance">Bảo trì</option>
         </select>
       </label>
-      <label className="grid gap-1 text-sm">
-        Capacity qty
-        <Input type="number" disabled={disabled} {...form.register('capacityQty')} />
+      <label className="grid gap-1 text-sm">Sức chứa<Input type="number" disabled={disabled} {...form.register('capacityQty')} />
       </label>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}

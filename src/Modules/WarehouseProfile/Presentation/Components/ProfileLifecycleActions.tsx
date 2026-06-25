@@ -41,24 +41,20 @@ export function ProfileLifecycleActions({
 
   return (
     <div className="space-y-3">
-      {!canManage && <p className="text-muted-foreground text-sm">Read only</p>}
+      {!canManage && <p className="text-muted-foreground text-sm">Chỉ đọc</p>}
 
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input
+      <label className="grid gap-1 text-sm">Mã lý do<Input
           disabled={!canManage}
           value={reasonCode}
           onChange={(event) => setReasonCode(event.target.value)}
           placeholder="e.g. POLICY_CHANGE"
         />
       </label>
-      <label className="grid gap-1 text-sm">
-        Reason note
-        <Input
+      <label className="grid gap-1 text-sm">Ghi chú lý do<Input
           disabled={!canManage}
           value={reasonNote}
           onChange={(event) => setReasonNote(event.target.value)}
-          placeholder="Optional note"
+          placeholder="Ghi chú tùy chọn"
         />
       </label>
 
@@ -67,26 +63,20 @@ export function ProfileLifecycleActions({
           type="button"
           disabled={!canManage || pending || status === 'ACTIVE'}
           onClick={() => onActivate(reason)}
-        >
-          Activate
-        </Button>
+        >Kích hoạt</Button>
         <Button
           type="button"
           variant="outline"
           disabled={!canManage || pending || status !== 'ACTIVE'}
           onClick={() => onDeactivate(reason)}
-        >
-          Deactivate
-        </Button>
+        >Ngưng kích hoạt</Button>
       </div>
 
       {conflictMessage && (
         <div className="border-destructive/40 bg-destructive/5 rounded-md border p-3 text-sm" role="alert">
-          <p className="text-destructive font-medium">Conflict</p>
+          <p className="text-destructive font-medium">Xung đột</p>
           <p className="text-destructive">{conflictMessage}</p>
-          <p className="text-muted-foreground mt-1 text-xs">
-            The profile was not changed. Resolve the overlapping scope and try again.
-          </p>
+          <p className="text-muted-foreground mt-1 text-xs">Hồ sơ chưa được thay đổi. Hãy xử lý phạm vi chồng lấn rồi thử lại.</p>
         </div>
       )}
 

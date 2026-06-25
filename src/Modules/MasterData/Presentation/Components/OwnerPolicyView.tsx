@@ -19,7 +19,7 @@ function PolicyBlock({ label, value }: { label: string; value: Record<string, un
           {JSON.stringify(value, null, 2)}
         </pre>
       ) : (
-        <span className="text-muted-foreground text-xs italic">Not set</span>
+        <span className="text-muted-foreground text-xs italic">Chưa thiết lập</span>
       )}
     </div>
   );
@@ -29,8 +29,8 @@ function PolicyBlock({ label, value }: { label: string; value: Record<string, un
 export function OwnerPolicyView({ billingPolicy, visibilityScope }: OwnerPolicyViewProps) {
   return (
     <div className="grid gap-3 border-t pt-3">
-      <PolicyBlock label="Billing policy" value={billingPolicy} />
-      <PolicyBlock label="Visibility scope" value={visibilityScope} />
+      <PolicyBlock label="Chính sách tính phí" value={billingPolicy} />
+      <PolicyBlock label="Phạm vi hiển thị" value={visibilityScope} />
     </div>
   );
 }

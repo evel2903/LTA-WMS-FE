@@ -19,7 +19,7 @@ export function UsersTable({ users, selectedId, onSelect }: UsersTableProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>User</TableHead>
+          <TableHead>Người dùng</TableHead>
           <TableHead>Email</TableHead>
         </TableRow>
       </TableHeader>

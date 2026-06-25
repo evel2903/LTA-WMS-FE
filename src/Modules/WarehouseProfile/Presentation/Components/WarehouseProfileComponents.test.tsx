@@ -10,29 +10,29 @@ import { ProfileLifecycleActions } from '@modules/WarehouseProfile/Presentation/
 
 describe('WarehouseProfileStatusBadge', () => {
   it('renders each lifecycle status label', () => {
-    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="DRAFT" />)).toContain('Draft');
-    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="ACTIVE" />)).toContain('Active');
-    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="EXPIRED" />)).toContain('Expired');
-    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="RETIRED" />)).toContain('Retired');
+    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="DRAFT" />)).toContain('Bản nháp');
+    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="ACTIVE" />)).toContain('Đang hoạt động');
+    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="EXPIRED" />)).toContain('Hết hiệu lực');
+    expect(renderToStaticMarkup(<WarehouseProfileStatusBadge status="RETIRED" />)).toContain('Ngưng sử dụng');
   });
 });
 
 describe('ControlModeBadge', () => {
   it('renders a distinct label for each of the four control modes', () => {
-    expect(renderToStaticMarkup(<ControlModeBadge mode="HARD_BLOCK" />)).toContain('Hard block');
-    expect(renderToStaticMarkup(<ControlModeBadge mode="APPROVAL_REQUIRED" />)).toContain('Approval required');
-    expect(renderToStaticMarkup(<ControlModeBadge mode="SOFT_WARNING" />)).toContain('Soft warning');
-    expect(renderToStaticMarkup(<ControlModeBadge mode="AUTO_SUGGESTION" />)).toContain('Auto suggestion');
+    expect(renderToStaticMarkup(<ControlModeBadge mode="HARD_BLOCK" />)).toContain('Chặn cứng');
+    expect(renderToStaticMarkup(<ControlModeBadge mode="APPROVAL_REQUIRED" />)).toContain('Yêu cầu phê duyệt');
+    expect(renderToStaticMarkup(<ControlModeBadge mode="SOFT_WARNING" />)).toContain('Cảnh báo mềm');
+    expect(renderToStaticMarkup(<ControlModeBadge mode="AUTO_SUGGESTION" />)).toContain('Gợi ý tự động');
   });
 });
 
 describe('ProfileStateView (AC5 states)', () => {
   it('renders loading / empty / denied states distinctly', () => {
-    expect(renderToStaticMarkup(<ProfileStateView state="loading" />)).toContain('Loading');
-    expect(renderToStaticMarkup(<ProfileStateView state="empty" emptyLabel="No profiles yet." />)).toContain(
-      'No profiles yet.',
+    expect(renderToStaticMarkup(<ProfileStateView state="loading" />)).toContain('Đang tải');
+    expect(renderToStaticMarkup(<ProfileStateView state="empty" emptyLabel="Chưa có hồ sơ." />)).toContain(
+      'Chưa có hồ sơ.',
     );
-    expect(renderToStaticMarkup(<ProfileStateView state="denied" />)).toContain('Permission denied');
+    expect(renderToStaticMarkup(<ProfileStateView state="denied" />)).toContain('Không có quyền');
   });
 
   it('renders an error message in the error state', () => {
@@ -47,8 +47,8 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
     const html = renderToStaticMarkup(
       <ProfileLifecycleActions status="DRAFT" onActivate={() => undefined} onDeactivate={() => undefined} />,
     );
-    expect(html).toContain('Activate');
-    expect(html).toContain('Deactivate');
+    expect(html).toContain('Kích hoạt');
+    expect(html).toContain('Ngưng kích hoạt');
   });
 
   it('renders the conflict list as a distinct state when a 409 conflict message is supplied', () => {
@@ -60,7 +60,7 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
         onDeactivate={() => undefined}
       />,
     );
-    expect(html).toContain('Conflict');
+    expect(html).toContain('Xung đột');
     expect(html).toContain('Overlapping active profile for this scope.');
   });
 
@@ -74,7 +74,7 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
       />,
     );
     expect(html).toContain('disabled');
-    expect(html.toLowerCase()).toContain('read only');
+    expect(html).toContain('Chỉ đọc');
   });
 });
 

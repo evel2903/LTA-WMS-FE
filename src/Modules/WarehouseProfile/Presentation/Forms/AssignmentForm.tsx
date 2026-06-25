@@ -25,30 +25,24 @@ export function AssignmentForm({ disabled = false, pending = false, conflict, on
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        Assignment type
-        <select
+      <label className="grid gap-1 text-sm">Loại gán<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('assignmentType')}
         >
-          <option value="WAREHOUSE_TYPE">Warehouse type</option>
-          <option value="WAREHOUSE">Warehouse</option>
+          <option value="WAREHOUSE_TYPE">Loại kho</option>
+          <option value="WAREHOUSE">Kho</option>
         </select>
       </label>
 
       {assignmentType === 'WAREHOUSE_TYPE' ? (
-        <label className="grid gap-1 text-sm">
-          Warehouse type code
-          <Input disabled={disabled} {...form.register('warehouseTypeCode')} />
+        <label className="grid gap-1 text-sm">Mã loại kho<Input disabled={disabled} {...form.register('warehouseTypeCode')} />
           {errors.warehouseTypeCode && (
             <span className="text-destructive text-xs">{errors.warehouseTypeCode.message}</span>
           )}
         </label>
       ) : (
-        <label className="grid gap-1 text-sm">
-          Warehouse ID
-          <Input disabled={disabled} {...form.register('warehouseId')} />
+        <label className="grid gap-1 text-sm">ID kho<Input disabled={disabled} {...form.register('warehouseId')} />
           {errors.warehouseId && (
             <span className="text-destructive text-xs">{errors.warehouseId.message}</span>
           )}
@@ -60,9 +54,7 @@ export function AssignmentForm({ disabled = false, pending = false, conflict, on
           {conflict}
         </span>
       )}
-      <Button type="submit" disabled={disabled || pending}>
-        Add assignment
-      </Button>
+      <Button type="submit" disabled={disabled || pending}>Thêm gán</Button>
     </form>
   );
 }

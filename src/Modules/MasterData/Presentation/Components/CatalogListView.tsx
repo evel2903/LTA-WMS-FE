@@ -82,10 +82,10 @@ export function CatalogListView<TRow>({
         <PageHeader title={title} description={description} />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Permission denied</CardTitle>
+            <CardTitle className="text-base">Không có quyền</CardTitle>
           </CardHeader>
           <CardContent className="text-muted-foreground text-sm">
-            You do not have permission to view {title.toLowerCase()} for this scope.
+            Bạn không có quyền xem {title.toLowerCase()} trong phạm vi này.
           </CardContent>
         </Card>
       </div>
@@ -98,10 +98,10 @@ export function CatalogListView<TRow>({
         <PageHeader title={title} description={description} />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Unable to load {title.toLowerCase()}</CardTitle>
+            <CardTitle className="text-base">Không thể tải {title.toLowerCase()}</CardTitle>
           </CardHeader>
           <CardContent className="text-destructive text-sm">
-            {errorMessage ?? 'An unexpected API error occurred.'}
+            {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
           </CardContent>
         </Card>
       </div>
@@ -111,14 +111,14 @@ export function CatalogListView<TRow>({
   return (
     <div className="space-y-6">
       <PageHeader title={title} description={description} headerAction={headerAction} />
-      {!canCreate && <p className="text-muted-foreground text-sm">Read only</p>}
+      {!canCreate && <p className="text-muted-foreground text-sm">Chỉ đọc</p>}
       {toolbar && <div className="flex flex-wrap items-end gap-3">{toolbar}</div>}
       <Card>
         <CardContent className="py-2">
           {state === 'loading' ? (
-            <p className="text-muted-foreground py-10 text-sm">Loading {title.toLowerCase()}...</p>
+            <p className="text-muted-foreground py-10 text-sm">Đang tải {title.toLowerCase()}...</p>
           ) : state === 'empty' ? (
-            <p className="text-muted-foreground py-10 text-sm">{emptyLabel ?? 'No records found.'}</p>
+            <p className="text-muted-foreground py-10 text-sm">{emptyLabel ?? 'Không tìm thấy bản ghi.'}</p>
           ) : (
             <Table>
               <TableHeader>
@@ -147,7 +147,7 @@ export function CatalogListView<TRow>({
       </Card>
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground text-sm">
-          Page {page} of {Math.max(totalPages, 1)}
+          Trang {page} / {Math.max(totalPages, 1)}
         </span>
         <div className="flex gap-2">
           <Button
@@ -155,17 +155,13 @@ export function CatalogListView<TRow>({
             size="sm"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
-          >
-            Previous
-          </Button>
+          >Trước</Button>
           <Button
             variant="outline"
             size="sm"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
-          >
-            Next
-          </Button>
+          >Tiếp</Button>
         </div>
       </div>
     </div>

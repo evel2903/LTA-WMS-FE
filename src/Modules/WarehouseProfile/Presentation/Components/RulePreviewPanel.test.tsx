@@ -23,13 +23,13 @@ describe('RulePreviewPanel', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
     expect(html).toContain('NO-MIX');
     expect(html).toContain('No mixing');
-    expect(html).toContain('Compliance');
-    expect(html).toContain('Hard block');
+    expect(html).toContain('Tuân thủ');
+    expect(html).toContain('Chặn cứng');
   });
 
   it('renders a "no rule applied" state when winner is null', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview({ winner: null })} />);
-    expect(html).toContain('No rule applied');
+    expect(html).toContain('Không có quy tắc nào áp dụng');
   });
 
   it('renders skipped rules with a HUMAN label for the reason enum (not the raw code)', () => {
@@ -49,7 +49,7 @@ describe('RulePreviewPanel', () => {
       />,
     );
     expect(html).toContain('PREFER-A');
-    expect(html).toContain('Lower precedence tier'); // labelled, not 'LOWER_TIER'
+    expect(html).toContain('Tầng ưu tiên thấp hơn'); // labelled, not 'LOWER_TIER'
     expect(html).not.toContain('LOWER_TIER');
   });
 
@@ -71,18 +71,18 @@ describe('RulePreviewPanel', () => {
         })}
       />,
     );
-    expect(withConflict).toContain('Physical');
+    expect(withConflict).toContain('Vật lý');
     expect(withConflict).toContain('DC|wh-1');
     expect(withConflict).toContain('CAP-1');
     expect(withConflict).toContain('CAP-2');
 
     const noConflict = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
-    expect(noConflict).toContain('No conflicts');
+    expect(noConflict).toContain('Không phát hiện xung đột.');
   });
 
   it('distinguishes a hard block control mode', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
-    expect(html).toContain('Hard block');
+    expect(html).toContain('Chặn cứng');
   });
 
   it('distinguishes an approval-required control mode', () => {
@@ -95,7 +95,7 @@ describe('RulePreviewPanel', () => {
         })}
       />,
     );
-    expect(html).toContain('Approval required');
+    expect(html).toContain('Yêu cầu phê duyệt');
   });
 
   it('distinguishes a soft-warning control mode and shows its message', () => {
@@ -113,7 +113,7 @@ describe('RulePreviewPanel', () => {
         })}
       />,
     );
-    expect(html).toContain('Soft warning');
+    expect(html).toContain('Cảnh báo mềm');
     expect(html).toContain('Heads up: near capacity');
   });
 
@@ -132,13 +132,13 @@ describe('RulePreviewPanel', () => {
         })}
       />,
     );
-    expect(html).toContain('Auto suggestion');
+    expect(html).toContain('Gợi ý tự động');
     expect(html).toContain('Suggest zone B');
   });
 
   it('renders reason readiness read-only flags', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
-    expect(html).toContain('Requires reason');
+    expect(html).toContain('Cần mã lý do');
     // read-only: no form controls in the panel.
     expect(html).not.toContain('<input');
     expect(html).not.toContain('<textarea');
@@ -146,12 +146,12 @@ describe('RulePreviewPanel', () => {
 
   it('renders a loading state when loading is true', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={null} loading />);
-    expect(html).toContain('Running preview');
+    expect(html).toContain('Đang chạy preview');
   });
 
   it('renders an empty state when no preview has been run', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={null} />);
-    expect(html).toContain('No preview yet');
+    expect(html).toContain('Chưa có preview');
   });
 
   it('renders an error message when supplied', () => {

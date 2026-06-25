@@ -16,15 +16,15 @@ export function RuleMatrixPreviewPage() {
 
   return (
     <DetailPageShell
-      title="Rule Preview"
-      subtitle="Evaluate a context against the existing rule engine without changing warehouse profile contracts."
+      title="Preview quy tắc"
+      subtitle="Đánh giá ngữ cảnh bằng rule engine hiện có mà không đổi contract hồ sơ kho."
       backTo={ROUTES.FOUNDATION.RULE_MATRIX}
-      backLabel="Back to rule matrix"
+      backLabel="Quay lại ma trận quy tắc"
       contentClassName="grid gap-4 lg:grid-cols-[minmax(0,420px)_1fr]"
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Preview context</CardTitle>
+          <CardTitle className="text-base">Ngữ cảnh preview</CardTitle>
         </CardHeader>
         <CardContent>
           <PreviewContextForm

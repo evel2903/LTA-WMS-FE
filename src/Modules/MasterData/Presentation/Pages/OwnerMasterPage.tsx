@@ -7,7 +7,7 @@ import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useOwners } from '@modules/MasterData/Application/Queries/CatalogQueries';
-import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import type { Owner } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import {
@@ -47,7 +47,7 @@ export function OwnerMasterPage() {
 
   const columns: CatalogColumn<Owner>[] = [
     {
-      header: 'Code',
+      header: 'Mã',
       render: (owner) => (
         <button
           className="underline-offset-2 hover:underline"
@@ -57,14 +57,14 @@ export function OwnerMasterPage() {
         </button>
       ),
     },
-    { header: 'Name', render: (owner) => owner.ownerName },
-    { header: 'Status', render: (owner) => <MasterDataStatusBadge status={owner.status} /> },
+    { header: 'Tên', render: (owner) => owner.ownerName },
+    { header: 'Trạng thái', render: (owner) => <MasterDataStatusBadge status={owner.status} /> },
   ];
 
   return (
     <CatalogListView
-      title="Owners"
-      description="Manage owners (3PL clients / brand owners)."
+      title="Chủ hàng"
+      description="Quản lý chủ hàng (khách hàng 3PL / chủ thương hiệu)."
       state={state}
       columns={columns}
       rows={owners}
@@ -73,31 +73,27 @@ export function OwnerMasterPage() {
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
       canCreate={canCreate}
-      emptyLabel={CATALOG_EMPTY_LABELS.owners}
-      errorMessage={apiError?.message ?? (query.error ? 'Unable to load owners.' : undefined)}
+      emptyLabel={MASTER_DATA_EMPTY_LABELS.owners}
+      errorMessage={apiError?.message ?? (query.error ? 'Không thể tải chủ hàng.' : undefined)}
       headerAction={
         canCreate ? (
           <Button asChild size="sm">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.OWNER_NEW}>New owner</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.OWNER_NEW}>Tạo chủ hàng</Link>
           </Button>
         ) : null
       }
       toolbar={
         <>
-          <label className="grid gap-1 text-sm">
-            Owner code
-            <Input
+          <label className="grid gap-1 text-sm">Mã chủ hàng<Input
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search code"
+              placeholder="Tìm theo mã"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={status}
               onChange={(event) => {
@@ -105,9 +101,9 @@ export function OwnerMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="All">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="All">Tất cả</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Không hoạt động</option>
             </select>
           </label>
         </>

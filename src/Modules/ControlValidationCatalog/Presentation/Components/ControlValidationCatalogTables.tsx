@@ -30,9 +30,7 @@ interface ControlValidationCatalogTablesProps {
 
 function EmptyFilterResult() {
   return (
-    <div className="text-muted-foreground rounded-md border py-8 text-center text-sm">
-      No catalog entries match the current filter.
-    </div>
+    <div className="text-muted-foreground rounded-md border py-8 text-center text-sm">Không có bản ghi danh mục nào khớp bộ lọc hiện tại.</div>
   );
 }
 
@@ -93,14 +91,14 @@ function ValidationRulesTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Trigger</TableHead>
-            <TableHead>Severity</TableHead>
-            <TableHead>Default state</TableHead>
-            <TableHead>Evidence</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Mã</TableHead>
+            <TableHead>Mô tả</TableHead>
+            <TableHead>Điều kiện kích hoạt</TableHead>
+            <TableHead>Mức độ</TableHead>
+            <TableHead>Trạng thái mặc định</TableHead>
+            <TableHead>Bằng chứng</TableHead>
+            <TableHead>Chủ hàng</TableHead>
+            <TableHead>Trạng thái</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -162,14 +160,14 @@ function ControlExceptionsTable({ catalog }: { catalog: ControlValidationCatalog
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Code</TableHead>
-            <TableHead>Scenario</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Severity</TableHead>
-            <TableHead>Default state</TableHead>
-            <TableHead>Evidence</TableHead>
-            <TableHead>Action allowed</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>Mã</TableHead>
+            <TableHead>Kịch bản</TableHead>
+            <TableHead>Nhóm</TableHead>
+            <TableHead>Mức độ</TableHead>
+            <TableHead>Trạng thái mặc định</TableHead>
+            <TableHead>Bằng chứng</TableHead>
+            <TableHead>Action được phép</TableHead>
+            <TableHead>Trạng thái</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -213,18 +211,18 @@ export function ControlValidationCatalogTables({
     <Card>
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="text-base">Control and validation catalog</CardTitle>
-          <div role="tablist" aria-label="Catalog type" className="flex flex-wrap gap-2">
+          <CardTitle className="text-base">Danh mục kiểm soát và xác thực</CardTitle>
+          <div role="tablist" aria-label="Loại danh mục" className="flex flex-wrap gap-2">
             <TabButton
               active={activeTab === 'validation'}
               count={filteredCatalog.validationRules.length}
-              label="Validation Rules"
+              label="Quy tắc xác thực"
               onClick={() => setActiveTab('validation')}
             />
             <TabButton
               active={activeTab === 'exceptions'}
               count={filteredCatalog.controlExceptions.length}
-              label="Control Exceptions"
+              label="Ngoại lệ kiểm soát"
               onClick={() => setActiveTab('exceptions')}
             />
           </div>

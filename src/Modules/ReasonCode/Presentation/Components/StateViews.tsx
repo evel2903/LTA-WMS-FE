@@ -14,11 +14,9 @@ export function ReasonCodeStateView({ state, emptyLabel, errorMessage }: StateVi
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permission denied</CardTitle>
+          <CardTitle className="text-base">Không có quyền</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          You do not have permission to view or manage reason codes.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem hoặc quản trị mã lý do.</CardContent>
       </Card>
     );
   }
@@ -26,10 +24,10 @@ export function ReasonCodeStateView({ state, emptyLabel, errorMessage }: StateVi
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Something went wrong</CardTitle>
+          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
         </CardHeader>
         <CardContent className="text-destructive text-sm">
-          {errorMessage ?? 'An unexpected API error occurred.'}
+          {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
         </CardContent>
       </Card>
     );
@@ -44,7 +42,7 @@ export function ReasonCodeStateView({ state, emptyLabel, errorMessage }: StateVi
   return (
     <Card>
       <CardContent className="text-muted-foreground py-10 text-sm">
-        {emptyLabel ?? 'No records yet.'}
+        {emptyLabel ?? 'Chưa có bản ghi.'}
       </CardContent>
     </Card>
   );

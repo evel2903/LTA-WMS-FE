@@ -203,14 +203,14 @@ describe('FoundationOverviewPage (C17)', () => {
   it('renders readiness from fixtures with one ready warehouse and one missing setup (AC1/AC2/AC5)', async () => {
     renderPage();
 
-    expect(await screen.findByText('Master data readiness')).toBeTruthy();
+    expect(await screen.findByText('Mức sẵn sàng dữ liệu chủ')).toBeTruthy();
     expect(screen.getByText('WH-A')).toBeTruthy();
     expect(screen.getByText('WH-B')).toBeTruthy();
     expect(screen.getByText('WP-DC')).toBeTruthy();
     expect(screen.getByText('Default system seed')).toBeTruthy();
     expect(screen.getByText(/No ACTIVE warehouse profile/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Warehouse Profiles/i })).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Exception Queue/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Hồ sơ kho/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Hàng đợi ngoại lệ/i })).toBeTruthy();
     expect(currentProfileRepository.getChecklist.mock.calls).toContainEqual(['profile-1']);
   });
 
@@ -225,6 +225,6 @@ describe('FoundationOverviewPage (C17)', () => {
 
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
   });
 });

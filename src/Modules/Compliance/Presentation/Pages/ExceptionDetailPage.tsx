@@ -60,16 +60,16 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
 
   return (
     <DetailPageShell
-      title={exceptionCase ? exceptionCase.exceptionType : 'Exception Case'}
-      subtitle="Review exception context before running lifecycle actions on the action route."
+      title={exceptionCase ? exceptionCase.exceptionType : 'Hồ sơ ngoại lệ'}
+      subtitle="Rà soát ngữ cảnh ngoại lệ trước khi chạy action vòng đời trên route action."
       backTo={ROUTES.FOUNDATION.EXCEPTIONS}
-      backLabel="Back to exception queue"
+      backLabel="Quay lại hàng đợi ngoại lệ"
       status={exceptionCase ? <ExceptionStateBadge state={exceptionCase.state} /> : null}
       summary={
         exceptionCase ? (
           <>
-            <span>Reference: {exceptionCase.referenceType} · {exceptionCase.referenceId}</span>
-            <span>Severity: {exceptionCase.severity}</span>
+            <span>Tham chiếu: {exceptionCase.referenceType} · {exceptionCase.referenceId}</span>
+            <span>Mức độ: {exceptionCase.severity}</span>
           </>
         ) : null
       }
@@ -77,23 +77,23 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
         exceptionCase ? (
           isAction ? (
             <Button asChild variant="outline">
-              <Link to={ROUTES.FOUNDATION.EXCEPTION_DETAIL(exceptionCase.id)}>View detail</Link>
+              <Link to={ROUTES.FOUNDATION.EXCEPTION_DETAIL(exceptionCase.id)}>Xem chi tiết</Link>
             </Button>
           ) : (
             <Button asChild>
-              <Link to={ROUTES.FOUNDATION.EXCEPTION_ACTION(exceptionCase.id)}>Open lifecycle</Link>
+              <Link to={ROUTES.FOUNDATION.EXCEPTION_ACTION(exceptionCase.id)}>Mở vòng đời</Link>
             </Button>
           )
         ) : null
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={apiError?.message ?? 'Unable to load exception case.'}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={apiError?.message ?? 'Không thể tải hồ sơ ngoại lệ.'}
     >
       {exceptionCase ? (
         <ActionPanel
-          title={isAction ? 'Lifecycle action' : 'Exception context'}
-          description="Exception transitions keep existing state, reason and audit behavior."
+          title={isAction ? 'Hành động vòng đời' : 'Ngữ cảnh ngoại lệ'}
+          description="Chuyển trạng thái ngoại lệ giữ nguyên state, reason và audit behavior hiện có."
           state={pending ? 'pending' : 'idle'}
           governanceState={canMutate ? undefined : 'readOnly'}
         >

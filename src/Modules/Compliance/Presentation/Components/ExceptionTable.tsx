@@ -20,12 +20,12 @@ export function ExceptionTable({ cases, selectedId, onSelect }: ExceptionTablePr
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>State</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Assignee</TableHead>
-          <TableHead>Reason</TableHead>
-          <TableHead>Object reference</TableHead>
-          <TableHead>Severity</TableHead>
+          <TableHead>Trạng thái</TableHead>
+          <TableHead>Loại</TableHead>
+          <TableHead>Người được gán</TableHead>
+          <TableHead>Lý do</TableHead>
+          <TableHead>Tham chiếu đối tượng</TableHead>
+          <TableHead>Mức độ</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

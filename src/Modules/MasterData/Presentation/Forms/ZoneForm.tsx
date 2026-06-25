@@ -42,26 +42,18 @@ export function ZoneForm({
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
       <input type="hidden" {...form.register('warehouseId')} />
-      <label className="grid gap-1 text-sm">
-        Zone code
-        <Input disabled={disabled} {...form.register('zoneCode')} />
+      <label className="grid gap-1 text-sm">Mã khu vực<Input disabled={disabled} {...form.register('zoneCode')} />
         {form.formState.errors.zoneCode && (
           <span className="text-destructive text-xs">{form.formState.errors.zoneCode.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Zone name
-        <Input disabled={disabled} {...form.register('zoneName')} />
+      <label className="grid gap-1 text-sm">Tên khu vực<Input disabled={disabled} {...form.register('zoneName')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Zone type
-        <Input disabled={disabled} {...form.register('zoneType')} />
+      <label className="grid gap-1 text-sm">Loại khu vực<Input disabled={disabled} {...form.register('zoneType')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+      <label className="grid gap-1 text-sm">Trạng thái<select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>

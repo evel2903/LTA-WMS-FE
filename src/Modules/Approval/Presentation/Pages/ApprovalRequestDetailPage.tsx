@@ -57,16 +57,16 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
 
   return (
     <DetailPageShell
-      title={request ? `${request.action} · ${request.targetObjectType}` : 'Approval Request'}
-      subtitle="Review decision context before running approve or reject on the action route."
+      title={request ? `${request.action} · ${request.targetObjectType}` : 'Yêu cầu phê duyệt'}
+      subtitle="Rà soát ngữ cảnh quyết định trước khi phê duyệt hoặc từ chối trên route action."
       backTo={ROUTES.FOUNDATION.APPROVALS}
-      backLabel="Back to approval queue"
+      backLabel="Quay lại hàng đợi phê duyệt"
       status={request ? <ApprovalDecisionBadge decision={request.decision} /> : null}
       summary={
         request ? (
           <>
-            <span>Requester: {request.requesterUserId}</span>
-            <span>Target: {request.targetObjectCode ?? request.targetObjectId}</span>
+            <span>Người yêu cầu: {request.requesterUserId}</span>
+            <span>Đối tượng đích: {request.targetObjectCode ?? request.targetObjectId}</span>
           </>
         ) : null
       }
@@ -74,23 +74,23 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
         request ? (
           isAction ? (
             <Button asChild variant="outline">
-              <Link to={ROUTES.FOUNDATION.APPROVAL_DETAIL(request.id)}>View detail</Link>
+              <Link to={ROUTES.FOUNDATION.APPROVAL_DETAIL(request.id)}>Xem chi tiết</Link>
             </Button>
           ) : (
             <Button asChild>
-              <Link to={ROUTES.FOUNDATION.APPROVAL_ACTION(request.id)}>Open decision</Link>
+              <Link to={ROUTES.FOUNDATION.APPROVAL_ACTION(request.id)}>Mở quyết định</Link>
             </Button>
           )
         ) : null
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={apiError?.message ?? 'Unable to load approval request.'}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={apiError?.message ?? 'Không thể tải yêu cầu phê duyệt.'}
     >
       {request ? (
         <ActionPanel
-          title={isAction ? 'Decision action' : 'Decision context'}
-          description="Approve/reject keeps existing backend permission, self-approval and audit behavior."
+          title={isAction ? 'Hành động quyết định' : 'Ngữ cảnh quyết định'}
+          description="Phê duyệt/từ chối giữ nguyên quyền backend, kiểm soát tự duyệt và audit hiện có."
           state={pending ? 'pending' : 'idle'}
           governanceState={canMutate ? undefined : 'readOnly'}
         >

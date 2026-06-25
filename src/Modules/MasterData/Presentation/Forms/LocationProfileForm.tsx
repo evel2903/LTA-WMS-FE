@@ -71,33 +71,25 @@ export function LocationProfileForm({
         <input type="hidden" {...form.register('version', { valueAsNumber: true })} />
       ) : null}
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          Profile code
-          <Input disabled={disabled || mode === 'edit'} {...form.register('profileCode')} />
+        <label className="grid gap-1 text-sm">Mã hồ sơ<Input disabled={disabled || mode === 'edit'} {...form.register('profileCode')} />
           <ErrorText message={errors.profileCode?.message} />
         </label>
-        <label className="grid gap-1 text-sm">
-          Profile name
-          <Input disabled={disabled} {...form.register('profileName')} />
+        <label className="grid gap-1 text-sm">Tên hồ sơ<Input disabled={disabled} {...form.register('profileName')} />
           <ErrorText message={errors.profileName?.message} />
         </label>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-sm">
-          Location type
-          <Input disabled={disabled} {...form.register('locationType')} />
+        <label className="grid gap-1 text-sm">Loại vị trí<Input disabled={disabled} {...form.register('locationType')} />
           <ErrorText message={errors.locationType?.message} />
         </label>
-        <label className="grid gap-1 text-sm">
-          Status
-          <select
+        <label className="grid gap-1 text-sm">Trạng thái<select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={disabled}
             {...form.register('status')}
           >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Không hoạt động</option>
           </select>
         </label>
       </div>
@@ -136,9 +128,7 @@ export function LocationProfileForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-sm">
-          Reason code
-          <Input
+        <label className="grid gap-1 text-sm">Mã lý do<Input
             disabled={disabled}
             placeholder="e.g. RC-MD-UPDATE"
             {...form.register('reasonCode')}
@@ -150,19 +140,15 @@ export function LocationProfileForm({
             </span>
           )}
         </label>
-        <label className="grid gap-1 text-sm">
-          Source system
-          <Input disabled={disabled} {...form.register('sourceSystem')} />
+        <label className="grid gap-1 text-sm">Hệ thống nguồn<Input disabled={disabled} {...form.register('sourceSystem')} />
         </label>
-        <label className="grid gap-1 text-sm">
-          Reference id
-          <Input disabled={disabled} {...form.register('referenceId')} />
+        <label className="grid gap-1 text-sm">ID tham chiếu<Input disabled={disabled} {...form.register('referenceId')} />
         </label>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={disabled || pending}>
-          {mode === 'create' ? 'Create profile' : 'Update profile'}
+          {mode === 'create' ? 'Tạo hồ sơ' : 'Cập nhật hồ sơ'}
         </Button>
         {mode === 'edit' && initialValue?.status === 'Active' && onInactivate ? (
           <Button
@@ -171,9 +157,7 @@ export function LocationProfileForm({
             disabled={disabled || pending}
             onClick={form.handleSubmit(onInactivate)}
           >
-            <ArchiveX className="size-4" />
-            Inactivate profile
-          </Button>
+            <ArchiveX className="size-4" />Ngưng kích hoạt hồ sơ</Button>
         ) : null}
       </div>
     </form>

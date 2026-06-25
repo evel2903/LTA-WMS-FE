@@ -161,35 +161,37 @@ export function OverrideLogPage() {
 
   return (
     <ListPageShell
-      title="Override Log"
-      description="Read-only override records. Open a row to inspect reason, approval, evidence and before/after snapshots."
+      title="Nhật ký ghi đè"
+      description="Bản ghi ghi đè chỉ đọc. Mở một dòng để xem lý do, phê duyệt, bằng chứng và snapshot trước/sau."
       state={boundaryState}
-      stateTitle={listState === 'error' ? 'Unable to load override logs' : undefined}
+      stateTitle={
+        listState === 'denied'
+          ? 'Cần quyền truy cập'
+          : listState === 'empty'
+            ? 'Không tìm thấy bản ghi'
+            : listState === 'error'
+              ? 'Không thể tải nhật ký ghi đè'
+              : undefined
+      }
       stateMessage={
         listState === 'empty'
-          ? 'No override logs match the filters.'
+          ? 'Không có nhật ký ghi đè khớp bộ lọc.'
           : listState === 'error'
-            ? apiError?.message ?? 'Unable to load override logs.'
+            ? apiError?.message ?? 'Không thể tải nhật ký ghi đè.'
             : undefined
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Rule id
-            <Input value={filters.ruleId} onChange={(event) => patch({ ruleId: event.target.value })} />
+          <label className="grid gap-1 text-sm">ID quy tắc<Input value={filters.ruleId} onChange={(event) => patch({ ruleId: event.target.value })} />
           </label>
-          <label className="grid gap-1 text-sm">
-            Actor user id
-            <Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          <label className="grid gap-1 text-sm">ID người thực hiện<Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
           </label>
-          <label className="grid gap-1 text-sm">
-            Target type
-            <select
+          <label className="grid gap-1 text-sm">Loại đích<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.targetObjectType}
               onChange={(event) => patch({ targetObjectType: event.target.value as ObjectType | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {OBJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -219,17 +221,13 @@ export function OverrideLogPage() {
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
-              >
-                Previous
-              </Button>
+              >Trước</Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={page >= (meta?.totalPages ?? 1)}
                 onClick={() => updateSearch(filters, page + 1, false)}
-              >
-                Next
-              </Button>
+              >Tiếp</Button>
             </div>
           </div>
         ) : null

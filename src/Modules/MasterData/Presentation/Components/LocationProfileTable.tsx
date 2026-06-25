@@ -21,11 +21,11 @@ export function LocationProfileTable({ items, selectedId, onSelect }: LocationPr
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>ProfileCode</TableHead>
-          <TableHead>ProfileName</TableHead>
-          <TableHead>LocationType</TableHead>
+          <TableHead>Mã hồ sơ</TableHead>
+          <TableHead>Tên hồ sơ</TableHead>
+          <TableHead>Loại vị trí</TableHead>
           <TableHead>Version</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>Trạng thái</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

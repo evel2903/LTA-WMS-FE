@@ -31,11 +31,11 @@ export function UsersAssignmentsPage() {
 
   return (
     <ListPageShell
-      title="Users & Assignments"
-      description="Scan users before opening a dedicated assignment detail/action page."
+      title="Người dùng và phân quyền"
+      description="Quét danh sách người dùng trước khi mở trang chi tiết/action phân quyền riêng."
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={state === 'empty' ? 'No users yet.' : (apiError?.message ?? 'Unable to load users.')}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={state === 'empty' ? 'Chưa có người dùng.' : (apiError?.message ?? 'Không thể tải người dùng.')}
     >
       <UsersTable
         users={users}

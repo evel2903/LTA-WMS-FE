@@ -20,8 +20,8 @@ export function LocationProfileConstraintsPanel({
     return (
       <div className="text-muted-foreground rounded-md border p-3 text-sm">
         {profileId
-          ? `Profile ${profileId} is not in the active list; its constraints are unavailable.`
-          : 'No location profile assigned.'}
+          ? `Hồ sơ ${profileId} không nằm trong danh sách hoạt động; không thể xem ràng buộc.`
+          : 'Chưa gán hồ sơ vị trí.'}
       </div>
     );
   }
@@ -33,14 +33,14 @@ export function LocationProfileConstraintsPanel({
           {profile.profileCode} - {profile.profileName}
         </div>
         <div className="text-muted-foreground text-xs">
-          {profile.locationType} · Version {profile.version}
+          {profile.locationType} · Phiên bản {profile.version}
         </div>
       </div>
-      <PolicyBlock title="capacity policy" value={profile.capacityPolicy} />
-      <PolicyBlock title="eligibility policy" value={profile.eligibilityPolicy} />
-      <PolicyBlock title="mix policy" value={profile.mixPolicy} />
-      <PolicyBlock title="compliance policy" value={profile.compliancePolicy} />
-      <PolicyBlock title="operation policy" value={profile.operationPolicy} />
+      <PolicyBlock title="chính sách sức chứa" value={profile.capacityPolicy} />
+      <PolicyBlock title="chính sách điều kiện" value={profile.eligibilityPolicy} />
+      <PolicyBlock title="chính sách trộn" value={profile.mixPolicy} />
+      <PolicyBlock title="chính sách tuân thủ" value={profile.compliancePolicy} />
+      <PolicyBlock title="chính sách vận hành" value={profile.operationPolicy} />
     </div>
   );
 }

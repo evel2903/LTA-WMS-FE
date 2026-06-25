@@ -166,7 +166,7 @@ describe('WarehouseProfilesPage (AC5 states)', () => {
   it('shows the empty state when there are no profiles', async () => {
     repo.current = new FakeRepository([]) as unknown as IWarehouseProfileRepository;
     renderPage();
-    expect(await screen.findByText('No profiles yet.')).toBeTruthy();
+    expect(await screen.findByText('Chưa có hồ sơ.')).toBeTruthy();
   });
 
   it('shows a permission-denied state when the list 403s', async () => {
@@ -176,7 +176,7 @@ describe('WarehouseProfilesPage (AC5 states)', () => {
     );
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage();
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 });
 
@@ -202,10 +202,10 @@ describe('WarehouseProfilesPage detail refresh after activate (Finding #1)', () 
 
     // Select the only profile row.
     await user.click(await screen.findByText('WP-01'));
-    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
+    await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
 
     // The lifecycle panel shows the detail; Activate is enabled for a DRAFT.
-    const activate = await screen.findByRole('button', { name: 'Activate' });
+    const activate = await screen.findByRole('button', { name: 'Kích hoạt' });
     expect((activate as HTMLButtonElement).disabled).toBe(false);
     await user.click(activate);
 
@@ -213,10 +213,10 @@ describe('WarehouseProfilesPage detail refresh after activate (Finding #1)', () 
     // Activate disabled + Deactivate enabled is reachable ONLY when the mounted detail
     // object reflects status === 'ACTIVE' (i.e. the panel refreshed — Finding #1).
     await waitFor(() => {
-      const btn = screen.getByRole<HTMLButtonElement>('button', { name: 'Activate' });
+      const btn = screen.getByRole<HTMLButtonElement>('button', { name: 'Kích hoạt' });
       expect(btn.disabled).toBe(true);
     });
-    const deactivate = screen.getByRole<HTMLButtonElement>('button', { name: 'Deactivate' });
+    const deactivate = screen.getByRole<HTMLButtonElement>('button', { name: 'Ngưng kích hoạt' });
     expect(deactivate.disabled).toBe(false);
   });
 });
@@ -238,10 +238,10 @@ describe('WarehouseProfilesPage conflict routing (AC5)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
-    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
-    await user.click(await screen.findByRole('button', { name: 'Activate' }));
+    await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
+    await user.click(await screen.findByRole('button', { name: 'Kích hoạt' }));
 
-    expect(await screen.findByText('Conflict')).toBeTruthy();
+    expect(await screen.findByText('Xung đột')).toBeTruthy();
     expect(screen.getByText('Overlapping active profile for this scope.')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
   });
@@ -310,12 +310,12 @@ describe('WarehouseProfilesPage rule assignment UI (Finding #2)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
-    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
+    await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
 
     // The rule panel renders with the attachable definition offered.
-    const select = await screen.findByRole('combobox', { name: /attach rule/i });
+    const select = await screen.findByRole('combobox', { name: /gắn quy tắc/i });
     await user.selectOptions(select, 'rule-1');
-    await user.click(screen.getByRole('button', { name: 'Add rule' }));
+    await user.click(screen.getByRole('button', { name: 'Thêm quy tắc' }));
 
     await waitFor(() => {
       expect(fake.addProfileRule).toHaveBeenCalledWith('profile-1', { ruleDefinitionId: 'rule-1' });
@@ -336,8 +336,8 @@ describe('WarehouseProfilesPage lifecycle error surfacing (Finding #4)', () => {
     renderPage();
 
     await user.click(await screen.findByText('WP-01'));
-    await user.click(await screen.findByRole('link', { name: 'Edit profile' }));
-    await user.click(await screen.findByRole('button', { name: 'Activate' }));
+    await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
+    await user.click(await screen.findByRole('button', { name: 'Kích hoạt' }));
 
     // Inline message present...
     expect(await screen.findByText('Invalid transition.')).toBeTruthy();

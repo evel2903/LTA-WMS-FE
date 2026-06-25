@@ -31,11 +31,11 @@ export function MasterDataReadinessTable({ rows, links }: MasterDataReadinessTab
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Area</TableHead>
-          <TableHead>Count</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Message</TableHead>
-          <TableHead className="w-28">Action</TableHead>
+          <TableHead>Khu vực</TableHead>
+          <TableHead>Số lượng</TableHead>
+          <TableHead>Trạng thái</TableHead>
+          <TableHead>Thông báo</TableHead>
+          <TableHead className="w-28">Hành động</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -54,9 +54,7 @@ export function MasterDataReadinessTable({ rows, links }: MasterDataReadinessTab
               <TableCell>
                 {link ? (
                   <Button asChild size="sm" variant="outline">
-                    <Link to={link}>
-                      Open
-                      <ArrowRight className="size-4" />
+                    <Link to={link}>Mở<ArrowRight className="size-4" />
                     </Link>
                   </Button>
                 ) : null}
@@ -77,12 +75,12 @@ export function WarehouseProfileReadinessTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Warehouse</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Active profile</TableHead>
-          <TableHead>Checklist</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="w-28">Action</TableHead>
+          <TableHead>Kho</TableHead>
+          <TableHead>Loại</TableHead>
+          <TableHead>Hồ sơ đang hoạt động</TableHead>
+          <TableHead>Danh sách kiểm tra</TableHead>
+          <TableHead>Trạng thái</TableHead>
+          <TableHead className="w-28">Hành động</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -109,9 +107,7 @@ export function WarehouseProfileReadinessTable({
             </TableCell>
             <TableCell>
               <Button asChild size="sm" variant="outline">
-                <Link to={profileTo}>
-                  Open
-                  <ArrowRight className="size-4" />
+                <Link to={profileTo}>Mở<ArrowRight className="size-4" />
                 </Link>
               </Button>
             </TableCell>

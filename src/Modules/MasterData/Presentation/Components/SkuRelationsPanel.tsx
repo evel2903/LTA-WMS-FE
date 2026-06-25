@@ -98,7 +98,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">SKU relations</CardTitle>
+        <CardTitle className="text-base">Quan hệ SKU</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-6 xl:grid-cols-2">
         <RelationSection
@@ -163,7 +163,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
         />
 
         <RelationSection
-          title="Barcodes"
+          title="Mã vạch"
           rows={barcodes.data?.items ?? []}
           rowKey={(barcode) => barcode.id}
           loading={barcodes.isLoading}
@@ -231,7 +231,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
         />
 
         <RelationSection
-          title="UOM conversions"
+          title="Quy đổi đơn vị tính"
           rows={conversions.data?.items ?? []}
           rowKey={(conversion) => conversion.id}
           loading={conversions.isLoading}
@@ -301,7 +301,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
         />
 
         <RelationSection
-          title="Item coverage"
+          title="Phạm vi hàng hóa"
           rows={coverages.data?.items ?? []}
           rowKey={(coverage) => coverage.id}
           loading={coverages.isLoading}
@@ -405,7 +405,7 @@ function RelationSection<T extends { id: string }>({
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-medium">{title}</h3>
-        {disabled && <span className="text-muted-foreground text-xs">Read-only</span>}
+        {disabled && <span className="text-muted-foreground text-xs">Chỉ đọc</span>}
       </div>
       <Table>
         <TableHeader>
@@ -413,7 +413,7 @@ function RelationSection<T extends { id: string }>({
             {columns.map((column) => (
               <TableHead key={column.header}>{column.header}</TableHead>
             ))}
-            <TableHead className="w-12">Edit</TableHead>
+            <TableHead className="w-12">Chỉnh sửa</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -492,10 +492,10 @@ function PackForm({
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Pack code" error={form.formState.errors.packCode?.message}>
+        <Field label="Mã quy cách" error={form.formState.errors.packCode?.message}>
           <Input disabled={disabled} {...form.register('packCode')} />
         </Field>
-        <Field label="Pack name" error={form.formState.errors.packName?.message}>
+        <Field label="Tên quy cách" error={form.formState.errors.packName?.message}>
           <Input disabled={disabled} {...form.register('packName')} />
         </Field>
         <SelectField
@@ -505,7 +505,7 @@ function PackForm({
           error={form.formState.errors.uomId?.message}
           {...form.register('uomId')}
         />
-        <Field label="Quantity per pack" error={form.formState.errors.quantityPerPack?.message}>
+        <Field label="Số lượng mỗi quy cách" error={form.formState.errors.quantityPerPack?.message}>
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('quantityPerPack')} />
         </Field>
         <SelectField
@@ -515,14 +515,12 @@ function PackForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Reason code" error={form.formState.errors.reasonCode?.message}>
+        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
           <Input disabled={disabled} {...form.register('reasonCode')} />
         </Field>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={disabled} {...form.register('isDefault')} />
-        Default pack
-      </label>
+        <input type="checkbox" disabled={disabled} {...form.register('isDefault')} />Quy cách mặc định</label>
       <FormActions
         editing={Boolean(initialValue)}
         disabled={disabled}
@@ -580,10 +578,10 @@ function BarcodeForm({
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Barcode value" error={form.formState.errors.barcodeValue?.message}>
+        <Field label="Giá trị mã vạch" error={form.formState.errors.barcodeValue?.message}>
           <Input disabled={disabled} {...form.register('barcodeValue')} />
         </Field>
-        <Field label="Barcode type" error={form.formState.errors.barcodeType?.message}>
+        <Field label="Loại mã vạch" error={form.formState.errors.barcodeType?.message}>
           <Input disabled={disabled} {...form.register('barcodeType')} />
         </Field>
         <SelectField
@@ -593,13 +591,13 @@ function BarcodeForm({
           error={form.formState.errors.uomId?.message}
           {...form.register('uomId')}
         />
-        <Field label="Pack code" error={form.formState.errors.packCode?.message}>
+        <Field label="Mã quy cách" error={form.formState.errors.packCode?.message}>
           <Input disabled={disabled} {...form.register('packCode')} />
         </Field>
-        <Field label="Effective from" error={form.formState.errors.effectiveFrom?.message}>
+        <Field label="Hiệu lực từ" error={form.formState.errors.effectiveFrom?.message}>
           <Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
         </Field>
-        <Field label="Effective to" error={form.formState.errors.effectiveTo?.message}>
+        <Field label="Hiệu lực đến" error={form.formState.errors.effectiveTo?.message}>
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
@@ -609,14 +607,12 @@ function BarcodeForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Reason code" error={form.formState.errors.reasonCode?.message}>
+        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
           <Input disabled={disabled} {...form.register('reasonCode')} />
         </Field>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={disabled} {...form.register('isPrimary')} />
-        Primary barcode
-      </label>
+        <input type="checkbox" disabled={disabled} {...form.register('isPrimary')} />Mã vạch chính</label>
       <FormActions
         editing={Boolean(initialValue)}
         disabled={disabled}
@@ -672,14 +668,14 @@ function ConversionForm({
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
         <SelectField
-          label="From UOM"
+          label="Từ đơn vị tính"
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.fromUomId?.message}
           {...form.register('fromUomId')}
         />
         <SelectField
-          label="To UOM"
+          label="Đến đơn vị tính"
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.toUomId?.message}
@@ -688,10 +684,10 @@ function ConversionForm({
         <Field label="Factor" error={form.formState.errors.factor?.message}>
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('factor')} />
         </Field>
-        <Field label="Effective from" error={form.formState.errors.effectiveFrom?.message}>
+        <Field label="Hiệu lực từ" error={form.formState.errors.effectiveFrom?.message}>
           <Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
         </Field>
-        <Field label="Effective to" error={form.formState.errors.effectiveTo?.message}>
+        <Field label="Hiệu lực đến" error={form.formState.errors.effectiveTo?.message}>
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
@@ -701,7 +697,7 @@ function ConversionForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Reason code" error={form.formState.errors.reasonCode?.message}>
+        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
           <Input disabled={disabled} {...form.register('reasonCode')} />
         </Field>
       </div>
@@ -776,31 +772,27 @@ function CoverageForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Min qty" error={form.formState.errors.minQty?.message}>
+        <Field label="Số lượng tối thiểu" error={form.formState.errors.minQty?.message}>
           <Input type="number" disabled={disabled} {...form.register('minQty')} />
         </Field>
-        <Field label="Max qty" error={form.formState.errors.maxQty?.message}>
+        <Field label="Số lượng tối đa" error={form.formState.errors.maxQty?.message}>
           <Input type="number" disabled={disabled} {...form.register('maxQty')} />
         </Field>
-        <Field label="Standard qty" error={form.formState.errors.standardQty?.message}>
+        <Field label="Số lượng chuẩn" error={form.formState.errors.standardQty?.message}>
           <Input type="number" disabled={disabled} {...form.register('standardQty')} />
         </Field>
-        <Field label="Multiple qty" error={form.formState.errors.multipleQty?.message}>
+        <Field label="Bội số lượng" error={form.formState.errors.multipleQty?.message}>
           <Input type="number" disabled={disabled} {...form.register('multipleQty')} />
         </Field>
-        <Field label="Lead time days" error={form.formState.errors.leadTimeDays?.message}>
+        <Field label="Thời gian bổ sung (ngày)" error={form.formState.errors.leadTimeDays?.message}>
           <Input type="number" disabled={disabled} {...form.register('leadTimeDays')} />
         </Field>
       </div>
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('stopReceiving')} />
-          Stop receiving
-        </label>
+          <input type="checkbox" disabled={disabled} {...form.register('stopReceiving')} />Dừng nhận hàng</label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('stopShipping')} />
-          Stop shipping
-        </label>
+          <input type="checkbox" disabled={disabled} {...form.register('stopShipping')} />Dừng xuất hàng</label>
       </div>
       <FormActions
         editing={Boolean(initialValue)}
@@ -888,9 +880,7 @@ function FormActions({
         </Button>
         {onCancel && (
           <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={pending}>
-            <X className="size-4" />
-            Cancel
-          </Button>
+            <X className="size-4" />Hủy</Button>
         )}
       </div>
     </div>
@@ -908,7 +898,7 @@ function relationMessage({
   empty: boolean;
   emptyLabel: string;
 }) {
-  if (loading) return 'Loading...';
+  if (loading) return 'Đang tải...';
   if (isForbidden(error)) return 'Permission denied. This relation is read-only.';
   if (error instanceof ApiError) return error.message;
   if (error) return 'Unable to load relation data.';

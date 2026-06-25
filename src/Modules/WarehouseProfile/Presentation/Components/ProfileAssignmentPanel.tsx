@@ -19,9 +19,9 @@ export function ProfileAssignmentPanel({
 }: ProfileAssignmentPanelProps) {
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Assignment scope</p>
+      <p className="text-sm font-medium">Phạm vi gán</p>
       {assignments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No assignments yet.</p>
+        <p className="text-muted-foreground text-sm">Chưa có gán nào.</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {assignments.map((assignment) => (

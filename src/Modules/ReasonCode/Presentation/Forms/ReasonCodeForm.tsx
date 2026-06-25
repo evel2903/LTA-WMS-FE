@@ -8,9 +8,9 @@ import {
   ACTION_CODES,
   OBJECT_TYPES,
   REASON_GROUPS,
-  REASON_GROUP_LABELS,
   ROLE_CODES,
   type ActionCode,
+  type ReasonGroup,
   type ObjectType,
   type RoleCode,
 } from '@modules/ReasonCode/Domain/Enums/ReasonCodeEnums';
@@ -27,6 +27,15 @@ interface ReasonCodeFormProps {
   conflict?: string;
   onSubmit: (values: ReasonCodeFormValues) => void;
 }
+
+const REASON_GROUP_LABELS_VI: Record<ReasonGroup, string> = {
+  RULE_OVERRIDE: 'Ghi đè quy tắc',
+  MASTER_DATA_CONFIG_CHANGE: 'Thay đổi dữ liệu chủ / cấu hình',
+  HOLD_RELEASE: 'Giữ / giải phóng',
+  INVENTORY_ADJUSTMENT: 'Điều chỉnh tồn kho',
+  INTEGRATION: 'Tích hợp',
+  MANUAL_FIX: 'Sửa thủ công',
+};
 
 /**
  * Controlled multi-checkbox group (value/onChange) — NOT register-based. RHF does not
@@ -107,7 +116,7 @@ export function ReasonCodeForm({
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
       <label className="grid gap-1 text-sm">
-        Reason code
+        Mã lý do
         {/* Code is immutable on edit (BE rejects changes) — render read-only. */}
         <Input disabled={disabled || isEdit} readOnly={isEdit} {...form.register('reasonCode')} />
         {errors.reasonCode && (
@@ -120,28 +129,24 @@ export function ReasonCodeForm({
         )}
       </label>
 
-      <label className="grid gap-1 text-sm">
-        Category
-        <select
+      <label className="grid gap-1 text-sm">Nhóm<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('reasonGroup')}
         >
           {REASON_GROUPS.map((group) => (
             <option key={group} value={group}>
-              {REASON_GROUP_LABELS[group]}
+              {REASON_GROUP_LABELS_VI[group]}
             </option>
           ))}
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm">
-        Description
-        <Input disabled={disabled} {...form.register('description')} />
+      <label className="grid gap-1 text-sm">Mô tả<Input disabled={disabled} {...form.register('description')} />
       </label>
 
       <CheckboxGroup
-        legend="Applies to actions"
+        legend="Áp dụng cho action"
         options={ACTION_CODES}
         value={actions}
         disabled={disabled}
@@ -149,7 +154,7 @@ export function ReasonCodeForm({
         onChange={(next) => form.setValue('appliesToActions', next as ActionCode[], { shouldValidate: true })}
       />
       <CheckboxGroup
-        legend="Applies to objects"
+        legend="Áp dụng cho object type"
         options={OBJECT_TYPES}
         value={objects}
         disabled={disabled}
@@ -159,17 +164,13 @@ export function ReasonCodeForm({
 
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('evidenceRequired')} />
-          Evidence required
-        </label>
+          <input type="checkbox" disabled={disabled} {...form.register('evidenceRequired')} />Yêu cầu bằng chứng</label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('approvalRequired')} />
-          Approval required
-        </label>
+          <input type="checkbox" disabled={disabled} {...form.register('approvalRequired')} />Yêu cầu phê duyệt</label>
       </div>
 
       <CheckboxGroup
-        legend="Allowed roles (empty = no restriction)"
+        legend="Vai trò được phép (để trống = không giới hạn)"
         options={ROLE_CODES}
         value={roles}
         disabled={disabled}
@@ -177,13 +178,9 @@ export function ReasonCodeForm({
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-1 text-sm">
-          Effective from
-          <Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
+        <label className="grid gap-1 text-sm">Hiệu lực từ<Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
         </label>
-        <label className="grid gap-1 text-sm">
-          Effective to
-          <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
+        <label className="grid gap-1 text-sm">Hiệu lực đến<Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
           {errors.effectiveTo && (
             <span className="text-destructive text-xs">{errors.effectiveTo.message}</span>
           )}
@@ -192,25 +189,23 @@ export function ReasonCodeForm({
 
       {isEdit && (
         <div className="grid gap-1">
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               disabled={disabled}
               {...form.register('status')}
             >
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="INACTIVE">Không hoạt động</option>
             </select>
           </label>
           {initialValue && (
-            <span className="text-muted-foreground text-xs">Version {initialValue.version}</span>
+            <span className="text-muted-foreground text-xs">Phiên bản {initialValue.version}</span>
           )}
         </div>
       )}
 
       <Button type="submit" disabled={disabled || pending}>
-        {isEdit ? 'Update reason code' : 'Create reason code'}
+        {isEdit ? 'Cập nhật mã lý do' : 'Tạo mã lý do'}
       </Button>
     </form>
   );

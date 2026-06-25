@@ -27,13 +27,13 @@ export function OverrideLogTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Rule</TableHead>
-          <TableHead>Actor</TableHead>
-          <TableHead>Target object</TableHead>
-          <TableHead>Reason</TableHead>
-          <TableHead>Approval ref</TableHead>
-          <TableHead>Mode</TableHead>
-          <TableHead>Time</TableHead>
+          <TableHead>Quy tắc</TableHead>
+          <TableHead>Người thực hiện</TableHead>
+          <TableHead>Đối tượng đích</TableHead>
+          <TableHead>Lý do</TableHead>
+          <TableHead>Tham chiếu phê duyệt</TableHead>
+          <TableHead>Chế độ</TableHead>
+          <TableHead>Thời gian</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

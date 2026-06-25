@@ -21,12 +21,12 @@ export function ReasonCodeTable({ items, selectedId, onSelect }: ReasonCodeTable
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Code</TableHead>
-          <TableHead>Category</TableHead>
-          <TableHead>Applies to action</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>Mã</TableHead>
+          <TableHead>Nhóm</TableHead>
+          <TableHead>Áp dụng cho action</TableHead>
+          <TableHead>Trạng thái</TableHead>
           <TableHead>Version</TableHead>
-          <TableHead>Evidence</TableHead>
+          <TableHead>Bằng chứng</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

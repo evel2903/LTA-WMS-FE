@@ -23,27 +23,27 @@ export function OverrideLogDetailPanel({ log }: { log: OverrideLog }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Created at" value={new Date(log.createdAt).toLocaleString()} />
-        <Field label="Actor" value={log.actorUserId} />
-        <Field label="Action" value={log.action} />
+        <Field label="Tạo lúc" value={new Date(log.createdAt).toLocaleString()} />
+        <Field label="Người thực hiện" value={log.actorUserId} />
+        <Field label="Hành động" value={log.action} />
         <Field
-          label="Target object"
+          label="Đối tượng đích"
           value={`${log.targetObjectType} · ${log.targetObjectCode ?? log.targetObjectId}`}
         />
-        <Field label="Reason code id" value={log.reasonCodeId} />
-        <Field label="Reason note" value={log.reasonNote} />
-        <Field label="Approval request id" value={log.approvalRequestId} />
-        <Field label="Evidence" value={evidenceCount > 0 ? `${evidenceCount} ref(s)` : 'none'} />
-        <Field label="Audit ref" value={log.auditRef} />
-        <Field label="Correlation id" value={log.correlationId} />
+        <Field label="ID mã lý do" value={log.reasonCodeId} />
+        <Field label="Ghi chú lý do" value={log.reasonNote} />
+        <Field label="ID yêu cầu phê duyệt" value={log.approvalRequestId} />
+        <Field label="Bằng chứng" value={evidenceCount > 0 ? `${evidenceCount} tham chiếu` : 'không có'} />
+        <Field label="Tham chiếu kiểm toán" value={log.auditRef} />
+        <Field label="ID tương quan" value={log.correlationId} />
       </div>
 
-      {log.scope && <JsonBlock label="Scope" value={log.scope} />}
-      {evidenceCount > 0 && <JsonBlock label="Evidence refs" value={log.evidenceRefs} />}
+      {log.scope && <JsonBlock label="Phạm vi" value={log.scope} />}
+      {evidenceCount > 0 && <JsonBlock label="Tham chiếu bằng chứng" value={log.evidenceRefs} />}
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <JsonBlock label="Before" value={log.beforeJson} />
-        <JsonBlock label="After" value={log.afterJson} />
+        <JsonBlock label="Trước thay đổi" value={log.beforeJson} />
+        <JsonBlock label="Sau thay đổi" value={log.afterJson} />
       </div>
     </div>
   );

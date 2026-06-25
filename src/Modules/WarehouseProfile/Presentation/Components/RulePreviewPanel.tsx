@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import {
-  CONTROL_MODE_LABELS,
-  PRECEDENCE_TIER_LABELS,
-  skippedReasonLabel,
-} from '@modules/WarehouseProfile/Domain/Constants/PrecedenceOrder';
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
+import {
+  VI_CONTROL_MODE_LABELS,
+  VI_PRECEDENCE_TIER_LABELS,
+  viSkippedReasonLabel,
+} from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface RulePreviewPanelProps {
   preview: RulePreview | null;
@@ -23,7 +23,7 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
   if (loading) {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Running preview…</CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Đang chạy preview...</CardContent>
       </Card>
     );
   }
@@ -39,9 +39,7 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
   if (!preview) {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">
-          No preview yet. Enter a context and run a preview to see how rules resolve.
-        </CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Chưa có preview. Nhập ngữ cảnh và chạy preview để xem cách quy tắc được áp dụng.</CardContent>
       </Card>
     );
   }
@@ -53,7 +51,7 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
       {/* Winner */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Winning rule</CardTitle>
+          <CardTitle className="text-base">Quy tắc thắng</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           {winner ? (
@@ -63,13 +61,13 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
                 <span className="text-muted-foreground">{winner.ruleName}</span>
               </p>
               <p className="text-muted-foreground">
-                Tier: {PRECEDENCE_TIER_LABELS[winner.precedenceTier]} · Control:{' '}
-                {CONTROL_MODE_LABELS[winner.controlMode]}
+                Tầng: {VI_PRECEDENCE_TIER_LABELS[winner.precedenceTier]} · Kiểm soát:{' '}
+                {VI_CONTROL_MODE_LABELS[winner.controlMode]}
               </p>
               <ControlModeBadge mode={winner.controlMode} />
             </div>
           ) : (
-            <p className="text-muted-foreground">No rule applied to this context.</p>
+            <p className="text-muted-foreground">Không có quy tắc nào áp dụng cho ngữ cảnh này.</p>
           )}
         </CardContent>
       </Card>
@@ -77,30 +75,30 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
       {/* Control-mode summary — four distinct modes */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Control mode</CardTitle>
+          <CardTitle className="text-base">Chế độ kiểm soát</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
           <p>
             Outcome:{' '}
             <span className="font-medium">
               {controlMode.isHardBlock
-                ? CONTROL_MODE_LABELS.HARD_BLOCK
+                  ? VI_CONTROL_MODE_LABELS.HARD_BLOCK
                 : controlMode.approvalRequired
-                  ? CONTROL_MODE_LABELS.APPROVAL_REQUIRED
+                  ? VI_CONTROL_MODE_LABELS.APPROVAL_REQUIRED
                   : controlMode.mode
-                    ? CONTROL_MODE_LABELS[controlMode.mode]
-                    : 'Allowed'}
+                    ? VI_CONTROL_MODE_LABELS[controlMode.mode]
+                    : 'Cho phép'}
             </span>
           </p>
           {controlMode.warning && (
             <p className="text-amber-700">
-              {CONTROL_MODE_LABELS.SOFT_WARNING}: {controlMode.warning.message} (
+              {VI_CONTROL_MODE_LABELS.SOFT_WARNING}: {controlMode.warning.message} (
               {controlMode.warning.ruleCode})
             </p>
           )}
           {controlMode.suggestion && (
             <p className="text-muted-foreground">
-              {CONTROL_MODE_LABELS.AUTO_SUGGESTION}: {controlMode.suggestion.message} (
+              {VI_CONTROL_MODE_LABELS.AUTO_SUGGESTION}: {controlMode.suggestion.message} (
               {controlMode.suggestion.ruleCode})
             </p>
           )}
@@ -110,11 +108,11 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
       {/* Skipped rules — reason labelled from the finite taxonomy */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Skipped rules</CardTitle>
+          <CardTitle className="text-base">Quy tắc bị bỏ qua</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           {skippedRules.length === 0 ? (
-            <p className="text-muted-foreground">No skipped rules.</p>
+            <p className="text-muted-foreground">Không có quy tắc bị bỏ qua.</p>
           ) : (
             <ul className="space-y-2">
               {skippedRules.map((rule) => (
@@ -124,8 +122,8 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
                     <span className="text-muted-foreground">{rule.ruleName}</span>
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {PRECEDENCE_TIER_LABELS[rule.precedenceTier]} · Reason:{' '}
-                    {skippedReasonLabel(rule.reason)}
+                    {VI_PRECEDENCE_TIER_LABELS[rule.precedenceTier]} · Lý do:{' '}
+                    {viSkippedReasonLabel(rule.reason)}
                   </p>
                 </li>
               ))}
@@ -137,11 +135,11 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
       {/* Conflicts — DATA, not an error */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Conflicts</CardTitle>
+          <CardTitle className="text-base">Xung đột</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           {conflicts.length === 0 ? (
-            <p className="text-muted-foreground">No conflicts detected.</p>
+            <p className="text-muted-foreground">Không phát hiện xung đột.</p>
           ) : (
             <ul className="space-y-3">
               {conflicts.map((conflict) => (
@@ -150,8 +148,8 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
                   className="rounded-md border px-3 py-2"
                 >
                   <p className="text-muted-foreground text-xs">
-                    {PRECEDENCE_TIER_LABELS[conflict.precedenceTier]} · Scope: {conflict.scopeKey} ·
-                    Winner: {conflict.winnerRuleCode}
+                    {VI_PRECEDENCE_TIER_LABELS[conflict.precedenceTier]} · Phạm vi:{' '}
+                    {conflict.scopeKey} · Quy tắc thắng: {conflict.winnerRuleCode}
                   </p>
                   <ul className="mt-1 space-y-1">
                     {conflict.rules.map((rule) => (
@@ -174,17 +172,17 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
       {/* Reason readiness — read-only metadata (Epic C enforces) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Reason readiness</CardTitle>
+          <CardTitle className="text-base">Mức sẵn sàng mã lý do</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           {reasonReadiness ? (
             <ul className="text-muted-foreground space-y-1">
-              <li>Requires reason: {reasonReadiness.requiresReason ? 'Yes' : 'No'}</li>
-              <li>Requires evidence: {reasonReadiness.requiresEvidence ? 'Yes' : 'No'}</li>
-              <li>Allow override: {reasonReadiness.allowOverride ? 'Yes' : 'No'}</li>
+              <li>Cần mã lý do: {reasonReadiness.requiresReason ? 'Có' : 'Không'}</li>
+              <li>Cần bằng chứng: {reasonReadiness.requiresEvidence ? 'Có' : 'Không'}</li>
+              <li>Cho phép ghi đè: {reasonReadiness.allowOverride ? 'Có' : 'Không'}</li>
             </ul>
           ) : (
-            <p className="text-muted-foreground">Not applicable.</p>
+            <p className="text-muted-foreground">Không áp dụng.</p>
           )}
         </CardContent>
       </Card>

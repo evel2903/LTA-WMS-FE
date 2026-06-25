@@ -27,23 +27,23 @@ export function WarehouseProfileDetailPanel({ profile }: WarehouseProfileDetailP
       </div>
 
       <div className="rounded-md border p-3">
-        <Row label="Warehouse type" value={profile.warehouseTypeCode} />
-        <Row label="Version" value={profile.version} />
-        <Row label="Effective from" value={profile.effectiveFrom} />
-        <Row label="Effective to" value={profile.effectiveTo} />
+        <Row label="Loại kho" value={profile.warehouseTypeCode} />
+        <Row label="Phiên bản" value={profile.version} />
+        <Row label="Hiệu lực từ" value={profile.effectiveFrom} />
+        <Row label="Hiệu lực đến" value={profile.effectiveTo} />
       </div>
 
       <div className="rounded-md border p-3">
         <p className="text-muted-foreground mb-1 text-xs">Scope (null = wildcard)</p>
-        <Row label="Warehouse" value={profile.warehouseId} />
-        <Row label="Zone" value={profile.zoneId} />
-        <Row label="Location type" value={profile.locationType} />
-        <Row label="Owner" value={profile.ownerId} />
+        <Row label="Kho" value={profile.warehouseId} />
+        <Row label="Khu vực" value={profile.zoneId} />
+        <Row label="Loại vị trí" value={profile.locationType} />
+        <Row label="Chủ hàng" value={profile.ownerId} />
         <Row label="SKU" value={profile.skuId} />
-        <Row label="Item class" value={profile.itemClass} />
-        <Row label="Order type" value={profile.orderType} />
-        <Row label="Customer" value={profile.customerId} />
-        <Row label="Supplier" value={profile.supplierId} />
+        <Row label="Nhóm hàng" value={profile.itemClass} />
+        <Row label="Loại đơn" value={profile.orderType} />
+        <Row label="Khách hàng" value={profile.customerId} />
+        <Row label="Nhà cung cấp" value={profile.supplierId} />
       </div>
     </div>
   );

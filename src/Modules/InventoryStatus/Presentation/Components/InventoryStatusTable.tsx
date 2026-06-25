@@ -29,14 +29,14 @@ export function InventoryStatusTable({ items, selectedId, onSelect }: InventoryS
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Status code</TableHead>
-          <TableHead>Display name</TableHead>
-          <TableHead>Stage group</TableHead>
-          <TableHead className="text-center">For allocation</TableHead>
-          <TableHead className="text-center">For pick</TableHead>
-          <TableHead className="text-center">Hold</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Sort</TableHead>
+          <TableHead>Mã trạng thái</TableHead>
+          <TableHead>Tên hiển thị</TableHead>
+          <TableHead>Nhóm chặng</TableHead>
+          <TableHead className="text-center">Cho phân bổ</TableHead>
+          <TableHead className="text-center">Cho lấy hàng</TableHead>
+          <TableHead className="text-center">Giữ hàng</TableHead>
+          <TableHead>Trạng thái</TableHead>
+          <TableHead className="text-right">Thứ tự</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -54,10 +54,10 @@ export function InventoryStatusTable({ items, selectedId, onSelect }: InventoryS
             <TableCell>{item.displayName}</TableCell>
             <TableCell className="text-muted-foreground">{item.stageGroup}</TableCell>
             <TableCell className="text-center">
-              <Flag on={item.allowsAllocation} label="For allocation" />
+              <Flag on={item.allowsAllocation} label="Cho phân bổ" />
             </TableCell>
             <TableCell className="text-center">
-              <Flag on={item.allowsPick} label="For pick" />
+              <Flag on={item.allowsPick} label="Cho lấy hàng" />
             </TableCell>
             <TableCell className="text-center">
               <Flag on={item.hold} label="Hold" />

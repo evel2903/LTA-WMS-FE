@@ -143,13 +143,13 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('link', { name: 'New partner' }));
-    await actor.type(await screen.findByLabelText('Partner code'), 'SUP-001');
-    await actor.type(screen.getByLabelText('Partner name'), 'Acme Supplier');
-    await actor.selectOptions(screen.getByLabelText('Partner type'), 'Supplier');
-    await actor.type(screen.getByLabelText('Source system'), 'SAP');
-    await actor.type(screen.getByLabelText('External reference'), 'SAP-SUP-001');
-    await actor.click(screen.getByRole('button', { name: 'Create partner' }));
+    await actor.click(await screen.findByRole('link', { name: 'Tạo đối tác' }));
+    await actor.type(await screen.findByLabelText('Mã đối tác'), 'SUP-001');
+    await actor.type(screen.getByLabelText('Tên đối tác'), 'Acme Supplier');
+    await actor.selectOptions(screen.getByLabelText('Loại đối tác'), 'Supplier');
+    await actor.type(screen.getByLabelText('Hệ thống nguồn'), 'SAP');
+    await actor.type(screen.getByLabelText('Tham chiếu ngoài'), 'SAP-SUP-001');
+    await actor.click(screen.getByRole('button', { name: 'Tạo đối tác' }));
 
     await waitFor(() =>
       expect(fake.create).toHaveBeenCalledWith(
@@ -163,11 +163,11 @@ describe('PartnerMasterPage', () => {
     );
     await screen.findByRole('heading', { name: 'SUP-001' });
 
-    await actor.click(screen.getByRole('link', { name: 'Edit partner' }));
-    const updateButton = await screen.findByRole('button', { name: 'Update partner' });
+    await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
+    const updateButton = await screen.findByRole('button', { name: 'Cập nhật đối tác' });
     const editForm = updateButton.closest('form') as HTMLFormElement;
-    await actor.clear(within(editForm).getByLabelText('Partner name'));
-    await actor.type(within(editForm).getByLabelText('Partner name'), 'Acme Supplier Updated');
+    await actor.clear(within(editForm).getByLabelText('Tên đối tác'));
+    await actor.type(within(editForm).getByLabelText('Tên đối tác'), 'Acme Supplier Updated');
     await actor.click(updateButton);
 
     await waitFor(() =>
@@ -178,11 +178,11 @@ describe('PartnerMasterPage', () => {
     );
     expect(await screen.findByDisplayValue('Acme Supplier Updated')).toBeTruthy();
 
-    await actor.click(screen.getByRole('link', { name: 'Edit partner' }));
-    const refreshedUpdateButton = await screen.findByRole('button', { name: 'Update partner' });
+    await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
+    const refreshedUpdateButton = await screen.findByRole('button', { name: 'Cập nhật đối tác' });
     const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
-    await actor.type(within(refreshedForm).getByLabelText('Reason code'), 'RC-V1-CANCEL');
-    await actor.click(within(refreshedForm).getByRole('button', { name: 'Deactivate partner' }));
+    await actor.type(within(refreshedForm).getByLabelText('Mã lý do'), 'RC-V1-CANCEL');
+    await actor.click(within(refreshedForm).getByRole('button', { name: 'Ngưng kích hoạt đối tác' }));
 
     await waitFor(() =>
       expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-V1-CANCEL' }),
@@ -198,8 +198,8 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'New partner' })).toBeNull();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('link', { name: 'Tạo đối tác' })).toBeNull();
   });
 
   it('passes partner name filter to the repository', async () => {
@@ -212,7 +212,7 @@ describe('PartnerMasterPage', () => {
     renderPage();
 
     await screen.findByRole('button', { name: 'SUP-001' });
-    await actor.type(screen.getByLabelText('Partner name filter'), 'Acme');
+    await actor.type(screen.getByLabelText('Lọc tên đối tác'), 'Acme');
 
     await waitFor(() =>
       expect(fake.list).toHaveBeenLastCalledWith(expect.objectContaining({ partnerName: 'Acme' })),

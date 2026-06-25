@@ -7,10 +7,8 @@ import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useActiveOwners, useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
-import {
-  CATALOG_EMPTY_LABELS,
-  SKU_STATUSES,
-} from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import type { Sku, SkuStatus } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import {
   CatalogListView,
@@ -53,7 +51,7 @@ export function SkuMasterPage() {
 
   const columns: CatalogColumn<Sku>[] = [
     {
-      header: 'Code',
+      header: 'Mã',
       render: (sku) => (
         <button
           className="underline-offset-2 hover:underline"
@@ -63,15 +61,15 @@ export function SkuMasterPage() {
         </button>
       ),
     },
-    { header: 'Name', render: (sku) => sku.skuName },
-    { header: 'Class', render: (sku) => sku.itemClass },
-    { header: 'Status', render: (sku) => <SkuStatusBadge status={sku.itemStatus} /> },
+    { header: 'Tên', render: (sku) => sku.skuName },
+    { header: 'Nhóm', render: (sku) => sku.itemClass },
+    { header: 'Trạng thái', render: (sku) => <SkuStatusBadge status={sku.itemStatus} /> },
   ];
 
   return (
     <CatalogListView
-      title="SKUs"
-      description="Manage item master (SKU) records and control flags."
+      title="SKU"
+      description="Quản lý dữ liệu chủ SKU và cờ kiểm soát."
       state={state}
       columns={columns}
       rows={skus}
@@ -80,31 +78,27 @@ export function SkuMasterPage() {
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
       canCreate={canCreate}
-      emptyLabel={CATALOG_EMPTY_LABELS.skus}
-      errorMessage={apiError?.message ?? (query.error ? 'Unable to load SKUs.' : undefined)}
+      emptyLabel={MASTER_DATA_EMPTY_LABELS.skus}
+      errorMessage={apiError?.message ?? (query.error ? 'Không thể tải SKU.' : undefined)}
       headerAction={
         canCreate ? (
           <Button asChild size="sm">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW}>New SKU</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW}>Tạo SKU</Link>
           </Button>
         ) : null
       }
       toolbar={
         <>
-          <label className="grid gap-1 text-sm">
-            SKU code
-            <Input
+          <label className="grid gap-1 text-sm">Mã SKU<Input
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search code"
+              placeholder="Tìm theo mã"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Item status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái hàng<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={itemStatus}
               onChange={(event) => {
@@ -112,7 +106,7 @@ export function SkuMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {SKU_STATUSES.map((value) => (
                 <option key={value} value={value}>
                   {value}
@@ -120,9 +114,7 @@ export function SkuMasterPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Default owner
-            <select
+          <label className="grid gap-1 text-sm">Chủ hàng mặc định<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={defaultOwnerId}
               onChange={(event) => {
@@ -130,7 +122,7 @@ export function SkuMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {owners.map((owner) => (
                 <option key={owner.id} value={owner.id}>
                   {owner.ownerCode} - {owner.ownerName}

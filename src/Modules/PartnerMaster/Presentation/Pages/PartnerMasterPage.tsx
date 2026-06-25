@@ -12,10 +12,10 @@ import {
   type CatalogListState,
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import {
-  PARTNER_EMPTY_LABEL,
   PARTNER_STATUSES,
   PARTNER_TYPES,
 } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
+import { PARTNER_EMPTY_LABEL_VI } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 import type { Partner, PartnerStatus, PartnerType } from '@modules/PartnerMaster/Domain/Types/Partner';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 
@@ -62,7 +62,7 @@ export function PartnerMasterPage() {
 
   const columns: CatalogColumn<Partner>[] = [
     {
-      header: 'Code',
+      header: 'Mã',
       render: (partner) => (
         <button
           className="underline-offset-2 hover:underline"
@@ -72,16 +72,16 @@ export function PartnerMasterPage() {
         </button>
       ),
     },
-    { header: 'Name', render: (partner) => partner.partnerName },
-    { header: 'Type', render: (partner) => partner.partnerType },
-    { header: 'Status', render: (partner) => <StatusBadge status={partner.status} /> },
-    { header: 'External Reference', render: (partner) => partner.externalReference },
+    { header: 'Tên', render: (partner) => partner.partnerName },
+    { header: 'Loại', render: (partner) => partner.partnerType },
+    { header: 'Trạng thái', render: (partner) => <StatusBadge status={partner.status} /> },
+    { header: 'Tham chiếu ngoài', render: (partner) => partner.externalReference },
   ];
 
   return (
     <CatalogListView
-      title="Partners"
-      description="Manage minimal Supplier, Customer and Carrier records for V1 flows."
+      title="Đối tác"
+      description="Quản lý nhà cung cấp, khách hàng và đơn vị vận chuyển tối thiểu cho luồng V1."
       state={state}
       columns={columns}
       rows={partners}
@@ -90,53 +90,45 @@ export function PartnerMasterPage() {
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
       canCreate={canCreate}
-      emptyLabel={PARTNER_EMPTY_LABEL}
-      errorMessage={apiError?.message ?? (query.error ? 'Unable to load partners.' : undefined)}
+      emptyLabel={PARTNER_EMPTY_LABEL_VI}
+      errorMessage={apiError?.message ?? (query.error ? 'Không thể tải đối tác.' : undefined)}
       headerAction={
         canCreate ? (
           <Button asChild size="sm">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_NEW}>New partner</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_NEW}>Tạo đối tác</Link>
           </Button>
         ) : null
       }
       toolbar={
         <>
-          <label className="grid gap-1 text-sm">
-            Partner code filter
-            <Input
+          <label className="grid gap-1 text-sm">Lọc mã đối tác<Input
               value={codeFilter}
               onChange={(event) => {
                 setCodeFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search code"
+              placeholder="Tìm theo mã"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Partner name filter
-            <Input
+          <label className="grid gap-1 text-sm">Lọc tên đối tác<Input
               value={nameFilter}
               onChange={(event) => {
                 setNameFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search name"
+              placeholder="Tìm theo tên"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            External reference filter
-            <Input
+          <label className="grid gap-1 text-sm">Lọc tham chiếu ngoài<Input
               value={externalReferenceFilter}
               onChange={(event) => {
                 setExternalReferenceFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search reference"
+              placeholder="Tìm theo tham chiếu"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Partner type filter
-            <select
+          <label className="grid gap-1 text-sm">Lọc loại đối tác<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={partnerType}
               onChange={(event) => {
@@ -144,7 +136,7 @@ export function PartnerMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {PARTNER_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -152,9 +144,7 @@ export function PartnerMasterPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Status filter
-            <select
+          <label className="grid gap-1 text-sm">Lọc trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={status}
               onChange={(event) => {
@@ -162,7 +152,7 @@ export function PartnerMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {PARTNER_STATUSES.map((item) => (
                 <option key={item} value={item}>
                   {item}

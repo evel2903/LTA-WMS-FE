@@ -77,48 +77,48 @@ export function WarehouseProfileDetailPage({ mode }: WarehouseProfileDetailPageP
     !lifecycleConflict && lifecycleError instanceof ApiError ? lifecycleError.message : undefined;
 
   const title = isCreate
-    ? 'Create Warehouse Profile'
+    ? 'Tạo hồ sơ kho'
     : profile
       ? profile.profileCode
-      : 'Warehouse Profile';
+      : 'Hồ sơ kho';
 
   return (
     <DetailPageShell
       title={title}
       subtitle={
         isCreate
-          ? 'Create a draft profile on a dedicated action page.'
-          : 'Review profile governance state before opening edit/actions.'
+          ? 'Tạo hồ sơ nháp trên trang action riêng.'
+          : 'Rà soát trạng thái quản trị hồ sơ trước khi mở chỉnh sửa/action.'
       }
       backTo={ROUTES.FOUNDATION.WAREHOUSE_PROFILES}
-      backLabel="Back to profiles"
+      backLabel="Quay lại hồ sơ"
       status={profile ? <WarehouseProfileStatusBadge status={profile.status} /> : null}
       actions={
         profile ? (
           isEdit ? (
             <Button asChild variant="outline">
-              <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_DETAIL(profile.id)}>View detail</Link>
+              <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_DETAIL(profile.id)}>Xem chi tiết</Link>
             </Button>
           ) : (
             <Button asChild>
-              <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_EDIT(profile.id)}>Edit profile</Link>
+              <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_EDIT(profile.id)}>Chỉnh sửa hồ sơ</Link>
             </Button>
           )
         ) : null
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={apiError?.message ?? 'Unable to load warehouse profile.'}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={apiError?.message ?? 'Không thể tải hồ sơ kho.'}
       contentClassName="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]"
     >
       {isCreate ? (
         <ActionPanel
-          title="Create profile"
-          description="Creates a draft WarehouseProfile using the existing foundation contract."
+          title="Tạo hồ sơ"
+          description="Tạo bản nháp WarehouseProfile bằng contract nền tảng hiện có."
           state={mutations.createProfile.isPending ? 'pending' : 'idle'}
         >
           <WarehouseProfileForm
-            submitLabel="Create draft"
+            submitLabel="Tạo bản nháp"
             disabled={!canMutate}
             pending={mutations.createProfile.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -189,14 +189,14 @@ export function WarehouseProfileDetailPage({ mode }: WarehouseProfileDetailPageP
           <div className="space-y-4">
             {isEdit ? (
               <ActionPanel
-                title="Edit profile"
-                description="Profile update stays on the edit/action route."
+                title="Chỉnh sửa hồ sơ"
+                description="Cập nhật hồ sơ giữ trên route chỉnh sửa/action."
                 state={mutations.updateProfile.isPending ? 'pending' : 'idle'}
               >
                 <WarehouseProfileForm
                   key={`profile-${profile.id}`}
                   initialValue={profile}
-                  submitLabel="Update profile"
+                  submitLabel="Cập nhật hồ sơ"
                   disabled={!canMutate}
                   pending={mutations.updateProfile.isPending}
                   conflict={conflictMessage(submitError) ?? undefined}
@@ -210,16 +210,16 @@ export function WarehouseProfileDetailPage({ mode }: WarehouseProfileDetailPageP
               </ActionPanel>
             ) : (
               <ActionPanel
-                title="Read-only detail"
-                description="Open edit mode to change profile metadata, lifecycle, assignments or rules."
+                title="Chi tiết chỉ đọc"
+                description="Mở chế độ chỉnh sửa để đổi metadata, lifecycle, phân bổ hoặc quy tắc của hồ sơ."
                 state="disabled"
                 governanceState="readOnly"
               />
             )}
 
             <ActionPanel
-              title="Lifecycle action"
-              description="Activation and deactivation keep existing reason/audit behavior."
+              title="Hành động vòng đời"
+              description="Kích hoạt và ngưng kích hoạt giữ hành vi reason/audit hiện có."
               state={
                 mutations.activateProfile.isPending || mutations.deactivateProfile.isPending
                   ? 'pending'

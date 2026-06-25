@@ -47,12 +47,12 @@ describe('ControlValidationCatalogPage (C18)', () => {
     const actor = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByText('Control & Validation Catalog')).toBeTruthy();
+    expect(await screen.findByText('Danh mục kiểm soát và xác thực')).toBeTruthy();
     expect(await screen.findByText('RBAC-VAL-01')).toBeTruthy();
     expect(screen.getByText('RBAC-VAL-05')).toBeTruthy();
-    expect(screen.getAllByText('Deferred to C9').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Dời sang C9').length).toBeGreaterThan(0);
 
-    await actor.click(screen.getByRole('tab', { name: /Control Exceptions/i }));
+    await actor.click(screen.getByRole('tab', { name: /Ngoại lệ kiểm soát/i }));
     expect(screen.getByText('CTRL-EX-09')).toBeTruthy();
     expect(screen.getAllByText('Deferred V1+').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('CTRL-EX-09 evidence: required')).toBeTruthy();
@@ -65,8 +65,8 @@ describe('ControlValidationCatalogPage (C18)', () => {
     renderPage();
 
     await screen.findByText('RBAC-VAL-01');
-    await actor.type(screen.getByLabelText(/Filter catalog/i), 'ManualDataFix');
-    await actor.click(screen.getByRole('tab', { name: /Control Exceptions/i }));
+    await actor.type(screen.getByLabelText(/Lọc danh mục/i), 'ManualDataFix');
+    await actor.click(screen.getByRole('tab', { name: /Ngoại lệ kiểm soát/i }));
 
     const table = screen.getByRole('table');
     expect(within(table).getByText('CTRL-EX-09')).toBeTruthy();
@@ -82,6 +82,6 @@ describe('ControlValidationCatalogPage (C18)', () => {
 
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
   });
 });

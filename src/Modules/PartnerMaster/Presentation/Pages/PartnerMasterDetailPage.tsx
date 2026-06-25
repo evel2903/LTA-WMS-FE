@@ -35,37 +35,37 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
   const partner = partnerQuery.data;
 
   if (!isCreate && partnerQuery.isLoading) {
-    return <DetailPageShell title="Partner detail" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
+    return <DetailPageShell title="Chi tiết đối tác" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="Partner detail" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
+    return <DetailPageShell title="Chi tiết đối tác" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
   }
 
   if (!isCreate && partnerQuery.error) {
     return (
       <DetailPageShell
-        title="Partner detail"
+        title="Chi tiết đối tác"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load partner.'}
+        stateMessage={apiError?.message ?? 'Không thể tải đối tác.'}
         backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS}
       />
     );
   }
 
   if (!isCreate && !partner) {
-    return <DetailPageShell title="Partner detail" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
+    return <DetailPageShell title="Chi tiết đối tác" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS} />;
   }
 
   const existingPartner = partner as NonNullable<typeof partner>;
-  const title = isCreate ? 'Create partner' : existingPartner.partnerCode;
+  const title = isCreate ? 'Tạo đối tác' : existingPartner.partnerCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Supplier, customer or carrier master data"
+      subtitle="Dữ liệu chủ nhà cung cấp, khách hàng hoặc đơn vị vận chuyển"
       backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS}
-      backLabel="Back to partners"
+      backLabel="Quay lại đối tác"
       status={!isCreate ? <StatusBadge status={existingPartner.status} /> : null}
       summary={
         !isCreate ? (
@@ -78,15 +78,15 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_EDIT(existingPartner.id)}>Edit partner</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.PARTNER_EDIT(existingPartner.id)}>Chỉnh sửa đối tác</Link>
           </Button>
         ) : null
       }
       state={canEdit ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Create partner' : 'Partner actions'}
-        description="Deactivate keeps the existing reason-code and audit behavior."
+        title={isCreate ? 'Tạo đối tác' : 'Hành động đối tác'}
+        description="Ngưng kích hoạt vẫn giữ hành vi mã lý do và audit hiện có."
         state={
           mutations.createPartner.isPending ||
           mutations.updatePartner.isPending ||
@@ -98,7 +98,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
       >
         {isCreate ? (
           <PartnerForm
-            submitLabel="Create partner"
+            submitLabel="Tạo đối tác"
             disabled={!canMutate}
             pending={mutations.createPartner.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -116,7 +116,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
           <PartnerForm
             key={`partner-${existingPartner.id}-${existingPartner.updatedAt ?? ''}`}
             initialValue={existingPartner}
-            submitLabel="Update partner"
+            submitLabel="Cập nhật đối tác"
             disabled={!canMutate}
             pending={mutations.updatePartner.isPending}
             deactivatePending={mutations.deactivatePartner.isPending}

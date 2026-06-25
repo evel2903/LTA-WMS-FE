@@ -15,11 +15,9 @@ export function ControlValidationCatalogStateView({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permission denied</CardTitle>
+          <CardTitle className="text-base">Không có quyền</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          You do not have permission to view the control and validation catalog.
-        </CardContent>
+        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem danh mục kiểm soát và xác thực.</CardContent>
       </Card>
     );
   }
@@ -27,10 +25,10 @@ export function ControlValidationCatalogStateView({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Something went wrong</CardTitle>
+          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
         </CardHeader>
         <CardContent className="text-destructive text-sm">
-          {errorMessage ?? 'Unable to load control and validation catalog.'}
+          {errorMessage ?? 'Không thể tải danh mục kiểm soát và xác thực.'}
         </CardContent>
       </Card>
     );
@@ -38,15 +36,13 @@ export function ControlValidationCatalogStateView({
   if (state === 'loading') {
     return (
       <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Loading...</CardContent>
+        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải...</CardContent>
       </Card>
     );
   }
   return (
     <Card>
-      <CardContent className="text-muted-foreground py-10 text-sm">
-        No control or validation catalog entries are available.
-      </CardContent>
+      <CardContent className="text-muted-foreground py-10 text-sm">Chưa có bản ghi danh mục kiểm soát hoặc xác thực.</CardContent>
     </Card>
   );
 }

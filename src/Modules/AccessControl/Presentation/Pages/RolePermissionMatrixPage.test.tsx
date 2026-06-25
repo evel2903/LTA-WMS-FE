@@ -80,6 +80,6 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
   });
 });

@@ -79,7 +79,7 @@ describe('PrecedenceMatrix', () => {
     const rules = [rule('opt', 'OPTIMIZATION', 'AUTO_SUGGESTION'), rule('comp', 'COMPLIANCE', 'HARD_BLOCK')];
     const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />);
 
-    const indices = ['Compliance', 'Integrity', 'Physical', 'Owner / Contract', 'Operation', 'Optimization'].map(
+    const indices = ['Tuân thủ', 'Toàn vẹn', 'Vật lý', 'Chủ hàng / Hợp đồng', 'Vận hành', 'Tối ưu'].map(
       (label) => html.indexOf(label),
     );
     // Every label present and strictly increasing => fixed top-to-bottom order.
@@ -102,14 +102,14 @@ describe('PrecedenceMatrix', () => {
     const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />);
 
     expect(html).toContain('COMP'); // rule code
-    expect(html).toContain('Hard block');
+    expect(html).toContain('Chặn cứng');
     expect(html).toContain('OWNER'); // rule code
-    expect(html).toContain('Approval required');
+    expect(html).toContain('Yêu cầu phê duyệt');
   });
 
   it('shows an empty hint for a tier with no rules', () => {
     const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[]} groups={groups} />);
-    expect(html).toContain('No rules');
+    expect(html).toContain('Không có quy tắc trong tầng này.');
   });
 
   it('renders the condition + action JSON read-only for each rule (Finding #3 / OQ3)', () => {
@@ -122,8 +122,8 @@ describe('PrecedenceMatrix', () => {
       <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[compRule]} groups={groups} />,
     );
     // Labels identify the two read-only JSON views.
-    expect(html).toContain('Condition');
-    expect(html).toContain('Action');
+    expect(html).toContain('Điều kiện');
+    expect(html).toContain('Hành động');
     // The serialized JSON content is shown (read-only display, not an editor).
     expect(html).toContain('hazmatClass');
     expect(html).toContain('&quot;block&quot;: true');
