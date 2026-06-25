@@ -107,11 +107,11 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('link', { name: 'New reason code' }));
-    await actor.type(await screen.findByLabelText('Reason code'), 'RC-NEW-1');
+    await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
+    await actor.type(await screen.findByLabelText('Mã lý do'), 'RC-NEW-1');
     await actor.click(screen.getByLabelText('Update')); // an applies-to action
     await actor.click(screen.getByLabelText('SKU')); // an applies-to object
-    await actor.click(screen.getByRole('button', { name: 'Create reason code' }));
+    await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
 
     expect(await screen.findByText('RC-NEW-1')).toBeTruthy();
     expect(fake.create).toHaveBeenCalled();
@@ -124,18 +124,18 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'RC-ADJ-01' }));
-    await actor.click(await screen.findByRole('link', { name: 'Edit reason code' }));
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa mã lý do' }));
     // Scope to the edit form — a 'Status' filter select also exists in the toolbar.
-    const updateBtn = await screen.findByRole('button', { name: 'Update reason code' });
+    const updateBtn = await screen.findByRole('button', { name: 'Cập nhật mã lý do' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(editForm).getByLabelText('Status'), 'INACTIVE');
+    await actor.selectOptions(within(editForm).getByLabelText('Trạng thái'), 'INACTIVE');
     await actor.click(updateBtn);
 
     await waitFor(() =>
       expect(fake.update).toHaveBeenCalledWith('r1', expect.objectContaining({ status: 'INACTIVE' })),
     );
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLSelectElement>('Status').value).toBe('INACTIVE'),
+      expect(screen.getByLabelText<HTMLSelectElement>('Trạng thái').value).toBe('INACTIVE'),
     );
   });
 
@@ -145,7 +145,7 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
   });
 
   it('does not fall back to create mode when selected detail fails without a list-row fallback', async () => {
@@ -153,15 +153,15 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     const fake = new FakeRepository([makeReasonCode({ id: 'other', reasonCode: 'RC-OTHER' })]);
     fake.getById = vi.fn(() =>
       Promise.reject(
-        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Reason detail unavailable' }),
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Không thể tải chi tiết mã lý do.' }),
       ),
     );
     repo.current = fake;
     renderPage([ROUTES.FOUNDATION.REASON_CODE_DETAIL('missing-reason')]);
 
-    expect(await screen.findByText('Unable to load page')).toBeTruthy();
-    expect(screen.getByText('Reason detail unavailable')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Create reason code' })).toBeNull();
+    expect(await screen.findByText('Không thể tải mã lý do')).toBeTruthy();
+    expect(screen.getByText('Không thể tải chi tiết mã lý do.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Tạo mã lý do' })).toBeNull();
   });
 
   it('surfaces a 409 duplicate-code conflict inline, not as a toast (AC4)', async () => {
@@ -175,11 +175,11 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('link', { name: 'New reason code' }));
-    await actor.type(await screen.findByLabelText('Reason code'), 'RC-DUP');
+    await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
+    await actor.type(await screen.findByLabelText('Mã lý do'), 'RC-DUP');
     await actor.click(screen.getByLabelText('Update'));
     await actor.click(screen.getByLabelText('SKU'));
-    await actor.click(screen.getByRole('button', { name: 'Create reason code' }));
+    await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
 
     expect(await screen.findByText('Reason code already exists: RC-DUP')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();

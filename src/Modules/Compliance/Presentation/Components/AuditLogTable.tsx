@@ -25,11 +25,11 @@ export function AuditLogTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Time</TableHead>
-          <TableHead>Actor</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Object</TableHead>
-          <TableHead>Result</TableHead>
+          <TableHead>Thời gian</TableHead>
+          <TableHead>Người thực hiện</TableHead>
+          <TableHead>Hành động</TableHead>
+          <TableHead>Đối tượng</TableHead>
+          <TableHead>Kết quả</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

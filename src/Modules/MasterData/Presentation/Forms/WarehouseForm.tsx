@@ -43,28 +43,20 @@ export function WarehouseForm({
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
       <input type="hidden" {...form.register('siteId')} />
-      <label className="grid gap-1 text-sm">
-        Warehouse code
-        <Input disabled={disabled} {...form.register('warehouseCode')} />
+      <label className="grid gap-1 text-sm">Mã kho<Input disabled={disabled} {...form.register('warehouseCode')} />
         {form.formState.errors.warehouseCode && (
           <span className="text-destructive text-xs">
             {form.formState.errors.warehouseCode.message}
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Warehouse name
-        <Input disabled={disabled} {...form.register('warehouseName')} />
+      <label className="grid gap-1 text-sm">Tên kho<Input disabled={disabled} {...form.register('warehouseName')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Warehouse type
-        <Input disabled={disabled} {...form.register('warehouseTypeCode')} />
+      <label className="grid gap-1 text-sm">Loại kho<Input disabled={disabled} {...form.register('warehouseTypeCode')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+      <label className="grid gap-1 text-sm">Trạng thái<select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>

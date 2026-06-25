@@ -167,31 +167,35 @@ export function AuditLogPage() {
 
   return (
     <ListPageShell
-      title="Audit Log"
-      description="Read-only audit events. Open a row to inspect before/after snapshots on a dedicated detail page."
+      title="Nhật ký kiểm toán"
+      description="Sự kiện kiểm toán chỉ đọc. Mở một dòng để xem snapshot trước/sau trên trang chi tiết riêng."
       state={boundaryState}
-      stateTitle={listState === 'error' ? 'Unable to load audit log' : undefined}
+      stateTitle={
+        listState === 'denied'
+          ? 'Cần quyền truy cập'
+          : listState === 'empty'
+            ? 'Không tìm thấy bản ghi'
+            : listState === 'error'
+              ? 'Không thể tải nhật ký kiểm toán'
+              : undefined
+      }
       stateMessage={
         listState === 'empty'
-          ? 'No audit events match the filters.'
+          ? 'Không có sự kiện kiểm toán khớp bộ lọc.'
           : listState === 'error'
-            ? apiError?.message ?? 'Unable to load audit log.'
+            ? apiError?.message ?? 'Không thể tải nhật ký kiểm toán.'
             : undefined
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Actor user id
-            <Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          <label className="grid gap-1 text-sm">ID người thực hiện<Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
           </label>
-          <label className="grid gap-1 text-sm">
-            Action
-            <select
+          <label className="grid gap-1 text-sm">Hành động<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.action}
               onChange={(event) => patch({ action: event.target.value as ActionCode | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {ACTION_CODES.map((action) => (
                 <option key={action} value={action}>
                   {action}
@@ -199,14 +203,12 @@ export function AuditLogPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Object type
-            <select
+          <label className="grid gap-1 text-sm">Loại đối tượng<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.objectType}
               onChange={(event) => patch({ objectType: event.target.value as ObjectType | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {OBJECT_TYPES.map((objectType) => (
                 <option key={objectType} value={objectType}>
                   {objectType}
@@ -214,9 +216,7 @@ export function AuditLogPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Reason code id
-            <Input value={filters.reasonCodeId} onChange={(event) => patch({ reasonCodeId: event.target.value })} />
+          <label className="grid gap-1 text-sm">ID mã lý do<Input value={filters.reasonCodeId} onChange={(event) => patch({ reasonCodeId: event.target.value })} />
           </label>
           <label className="grid gap-1 text-sm">
             From
@@ -240,17 +240,13 @@ export function AuditLogPage() {
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
-              >
-                Previous
-              </Button>
+              >Trước</Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={page >= (meta?.totalPages ?? 1)}
                 onClick={() => updateSearch(filters, page + 1, false)}
-              >
-                Next
-              </Button>
+              >Tiếp</Button>
             </div>
           </div>
         ) : null

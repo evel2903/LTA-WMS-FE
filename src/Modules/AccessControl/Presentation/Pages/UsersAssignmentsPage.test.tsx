@@ -111,8 +111,8 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
-    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
-    expect(await screen.findByText('Chưa gán role nào.')).toBeTruthy();
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
+    expect(await screen.findByText('Chưa gán vai trò nào.')).toBeTruthy();
 
     await actor.click(screen.getByRole('button', { name: 'Gán role' }));
 
@@ -129,8 +129,8 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
-    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
-    expect(await screen.findByText('Chưa gán data scope nào.')).toBeTruthy();
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
+    expect(await screen.findByText('Chưa gán phạm vi dữ liệu nào.')).toBeTruthy();
 
     // IncludeAll satisfies the XOR validation without a value (default scopeType = WAREHOUSE).
     await actor.click(await screen.findByLabelText(/IncludeAll/i));
@@ -153,7 +153,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 
   it('surfaces a 409 data-scope conflict inline, not as a toast (AC4)', async () => {
@@ -168,7 +168,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     renderPage();
 
     await actor.click(await screen.findByText('Alice Nguyen'));
-    await actor.click(await screen.findByRole('link', { name: 'Edit assignments' }));
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
     // IncludeAll satisfies the XOR validation without a value.
     await actor.click(await screen.findByLabelText(/IncludeAll/i));
     await actor.click(screen.getByRole('button', { name: 'Gán scope' }));

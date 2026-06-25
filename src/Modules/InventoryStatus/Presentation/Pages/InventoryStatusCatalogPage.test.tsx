@@ -104,12 +104,12 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
-    await actor.click(await screen.findByRole('link', { name: 'Edit status' }));
-    const updateBtn = await screen.findByRole('button', { name: 'Update inventory status' });
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa trạng thái' }));
+    const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
 
-    await actor.click(within(editForm).getByLabelText('Hold')); // off -> on
-    await actor.type(within(editForm).getByLabelText('Reason code'), 'RC-MD-UPDATE');
+    await actor.click(within(editForm).getByLabelText('Tạm giữ')); // off -> on
+    await actor.type(within(editForm).getByLabelText('Mã lý do'), 'RC-MD-UPDATE');
     await actor.click(updateBtn);
 
     await waitFor(() =>
@@ -128,7 +128,7 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
   });
 
   it('surfaces a missing/invalid reason (BUSINESS_RULE) inline, not as a toast (AC4)', async () => {
@@ -147,10 +147,10 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
-    await actor.click(await screen.findByRole('link', { name: 'Edit status' }));
-    const updateBtn = await screen.findByRole('button', { name: 'Update inventory status' });
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa trạng thái' }));
+    const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.type(within(editForm).getByLabelText('Reason code'), 'RC-WRONG');
+    await actor.type(within(editForm).getByLabelText('Mã lý do'), 'RC-WRONG');
     await actor.click(updateBtn);
 
     expect(await screen.findByText('Reason code is required for this change.')).toBeTruthy();

@@ -72,14 +72,14 @@ export function UserAssignmentPanel({
         </h2>
         <p className="text-muted-foreground text-sm">{user.email}</p>
         {!canManage && (
-          <p className="text-muted-foreground mt-1 text-xs">Read only — bạn không có quyền chỉnh.</p>
+          <p className="text-muted-foreground mt-1 text-xs">Chế độ chỉ đọc - bạn không có quyền chỉnh sửa.</p>
         )}
       </div>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-medium">Roles</h3>
+        <h3 className="text-sm font-medium">Vai trò</h3>
         {assignedRoles.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Chưa gán role nào.</p>
+          <p className="text-muted-foreground text-sm">Chưa gán vai trò nào.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {assignedRoles.map((role) => (
@@ -88,7 +88,7 @@ export function UserAssignmentPanel({
                   {ROLE_LABELS[role]}
                   {canManage && (
                     <button
-                      aria-label={`Gỡ role ${ROLE_LABELS[role]}`}
+                      aria-label={`Gỡ vai trò ${ROLE_LABELS[role]}`}
                       className="text-destructive"
                       disabled={pending.removeRole}
                       onClick={() => onRemoveRole(role)}
@@ -115,9 +115,9 @@ export function UserAssignmentPanel({
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-medium">Data scope</h3>
+        <h3 className="text-sm font-medium">Phạm vi dữ liệu</h3>
         {dataScopes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Chưa gán data scope nào.</p>
+          <p className="text-muted-foreground text-sm">Chưa gán phạm vi dữ liệu nào.</p>
         ) : (
           <ul className="space-y-1">
             {dataScopes.map((scope) => (
@@ -150,7 +150,7 @@ export function UserAssignmentPanel({
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-medium">Effective permissions ({permissionCount})</h3>
+        <h3 className="text-sm font-medium">Quyền hiệu lực ({permissionCount})</h3>
         {permissionCount === 0 ? (
           <p className="text-muted-foreground text-sm">Không có permission hiệu lực.</p>
         ) : (

@@ -46,21 +46,19 @@ export function RolePermissionMatrixPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Role Permission Matrix</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Ma trận vai trò và quyền</h1>
         <p className="text-muted-foreground">
           Sáu role lõi V0 và quyền theo action/object (read-only — cấu hình qua seed).
         </p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="grid gap-1 text-sm">
-          Object type
-          <select
+        <label className="grid gap-1 text-sm">Loại đối tượng<select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             value={store.objectTypeFilter}
             onChange={(event) => store.setObjectTypeFilter(event.target.value)}
           >
-            <option value="ALL">All</option>
+            <option value="ALL">Tất cả</option>
             {matrix.objectTypes.map((objectType) => (
               <option key={objectType} value={objectType}>
                 {objectType}
@@ -72,7 +70,7 @@ export function RolePermissionMatrixPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Permissions by role</CardTitle>
+          <CardTitle className="text-base">Quyền theo vai trò</CardTitle>
         </CardHeader>
         <CardContent>
           {listState === 'ready' ? (
@@ -80,8 +78,8 @@ export function RolePermissionMatrixPage() {
           ) : (
             <AccessStateView
               state={listState}
-              emptyLabel="No permissions found."
-              errorMessage={apiError?.message ?? 'Unable to load the permission matrix.'}
+              emptyLabel="Không tìm thấy quyền."
+              errorMessage={apiError?.message ?? 'Không thể tải ma trận quyền.'}
             />
           )}
         </CardContent>

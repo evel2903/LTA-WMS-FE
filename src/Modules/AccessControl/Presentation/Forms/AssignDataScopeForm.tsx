@@ -46,9 +46,7 @@ export function AssignDataScopeForm({
       )}
     >
       <div className="flex flex-wrap items-end gap-2">
-        <label className="grid gap-1 text-sm">
-          Scope type
-          <select
+        <label className="grid gap-1 text-sm">Loại phạm vi<select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={disabled}
             {...form.register('scopeType')}
@@ -67,13 +65,9 @@ export function AssignDataScopeForm({
       </div>
       {!includeAll && (
         <div className="grid grid-cols-2 gap-2">
-          <label className="grid gap-1 text-sm">
-            Scope value code
-            <Input disabled={disabled} {...form.register('scopeValueCode')} placeholder="e.g. WH-01" />
+          <label className="grid gap-1 text-sm">Mã giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueCode')} placeholder="e.g. WH-01" />
           </label>
-          <label className="grid gap-1 text-sm">
-            Scope value ID
-            <Input disabled={disabled} {...form.register('scopeValueId')} placeholder="UUID (optional)" />
+          <label className="grid gap-1 text-sm">ID giá trị phạm vi<Input disabled={disabled} {...form.register('scopeValueId')} placeholder="UUID (optional)" />
           </label>
         </div>
       )}

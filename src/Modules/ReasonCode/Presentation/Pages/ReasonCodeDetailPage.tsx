@@ -31,26 +31,54 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
   const reasonCode = detailQuery.data;
 
   if (!isCreate && detailQuery.isLoading) {
-    return <DetailPageShell title="Reason code detail" state="loading" backTo={ROUTES.FOUNDATION.REASON_CODES} />;
+    return (
+      <DetailPageShell
+        title="Chi tiết mã lý do"
+        state="loading"
+        stateTitle="Đang tải nội dung"
+        backTo={ROUTES.FOUNDATION.REASON_CODES}
+        backLabel="Quay lại mã lý do"
+      />
+    );
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="Reason code detail" state="forbidden" backTo={ROUTES.FOUNDATION.REASON_CODES} />;
+    return (
+      <DetailPageShell
+        title="Chi tiết mã lý do"
+        state="forbidden"
+        stateTitle="Cần quyền truy cập"
+        stateMessage="Bạn không có quyền xem hoặc thay đổi mã lý do này."
+        backTo={ROUTES.FOUNDATION.REASON_CODES}
+        backLabel="Quay lại mã lý do"
+      />
+    );
   }
 
   if (!isCreate && detailQuery.error) {
     return (
       <DetailPageShell
-        title="Reason code detail"
+        title="Chi tiết mã lý do"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load reason code.'}
+        stateTitle={apiError?.status === 404 ? 'Không tìm thấy bản ghi' : 'Không thể tải mã lý do'}
+        stateMessage="Không thể tải chi tiết mã lý do."
         backTo={ROUTES.FOUNDATION.REASON_CODES}
+        backLabel="Quay lại mã lý do"
       />
     );
   }
 
   if (!isCreate && !reasonCode) {
-    return <DetailPageShell title="Reason code detail" state="notFound" backTo={ROUTES.FOUNDATION.REASON_CODES} />;
+    return (
+      <DetailPageShell
+        title="Chi tiết mã lý do"
+        state="notFound"
+        stateTitle="Không tìm thấy bản ghi"
+        stateMessage="Mã lý do đã chọn không tồn tại hoặc không còn khả dụng."
+        backTo={ROUTES.FOUNDATION.REASON_CODES}
+        backLabel="Quay lại mã lý do"
+      />
+    );
   }
 
   const submitCreate = (values: ReasonCodeFormValues) =>
@@ -103,27 +131,27 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
     );
 
   const existingReasonCode = reasonCode as NonNullable<typeof reasonCode>;
-  const title = isCreate ? 'Create reason code' : existingReasonCode.reasonCode;
+  const title = isCreate ? 'Tạo mã lý do' : existingReasonCode.reasonCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Reason code governance catalog"
+      subtitle="Danh mục quản trị mã lý do"
       backTo={ROUTES.FOUNDATION.REASON_CODES}
-      backLabel="Back to reason codes"
+      backLabel="Quay lại mã lý do"
       summary={!isCreate ? <span>Version {existingReasonCode.version}</span> : null}
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.REASON_CODE_EDIT(existingReasonCode.id)}>Edit reason code</Link>
+            <Link to={ROUTES.FOUNDATION.REASON_CODE_EDIT(existingReasonCode.id)}>Chỉnh sửa mã lý do</Link>
           </Button>
         ) : null
       }
       state={canManage ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Create reason code' : 'Reason code actions'}
-        description="Reason code changes keep the existing versioned audit behavior."
+        title={isCreate ? 'Tạo mã lý do' : 'Hành động mã lý do'}
+        description="Thay đổi mã lý do giữ hành vi audit theo phiên bản hiện có."
         state={mutations.create.isPending || mutations.update.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >

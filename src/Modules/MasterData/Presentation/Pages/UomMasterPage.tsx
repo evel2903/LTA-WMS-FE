@@ -7,7 +7,7 @@ import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useUoms } from '@modules/MasterData/Application/Queries/CatalogQueries';
-import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import type { Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import {
@@ -50,7 +50,7 @@ export function UomMasterPage() {
 
   const columns: CatalogColumn<Uom>[] = [
     {
-      header: 'Code',
+      header: 'Mã',
       render: (uom) => (
         <button
           className="underline-offset-2 hover:underline"
@@ -60,16 +60,16 @@ export function UomMasterPage() {
         </button>
       ),
     },
-    { header: 'Name', render: (uom) => uom.uomName },
+    { header: 'Tên', render: (uom) => uom.uomName },
     { header: 'Type', render: (uom) => uom.uomType ?? '-' },
     { header: 'Precision', render: (uom) => uom.decimalPrecision },
-    { header: 'Status', render: (uom) => <MasterDataStatusBadge status={uom.status} /> },
+    { header: 'Trạng thái', render: (uom) => <MasterDataStatusBadge status={uom.status} /> },
   ];
 
   return (
     <CatalogListView
-      title="Units of measure"
-      description="Manage units of measure (UOM)."
+      title="Đơn vị tính"
+      description="Quản lý đơn vị tính."
       state={state}
       columns={columns}
       rows={uoms}
@@ -78,42 +78,36 @@ export function UomMasterPage() {
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
       canCreate={canCreate}
-      emptyLabel={CATALOG_EMPTY_LABELS.uoms}
-      errorMessage={apiError?.message ?? (query.error ? 'Unable to load units of measure.' : undefined)}
+      emptyLabel={MASTER_DATA_EMPTY_LABELS.uoms}
+      errorMessage={apiError?.message ?? (query.error ? 'Không thể tải đơn vị tính.' : undefined)}
       headerAction={
         canCreate ? (
           <Button asChild size="sm">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW}>New UOM</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW}>Tạo đơn vị tính</Link>
           </Button>
         ) : null
       }
       toolbar={
         <>
-          <label className="grid gap-1 text-sm">
-            UOM code
-            <Input
+          <label className="grid gap-1 text-sm">Mã đơn vị tính<Input
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Search code"
+              placeholder="Tìm theo mã"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            UOM type
-            <Input
+          <label className="grid gap-1 text-sm">Loại đơn vị tính<Input
               value={uomTypeFilter}
               onChange={(event) => {
                 setUomTypeFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder="Filter type"
+              placeholder="Lọc loại"
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={status}
               onChange={(event) => {
@@ -121,9 +115,9 @@ export function UomMasterPage() {
                 setPage(1);
               }}
             >
-              <option value="All">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="All">Tất cả</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Không hoạt động</option>
             </select>
           </label>
         </>

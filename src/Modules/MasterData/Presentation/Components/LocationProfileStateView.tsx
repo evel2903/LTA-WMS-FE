@@ -8,7 +8,7 @@ interface LocationProfileStateViewProps {
 export function LocationProfileStateView({ state, errorMessage }: LocationProfileStateViewProps) {
   const title =
     state === 'denied'
-      ? 'Permission denied'
+      ? 'Không có quyền'
       : state === 'error'
         ? 'Unable to load location profiles'
         : state === 'loading'

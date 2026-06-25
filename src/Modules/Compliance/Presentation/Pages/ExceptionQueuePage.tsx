@@ -74,18 +74,16 @@ export function ExceptionQueuePage() {
   const boundaryState = listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
   return (
     <ListPageShell
-      title="Exception Queue"
-      description="Scan exception cases before opening lifecycle context on a dedicated detail/action route."
+      title="Hàng đợi ngoại lệ"
+      description="Quét các ngoại lệ trước khi mở ngữ cảnh vòng đời trên route chi tiết/action riêng."
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            State
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.state}
               onChange={(e) => patch({ state: e.target.value as ExceptionState | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {EXCEPTION_STATES.map((state) => (
                 <option key={state} value={state}>
                   {EXCEPTION_STATE_LABELS[state]}
@@ -93,14 +91,12 @@ export function ExceptionQueuePage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Severity
-            <select
+          <label className="grid gap-1 text-sm">Mức độ<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.severity}
               onChange={(e) => patch({ severity: e.target.value as ControlExceptionSeverity | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {SEVERITIES.map((severity) => (
                 <option key={severity} value={severity}>
                   {severity}
@@ -108,29 +104,23 @@ export function ExceptionQueuePage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Type
-            <Input value={filters.exceptionType} onChange={(e) => patch({ exceptionType: e.target.value })} />
+          <label className="grid gap-1 text-sm">Loại<Input value={filters.exceptionType} onChange={(e) => patch({ exceptionType: e.target.value })} />
           </label>
-          <label className="grid gap-1 text-sm">
-            Assigned to
-            <Input
+          <label className="grid gap-1 text-sm">Được gán cho<Input
               value={filters.assignedToUserId}
               onChange={(e) => patch({ assignedToUserId: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Reference id
-            <Input value={filters.referenceId} onChange={(e) => patch({ referenceId: e.target.value })} />
+          <label className="grid gap-1 text-sm">ID tham chiếu<Input value={filters.referenceId} onChange={(e) => patch({ referenceId: e.target.value })} />
           </label>
         </div>
       }
       state={boundaryState}
-      stateTitle={boundaryState === 'forbidden' ? 'Permission denied' : undefined}
+      stateTitle={boundaryState === 'forbidden' ? 'Không có quyền' : undefined}
       stateMessage={
         boundaryState === 'empty'
-          ? 'No exceptions match the filters.'
-          : (listApiError?.message ?? 'Unable to load exceptions.')
+          ? 'Không có ngoại lệ khớp bộ lọc.'
+          : (listApiError?.message ?? 'Không thể tải ngoại lệ.')
       }
       pagination={
         <div className="flex items-center gap-3 text-sm">
@@ -142,17 +132,13 @@ export function ExceptionQueuePage() {
             variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </Button>
+          >Trước</Button>
           <Button
             size="sm"
             variant="outline"
             disabled={page >= (meta?.totalPages ?? 1)}
             onClick={() => setPage((value) => value + 1)}
-          >
-            Next
-          </Button>
+          >Tiếp</Button>
         </div>
       }
     >

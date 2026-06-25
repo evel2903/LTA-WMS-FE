@@ -29,26 +29,26 @@ export function InventoryStatusDetailPage({ mode }: InventoryStatusDetailPagePro
   const status = detailQuery.data;
 
   if (detailQuery.isLoading) {
-    return <DetailPageShell title="Inventory status detail" state="loading" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
+    return <DetailPageShell title="Chi tiết trạng thái tồn kho" state="loading" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
   }
 
   if (apiError?.isForbidden) {
-    return <DetailPageShell title="Inventory status detail" state="forbidden" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
+    return <DetailPageShell title="Chi tiết trạng thái tồn kho" state="forbidden" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
   }
 
   if (detailQuery.error) {
     return (
       <DetailPageShell
-        title="Inventory status detail"
+        title="Chi tiết trạng thái tồn kho"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load inventory status.'}
+        stateMessage={apiError?.message ?? 'Không thể tải trạng thái tồn kho.'}
         backTo={ROUTES.FOUNDATION.INVENTORY_STATUS}
       />
     );
   }
 
   if (!status) {
-    return <DetailPageShell title="Inventory status detail" state="notFound" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
+    return <DetailPageShell title="Chi tiết trạng thái tồn kho" state="notFound" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
   }
 
   const submitUpdate = (statusId: string, values: InventoryStatusFormValues) =>
@@ -78,9 +78,9 @@ export function InventoryStatusDetailPage({ mode }: InventoryStatusDetailPagePro
   return (
     <DetailPageShell
       title={status.statusCode}
-      subtitle="Inventory status behavior flags"
+      subtitle="Cờ hành vi trạng thái tồn kho"
       backTo={ROUTES.FOUNDATION.INVENTORY_STATUS}
-      backLabel="Back to inventory statuses"
+      backLabel="Quay lại trạng thái tồn kho"
       summary={
         <>
           <span>{status.stageGroup}</span>
@@ -89,14 +89,14 @@ export function InventoryStatusDetailPage({ mode }: InventoryStatusDetailPagePro
       }
       actions={
         <Button asChild size="sm" variant="outline">
-          <Link to={ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT(status.id)}>Edit status</Link>
+          <Link to={ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT(status.id)}>Chỉnh sửa trạng thái</Link>
         </Button>
       }
       state={canManage ? null : 'readOnly'}
     >
       <ActionPanel
-        title="Inventory status actions"
-        description="Update requires the existing reason code field and audit path; no new InventoryStatus values are created here."
+        title="Hành động trạng thái tồn kho"
+        description="Cập nhật yêu cầu trường mã lý do và audit path hiện có; không tạo giá trị InventoryStatus mới tại đây."
         state={mutations.update.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >

@@ -60,45 +60,39 @@ export function LocationProfileCatalogPage() {
 
   return (
     <ListPageShell
-      title="Location Profile Catalog"
-      description="Manage policy profiles used for location assignment in Foundation."
+      title="Danh mục hồ sơ vị trí"
+      description="Quản lý hồ sơ chính sách dùng để gán vị trí trong nền tảng."
       toolbar={
         apiError?.isForbidden ? null : (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.LOCATION_PROFILE_NEW}>New profile</Link>
+            <Link to={ROUTES.FOUNDATION.LOCATION_PROFILE_NEW}>Tạo hồ sơ</Link>
           </Button>
         )
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Profile code filter
-            <Input
+          <label className="grid gap-1 text-sm">Lọc mã hồ sơ<Input
               className="h-9"
               placeholder="e.g. BIN-STD"
               value={filters.profileCode}
               onChange={(event) => patch({ profileCode: event.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Location type filter
-            <Input
+          <label className="grid gap-1 text-sm">Lọc loại vị trí<Input
               className="h-9"
               placeholder="e.g. Bin"
               value={filters.locationType}
               onChange={(event) => patch({ locationType: event.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.status}
               onChange={(event) => patch({ status: event.target.value as MasterDataStatus | '' })}
             >
-              <option value="">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="">Tất cả</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Không hoạt động</option>
             </select>
           </label>
         </div>
@@ -106,7 +100,7 @@ export function LocationProfileCatalogPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Location profiles</CardTitle>
+          <CardTitle className="text-base">Hồ sơ vị trí</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {listState === 'ready' ? (
@@ -126,24 +120,20 @@ export function LocationProfileCatalogPage() {
                     variant="outline"
                     disabled={page <= 1}
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  >
-                    Previous
-                  </Button>
+                  >Trước</Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={page >= (meta?.totalPages ?? 1)}
                     onClick={() => setPage((value) => value + 1)}
-                  >
-                    Next
-                  </Button>
+                  >Tiếp</Button>
                 </div>
               </div>
             </>
           ) : (
             <LocationProfileStateView
               state={listState}
-              errorMessage={apiError?.message ?? 'Unable to load location profiles.'}
+              errorMessage={apiError?.message ?? 'Không thể tải hồ sơ vị trí.'}
             />
           )}
         </CardContent>

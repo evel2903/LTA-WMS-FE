@@ -37,11 +37,9 @@ export function SiteLocationTreePageView({
         <PageHeader />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Permission denied</CardTitle>
+            <CardTitle className="text-base">Không có quyền</CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            You do not have permission to read the site and location tree for this scope.
-          </CardContent>
+          <CardContent className="text-muted-foreground text-sm">Bạn không có quyền đọc cây site và vị trí trong phạm vi này.</CardContent>
         </Card>
       </div>
     );
@@ -52,9 +50,7 @@ export function SiteLocationTreePageView({
       <div className="space-y-6">
         <PageHeader />
         <Card>
-          <CardContent className="py-10 text-sm text-muted-foreground">
-            Loading site and location tree...
-          </CardContent>
+          <CardContent className="py-10 text-sm text-muted-foreground">Đang tải cây site và vị trí...</CardContent>
         </Card>
       </div>
     );
@@ -66,10 +62,10 @@ export function SiteLocationTreePageView({
         <PageHeader />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Unable to load site and location tree</CardTitle>
+            <CardTitle className="text-base">Không thể tải cây site và vị trí</CardTitle>
           </CardHeader>
           <CardContent className="text-destructive text-sm">
-            {errorMessage ?? 'An unexpected API error occurred.'}
+            {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
           </CardContent>
         </Card>
       </div>
@@ -82,14 +78,14 @@ export function SiteLocationTreePageView({
         <PageHeader />
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">No sites yet</CardTitle>
+            <CardTitle className="text-base">Chưa có site</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>Create the first Site before adding warehouses, zones, and locations.</p>
+            <p>Tạo site đầu tiên trước khi thêm kho, khu vực và vị trí.</p>
             {canCreate ? (
-              (formPanel ?? <p>Use the Create Site form to begin.</p>)
+              (formPanel ?? <p>Dùng biểu mẫu tạo site để bắt đầu.</p>)
             ) : (
-              <p>Read only</p>
+              <p>Chỉ đọc</p>
             )}
           </CardContent>
         </Card>
@@ -103,7 +99,7 @@ export function SiteLocationTreePageView({
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Site & Location Tree</CardTitle>
+            <CardTitle className="text-base">Cây site và vị trí</CardTitle>
           </CardHeader>
           <CardContent>
             <EntityTree nodes={nodes} selectedNodeId={selectedNode?.id ?? null} onSelect={onSelect} />
@@ -127,10 +123,8 @@ function PageHeader() {
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Site & Location Tree</h1>
-        <p className="text-muted-foreground">
-          Configure Site, Warehouse, Zone, Location and location profile constraints.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Cây site và vị trí</h1>
+        <p className="text-muted-foreground">Cấu hình site, kho, khu vực, vị trí và ràng buộc hồ sơ vị trí.</p>
       </div>
     </div>
   );

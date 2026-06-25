@@ -76,27 +76,27 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
   return (
     <DetailPageShell
       title={`${user.firstName} ${user.lastName}`.trim() || user.email}
-      subtitle="Review effective permissions and user data scopes before opening assignment actions."
+      subtitle="Rà soát quyền hiệu lực và phạm vi dữ liệu của người dùng trước khi mở action phân quyền."
       backTo={ROUTES.FOUNDATION.ACCESS.USERS}
-      backLabel="Back to users"
+      backLabel="Quay lại người dùng"
       actions={
         isEdit ? (
           <Button asChild variant="outline">
-            <Link to={ROUTES.FOUNDATION.ACCESS.USER_DETAIL(userId)}>View detail</Link>
+            <Link to={ROUTES.FOUNDATION.ACCESS.USER_DETAIL(userId)}>Xem chi tiết</Link>
           </Button>
         ) : (
           <Button asChild>
-            <Link to={ROUTES.FOUNDATION.ACCESS.USER_EDIT(userId)}>Edit assignments</Link>
+            <Link to={ROUTES.FOUNDATION.ACCESS.USER_EDIT(userId)}>Chỉnh sửa phân quyền</Link>
           </Button>
         )
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={detailError?.message ?? 'Unable to load user assignments.'}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={detailError?.message ?? 'Không thể tải phân quyền người dùng.'}
     >
       <ActionPanel
-        title="User assignment"
-        description="Role and data-scope mutations reuse the existing RBAC/audit contract."
+        title="Phân quyền người dùng"
+        description="Mutation vai trò và phạm vi dữ liệu dùng lại contract RBAC/audit hiện có."
         governanceState={canMutate ? undefined : 'readOnly'}
       >
         <UserAssignmentPanel

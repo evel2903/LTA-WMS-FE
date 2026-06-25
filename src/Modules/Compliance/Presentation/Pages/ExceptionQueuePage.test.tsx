@@ -89,12 +89,12 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
 
     // Select the only case via its Type cell (the row trigger).
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
-    await actor.click(await screen.findByRole('link', { name: 'Open lifecycle' }));
+    await actor.click(await screen.findByRole('link', { name: 'Mở vòng đời' }));
     // DETECTED → the single legal action is "Log".
-    await actor.click(await screen.findByRole('button', { name: 'Log' }));
+    await actor.click(await screen.findByRole('button', { name: 'Ghi log' }));
 
     // After log+refetch the case is LOGGED, whose next legal action is "Assign".
-    expect(await screen.findByRole('button', { name: 'Assign' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Gán' })).toBeTruthy();
     expect(fake.logException).toHaveBeenCalledWith('e1', { hardBlock: false });
   });
 
@@ -108,7 +108,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 
   it('keeps the selected case read-only when the list refetch 403s after a cached row', async () => {
@@ -122,10 +122,10 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'Next' }));
+    await actor.click(await screen.findByRole('button', { name: 'Tiếp' }));
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Log' })).toBeNull();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ghi log' })).toBeNull();
   });
 
   it('surfaces a lifecycle-blocked BUSINESS_RULE inline, not as a toast (AC4)', async () => {
@@ -144,8 +144,8 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
-    await actor.click(await screen.findByRole('link', { name: 'Open lifecycle' }));
-    await actor.click(await screen.findByRole('button', { name: 'Resolve' }));
+    await actor.click(await screen.findByRole('link', { name: 'Mở vòng đời' }));
+    await actor.click(await screen.findByRole('button', { name: 'Xử lý' }));
 
     expect(await screen.findByText('Resolve requires evidence for this exception type')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();

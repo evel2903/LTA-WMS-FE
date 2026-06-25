@@ -116,12 +116,12 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
-    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
-    await actor.click(await screen.findByRole('button', { name: 'Approve' }));
+    await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
+    await actor.click(await screen.findByRole('button', { name: 'Phê duyệt' }));
 
     await waitFor(() => expect(fake.approve).toHaveBeenCalledWith('ar1', expect.any(Object)));
     // UI re-reads the decided request on the action route.
-    await waitFor(() => expect(screen.getAllByText('Approved').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Đã phê duyệt').length).toBeGreaterThan(0));
     expect(toastError).not.toHaveBeenCalled();
   });
 
@@ -137,13 +137,13 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
-    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
-    await actor.click(await screen.findByRole('button', { name: 'Reject' }));
+    await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
+    await actor.click(await screen.findByRole('button', { name: 'Từ chối' }));
 
     expect(await screen.findByText('Request already decided')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
     // Panel stays open — the decision form is still mounted.
-    expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Phê duyệt' })).toBeTruthy();
   });
 
   it('blocks self-decide when the reviewer is the requester (AC4)', async () => {
@@ -154,11 +154,11 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
-    await actor.click(await screen.findByRole('link', { name: 'Open decision' }));
+    await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
 
     // Scope to the unique panel suffix — the page header also mentions self-approval.
-    expect(await screen.findByText(/\(self-approval\)/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(await screen.findByText(/Không thể tự duyệt request/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Phê duyệt' })).toBeNull();
   });
 
   it('shows a permission-denied state when the list 403s (AC4)', async () => {
@@ -167,6 +167,6 @@ describe('ApprovalQueuePage (C15)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 });

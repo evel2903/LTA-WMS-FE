@@ -56,25 +56,23 @@ export function ReasonCodeCatalogPage() {
 
   return (
     <ListPageShell
-      title="Reason Code Catalog"
-      description="Manage standardized reason codes by group, action, evidence and version."
+      title="Danh mục mã lý do"
+      description="Quản lý mã lý do chuẩn hóa theo nhóm, action, bằng chứng và phiên bản."
       toolbar={
         apiError?.isForbidden ? null : (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.REASON_CODE_NEW}>New reason code</Link>
+            <Link to={ROUTES.FOUNDATION.REASON_CODE_NEW}>Tạo mã lý do</Link>
           </Button>
         )
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Category
-            <select
+          <label className="grid gap-1 text-sm">Nhóm<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.reasonGroup}
               onChange={(e) => patch({ reasonGroup: e.target.value as ReasonGroup | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {REASON_GROUPS.map((group) => (
                 <option key={group} value={group}>
                   {REASON_GROUP_LABELS[group]}
@@ -82,14 +80,12 @@ export function ReasonCodeCatalogPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Action
-            <select
+          <label className="grid gap-1 text-sm">Hành động<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.action}
               onChange={(e) => patch({ action: e.target.value as ActionCode | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {ACTION_CODES.map((action) => (
                 <option key={action} value={action}>
                   {action}
@@ -97,16 +93,14 @@ export function ReasonCodeCatalogPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.status}
               onChange={(e) => patch({ status: e.target.value as ReasonCodeStatus | '' })}
             >
-              <option value="">All</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="INACTIVE">INACTIVE</option>
+              <option value="">Tất cả</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="INACTIVE">Không hoạt động</option>
             </select>
           </label>
         </div>
@@ -114,7 +108,7 @@ export function ReasonCodeCatalogPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Reason codes</CardTitle>
+          <CardTitle className="text-base">Mã lý do</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {listState === 'ready' ? (
@@ -135,25 +129,21 @@ export function ReasonCodeCatalogPage() {
                     variant="outline"
                     disabled={page <= 1}
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  >
-                    Previous
-                  </Button>
+                  >Trước</Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={page >= (meta?.totalPages ?? 1)}
                     onClick={() => setPage((value) => value + 1)}
-                  >
-                    Next
-                  </Button>
+                  >Tiếp</Button>
                 </div>
               </div>
             </>
           ) : (
             <ReasonCodeStateView
               state={listState}
-              emptyLabel="No reason codes match the filters."
-              errorMessage={apiError?.message ?? 'Unable to load reason codes.'}
+              emptyLabel="Không có mã lý do khớp bộ lọc."
+              errorMessage={apiError?.message ?? 'Không thể tải mã lý do.'}
             />
           )}
         </CardContent>

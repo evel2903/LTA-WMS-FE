@@ -150,14 +150,14 @@ describe('LocationProfileCatalogPage (A10)', () => {
     repo.current = fake as unknown as IMasterDataRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('link', { name: 'New profile' }));
-    await actor.type(await screen.findByLabelText('Profile code'), 'BIN-STD');
-    await actor.type(screen.getByLabelText('Profile name'), 'Standard Bin');
-    await actor.type(screen.getByLabelText('Location type'), 'Bin');
+    await actor.click(await screen.findByRole('link', { name: 'Tạo hồ sơ' }));
+    await actor.type(await screen.findByLabelText('Mã hồ sơ'), 'BIN-STD');
+    await actor.type(screen.getByLabelText('Tên hồ sơ'), 'Standard Bin');
+    await actor.type(screen.getByLabelText('Loại vị trí'), 'Bin');
     fireEvent.change(screen.getByLabelText('Capacity policy'), {
       target: { value: '{ "maxQty": 100 }' },
     });
-    await actor.click(screen.getByRole('button', { name: 'Create profile' }));
+    await actor.click(screen.getByRole('button', { name: 'Tạo hồ sơ' }));
 
     await waitFor(() =>
       expect(fake.createLocationProfile).toHaveBeenCalledWith(
@@ -170,11 +170,11 @@ describe('LocationProfileCatalogPage (A10)', () => {
     );
     await screen.findByRole('heading', { name: 'BIN-STD' });
 
-    await actor.click(screen.getByRole('link', { name: 'Edit profile' }));
-    const updateButton = await screen.findByRole('button', { name: 'Update profile' });
+    await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
+    const updateButton = await screen.findByRole('button', { name: 'Cập nhật hồ sơ' });
     const editForm = updateButton.closest('form') as HTMLFormElement;
-    await actor.clear(within(editForm).getByLabelText('Profile name'));
-    await actor.type(within(editForm).getByLabelText('Profile name'), 'Standard Bin Updated');
+    await actor.clear(within(editForm).getByLabelText('Tên hồ sơ'));
+    await actor.type(within(editForm).getByLabelText('Tên hồ sơ'), 'Standard Bin Updated');
     await actor.click(updateButton);
 
     await waitFor(() =>
@@ -185,10 +185,10 @@ describe('LocationProfileCatalogPage (A10)', () => {
     );
     expect(await screen.findByDisplayValue('Standard Bin Updated')).toBeTruthy();
 
-    await actor.click(screen.getByRole('link', { name: 'Edit profile' }));
-    const refreshedUpdateButton = await screen.findByRole('button', { name: 'Update profile' });
+    await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
+    const refreshedUpdateButton = await screen.findByRole('button', { name: 'Cập nhật hồ sơ' });
     const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
-    await actor.click(within(refreshedForm).getByRole('button', { name: 'Inactivate profile' }));
+    await actor.click(within(refreshedForm).getByRole('button', { name: 'Ngưng kích hoạt hồ sơ' }));
 
     await waitFor(() =>
       expect(fake.updateLocationProfile).toHaveBeenLastCalledWith(

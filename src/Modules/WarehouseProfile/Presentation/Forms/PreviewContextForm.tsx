@@ -21,15 +21,15 @@ interface PreviewContextFormProps {
 }
 
 const AXIS_FIELDS: { name: keyof PreviewContextFormValues; label: string }[] = [
-  { name: 'warehouseId', label: 'Warehouse ID' },
-  { name: 'zoneId', label: 'Zone ID' },
-  { name: 'locationType', label: 'Location type' },
-  { name: 'ownerId', label: 'Owner ID' },
+  { name: 'warehouseId', label: 'ID kho' },
+  { name: 'zoneId', label: 'ID khu vực' },
+  { name: 'locationType', label: 'Loại vị trí' },
+  { name: 'ownerId', label: 'ID chủ hàng' },
   { name: 'skuId', label: 'SKU ID' },
-  { name: 'itemClass', label: 'Item class' },
-  { name: 'orderType', label: 'Order type' },
-  { name: 'customerId', label: 'Customer ID' },
-  { name: 'supplierId', label: 'Supplier ID' },
+  { name: 'itemClass', label: 'Nhóm hàng' },
+  { name: 'orderType', label: 'Loại đơn' },
+  { name: 'customerId', label: 'ID khách hàng' },
+  { name: 'supplierId', label: 'ID nhà cung cấp' },
 ];
 
 export function PreviewContextForm({
@@ -59,9 +59,7 @@ export function PreviewContextForm({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        Warehouse type code
-        <Input disabled={disabled} {...form.register('warehouseTypeCode')} />
+      <label className="grid gap-1 text-sm">Mã loại kho<Input disabled={disabled} {...form.register('warehouseTypeCode')} />
         {errors.warehouseTypeCode && (
           <span className="text-destructive text-xs">{errors.warehouseTypeCode.message}</span>
         )}
@@ -72,17 +70,11 @@ export function PreviewContextForm({
           <Input disabled={disabled} {...form.register(field.name)} />
         </label>
       ))}
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input disabled={disabled} {...form.register('reasonCode')} />
+      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Evaluated at (ISO, optional)
-        <Input disabled={disabled} placeholder="2026-06-19T00:00:00Z" {...form.register('evaluatedAt')} />
+      <label className="grid gap-1 text-sm">Thời điểm đánh giá (ISO, tùy chọn)<Input disabled={disabled} placeholder="2026-06-19T00:00:00Z" {...form.register('evaluatedAt')} />
       </label>
-      <Button type="submit" disabled={disabled || pending}>
-        Run preview
-      </Button>
+      <Button type="submit" disabled={disabled || pending}>Chạy preview</Button>
     </form>
   );
 }

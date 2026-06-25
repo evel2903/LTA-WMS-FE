@@ -72,18 +72,16 @@ export function ApprovalQueuePage() {
 
   return (
     <ListPageShell
-      title="Approval Queue"
-      description="Scan approval requests before opening decision context on a dedicated detail/action route."
+      title="Hàng đợi phê duyệt"
+      description="Quét yêu cầu phê duyệt trước khi mở ngữ cảnh quyết định trên route chi tiết/action riêng."
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Decision
-            <select
+          <label className="grid gap-1 text-sm">Quyết định<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.decision}
               onChange={(e) => patch({ decision: e.target.value as ApprovalDecision | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {APPROVAL_DECISIONS.map((decision) => (
                 <option key={decision} value={decision}>
                   {APPROVAL_DECISION_LABELS[decision]}
@@ -91,14 +89,12 @@ export function ApprovalQueuePage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Type
-            <select
+          <label className="grid gap-1 text-sm">Loại<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.targetObjectType}
               onChange={(e) => patch({ targetObjectType: e.target.value as ObjectType | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {OBJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
@@ -106,14 +102,12 @@ export function ApprovalQueuePage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Action
-            <select
+          <label className="grid gap-1 text-sm">Hành động<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.action}
               onChange={(e) => patch({ action: e.target.value as ActionCode | '' })}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {ACTION_CODES.map((action) => (
                 <option key={action} value={action}>
                   {action}
@@ -121,16 +115,12 @@ export function ApprovalQueuePage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Requester user id
-            <Input
+          <label className="grid gap-1 text-sm">ID người yêu cầu<Input
               value={filters.requesterUserId}
               onChange={(e) => patch({ requesterUserId: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Target object id
-            <Input
+          <label className="grid gap-1 text-sm">ID đối tượng đích<Input
               value={filters.targetObjectId}
               onChange={(e) => patch({ targetObjectId: e.target.value })}
             />
@@ -138,11 +128,11 @@ export function ApprovalQueuePage() {
         </div>
       }
       state={boundaryState}
-      stateTitle={boundaryState === 'forbidden' ? 'Permission denied' : undefined}
+      stateTitle={boundaryState === 'forbidden' ? 'Không có quyền' : undefined}
       stateMessage={
         boundaryState === 'empty'
-          ? 'No approval requests match the filters.'
-          : (listApiError?.message ?? 'Unable to load approval requests.')
+          ? 'Không có yêu cầu phê duyệt khớp bộ lọc.'
+          : (listApiError?.message ?? 'Không thể tải yêu cầu phê duyệt.')
       }
       pagination={
         <div className="flex items-center gap-3 text-sm">
@@ -154,17 +144,13 @@ export function ApprovalQueuePage() {
             variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >
-            Previous
-          </Button>
+          >Trước</Button>
           <Button
             size="sm"
             variant="outline"
             disabled={page >= (meta?.totalPages ?? 1)}
             onClick={() => setPage((value) => value + 1)}
-          >
-            Next
-          </Button>
+          >Tiếp</Button>
         </div>
       }
     >

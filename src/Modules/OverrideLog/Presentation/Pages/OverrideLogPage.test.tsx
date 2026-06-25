@@ -89,12 +89,12 @@ describe('OverrideLogPage (C16)', () => {
 
     expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
     expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 }));
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
 
     await actor.click(screen.getByRole('button', { name: 'RULE-PUTAWAY-01' }));
 
-    expect(await screen.findByText('Before')).toBeTruthy();
-    expect(screen.getByText('After')).toBeTruthy();
+    expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
+    expect(screen.getByText('Sau thay đổi')).toBeTruthy();
     expect(screen.getByText(/"allowed": true/)).toBeTruthy();
     expect(screen.getByText(/"override-approved"/)).toBeTruthy();
     expect(fake.getById).toHaveBeenCalledWith('ov1');
@@ -102,7 +102,7 @@ describe('OverrideLogPage (C16)', () => {
     expect(
       screen.queryByRole('button', { name: /create|new|edit|delete|save|update|approve|reject|override/i }),
     ).toBeNull();
-    expect(screen.getByRole('link', { name: /back to override log/i })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /quay lại nhật ký ghi đè/i })).toBeTruthy();
   });
 
   it('loads an override detail directly by route id', async () => {
@@ -110,8 +110,8 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage(ROUTES.FOUNDATION.OVERRIDE_DETAIL('ov1'));
 
-    expect(await screen.findByText('Before')).toBeTruthy();
-    expect(screen.getByText('After')).toBeTruthy();
+    expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
+    expect(screen.getByText('Sau thay đổi')).toBeTruthy();
     expect(fake.getById).toHaveBeenCalledWith('ov1');
   });
 
@@ -151,7 +151,7 @@ describe('OverrideLogPage (C16)', () => {
 
     await actor.click(screen.getByRole('button', { name: 'RULE-PUTAWAY-01' }));
 
-    const backLink = await screen.findByRole('link', { name: /back to override log/i });
+    const backLink = await screen.findByRole('link', { name: /quay lại nhật ký ghi đè/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
       '/foundation/overrides?ruleId=rule-1&actorUserId=u1&page=2',
     );
@@ -164,7 +164,7 @@ describe('OverrideLogPage (C16)', () => {
     renderPage();
 
     const rowButton = await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' });
-    await actor.type(screen.getByLabelText('Rule id'), 'rule-2');
+    await actor.type(screen.getByLabelText('ID quy tắc'), 'rule-2');
     expect((rowButton as HTMLButtonElement).disabled).toBe(true);
     await actor.click(rowButton);
     expect(fake.getById).not.toHaveBeenCalled();
@@ -177,7 +177,7 @@ describe('OverrideLogPage (C16)', () => {
     await waitFor(() => expect((rowButton as HTMLButtonElement).disabled).toBe(false));
     await actor.click(rowButton);
 
-    const backLink = await screen.findByRole('link', { name: /back to override log/i });
+    const backLink = await screen.findByRole('link', { name: /quay lại nhật ký ghi đè/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe('/foundation/overrides?ruleId=rule-2');
   });
 
@@ -194,7 +194,7 @@ describe('OverrideLogPage (C16)', () => {
     renderPage();
 
     expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
-    await actor.type(screen.getByLabelText('Rule id'), 'rule-2');
+    await actor.type(screen.getByLabelText('ID quy tắc'), 'rule-2');
 
     await waitFor(() =>
       expect(fake.list).toHaveBeenCalledWith(
@@ -275,7 +275,7 @@ describe('OverrideLogPage (C16)', () => {
     await waitFor(() =>
       expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
     );
-    expect(await screen.findByText('No override logs match the filters.')).toBeTruthy();
+    expect(await screen.findByText('Không có nhật ký ghi đè khớp bộ lọc.')).toBeTruthy();
   });
 
   it('does not render stale override detail data when the returned id differs from the route id', async () => {
@@ -284,8 +284,8 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage(ROUTES.FOUNDATION.OVERRIDE_DETAIL('ov1'));
 
-    expect(await screen.findByText(/record not found/i)).toBeTruthy();
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(await screen.findByText(/Không tìm thấy bản ghi/i)).toBeTruthy();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
   });
 
   it('does not render pager controls for an empty override list', async () => {
@@ -296,10 +296,10 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText('No override logs match the filters.')).toBeTruthy();
+    expect(await screen.findByText('Không có nhật ký ghi đè khớp bộ lọc.')).toBeTruthy();
     expect(screen.queryByText(/Page 1/)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Previous' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Trước' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tiếp' })).toBeNull();
   });
 
   it('shows a permission-required state when the list 403s (AC4)', async () => {
@@ -308,7 +308,7 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText(/permission required/i)).toBeTruthy();
+    expect(await screen.findByText(/Cần quyền truy cập/i)).toBeTruthy();
   });
 
   it('surfaces a detail error without rendering a list-row fallback', async () => {
@@ -320,6 +320,6 @@ describe('OverrideLogPage (C16)', () => {
     renderPage(ROUTES.FOUNDATION.OVERRIDE_DETAIL('ov1'));
 
     expect(await screen.findByText('Override detail failed')).toBeTruthy();
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
   });
 });

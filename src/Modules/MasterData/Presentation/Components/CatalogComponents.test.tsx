@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
-import { CATALOG_EMPTY_LABELS } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
 import { OwnerPolicyView } from '@modules/MasterData/Presentation/Components/OwnerPolicyView';
@@ -25,7 +25,7 @@ const columns: CatalogColumn<Row>[] = [
 ];
 
 const baseProps = {
-  title: 'Owners',
+  title: 'Chủ hàng',
   description: 'Manage owners',
   columns,
   rows: [] as Row[],
@@ -38,28 +38,28 @@ const baseProps = {
 describe('Catalog components', () => {
   it('renders the loading state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="loading" />);
-    expect(html).toContain('Loading');
+    expect(html).toContain('Đang tải');
   });
 
   it('renders the empty state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="empty" />);
-    expect(html).toContain('No records');
+    expect(html).toContain('Không tìm thấy bản ghi.');
   });
 
   it('renders an entity-specific empty label when supplied', () => {
     const html = renderToStaticMarkup(
-      <CatalogListView {...baseProps} state="empty" emptyLabel="No Owners yet." />,
+      <CatalogListView {...baseProps} state="empty" emptyLabel="Chưa có chủ hàng." />,
     );
-    expect(html).toContain('No Owners yet.');
-    expect(html).not.toContain('No records found.');
+    expect(html).toContain('Chưa có chủ hàng.');
+    expect(html).not.toContain('Không tìm thấy bản ghi.');
   });
 
   it('exposes distinct, entity-specific empty copy per page (Owner/UOM/SKU)', () => {
-    expect(CATALOG_EMPTY_LABELS.owners).toBe('No Owners yet.');
-    expect(CATALOG_EMPTY_LABELS.uoms).toBe('No UOMs yet.');
-    expect(CATALOG_EMPTY_LABELS.skus).toBe('No SKUs yet.');
+    expect(MASTER_DATA_EMPTY_LABELS.owners).toBe('Chưa có chủ hàng.');
+    expect(MASTER_DATA_EMPTY_LABELS.uoms).toBe('Chưa có đơn vị tính.');
+    expect(MASTER_DATA_EMPTY_LABELS.skus).toBe('Chưa có SKU.');
 
-    const labels = Object.values(CATALOG_EMPTY_LABELS);
+    const labels = Object.values(MASTER_DATA_EMPTY_LABELS);
     expect(new Set(labels).size).toBe(labels.length);
 
     // Each label actually surfaces through the shared list view's empty state.
@@ -68,7 +68,7 @@ describe('Catalog components', () => {
         <CatalogListView {...baseProps} state="empty" emptyLabel={label} />,
       );
       expect(html).toContain(label);
-      expect(html).not.toContain('No records found.');
+      expect(html).not.toContain('Không tìm thấy bản ghi.');
     }
   });
 
@@ -81,7 +81,7 @@ describe('Catalog components', () => {
 
   it('renders the permission-denied state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="denied" />);
-    expect(html).toContain('Permission denied');
+    expect(html).toContain('Không có quyền');
   });
 
   it('renders rows and the entity title in the ready state', () => {
@@ -92,7 +92,7 @@ describe('Catalog components', () => {
         rows={[{ id: 'owner-1', code: 'OWN-01' }]}
       />,
     );
-    expect(html).toContain('Owners');
+    expect(html).toContain('Chủ hàng');
     expect(html).toContain('OWN-01');
   });
 
@@ -150,8 +150,8 @@ describe('Catalog components', () => {
         visibilityScope={{ warehouses: ['wh-1', 'wh-2'] }}
       />,
     );
-    expect(html).toContain('Billing policy');
-    expect(html).toContain('Visibility scope');
+    expect(html).toContain('Chính sách tính phí');
+    expect(html).toContain('Phạm vi hiển thị');
     // The actual JSON contents must be rendered, not just the labels.
     expect(html).toContain('monthly');
     expect(html).toContain('&quot;rate&quot;: 12');
@@ -165,9 +165,9 @@ describe('Catalog components', () => {
     const html = renderToStaticMarkup(
       <OwnerPolicyView billingPolicy={undefined} visibilityScope={null} />,
     );
-    expect(html).toContain('Billing policy');
-    expect(html).toContain('Visibility scope');
-    expect(html).toContain('Not set');
+    expect(html).toContain('Chính sách tính phí');
+    expect(html).toContain('Phạm vi hiển thị');
+    expect(html).toContain('Chưa thiết lập');
   });
 
   it('registers the catalog routes and route constants', () => {

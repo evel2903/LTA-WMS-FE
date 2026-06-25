@@ -18,10 +18,10 @@ function AuditRow({ label, value }: { label: string; value: string | null }) {
 export function AuditMetadata({ createdAt, updatedAt, createdBy, updatedBy }: AuditMetadataProps) {
   return (
     <div className="text-muted-foreground grid gap-1 border-t pt-3 text-xs">
-      <AuditRow label="Created at" value={createdAt} />
-      <AuditRow label="Created by" value={createdBy} />
-      <AuditRow label="Updated at" value={updatedAt} />
-      <AuditRow label="Updated by" value={updatedBy} />
+      <AuditRow label="Tạo lúc" value={createdAt} />
+      <AuditRow label="Tạo bởi" value={createdBy} />
+      <AuditRow label="Cập nhật lúc" value={updatedAt} />
+      <AuditRow label="Cập nhật bởi" value={updatedBy} />
     </div>
   );
 }

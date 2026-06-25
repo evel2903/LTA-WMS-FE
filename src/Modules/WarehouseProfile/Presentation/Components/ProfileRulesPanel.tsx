@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
 import { Button } from '@shared/Components/Ui/Button';
-import { CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Domain/Constants/PrecedenceOrder';
 import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
+import { VI_CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface ProfileRulesPanelProps {
   /** Rules currently attached to the selected profile (`GET :id/rules`). */
@@ -43,10 +43,10 @@ export function ProfileRulesPanel({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Rules</p>
+      <p className="text-sm font-medium">Quy tắc</p>
 
       {profileRules.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No rules attached.</p>
+        <p className="text-muted-foreground text-sm">Chưa gắn quy tắc nào.</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {profileRules.map((profileRule) => {
@@ -61,7 +61,7 @@ export function ProfileRulesPanel({
                   {def && <span className="text-muted-foreground">{def.ruleName}</span>}
                   {def && (
                     <span className="text-muted-foreground text-xs">
-                      ({CONTROL_MODE_LABELS[def.controlMode]})
+                      ({VI_CONTROL_MODE_LABELS[def.controlMode]})
                     </span>
                   )}
                 </span>
@@ -71,9 +71,7 @@ export function ProfileRulesPanel({
                   size="sm"
                   disabled={!canEdit || pendingRemove}
                   onClick={() => onRemove(profileRule.id)}
-                >
-                  Remove
-                </Button>
+                >Gỡ bỏ</Button>
               </li>
             );
           })}
@@ -81,15 +79,13 @@ export function ProfileRulesPanel({
       )}
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="grid flex-1 gap-1 text-sm">
-          Attach rule
-          <select
+        <label className="grid flex-1 gap-1 text-sm">Gắn quy tắc<select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={!canEdit || attachable.length === 0}
             value={selectedRuleId}
             onChange={(event) => setSelectedRuleId(event.target.value)}
           >
-            <option value="">Select a rule…</option>
+            <option value="">Chọn quy tắc...</option>
             {attachable.map((rule) => (
               <option key={rule.id} value={rule.id}>
                 {rule.ruleCode} — {rule.ruleName}
@@ -105,9 +101,7 @@ export function ProfileRulesPanel({
             onAdd(selectedRuleId);
             setSelectedRuleId('');
           }}
-        >
-          Add rule
-        </Button>
+        >Thêm quy tắc</Button>
       </div>
     </div>
   );

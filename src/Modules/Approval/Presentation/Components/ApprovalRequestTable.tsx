@@ -20,12 +20,12 @@ export function ApprovalRequestTable({ items, selectedId, onSelect }: ApprovalRe
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Target</TableHead>
-          <TableHead>Action</TableHead>
-          <TableHead>Requester</TableHead>
-          <TableHead>Decision</TableHead>
-          <TableHead>Reason</TableHead>
-          <TableHead>Created</TableHead>
+          <TableHead>Đích</TableHead>
+          <TableHead>Hành động</TableHead>
+          <TableHead>Người yêu cầu</TableHead>
+          <TableHead>Quyết định</TableHead>
+          <TableHead>Lý do</TableHead>
+          <TableHead>Tạo lúc</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

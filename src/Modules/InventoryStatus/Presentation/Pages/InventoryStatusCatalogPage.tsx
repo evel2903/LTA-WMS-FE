@@ -54,38 +54,32 @@ export function InventoryStatusCatalogPage() {
 
   return (
     <ListPageShell
-      title="Inventory Status Catalog"
-      description="Manage behavior flags for existing inventory statuses. This page does not add shipment/gate/GI statuses."
+      title="Danh mục trạng thái tồn kho"
+      description="Quản lý cờ hành vi cho trạng thái tồn kho hiện có. Trang này không thêm trạng thái shipment/gate/GI."
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Status code
-            <Input
+          <label className="grid gap-1 text-sm">Mã trạng thái<Input
               className="h-9"
               placeholder="e.g. AVAILABLE"
               value={filters.statusCode}
               onChange={(e) => patch({ statusCode: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Stage group
-            <Input
+          <label className="grid gap-1 text-sm">Nhóm chặng<Input
               className="h-9"
               placeholder="e.g. Storage"
               value={filters.stageGroup}
               onChange={(e) => patch({ stageGroup: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.status}
               onChange={(e) => patch({ status: e.target.value as MasterDataStatus | '' })}
             >
-              <option value="">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="">Tất cả</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Không hoạt động</option>
             </select>
           </label>
         </div>
@@ -93,7 +87,7 @@ export function InventoryStatusCatalogPage() {
     >
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Inventory statuses</CardTitle>
+          <CardTitle className="text-base">Trạng thái tồn kho</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {listState === 'ready' ? (
@@ -114,25 +108,21 @@ export function InventoryStatusCatalogPage() {
                     variant="outline"
                     disabled={page <= 1}
                     onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  >
-                    Previous
-                  </Button>
+                  >Trước</Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={page >= (meta?.totalPages ?? 1)}
                     onClick={() => setPage((value) => value + 1)}
-                  >
-                    Next
-                  </Button>
+                  >Tiếp</Button>
                 </div>
               </div>
             </>
           ) : (
             <InventoryStatusStateView
               state={listState}
-              emptyLabel="No inventory statuses match the filters."
-              errorMessage={apiError?.message ?? 'Unable to load inventory statuses.'}
+              emptyLabel="Không có trạng thái tồn kho khớp bộ lọc."
+              errorMessage={apiError?.message ?? 'Không thể tải trạng thái tồn kho.'}
             />
           )}
         </CardContent>

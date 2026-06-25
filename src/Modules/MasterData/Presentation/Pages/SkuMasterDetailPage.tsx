@@ -72,50 +72,50 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
   const warehouses = warehousesQuery.data?.items ?? [];
 
   if (!isCreate && skuQuery.isLoading) {
-    return <DetailPageShell title="SKU detail" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
+    return <DetailPageShell title="Chi tiết SKU" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="SKU detail" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
+    return <DetailPageShell title="Chi tiết SKU" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
   }
 
   if (!isCreate && skuQuery.error) {
     return (
       <DetailPageShell
-        title="SKU detail"
+        title="Chi tiết SKU"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load SKU.'}
+        stateMessage={apiError?.message ?? 'Không thể tải SKU.'}
         backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS}
       />
     );
   }
 
   if (!isCreate && !sku) {
-    return <DetailPageShell title="SKU detail" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
+    return <DetailPageShell title="Chi tiết SKU" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
   }
 
   const existingSku = sku as NonNullable<typeof sku>;
-  const title = isCreate ? 'Create SKU' : existingSku.skuCode;
+  const title = isCreate ? 'Tạo SKU' : existingSku.skuCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Item master data"
+      subtitle="Dữ liệu chủ hàng hóa"
       backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS}
-      backLabel="Back to SKUs"
+      backLabel="Quay lại SKU"
       status={!isCreate ? <SkuStatusBadge status={existingSku.itemStatus} /> : null}
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT(existingSku.id)}>Edit SKU</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT(existingSku.id)}>Chỉnh sửa SKU</Link>
           </Button>
         ) : null
       }
       state={canEdit ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Create SKU' : 'SKU actions'}
-        description="Changes use the existing master-data mutation and audit path."
+        title={isCreate ? 'Tạo SKU' : 'Hành động SKU'}
+        description="Thay đổi dùng mutation và audit path dữ liệu chủ hiện có."
         state={mutations.createSku.isPending || mutations.updateSku.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >
@@ -123,7 +123,7 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
           <SkuForm
             owners={owners}
             uoms={uoms}
-            submitLabel="Create SKU"
+            submitLabel="Tạo SKU"
             disabled={!canMutate}
             pending={mutations.createSku.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -143,7 +143,7 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
             initialValue={existingSku}
             owners={owners}
             uoms={uoms}
-            submitLabel="Update SKU"
+            submitLabel="Cập nhật SKU"
             disabled={!canMutate}
             pending={mutations.updateSku.isPending}
             conflict={conflictMessage(submitError) ?? undefined}

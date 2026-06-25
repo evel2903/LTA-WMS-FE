@@ -40,9 +40,7 @@ export function OwnerForm({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        Owner code
-        <Input disabled={disabled} {...form.register('ownerCode')} />
+      <label className="grid gap-1 text-sm">Mã chủ hàng<Input disabled={disabled} {...form.register('ownerCode')} />
         {form.formState.errors.ownerCode && (
           <span className="text-destructive text-xs">{form.formState.errors.ownerCode.message}</span>
         )}
@@ -52,22 +50,18 @@ export function OwnerForm({
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Owner name
-        <Input disabled={disabled} {...form.register('ownerName')} />
+      <label className="grid gap-1 text-sm">Tên chủ hàng<Input disabled={disabled} {...form.register('ownerName')} />
         {form.formState.errors.ownerName && (
           <span className="text-destructive text-xs">{form.formState.errors.ownerName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select
+      <label className="grid gap-1 text-sm">Trạng thái<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('status')}
         >
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+          <option value="Active">Đang hoạt động</option>
+          <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>

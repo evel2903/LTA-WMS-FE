@@ -3,6 +3,10 @@ import type { PrecedenceTierDescriptor } from '@modules/WarehouseProfile/Domain/
 import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
 import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGroup';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
+import {
+  VI_PRECEDENCE_TIER_DESCRIPTIONS,
+  VI_PRECEDENCE_TIER_LABELS,
+} from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface PrecedenceMatrixProps {
   /** The fixed tier order (Domain `PRECEDENCE_ORDER`). Rendered top-to-bottom as given. */
@@ -31,13 +35,15 @@ export function PrecedenceMatrix({ tiers, rules, groups }: PrecedenceMatrixProps
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="text-muted-foreground tabular-nums">{index + 1}.</span>
-                {tier.label}
+                {VI_PRECEDENCE_TIER_LABELS[tier.tier]}
               </CardTitle>
-              <p className="text-muted-foreground text-sm">{tier.description}</p>
+              <p className="text-muted-foreground text-sm">
+                {VI_PRECEDENCE_TIER_DESCRIPTIONS[tier.tier]}
+              </p>
             </CardHeader>
             <CardContent className="space-y-2">
               {tierRules.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No rules in this tier.</p>
+                <p className="text-muted-foreground text-sm">Không có quy tắc trong tầng này.</p>
               ) : (
                 <ul className="space-y-2">
                   {tierRules.map((rule) => (
@@ -59,8 +65,8 @@ export function PrecedenceMatrix({ tiers, rules, groups }: PrecedenceMatrixProps
                       </div>
                       {/* Condition / action JSON — READ-ONLY display only (OQ3); no editor. */}
                       <div className="grid gap-2 sm:grid-cols-2">
-                        <RuleJson label="Condition" value={rule.conditionJson} />
-                        <RuleJson label="Action" value={rule.actionJson} />
+                        <RuleJson label="Điều kiện" value={rule.conditionJson} />
+                        <RuleJson label="Hành động" value={rule.actionJson} />
                       </div>
                     </li>
                   ))}

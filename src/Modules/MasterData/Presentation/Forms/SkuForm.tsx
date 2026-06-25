@@ -3,12 +3,13 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
-import { SKU_CONTROL_FLAGS, SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type { Owner, Sku, Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import {
   skuFormSchema,
   type SkuFormValues,
 } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
+import { SKU_CONTROL_FLAG_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { mergeSelectedOption } from '@modules/MasterData/Presentation/Forms/SelectOptions';
 
 interface SkuFormProps {
@@ -74,9 +75,7 @@ export function SkuForm({
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
-      <label className="grid gap-1 text-sm">
-        SKU code
-        <Input disabled={disabled} {...form.register('skuCode')} />
+      <label className="grid gap-1 text-sm">Mã SKU<Input disabled={disabled} {...form.register('skuCode')} />
         {errors.skuCode && <span className="text-destructive text-xs">{errors.skuCode.message}</span>}
         {conflict && (
           <span className="text-destructive text-xs" role="alert">
@@ -84,21 +83,15 @@ export function SkuForm({
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        SKU name
-        <Input disabled={disabled} {...form.register('skuName')} />
+      <label className="grid gap-1 text-sm">Tên SKU<Input disabled={disabled} {...form.register('skuName')} />
         {errors.skuName && <span className="text-destructive text-xs">{errors.skuName.message}</span>}
       </label>
-      <label className="grid gap-1 text-sm">
-        Item class
-        <Input disabled={disabled} {...form.register('itemClass')} />
+      <label className="grid gap-1 text-sm">Nhóm hàng<Input disabled={disabled} {...form.register('itemClass')} />
         {errors.itemClass && (
           <span className="text-destructive text-xs">{errors.itemClass.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Item status
-        <select
+      <label className="grid gap-1 text-sm">Trạng thái hàng<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('itemStatus')}
@@ -110,14 +103,12 @@ export function SkuForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm">
-        Base UOM
-        <select
+      <label className="grid gap-1 text-sm">Đơn vị tính cơ sở<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('baseUomId')}
         >
-          <option value="">Select UOM</option>
+          <option value="">Chọn đơn vị tính</option>
           {baseUomOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -128,14 +119,12 @@ export function SkuForm({
           <span className="text-destructive text-xs">{errors.baseUomId.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Inventory UOM
-        <select
+      <label className="grid gap-1 text-sm">Đơn vị tính tồn kho<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('inventoryUomId')}
         >
-          <option value="">Select UOM</option>
+          <option value="">Chọn đơn vị tính</option>
           {inventoryUomOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -146,9 +135,7 @@ export function SkuForm({
           <span className="text-destructive text-xs">{errors.inventoryUomId.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Default owner
-        <select
+      <label className="grid gap-1 text-sm">Chủ hàng mặc định<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('defaultOwnerId')}
@@ -166,43 +153,36 @@ export function SkuForm({
       </label>
 
       <fieldset className="grid gap-2 rounded-md border p-3 text-sm">
-        <legend className="px-1 font-medium">Control flags</legend>
+        <legend className="px-1 font-medium">Cờ kiểm soát</legend>
         <div className="grid grid-cols-2 gap-2">
-          {SKU_CONTROL_FLAGS.map((flag) => (
-            <label key={flag.key} className="flex items-center gap-2">
-              <input type="checkbox" disabled={disabled} {...form.register(flag.key)} />
-              {flag.label}
+          {(Object.entries(SKU_CONTROL_FLAG_LABELS) as Array<[
+            keyof typeof SKU_CONTROL_FLAG_LABELS,
+            string,
+          ]>).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2">
+              <input type="checkbox" disabled={disabled} {...form.register(key)} />
+              {label}
             </label>
           ))}
           <label className="flex items-center gap-2">
-            <input type="checkbox" disabled={disabled} {...form.register('bondedFlag')} />
-            Bonded flag
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('bondedFlag')} />Cờ kho ngoại quan</label>
         </div>
       </fieldset>
 
-      <label className="grid gap-1 text-sm">
-        Temperature class
-        <Input disabled={disabled} {...form.register('temperatureClass')} />
+      <label className="grid gap-1 text-sm">Nhóm nhiệt độ<Input disabled={disabled} {...form.register('temperatureClass')} />
         {errors.temperatureClass && (
           <span className="text-destructive text-xs">{errors.temperatureClass.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        DG class
-        <Input disabled={disabled} {...form.register('dgClass')} />
+      <label className="grid gap-1 text-sm">Nhóm hàng nguy hiểm<Input disabled={disabled} {...form.register('dgClass')} />
         {errors.dgClass && <span className="text-destructive text-xs">{errors.dgClass.message}</span>}
       </label>
-      <label className="grid gap-1 text-sm">
-        Shelf life (days)
-        <Input type="number" min={0} disabled={disabled} {...form.register('shelfLifeDays')} />
+      <label className="grid gap-1 text-sm">Hạn sử dụng (ngày)<Input type="number" min={0} disabled={disabled} {...form.register('shelfLifeDays')} />
         {errors.shelfLifeDays && (
           <span className="text-destructive text-xs">{errors.shelfLifeDays.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Min remaining shelf life (days)
-        <Input
+      <label className="grid gap-1 text-sm">Hạn sử dụng còn lại tối thiểu (ngày)<Input
           type="number"
           min={0}
           disabled={disabled}

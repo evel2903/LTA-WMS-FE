@@ -39,18 +39,14 @@ export function ControlValidationCatalogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Control & Validation Catalog</h1>
-        <p className="text-muted-foreground">
-          Read-only view of the C8 RBAC-VAL and CTRL-EX catalogs for FR-22 / V0-AC-02.2.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">Danh mục kiểm soát và xác thực</h1>
+        <p className="text-muted-foreground">Màn hình chỉ đọc của danh mục C8 RBAC-VAL và CTRL-EX cho FR-22 / V0-AC-02.2.</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="grid w-full max-w-lg gap-1 text-sm">
-          Filter catalog
-          <Input
+        <label className="grid w-full max-w-lg gap-1 text-sm">Lọc danh mục<Input
             className="h-9"
-            placeholder="Search code, category, trigger, owner, deferred..."
+            placeholder="Tìm theo mã, nhóm, trigger, chủ sở hữu, deferred..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -60,7 +56,7 @@ export function ControlValidationCatalogPage() {
       {state !== 'ready' ? (
         <ControlValidationCatalogStateView
           state={state}
-          errorMessage={apiError?.message ?? 'Unable to load control and validation catalog.'}
+          errorMessage={apiError?.message ?? 'Không thể tải danh mục kiểm soát và xác thực.'}
         />
       ) : catalogData && filteredCatalog ? (
         <div className="space-y-3">

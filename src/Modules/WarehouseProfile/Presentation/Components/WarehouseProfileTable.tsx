@@ -20,11 +20,11 @@ export function WarehouseProfileTable({ profiles, selectedId, onSelect }: Wareho
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Code</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Version</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>Mã</TableHead>
+          <TableHead>Tên</TableHead>
+          <TableHead>Loại</TableHead>
+          <TableHead>Phiên bản</TableHead>
+          <TableHead>Trạng thái</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

@@ -32,7 +32,7 @@ export function ProfilePreviewPanel({ profile, canPreview = true }: ProfilePrevi
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Preview this profile (scope self-check)</CardTitle>
+          <CardTitle className="text-base">Xem thử hồ sơ này (tự kiểm tra phạm vi)</CardTitle>
         </CardHeader>
         <CardContent>
           <PreviewContextForm

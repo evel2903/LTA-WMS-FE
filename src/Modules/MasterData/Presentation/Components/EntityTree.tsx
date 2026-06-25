@@ -60,7 +60,7 @@ function EntityTreeNode({ node, selectedNodeId, onSelect, depth }: EntityTreeNod
 
 export function EntityTree({ nodes, selectedNodeId, onSelect }: EntityTreeProps) {
   return (
-    <ul role="tree" aria-label="Site and location tree" className="space-y-1">
+    <ul role="tree" aria-label="Cây kho và vị trí" className="space-y-1">
       {nodes.map((node) => (
         <EntityTreeNode
           key={node.id}

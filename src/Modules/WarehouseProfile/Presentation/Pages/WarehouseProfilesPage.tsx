@@ -42,47 +42,43 @@ export function WarehouseProfilesPage() {
 
   return (
     <ListPageShell
-      title="Warehouse Profiles"
-      description="Scan and filter warehouse strategy profiles before opening a dedicated detail/action page."
+      title="Hồ sơ kho"
+      description="Quét và lọc hồ sơ chiến lược kho trước khi mở trang chi tiết/action riêng."
       toolbar={
         <>
           <Button asChild variant="outline">
-            <Link to={ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW}>Preview rules</Link>
+            <Link to={ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW}>Preview quy tắc</Link>
           </Button>
           <Button asChild>
-            <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_NEW}>New profile</Link>
+            <Link to={ROUTES.FOUNDATION.WAREHOUSE_PROFILE_NEW}>Tạo hồ sơ</Link>
           </Button>
         </>
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">
-            Status
-            <select
+          <label className="grid gap-1 text-sm">Trạng thái<select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={store.statusFilter}
               onChange={(event) => store.setStatusFilter(event.target.value as ProfileStatusFilter)}
             >
-              <option value="ALL">All</option>
-              <option value="DRAFT">Draft</option>
-              <option value="ACTIVE">Active</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="RETIRED">Retired</option>
+              <option value="ALL">Tất cả</option>
+              <option value="DRAFT">Bản nháp</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="EXPIRED">Hết hiệu lực</option>
+              <option value="RETIRED">Ngưng sử dụng</option>
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            Warehouse type code
-            <Input
+          <label className="grid gap-1 text-sm">Mã loại kho<Input
               value={store.warehouseTypeCodeFilter}
               onChange={(event) => store.setWarehouseTypeCodeFilter(event.target.value)}
-              placeholder="e.g. DC"
+              placeholder="VD: DC"
             />
           </label>
         </div>
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={state === 'empty' ? 'No profiles yet.' : (apiError?.message ?? 'Unable to load profiles.')}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={state === 'empty' ? 'Chưa có hồ sơ.' : (apiError?.message ?? 'Không thể tải hồ sơ.')}
     >
       <WarehouseProfileTable
         profiles={profiles}

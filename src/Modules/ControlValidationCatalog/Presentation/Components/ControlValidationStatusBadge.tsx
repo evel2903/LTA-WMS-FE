@@ -11,10 +11,10 @@ export function CatalogImplementationStatusBadge({
   status: CatalogImplementationStatus;
 }) {
   if (status === 'Implemented') {
-    return <Badge variant="success">Implemented</Badge>;
+    return <Badge variant="success">Đã triển khai</Badge>;
   }
   if (status === 'DeferredToC9') {
-    return <Badge variant="warning">Deferred to C9</Badge>;
+    return <Badge variant="warning">Dời sang C9</Badge>;
   }
   return <Badge variant="outline">Deferred V1+</Badge>;
 }

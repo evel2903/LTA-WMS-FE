@@ -55,9 +55,7 @@ export function PartnerForm({
       className="grid gap-3"
       onSubmit={form.handleSubmit(onSubmit)}
     >
-      <label className="grid gap-1 text-sm">
-        Partner code
-        <Input disabled={disabled} {...form.register('partnerCode')} />
+      <label className="grid gap-1 text-sm">Mã đối tác<Input disabled={disabled} {...form.register('partnerCode')} />
         {form.formState.errors.partnerCode && (
           <span className="text-destructive text-xs">{form.formState.errors.partnerCode.message}</span>
         )}
@@ -67,16 +65,12 @@ export function PartnerForm({
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Partner name
-        <Input disabled={disabled} {...form.register('partnerName')} />
+      <label className="grid gap-1 text-sm">Tên đối tác<Input disabled={disabled} {...form.register('partnerName')} />
         {form.formState.errors.partnerName && (
           <span className="text-destructive text-xs">{form.formState.errors.partnerName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Partner type
-        <select
+      <label className="grid gap-1 text-sm">Loại đối tác<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('partnerType')}
@@ -88,9 +82,7 @@ export function PartnerForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm">
-        Status
-        <select
+      <label className="grid gap-1 text-sm">Trạng thái<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('status')}
@@ -102,34 +94,26 @@ export function PartnerForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm">
-        Source system
-        <Input disabled={disabled} {...form.register('sourceSystem')} />
+      <label className="grid gap-1 text-sm">Hệ thống nguồn<Input disabled={disabled} {...form.register('sourceSystem')} />
         {form.formState.errors.sourceSystem && (
           <span className="text-destructive text-xs">{form.formState.errors.sourceSystem.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        External reference
-        <Input disabled={disabled} {...form.register('externalReference')} />
+      <label className="grid gap-1 text-sm">Tham chiếu ngoài<Input disabled={disabled} {...form.register('externalReference')} />
         {form.formState.errors.externalReference && (
           <span className="text-destructive text-xs">
             {form.formState.errors.externalReference.message}
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">
-        Reference text
-        <Input disabled={disabled} {...form.register('referenceText')} />
+      <label className="grid gap-1 text-sm">Nội dung tham chiếu<Input disabled={disabled} {...form.register('referenceText')} />
       </label>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}
       </Button>
       {onDeactivate && (
         <div className="border-t pt-3">
-          <label className="grid gap-1 text-sm">
-            Reason code
-            <Input disabled={disabled} {...deactivateForm.register('reasonCode')} />
+          <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...deactivateForm.register('reasonCode')} />
             {deactivateForm.formState.errors.reasonCode && (
               <span className="text-destructive text-xs">
                 {deactivateForm.formState.errors.reasonCode.message}
@@ -142,9 +126,7 @@ export function PartnerForm({
             className="mt-3"
             disabled={disabled || deactivatePending}
             onClick={deactivateForm.handleSubmit(onDeactivate)}
-          >
-            Deactivate partner
-          </Button>
+          >Ngưng kích hoạt đối tác</Button>
         </div>
       )}
     </form>

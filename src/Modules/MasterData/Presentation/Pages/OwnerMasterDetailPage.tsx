@@ -33,56 +33,56 @@ export function OwnerMasterDetailPage({ mode }: OwnerMasterDetailPageProps) {
   const owner = ownerQuery.data;
 
   if (!isCreate && ownerQuery.isLoading) {
-    return <DetailPageShell title="Owner detail" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
+    return <DetailPageShell title="Chi tiết chủ hàng" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
   }
 
   if (!isCreate && apiError?.isForbidden) {
-    return <DetailPageShell title="Owner detail" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
+    return <DetailPageShell title="Chi tiết chủ hàng" state="forbidden" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
   }
 
   if (!isCreate && ownerQuery.error) {
     return (
       <DetailPageShell
-        title="Owner detail"
+        title="Chi tiết chủ hàng"
         state={apiError?.status === 404 ? 'notFound' : 'error'}
-        stateMessage={apiError?.message ?? 'Unable to load owner.'}
+        stateMessage={apiError?.message ?? 'Không thể tải chủ hàng.'}
         backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS}
       />
     );
   }
 
   if (!isCreate && !owner) {
-    return <DetailPageShell title="Owner detail" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
+    return <DetailPageShell title="Chi tiết chủ hàng" state="notFound" backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS} />;
   }
 
   const existingOwner = owner as NonNullable<typeof owner>;
-  const title = isCreate ? 'Create owner' : existingOwner.ownerCode;
+  const title = isCreate ? 'Tạo chủ hàng' : existingOwner.ownerCode;
 
   return (
     <DetailPageShell
       title={title}
-      subtitle="Owner master data"
+      subtitle="Dữ liệu chủ hàng"
       backTo={ROUTES.FOUNDATION.MASTER_DATA.OWNERS}
-      backLabel="Back to owners"
+      backLabel="Quay lại chủ hàng"
       status={!isCreate ? <MasterDataStatusBadge status={existingOwner.status} /> : null}
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(existingOwner.id)}>Edit owner</Link>
+            <Link to={ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(existingOwner.id)}>Chỉnh sửa chủ hàng</Link>
           </Button>
         ) : null
       }
       state={canEdit ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Create owner' : 'Owner actions'}
-        description="Changes use the existing master-data mutation and audit path."
+        title={isCreate ? 'Tạo chủ hàng' : 'Hành động chủ hàng'}
+        description="Thay đổi dùng mutation và audit path dữ liệu chủ hiện có."
         state={mutations.createOwner.isPending || mutations.updateOwner.isPending ? 'pending' : 'idle'}
         governanceState={canMutate ? undefined : 'readOnly'}
       >
         {isCreate ? (
           <OwnerForm
-            submitLabel="Create Owner"
+            submitLabel="Tạo chủ hàng"
             disabled={!canMutate}
             pending={mutations.createOwner.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -100,7 +100,7 @@ export function OwnerMasterDetailPage({ mode }: OwnerMasterDetailPageProps) {
           <OwnerForm
             key={`owner-${existingOwner.id}-${existingOwner.updatedAt ?? ''}`}
             initialValue={existingOwner}
-            submitLabel="Update Owner"
+            submitLabel="Cập nhật chủ hàng"
             disabled={!canMutate}
             pending={mutations.updateOwner.isPending}
             conflict={conflictMessage(submitError) ?? undefined}

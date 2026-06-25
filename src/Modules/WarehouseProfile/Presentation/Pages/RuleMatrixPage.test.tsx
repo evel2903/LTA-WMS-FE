@@ -120,9 +120,9 @@ describe('RuleMatrixPage (AC3 fixed precedence order)', () => {
     repo.current = new FakeRepository() as unknown as IWarehouseProfileRepository;
     const { container } = renderPage();
 
-    await screen.findByText('Compliance');
+    await screen.findByText('Tuân thủ');
     const html = container.innerHTML;
-    const order = ['Compliance', 'Integrity', 'Physical', 'Owner / Contract', 'Operation', 'Optimization'].map(
+    const order = ['Tuân thủ', 'Toàn vẹn', 'Vật lý', 'Chủ hàng / Hợp đồng', 'Vận hành', 'Tối ưu'].map(
       (label) => html.indexOf(label),
     );
     expect(order.every((value) => value >= 0)).toBe(true);
@@ -134,8 +134,8 @@ describe('RuleMatrixPage (AC3 fixed precedence order)', () => {
   it('shows the rule condition + action JSON read-only (Finding #3)', async () => {
     repo.current = new FakeRepository() as unknown as IWarehouseProfileRepository;
     renderPage();
-    expect(await screen.findByText('Condition')).toBeTruthy();
-    expect(await screen.findByText('Action')).toBeTruthy();
+    expect(await screen.findByText('Điều kiện')).toBeTruthy();
+    expect(await screen.findByText('Hành động')).toBeTruthy();
   });
 });
 
@@ -146,13 +146,13 @@ describe('RuleMatrixPage preview panel (AC4)', () => {
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage(ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW);
 
-    const wtInput = await screen.findByRole('textbox', { name: /warehouse type code/i });
+    const wtInput = await screen.findByRole('textbox', { name: /mã loại kho/i });
     await user.type(wtInput, 'DC');
-    await user.click(screen.getByRole('button', { name: 'Run preview' }));
+    await user.click(screen.getByRole('button', { name: 'Chạy preview' }));
 
     await waitFor(() => expect(fake.preview).toHaveBeenCalled());
     // Winner rendered directly from the response (FE never recomputes).
-    expect(await screen.findByText('Winning rule')).toBeTruthy();
+    expect(await screen.findByText('Quy tắc thắng')).toBeTruthy();
     await waitFor(() => expect(screen.getAllByText(/COMP-001/).length).toBeGreaterThan(0));
     // The preview request carried the warehouseTypeCode and NEVER a profileId (contract).
     expect(fake.previewContexts[0]?.warehouseTypeCode).toBe('DC');
@@ -171,6 +171,6 @@ describe('RuleMatrixPage AC5 states', () => {
     );
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage();
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
+    expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 });

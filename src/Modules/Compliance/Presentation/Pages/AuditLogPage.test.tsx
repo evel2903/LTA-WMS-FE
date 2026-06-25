@@ -91,12 +91,12 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
 
     expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
     expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 }));
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
 
     await actor.click(screen.getByRole('button', { name: new Date(entry.occurredAt).toLocaleString() }));
 
-    expect(await screen.findByText('Before')).toBeTruthy();
-    expect(screen.getByText('After')).toBeTruthy();
+    expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
+    expect(screen.getByText('Sau thay đổi')).toBeTruthy();
     expect(screen.getByText(/"State": "LOGGED"/)).toBeTruthy();
     expect(screen.getByText(/"EvidenceRefs"/)).toBeTruthy();
     expect(fake.getAuditLog).toHaveBeenCalledWith('a1');
@@ -111,8 +111,8 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage(ROUTES.FOUNDATION.AUDIT_DETAIL('a1'));
 
-    expect(await screen.findByText('Before')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /back to audit log/i })).toBeTruthy();
+    expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /quay lại nhật ký kiểm toán/i })).toBeTruthy();
     expect(fake.getAuditLog).toHaveBeenCalledWith('a1');
   });
 
@@ -152,7 +152,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
 
     await actor.click(screen.getByRole('button', { name: new Date(entry.occurredAt).toLocaleString() }));
 
-    const backLink = await screen.findByRole('link', { name: /back to audit log/i });
+    const backLink = await screen.findByRole('link', { name: /quay lại nhật ký kiểm toán/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
       '/foundation/audit?actorUserId=u1&reasonCodeId=rc-1&page=2',
     );
@@ -167,7 +167,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     const rowButton = await screen.findByRole('button', {
       name: new Date(entry.occurredAt).toLocaleString(),
     });
-    await actor.type(screen.getByLabelText('Actor user id'), 'u2');
+    await actor.type(screen.getByLabelText('ID người thực hiện'), 'u2');
     expect((rowButton as HTMLButtonElement).disabled).toBe(true);
     await actor.click(rowButton);
     expect(fake.getAuditLog).not.toHaveBeenCalled();
@@ -180,7 +180,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     await waitFor(() => expect((rowButton as HTMLButtonElement).disabled).toBe(false));
     await actor.click(rowButton);
 
-    const backLink = await screen.findByRole('link', { name: /back to audit log/i });
+    const backLink = await screen.findByRole('link', { name: /quay lại nhật ký kiểm toán/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe('/foundation/audit?actorUserId=u2');
   });
 
@@ -197,7 +197,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByRole('button', { name: new Date(entry.occurredAt).toLocaleString() })).toBeTruthy();
-    await actor.type(screen.getByLabelText('Actor user id'), 'u2');
+    await actor.type(screen.getByLabelText('ID người thực hiện'), 'u2');
 
     await waitFor(() =>
       expect(fake.listAuditLogs).toHaveBeenCalledWith(
@@ -279,7 +279,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     await waitFor(() =>
       expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
     );
-    expect(await screen.findByText('No audit events match the filters.')).toBeTruthy();
+    expect(await screen.findByText('Không có sự kiện kiểm toán khớp bộ lọc.')).toBeTruthy();
   });
 
   it('does not render stale audit detail data when the returned id differs from the route id', async () => {
@@ -288,8 +288,8 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage(ROUTES.FOUNDATION.AUDIT_DETAIL('a1'));
 
-    expect(await screen.findByText(/record not found/i)).toBeTruthy();
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(await screen.findByText(/Không tìm thấy bản ghi/i)).toBeTruthy();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
   });
 
   it('does not render pager controls for an empty audit list', async () => {
@@ -300,10 +300,10 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    expect(await screen.findByText('No audit events match the filters.')).toBeTruthy();
+    expect(await screen.findByText('Không có sự kiện kiểm toán khớp bộ lọc.')).toBeTruthy();
     expect(screen.queryByText(/Page 1/)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Previous' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Trước' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tiếp' })).toBeNull();
   });
 
   it('shows a permission-required state when the audit query 403s', async () => {
@@ -314,7 +314,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    expect(await screen.findByText(/permission required/i)).toBeTruthy();
+    expect(await screen.findByText(/Cần quyền truy cập/i)).toBeTruthy();
   });
 
   it('keeps loaded rows visible when a non-403 refetch fails', async () => {
@@ -330,7 +330,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Next' }));
+    await actor.click(screen.getByRole('button', { name: 'Tiếp' }));
 
     await waitFor(() => expect(fake.listAuditLogs).toHaveBeenCalledTimes(2));
     expect(screen.getByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
@@ -360,6 +360,6 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage(ROUTES.FOUNDATION.AUDIT_DETAIL('a1'));
 
     expect(await screen.findByText('Audit detail temporarily unavailable')).toBeTruthy();
-    expect(screen.queryByText('Before')).toBeNull();
+    expect(screen.queryByText('Trước thay đổi')).toBeNull();
   });
 });

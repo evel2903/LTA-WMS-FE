@@ -40,16 +40,16 @@ export function RuleMatrixPage() {
 
   return (
     <ListPageShell
-      title="Rule Matrix"
-      description="Review the fixed precedence tiers. Rule preview runs on a dedicated action page."
+      title="Ma trận quy tắc"
+      description="Rà soát các tầng ưu tiên cố định. Preview quy tắc chạy trên trang action riêng."
       toolbar={
         <Button asChild>
-          <Link to={ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW}>Open preview</Link>
+          <Link to={ROUTES.FOUNDATION.RULE_MATRIX_PREVIEW}>Mở preview</Link>
         </Button>
       }
       state={state}
-      stateTitle={state === 'forbidden' ? 'Permission denied' : undefined}
-      stateMessage={groupsError?.message ?? rulesError?.message ?? 'Unable to load rules.'}
+      stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
+      stateMessage={groupsError?.message ?? rulesError?.message ?? 'Không thể tải quy tắc.'}
     >
       <PrecedenceMatrix
         tiers={PRECEDENCE_ORDER}

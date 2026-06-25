@@ -54,42 +54,30 @@ export function InventoryStatusForm({
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid grid-cols-2 gap-3">
-        <ReadOnlyField label="Status code" value={status.statusCode} />
-        <ReadOnlyField label="Display name" value={status.displayName} />
+        <ReadOnlyField label="Mã trạng thái" value={status.statusCode} />
+        <ReadOnlyField label="Tên hiển thị" value={status.displayName} />
       </div>
-      <ReadOnlyField label="Stage group" value={status.stageGroup} />
+      <ReadOnlyField label="Nhóm chặng" value={status.stageGroup} />
 
       {/* Single boolean checkboxes — register is reliable here (only groups need controlling). */}
       <fieldset className="grid gap-2 rounded-md border p-3">
-        <legend className="text-muted-foreground px-1 text-xs">Behaviour flags</legend>
+        <legend className="text-muted-foreground px-1 text-xs">Cờ hành vi</legend>
         <div className="grid grid-cols-2 gap-2">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={disabled} {...form.register('allowsAllocation')} />
-            For allocation
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('allowsAllocation')} />Cho phân bổ</label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={disabled} {...form.register('allowsPick')} />
-            For pick
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('allowsPick')} />Cho lấy hàng</label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={disabled} {...form.register('hold')} />
-            Hold
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('hold')} />Tạm giữ</label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={disabled} {...form.register('isTerminal')} />
-            Terminal
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('isTerminal')} />Kết thúc</label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" disabled={disabled} {...form.register('isMilestone')} />
-            Milestone
-          </label>
+            <input type="checkbox" disabled={disabled} {...form.register('isMilestone')} />Mốc nghiệp vụ</label>
         </div>
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-1 text-sm">
-          Sort order
-          <Input
+        <label className="grid gap-1 text-sm">Thứ tự sắp xếp<Input
             type="number"
             min={0}
             disabled={disabled}
@@ -99,24 +87,20 @@ export function InventoryStatusForm({
             <span className="text-destructive text-xs">{errors.sortOrder.message}</span>
           )}
         </label>
-        <label className="grid gap-1 text-sm">
-          Status
-          <select
+        <label className="grid gap-1 text-sm">Trạng thái<select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={disabled}
             {...form.register('status')}
           >
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Không hoạt động</option>
           </select>
         </label>
       </div>
 
-      <label className="grid gap-1 text-sm">
-        Reason code
-        <Input
+      <label className="grid gap-1 text-sm">Mã lý do<Input
           disabled={disabled}
-          placeholder="e.g. RC-MD-UPDATE"
+          placeholder="VD: RC-MD-UPDATE"
           {...form.register('reasonCode')}
         />
         {errors.reasonCode && (
@@ -129,9 +113,7 @@ export function InventoryStatusForm({
         )}
       </label>
 
-      <Button type="submit" disabled={disabled || pending}>
-        Update inventory status
-      </Button>
+      <Button type="submit" disabled={disabled || pending}>Cập nhật trạng thái tồn kho</Button>
     </form>
   );
 }

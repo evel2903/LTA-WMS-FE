@@ -25,15 +25,15 @@ export function LocationProfileDetailPanel({ profile }: { profile: LocationProfi
     <div className="space-y-4">
       <div className="grid gap-3 text-sm md:grid-cols-2">
         <div>
-          <div className="text-muted-foreground text-xs">Profile code</div>
+          <div className="text-muted-foreground text-xs">Mã hồ sơ</div>
           <div className="font-medium">{profile.profileCode}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Status</div>
+          <div className="text-muted-foreground text-xs">Trạng thái</div>
           <LocationProfileStatusBadge status={profile.status} />
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Location type</div>
+          <div className="text-muted-foreground text-xs">Loại vị trí</div>
           <div>{profile.locationType}</div>
         </div>
         <div>
