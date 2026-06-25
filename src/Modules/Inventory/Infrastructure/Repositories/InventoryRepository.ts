@@ -11,6 +11,10 @@ import type {
   AdjustQuantityInput,
   InventoryListFilter,
 } from '@modules/Inventory/Domain/Types/InventoryQuery';
+import {
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+} from '@modules/Inventory/Domain/Constants/InventoryConstants';
 import { INVENTORY_ENDPOINTS } from '@modules/Inventory/Infrastructure/Api/InventoryEndpoints';
 import { InventoryMapper } from '@modules/Inventory/Infrastructure/Mappers/InventoryMapper';
 import type {
@@ -18,6 +22,18 @@ import type {
   InventoryItemDto,
   InventoryListResponseDto,
 } from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
+
+function pageSize(value?: number): number {
+  const normalized = Math.trunc(value ?? DEFAULT_PAGE_SIZE);
+  if (!Number.isFinite(normalized) || normalized < 1) return DEFAULT_PAGE_SIZE;
+  return Math.min(normalized, MAX_PAGE_SIZE);
+}
+
+function page(value?: number): number {
+  const normalized = Math.trunc(value ?? 1);
+  if (!Number.isFinite(normalized) || normalized < 1) return 1;
+  return normalized;
+}
 
 /**
  * Repository Pattern: concrete adapter for `IInventoryRepository`. Maps Domain
@@ -30,8 +46,8 @@ export class InventoryRepository implements IInventoryRepository {
   async list(filter: InventoryListFilter): Promise<PaginatedResponse<InventoryItem>> {
     const dto = await this.http.get<InventoryListResponseDto>(INVENTORY_ENDPOINTS.LIST, {
       params: {
-        page: filter.page,
-        page_size: filter.pageSize,
+        page: page(filter.page),
+        page_size: pageSize(filter.pageSize),
         sort_by: filter.sortBy,
         sort_dir: filter.sortDir,
         search: filter.search,
