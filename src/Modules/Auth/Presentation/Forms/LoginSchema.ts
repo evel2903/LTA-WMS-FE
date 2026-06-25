@@ -6,8 +6,8 @@ import { z } from 'zod';
  * Matches `POST /auth/login` ({ EmailAddress, Password }).
  */
 export const loginSchema = z.object({
-  emailAddress: z.string().min(1, 'Email is required').email('Enter a valid email').max(255),
-  password: z.string().min(1, 'Password is required').max(255),
+  emailAddress: z.string().min(1, 'Email là bắt buộc').email('Nhập email hợp lệ').max(255),
+  password: z.string().min(1, 'Mật khẩu là bắt buộc').max(255),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;

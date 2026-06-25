@@ -41,8 +41,8 @@ export function LoginForm() {
       },
       onError: (error) => {
         const message =
-          error instanceof ApiError ? error.message : 'Unable to sign in. Please try again.';
-        toast.error('Sign in failed', { description: message });
+          error instanceof ApiError ? error.message : 'Không thể đăng nhập. Vui lòng thử lại.';
+        toast.error('Đăng nhập thất bại', { description: message });
       },
     });
   };
@@ -68,7 +68,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Mật khẩu</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="current-password" {...field} />
               </FormControl>
@@ -78,7 +78,7 @@ export function LoginForm() {
         />
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending && <Spinner />}
-          Sign in
+          Đăng nhập
         </Button>
       </form>
     </Form>

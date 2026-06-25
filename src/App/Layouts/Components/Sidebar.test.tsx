@@ -21,16 +21,16 @@ describe('Sidebar V1 route hygiene', () => {
     renderSidebar();
 
     for (const [label, href] of [
-      ['Inbound', ROUTES.INBOUND.ROOT],
-      ['Putaway', ROUTES.PUTAWAY.ROOT],
-      ['Replenishment', ROUTES.REPLENISHMENT.ROOT],
-      ['Outbound', ROUTES.OUTBOUND.ROOT],
-      ['Packing', ROUTES.PACKING.ROOT],
-      ['Shipping', ROUTES.SHIPPING.ROOT],
-      ['Integration', ROUTES.INTEGRATION.ROOT],
-      ['Mobile Tasks', ROUTES.MOBILE.TASKS],
-      ['Labels & Print Jobs', ROUTES.LABELS.ROOT],
-      ['Cycle Count', ROUTES.CYCLE_COUNT.ROOT],
+      ['Nhập kho', ROUTES.INBOUND.ROOT],
+      ['Cất hàng', ROUTES.PUTAWAY.ROOT],
+      ['Bổ sung hàng', ROUTES.REPLENISHMENT.ROOT],
+      ['Xuất kho', ROUTES.OUTBOUND.ROOT],
+      ['Đóng gói', ROUTES.PACKING.ROOT],
+      ['Giao hàng', ROUTES.SHIPPING.ROOT],
+      ['Tích hợp', ROUTES.INTEGRATION.ROOT],
+      ['Nhiệm vụ di động', ROUTES.MOBILE.TASKS],
+      ['Nhãn và lệnh in', ROUTES.LABELS.ROOT],
+      ['Kiểm kê chu kỳ', ROUTES.CYCLE_COUNT.ROOT],
     ] as const) {
       expect(screen.getByRole('link', { name: label }).getAttribute('href')).toBe(href);
     }
@@ -43,7 +43,7 @@ describe('Sidebar V1 route hygiene', () => {
       link.getAttribute('href'),
     );
 
-    for (const label of ['Warehouse', 'Picking', 'Stock Transfer', 'Stock Adjustment', 'Reports']) {
+    for (const label of ['Kho', 'Lấy hàng', 'Chuyển kho', 'Điều chỉnh tồn', 'Báo cáo']) {
       expect(screen.queryByRole('link', { name: label })).toBeNull();
     }
 

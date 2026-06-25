@@ -9,7 +9,7 @@ export function AuthLayout() {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight">{ENV.appName}</h1>
-          <p className="text-muted-foreground text-sm">Warehouse Management System</p>
+          <p className="text-muted-foreground text-sm">Hệ thống quản lý kho</p>
         </div>
         <Outlet />
       </div>
