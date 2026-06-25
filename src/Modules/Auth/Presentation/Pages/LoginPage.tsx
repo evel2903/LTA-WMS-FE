@@ -8,15 +8,15 @@ export function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sign in</CardTitle>
-        <CardDescription>Enter your credentials to access the workspace.</CardDescription>
+        <CardTitle>Đăng nhập</CardTitle>
+        <CardDescription>Nhập thông tin tài khoản để truy cập hệ thống.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <LoginForm />
         <p className="text-muted-foreground text-center text-sm">
-          No account?{' '}
+          Chưa có tài khoản?{' '}
           <Link to={ROUTES.REGISTER} className="text-primary underline-offset-4 hover:underline">
-            Create one
+            Tạo tài khoản
           </Link>
         </p>
       </CardContent>

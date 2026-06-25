@@ -39,10 +39,10 @@ export function RegisterForm() {
         const message =
           error instanceof ApiError
             ? error.code === 'CONFLICT'
-              ? 'That email is already registered.'
+              ? 'Email này đã được đăng ký.'
               : error.message
-            : 'Unable to register. Please try again.';
-        toast.error('Registration failed', { description: message });
+            : 'Không thể đăng ký. Vui lòng thử lại.';
+        toast.error('Đăng ký thất bại', { description: message });
       },
     });
   };
@@ -56,7 +56,7 @@ export function RegisterForm() {
             name="firstName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>First name</FormLabel>
+                <FormLabel>Tên</FormLabel>
                 <FormControl>
                   <Input autoComplete="given-name" {...field} />
                 </FormControl>
@@ -69,7 +69,7 @@ export function RegisterForm() {
             name="lastName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Last name</FormLabel>
+                <FormLabel>Họ</FormLabel>
                 <FormControl>
                   <Input autoComplete="family-name" {...field} />
                 </FormControl>
@@ -96,7 +96,7 @@ export function RegisterForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Mật khẩu</FormLabel>
               <FormControl>
                 <Input type="password" autoComplete="new-password" {...field} />
               </FormControl>
@@ -106,7 +106,7 @@ export function RegisterForm() {
         />
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending && <Spinner />}
-          Create account
+          Tạo tài khoản
         </Button>
       </form>
     </Form>

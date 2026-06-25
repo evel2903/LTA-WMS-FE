@@ -10,22 +10,22 @@ describe('DashboardPage V1 delivery snapshot', () => {
   it('renders V1 delivery snapshot instead of fake operational KPI counts', () => {
     render(<DashboardPage />);
 
-    expect(screen.getByText('Pilot readiness snapshot')).toBeTruthy();
-    expect(screen.getByText('Core Flow Coverage')).toBeTruthy();
-    expect(screen.getByText('Ready')).toBeTruthy();
-    expect(screen.getByText('Pilot Evidence')).toBeTruthy();
-    expect(screen.getByText('Conditional')).toBeTruthy();
-    expect(screen.getByText('Navigation')).toBeTruthy();
-    expect(screen.getByText('Clean')).toBeTruthy();
-    expect(screen.getByText('Follow-up Review')).toBeTruthy();
-    expect(screen.getByText('Open')).toBeTruthy();
+    expect(screen.getByText('Tổng quan sẵn sàng pilot')).toBeTruthy();
+    expect(screen.getByText('Độ phủ quy trình lõi')).toBeTruthy();
+    expect(screen.getByText('Sẵn sàng')).toBeTruthy();
+    expect(screen.getByText('Bằng chứng pilot')).toBeTruthy();
+    expect(screen.getByText('Có điều kiện')).toBeTruthy();
+    expect(screen.getByText('Điều hướng')).toBeTruthy();
+    expect(screen.getByText('Gọn sạch')).toBeTruthy();
+    expect(screen.getByText('Rà soát tiếp theo')).toBeTruthy();
+    expect(screen.getByText('Còn mở')).toBeTruthy();
 
     for (const staleKpiText of [
-      'Open Inbound',
-      'Pending Picks',
-      'Low Stock SKUs',
-      "Today's Shipments",
-      'Next BMAD Step',
+      'Nhập kho đang mở',
+      'Lượt lấy hàng chờ xử lý',
+      'SKU sắp hết hàng',
+      'Chuyến giao hôm nay',
+      'Bước BMAD tiếp theo',
       'Retro',
     ]) {
       expect(screen.queryByText(staleKpiText)).toBeNull();

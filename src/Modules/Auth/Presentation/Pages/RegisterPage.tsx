@@ -8,15 +8,15 @@ export function RegisterPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create account</CardTitle>
-        <CardDescription>Register to access the LTA-WMS workspace.</CardDescription>
+        <CardTitle>Tạo tài khoản</CardTitle>
+        <CardDescription>Đăng ký để truy cập hệ thống LTA-WMS.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <RegisterForm />
         <p className="text-muted-foreground text-center text-sm">
-          Already have an account?{' '}
+          Đã có tài khoản?{' '}
           <Link to={ROUTES.LOGIN} className="text-primary underline-offset-4 hover:underline">
-            Sign in
+            Đăng nhập
           </Link>
         </p>
       </CardContent>

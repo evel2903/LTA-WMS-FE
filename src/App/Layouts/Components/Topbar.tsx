@@ -19,13 +19,13 @@ export function Topbar() {
   return (
     <header className="bg-background flex h-14 shrink-0 items-center justify-between border-b px-6">
       <div className="text-sm font-medium">
-        {user ? `Welcome, ${user.emailAddress}` : ''}
+        {user ? `Xin chào, ${user.emailAddress}` : ''}
       </div>
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Toggle theme"
+          aria-label="Chuyển giao diện sáng/tối"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
@@ -37,7 +37,7 @@ export function Topbar() {
           onClick={handleSignOut}
         >
           <LogOut className="size-4" />
-          Sign out
+          Đăng xuất
         </Button>
       </div>
     </header>

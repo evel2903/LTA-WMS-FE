@@ -3,32 +3,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@shar
 export function DashboardPage() {
   const cards = [
     {
-      title: 'Core Flow Coverage',
-      value: 'Ready',
-      desc: 'Inbound, inventory control, outbound, shipping and integration screens are available for pilot review.',
+      title: 'Độ phủ quy trình lõi',
+      value: 'Sẵn sàng',
+      desc: 'Các màn hình nhập kho, kiểm soát tồn kho, xuất kho, giao hàng và tích hợp đã sẵn sàng để rà soát pilot.',
     },
     {
-      title: 'Pilot Evidence',
-      value: 'Conditional',
-      desc: 'WT-01, WT-05 and WT-06 are covered by targeted validation evidence.',
+      title: 'Bằng chứng pilot',
+      value: 'Có điều kiện',
+      desc: 'WT-01, WT-05 và WT-06 đã có bằng chứng xác thực có mục tiêu.',
     },
     {
-      title: 'Navigation',
-      value: 'Clean',
-      desc: 'Sidebar exposes only implemented module entry points.',
+      title: 'Điều hướng',
+      value: 'Gọn sạch',
+      desc: 'Sidebar chỉ hiển thị các điểm vào module đã triển khai.',
     },
     {
-      title: 'Follow-up Review',
-      value: 'Open',
-      desc: 'Run a pilot runtime review before treating dashboard data as live operational KPIs.',
+      title: 'Rà soát tiếp theo',
+      value: 'Còn mở',
+      desc: 'Cần rà soát runtime pilot trước khi xem dữ liệu dashboard là KPI vận hành trực tiếp.',
     },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Pilot readiness snapshot</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Bảng điều khiển</h1>
+        <p className="text-muted-foreground">Tổng quan sẵn sàng pilot</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
