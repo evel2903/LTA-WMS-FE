@@ -204,6 +204,14 @@ const pageSizeGuardrailSources = [
   ],
 ] as const;
 
+const placeholderOnlyOperationalRouteRefs = [
+  'ROUTES.WAREHOUSE.ROOT',
+  'ROUTES.PICKING.ROOT',
+  'ROUTES.STOCK_TRANSFER.ROOT',
+  'ROUTES.STOCK_ADJUSTMENT.ROOT',
+  'ROUTES.REPORTS.ROOT',
+] as const;
+
 describe('V1-UX list/detail guardrails', () => {
   it('keeps representative list, create, detail and action route constants stable', () => {
     expect({
@@ -300,6 +308,17 @@ describe('V1-UX list/detail guardrails', () => {
     const violations = productionFiles.filter((path) =>
       forbiddenStatusPattern.test(readSource(path)),
     );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps placeholder-only operational routes out of router registration and sidebar navigation', () => {
+    const appRouter = readSource('App/Router/AppRouter.tsx');
+    const sidebar = readSource('App/Layouts/Components/Sidebar.tsx');
+    const violations = placeholderOnlyOperationalRouteRefs.flatMap((routeRef) => [
+      ...(appRouter.includes(routeRef) ? [`AppRouter registers placeholder ${routeRef}`] : []),
+      ...(sidebar.includes(routeRef) ? [`Sidebar exposes placeholder ${routeRef}`] : []),
+    ]);
 
     expect(violations).toEqual([]);
   });
