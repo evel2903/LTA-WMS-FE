@@ -7,6 +7,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Input } from '@shared/Components/Ui/Input';
 import { Button } from '@shared/Components/Ui/Button';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { cn } from '@shared/Utils/Cn';
 import {
   useLabelTemplates,
@@ -27,7 +28,7 @@ type TemplateStatusFilter = 'All' | LabelTemplateStatus;
 type PrintJobStatusFilter = 'All' | PrintJobStatus;
 
 function StatusBadge({ status }: { status: LabelTemplateStatus | PrintJobStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function TemplateCard({ template }: { template: LabelTemplate }) {
@@ -106,35 +107,35 @@ export function BarcodeLabelPage() {
 
   return (
     <ListPageShell
-      title="Labels and print jobs"
-      description="Scan templates and print jobs before opening a focused detail/action page."
+      title="Nhãn và lệnh in"
+      description="Quét mẫu nhãn và lệnh in trước khi mở trang chi tiết/thao tác riêng."
       state={state}
       stateTitle={
         denied
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : templatesQuery.error || printJobsQuery.error
-            ? 'Unable to load labels'
+            ? 'Không thể tải nhãn'
             : undefined
       }
       stateMessage={
         denied
-          ? 'Permission denied for label or print job read.'
+          ? 'Bạn không có quyền xem nhãn hoặc lệnh in.'
           : templatesQuery.error || printJobsQuery.error
-            ? 'The label workspace could not be loaded.'
-            : 'No templates or print jobs match the current filters.'
+            ? 'Không thể tải không gian làm việc nhãn.'
+            : 'Không có mẫu nhãn hoặc lệnh in nào khớp bộ lọc hiện tại.'
       }
       toolbar={
         <Button asChild size="sm">
           <Link to={ROUTES.LABELS.NEW}>
             <Plus className="size-4" aria-hidden="true" />
-            New template
+            Tạo mẫu mới
           </Link>
         </Button>
       }
       filters={
         <div className="grid gap-3 md:grid-cols-4">
           <label className="grid gap-1 text-sm">
-            Template code
+            Mã mẫu
             <Input
               value={templateCode}
               onChange={(event) => setTemplateCode(event.target.value)}
@@ -142,22 +143,22 @@ export function BarcodeLabelPage() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Template status
+            Trạng thái mẫu
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={templateStatus}
               onChange={(event) => setTemplateStatus(event.target.value as TemplateStatusFilter)}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {LABEL_TEMPLATE_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {vietnameseOperationalLabel(status)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            Business object id
+            ID đối tượng nghiệp vụ
             <Input
               value={businessObjectId}
               onChange={(event) => setBusinessObjectId(event.target.value)}
@@ -165,16 +166,16 @@ export function BarcodeLabelPage() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Print job status
+            Trạng thái lệnh in
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={printJobStatus}
               onChange={(event) => setPrintJobStatus(event.target.value as PrintJobStatusFilter)}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {PRINT_JOB_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {vietnameseOperationalLabel(status)}
                 </option>
               ))}
             </select>
@@ -185,14 +186,14 @@ export function BarcodeLabelPage() {
       {templatesQuery.isLoading || printJobsQuery.isLoading ? (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Loader2 className="size-4 animate-spin" />
-          Loading labels and print jobs
+          Đang tải nhãn và lệnh in
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           <section className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Tags className="size-4" />
-              Label templates
+              Mẫu nhãn
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {templates.map((template) => (
@@ -203,7 +204,7 @@ export function BarcodeLabelPage() {
           <section className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Tags className="size-4" />
-              Print jobs
+              Lệnh in
             </div>
             <div className="grid gap-3">
               {printJobs.map((job) => (

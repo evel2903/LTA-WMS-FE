@@ -7,6 +7,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { usePutawayMutations } from '@modules/Putaway/Application/Commands/UsePutawayMutations';
 import { usePutawayTask } from '@modules/Putaway/Application/Queries/UsePutawayTasks';
 import type {
@@ -15,7 +16,7 @@ import type {
 } from '@modules/Putaway/Domain/Types/PutawayTask';
 
 function jsonLine(value: Record<string, unknown> | null): string {
-  if (!value || Object.keys(value).length === 0) return 'No constraints';
+  if (!value || Object.keys(value).length === 0) return 'Không có ràng buộc';
   return Object.entries(value)
     .map(([key, item]) => `${key}: ${String(item)}`)
     .join(' | ');
@@ -25,7 +26,7 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete putaway request.';
+  return 'Không thể hoàn tất yêu cầu cất hàng.';
 }
 
 function putawayErrorMessage(error: unknown): string | null {
@@ -47,9 +48,9 @@ function putawayErrorMessage(error: unknown): string | null {
     const scanSummary = rejectedScans
       .map((scan) => {
         const scanType = typeof scan.ScanType === 'string' ? scan.ScanType : 'Scan';
-        const expected = typeof scan.ExpectedValue === 'string' ? scan.ExpectedValue : 'not set';
-        const raw = typeof scan.RawValue === 'string' ? scan.RawValue : 'empty';
-        return `${scanType} expected ${expected}, got ${raw}`;
+        const expected = typeof scan.ExpectedValue === 'string' ? scan.ExpectedValue : 'chưa thiết lập';
+        const raw = typeof scan.RawValue === 'string' ? scan.RawValue : 'trống';
+        return `${scanType} mong đợi ${expected}, nhận ${raw}`;
       })
       .join('; ');
     return message ? `${message}: ${scanSummary}` : scanSummary;
@@ -196,7 +197,7 @@ export function PutawayDetailPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Putaway task detail</CardTitle>
+          <CardTitle className="text-base">Chi tiết tác vụ cất hàng</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-destructive text-sm">{detailError}</p>
@@ -210,13 +211,13 @@ export function PutawayDetailPage() {
       <section className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Putaway task detail</CardTitle>
+            <CardTitle className="text-base">Chi tiết tác vụ cất hàng</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {detailQuery.isLoading ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Loader2 className="size-4 animate-spin" />
-                Loading putaway task
+                Đang tải tác vụ cất hàng
               </div>
             ) : detailQuery.error ? (
               <p className="text-destructive text-sm">{detailError}</p>
@@ -224,7 +225,7 @@ export function PutawayDetailPage() {
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-md border px-2 py-1 text-xs font-medium">
-                    {selectedTask.taskStatus}
+                    {vietnameseOperationalLabel(selectedTask.taskStatus)}
                   </span>
                   <span className="text-muted-foreground text-sm">{selectedTask.taskCode}</span>
                 </div>
@@ -237,27 +238,27 @@ export function PutawayDetailPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-foreground">Inventory status</dt>
+                    <dt className="font-medium text-foreground">Trạng thái tồn kho</dt>
                     <dd>{selectedTask.inventoryStatusCode}</dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-foreground">Source</dt>
-                    <dd>{selectedTask.sourceLocationCode ?? 'not set'}</dd>
+                    <dt className="font-medium text-foreground">Nguồn</dt>
+                    <dd>{selectedTask.sourceLocationCode ?? 'chưa thiết lập'}</dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-foreground">Target</dt>
+                    <dt className="font-medium text-foreground">Đích</dt>
                     <dd>{selectedTask.targetLocationCode}</dd>
                   </div>
                   <div>
                     <dt className="font-medium text-foreground">LPN</dt>
-                    <dd>{selectedTask.lpnCode ?? 'not set'}</dd>
+                    <dd>{selectedTask.lpnCode ?? 'chưa thiết lập'}</dd>
                   </div>
                   <div>
-                    <dt className="font-medium text-foreground">Mobile task</dt>
-                    <dd>{selectedTask.mobileTaskId ?? 'not created'}</dd>
+                    <dt className="font-medium text-foreground">Tác vụ mobile</dt>
+                    <dd>{selectedTask.mobileTaskId ?? 'chưa tạo'}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="font-medium text-foreground">Constraints</dt>
+                    <dt className="font-medium text-foreground">Ràng buộc</dt>
                     <dd>{jsonLine(selectedTask.constraintJson)}</dd>
                   </div>
                 </dl>
@@ -267,11 +268,11 @@ export function PutawayDetailPage() {
                   onClick={() => selectTaskForConfirm(selectedTask)}
                 >
                   <ScanLine className="size-4" />
-                  Use for confirm
+                  Dùng để xác nhận
                 </button>
               </>
             ) : (
-              <p className="text-muted-foreground text-sm">Open a task from the putaway list.</p>
+              <p className="text-muted-foreground text-sm">Mở một tác vụ từ danh sách cất hàng.</p>
             )}
           </CardContent>
         </Card>
@@ -282,13 +283,13 @@ export function PutawayDetailPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Warehouse className="size-4" />
-              <CardTitle className="text-base">Release putaway task</CardTitle>
+              <CardTitle className="text-base">Phát hành tác vụ cất hàng</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleRelease}>
               <label className="grid gap-1 text-sm">
-                Inbound putaway release id
+                ID phát hành cất hàng inbound
                 <Input
                   value={inboundReleaseId}
                   onChange={(event) => setInboundReleaseId(event.target.value)}
@@ -296,7 +297,7 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Source location code
+                Mã vị trí nguồn
                 <Input
                   value={sourceLocationCode}
                   onChange={(event) => setSourceLocationCode(event.target.value)}
@@ -304,20 +305,20 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Target location id
+                ID vị trí đích
                 <Input
                   value={targetLocationId}
                   onChange={(event) => setTargetLocationId(event.target.value)}
-                  placeholder="optional directed target"
+                  placeholder="đích chỉ định tùy chọn"
                 />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm">
-                  Priority
+                  Độ ưu tiên
                   <Input value={priority} onChange={(event) => setPriority(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Work pool
+                  Nhóm công việc
                   <Input
                     value={workPoolCode}
                     onChange={(event) => setWorkPoolCode(event.target.value)}
@@ -326,7 +327,7 @@ export function PutawayDetailPage() {
                 </label>
               </div>
               <label className="grid gap-1 text-sm">
-                Reason code
+                Mã lý do
                 <Input
                   value={reasonCode}
                   onChange={(event) => setReasonCode(event.target.value)}
@@ -334,15 +335,15 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Reason note
+                Ghi chú lý do
                 <Input
                   value={reasonNote}
                   onChange={(event) => setReasonNote(event.target.value)}
-                  placeholder="Optional release note"
+                  placeholder="Ghi chú phát hành tùy chọn"
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Evidence refs
+                Tham chiếu bằng chứng
                 <textarea
                   className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={evidenceRefs}
@@ -351,7 +352,7 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Idempotency key
+                Khóa idempotency
                 <Input
                   value={idempotencyKey}
                   onChange={(event) => setIdempotencyKey(event.target.value)}
@@ -368,7 +369,7 @@ export function PutawayDetailPage() {
                 ) : (
                   <Send className="size-4" />
                 )}
-                Release putaway task
+                Phát hành tác vụ cất hàng
               </button>
               {releaseError && <p className="text-destructive text-sm">{releaseError}</p>}
             </form>
@@ -377,13 +378,13 @@ export function PutawayDetailPage() {
               <div className="mt-4 rounded-md border p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium">
                   <MapPin className="size-4" />
-                  {latestTaskForRoute.taskCode} released
+                  {latestTaskForRoute.taskCode} đã phát hành
                 </div>
                 <div className="text-muted-foreground mt-2 space-y-1">
-                  <div>Target: {latestTaskForRoute.targetLocationCode}</div>
-                  <div>Source: {latestTaskForRoute.sourceLocationCode ?? 'not set'}</div>
-                  <div>Outbox: {latestTaskForRoute.outboxMessageId ?? 'not emitted'}</div>
-                  <div>Constraints: {jsonLine(latestTaskForRoute.constraintJson)}</div>
+                  <div>Đích: {latestTaskForRoute.targetLocationCode}</div>
+                  <div>Nguồn: {latestTaskForRoute.sourceLocationCode ?? 'chưa thiết lập'}</div>
+                  <div>Outbox: {latestTaskForRoute.outboxMessageId ?? 'chưa phát'}</div>
+                  <div>Ràng buộc: {jsonLine(latestTaskForRoute.constraintJson)}</div>
                 </div>
               </div>
             )}
@@ -394,13 +395,13 @@ export function PutawayDetailPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <ScanLine className="size-4" />
-              <CardTitle className="text-base">Confirm putaway scan</CardTitle>
+              <CardTitle className="text-base">Xác nhận quét cất hàng</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleConfirm}>
               <label className="grid gap-1 text-sm">
-                Confirm task id
+                ID tác vụ xác nhận
                 <Input
                   value={confirmTaskId}
                   onChange={(event) => setConfirmTaskId(event.target.value)}
@@ -410,7 +411,7 @@ export function PutawayDetailPage() {
               </label>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <label className="grid gap-1 text-sm">
-                  Source scan
+                  Quét nguồn
                   <Input
                     value={confirmSourceScan}
                     onChange={(event) => setConfirmSourceScan(event.target.value)}
@@ -418,7 +419,7 @@ export function PutawayDetailPage() {
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Target scan
+                  Quét đích
                   <Input
                     value={confirmTargetScan}
                     onChange={(event) => setConfirmTargetScan(event.target.value)}
@@ -428,7 +429,7 @@ export function PutawayDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm">
-                  LPN or SSCC scan
+                  Quét LPN hoặc SSCC
                   <Input
                     value={confirmLpnScan}
                     onChange={(event) => setConfirmLpnScan(event.target.value)}
@@ -436,7 +437,7 @@ export function PutawayDetailPage() {
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Confirmed qty
+                  Số lượng xác nhận
                   <Input
                     value={confirmQuantity}
                     onChange={(event) => setConfirmQuantity(event.target.value)}
@@ -447,7 +448,7 @@ export function PutawayDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm">
-                  Confirm reason code
+                  Mã lý do xác nhận
                   <Input
                     value={confirmReasonCode}
                     onChange={(event) => setConfirmReasonCode(event.target.value)}
@@ -455,7 +456,7 @@ export function PutawayDetailPage() {
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Device code
+                  Mã thiết bị
                   <Input
                     value={confirmDeviceCode}
                     onChange={(event) => setConfirmDeviceCode(event.target.value)}
@@ -464,15 +465,15 @@ export function PutawayDetailPage() {
                 </label>
               </div>
               <label className="grid gap-1 text-sm">
-                Confirm reason note
+                Ghi chú lý do xác nhận
                 <Input
                   value={confirmReasonNote}
                   onChange={(event) => setConfirmReasonNote(event.target.value)}
-                  placeholder="Optional confirm note"
+                  placeholder="Ghi chú xác nhận tùy chọn"
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Confirm evidence refs
+                Tham chiếu bằng chứng xác nhận
                 <textarea
                   className="min-h-16 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={confirmEvidenceRefs}
@@ -481,7 +482,7 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Session id
+                ID phiên
                 <Input
                   value={confirmSessionId}
                   onChange={(event) => setConfirmSessionId(event.target.value)}
@@ -489,7 +490,7 @@ export function PutawayDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Confirm idempotency key
+                Khóa idempotency xác nhận
                 <Input
                   value={confirmIdempotencyKey}
                   onChange={(event) => setConfirmIdempotencyKey(event.target.value)}
@@ -506,7 +507,7 @@ export function PutawayDetailPage() {
                 ) : (
                   <CheckCircle2 className="size-4" />
                 )}
-                Confirm putaway scan
+                Xác nhận quét cất hàng
               </button>
               {confirmError && <p className="text-destructive text-sm">{confirmError}</p>}
             </form>
@@ -515,27 +516,27 @@ export function PutawayDetailPage() {
               <div className="mt-4 rounded-md border p-3 text-sm">
                 <div className="flex items-center gap-2 font-medium">
                   <CheckCircle2 className="size-4" />
-                  {latestConfirm.putawayTask.taskCode} confirmed
-                  {latestConfirm.isDuplicate ? ' (duplicate)' : ''}
+                  {latestConfirm.putawayTask.taskCode} đã xác nhận
+                  {latestConfirm.isDuplicate ? ' (trùng lặp)' : ''}
                 </div>
                 <div className="text-muted-foreground mt-2 space-y-1">
-                  <div>Transaction: {latestConfirm.inventoryTransaction.transactionCode}</div>
-                  <div>Movement: {latestConfirm.inventoryMovement.movementCode}</div>
+                  <div>Giao dịch: {latestConfirm.inventoryTransaction.transactionCode}</div>
+                  <div>Dịch chuyển: {latestConfirm.inventoryMovement.movementCode}</div>
                   <div>
-                    Status: {latestConfirm.inventoryTransaction.fromInventoryStatusCode} -{'>'}{' '}
+                    Trạng thái: {latestConfirm.inventoryTransaction.fromInventoryStatusCode} -{'>'}{' '}
                     {latestConfirm.inventoryTransaction.toInventoryStatusCode}
                   </div>
                   <div>
-                    Location: {latestConfirm.inventoryTransaction.fromLocationCode ?? 'not set'} -
+                    Vị trí: {latestConfirm.inventoryTransaction.fromLocationCode ?? 'chưa thiết lập'} -
                     {'>'} {latestConfirm.inventoryTransaction.toLocationCode}
                   </div>
                   <div>
-                    Balance: {latestConfirm.sourceBalance.qtyOnHand} source /{' '}
-                    {latestConfirm.targetBalance.qtyOnHand} target
+                    Tồn: {latestConfirm.sourceBalance.qtyOnHand} nguồn /{' '}
+                    {latestConfirm.targetBalance.qtyOnHand} đích
                   </div>
-                  <div>Outbox: {latestConfirm.outboxMessageId ?? 'not emitted'}</div>
+                  <div>Outbox: {latestConfirm.outboxMessageId ?? 'chưa phát'}</div>
                   <div>
-                    Scans:{' '}
+                    Lượt quét:{' '}
                     {latestConfirm.scanResults
                       .map((scan) => `${scan.scanType}:${scan.result}`)
                       .join(', ')}

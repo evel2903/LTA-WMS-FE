@@ -13,7 +13,7 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete inventory control request.';
+  return 'Không thể hoàn tất yêu cầu kiểm soát tồn kho.';
 }
 
 function parseEvidenceRefs(value: string): string[] {
@@ -33,24 +33,24 @@ function ResultPanel({ result }: { result: InventoryControlResult }) {
     <div className="rounded-md border p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <ShieldCheck className="size-4" />
-        {result.eventType} {result.isDuplicate ? '(duplicate)' : ''}
+        {result.eventType} {result.isDuplicate ? '(trùng lặp)' : ''}
       </div>
       <div className="text-muted-foreground mt-2 grid gap-1 text-xs">
-        <div>Transaction: {result.inventoryTransaction.transactionCode}</div>
-        <div>Movement: {result.inventoryMovement.movementCode}</div>
+        <div>Giao dịch: {result.inventoryTransaction.transactionCode}</div>
+        <div>Dịch chuyển: {result.inventoryMovement.movementCode}</div>
         <div>
-          Status: {result.inventoryTransaction.fromInventoryStatusCode} -&gt;{' '}
+          Trạng thái: {result.inventoryTransaction.fromInventoryStatusCode} -&gt;{' '}
           {result.inventoryTransaction.toInventoryStatusCode}
         </div>
         <div>
-          Location:{' '}
+          Vị trí:{' '}
           {result.inventoryMovement.fromLocationCode ?? result.inventoryMovement.fromLocationId}{' '}
           -&gt; {result.inventoryMovement.toLocationCode}
         </div>
         <div>
-          Balance: {result.sourceBalance.qtyOnHand} source / {result.targetBalance.qtyOnHand} target
+          Tồn: {result.sourceBalance.qtyOnHand} nguồn / {result.targetBalance.qtyOnHand} đích
         </div>
-        <div>Outbox: {result.outboxMessageId ?? 'not emitted'}</div>
+        <div>Outbox: {result.outboxMessageId ?? 'chưa phát'}</div>
       </div>
     </div>
   );
@@ -132,14 +132,14 @@ export function InventoryControlPanel() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <ArrowRightLeft className="size-4" />
-          <CardTitle className="text-base">Inventory control</CardTitle>
+          <CardTitle className="text-base">Kiểm soát tồn kho</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form aria-label="Status change" className="space-y-3" onSubmit={handleStatusChange}>
-          <div className="text-sm font-medium">Status change</div>
+        <form aria-label="Đổi trạng thái" className="space-y-3" onSubmit={handleStatusChange}>
+          <div className="text-sm font-medium">Đổi trạng thái</div>
           <label className="grid gap-1 text-sm">
-            Status source balance id
+            ID số dư nguồn đổi trạng thái
             <Input
               value={statusSourceBalanceId}
               onChange={(event) => setStatusSourceBalanceId(event.target.value)}
@@ -148,7 +148,7 @@ export function InventoryControlPanel() {
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm">
-              Target status
+              Trạng thái đích
               <Input
                 value={targetStatusCode}
                 onChange={(event) => setTargetStatusCode(event.target.value)}
@@ -156,7 +156,7 @@ export function InventoryControlPanel() {
               />
             </label>
             <label className="grid gap-1 text-sm">
-              Status quantity
+              Số lượng đổi trạng thái
               <Input
                 value={statusQuantity}
                 onChange={(event) => setStatusQuantity(event.target.value)}
@@ -166,7 +166,7 @@ export function InventoryControlPanel() {
             </label>
           </div>
           <label className="grid gap-1 text-sm">
-            Status reason code
+            Mã lý do đổi trạng thái
             <Input
               value={statusReasonCode}
               onChange={(event) => setStatusReasonCode(event.target.value)}
@@ -174,7 +174,7 @@ export function InventoryControlPanel() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Status reason note
+            Ghi chú lý do đổi trạng thái
             <Input
               value={statusReasonNote}
               onChange={(event) => setStatusReasonNote(event.target.value)}
@@ -182,7 +182,7 @@ export function InventoryControlPanel() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Status evidence refs
+            Tham chiếu bằng chứng đổi trạng thái
             <textarea
               className="min-h-16 rounded-md border bg-transparent px-3 py-2 text-sm"
               value={statusEvidenceRefs}
@@ -191,7 +191,7 @@ export function InventoryControlPanel() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Status idempotency key
+            Khóa idempotency đổi trạng thái
             <Input
               value={statusIdempotencyKey}
               onChange={(event) => setStatusIdempotencyKey(event.target.value)}
@@ -209,7 +209,7 @@ export function InventoryControlPanel() {
             ) : (
               <ShieldCheck className="size-4" />
             )}
-            Post status change
+            Ghi nhận đổi trạng thái
           </Button>
           {statusError && (
             <p className="text-destructive text-sm" role="alert">
@@ -218,10 +218,10 @@ export function InventoryControlPanel() {
           )}
         </form>
 
-        <form aria-label="Internal movement" className="space-y-3" onSubmit={handleInternalMove}>
-          <div className="text-sm font-medium">Internal movement</div>
+        <form aria-label="Dịch chuyển nội bộ" className="space-y-3" onSubmit={handleInternalMove}>
+          <div className="text-sm font-medium">Dịch chuyển nội bộ</div>
           <label className="grid gap-1 text-sm">
-            Move source balance id
+            ID số dư nguồn dịch chuyển
             <Input
               value={moveSourceBalanceId}
               onChange={(event) => setMoveSourceBalanceId(event.target.value)}
@@ -230,7 +230,7 @@ export function InventoryControlPanel() {
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm">
-              Target location id
+              ID vị trí đích
               <Input
                 value={targetLocationId}
                 onChange={(event) => setTargetLocationId(event.target.value)}
@@ -238,7 +238,7 @@ export function InventoryControlPanel() {
               />
             </label>
             <label className="grid gap-1 text-sm">
-              Move quantity
+              Số lượng dịch chuyển
               <Input
                 value={moveQuantity}
                 onChange={(event) => setMoveQuantity(event.target.value)}
@@ -248,7 +248,7 @@ export function InventoryControlPanel() {
             </label>
           </div>
           <label className="grid gap-1 text-sm">
-            Move reason code
+            Mã lý do dịch chuyển
             <Input
               value={moveReasonCode}
               onChange={(event) => setMoveReasonCode(event.target.value)}
@@ -256,15 +256,15 @@ export function InventoryControlPanel() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Move reason note
+            Ghi chú lý do dịch chuyển
             <Input
               value={moveReasonNote}
               onChange={(event) => setMoveReasonNote(event.target.value)}
-              placeholder="Move sang pick face"
+              placeholder="Dịch chuyển sang pick face"
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Move evidence refs
+            Tham chiếu bằng chứng dịch chuyển
             <textarea
               className="min-h-16 rounded-md border bg-transparent px-3 py-2 text-sm"
               value={moveEvidenceRefs}
@@ -273,7 +273,7 @@ export function InventoryControlPanel() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Move idempotency key
+            Khóa idempotency dịch chuyển
             <Input
               value={moveIdempotencyKey}
               onChange={(event) => setMoveIdempotencyKey(event.target.value)}
@@ -291,7 +291,7 @@ export function InventoryControlPanel() {
             ) : (
               <ArrowRightLeft className="size-4" />
             )}
-            Post internal move
+            Ghi nhận dịch chuyển nội bộ
           </Button>
           {moveError && (
             <p className="text-destructive text-sm" role="alert">

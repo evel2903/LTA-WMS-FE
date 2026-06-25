@@ -264,8 +264,8 @@ describe('BarcodeLabel list/detail pages', () => {
     const printJobLink = await screen.findByRole('link', { name: /PJ-001/i });
     expect(templateLink.getAttribute('href')).toBe('/labels/templates/template-1');
     expect(printJobLink.getAttribute('href')).toBe('/labels/print-jobs/job-1');
-    expect(screen.queryByRole('button', { name: 'Preview print job' })).toBeNull();
-    expect(screen.getByRole('link', { name: /new template/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Xem trước lệnh in' })).toBeNull();
+    expect(screen.getByRole('link', { name: /Tạo mẫu mới/i })).toBeTruthy();
   });
 
   it('creates templates on the create route and passes required fields as an array', async () => {
@@ -274,8 +274,8 @@ describe('BarcodeLabel list/detail pages', () => {
     repo.current = fake;
     renderCreatePage();
 
-    await screen.findByText('New label template');
-    await actor.click(screen.getByRole('button', { name: 'Create template' }));
+    await screen.findByText('Tạo mẫu nhãn mới');
+    await actor.click(screen.getByRole('button', { name: 'Tạo mẫu' }));
 
     await waitFor(() =>
       expect(fake.createTemplate).toHaveBeenCalledWith(
@@ -295,7 +295,7 @@ describe('BarcodeLabel list/detail pages', () => {
 
     await screen.findByText('LPN-STD');
     expect(fake.getTemplateById).toHaveBeenCalledWith('template-1');
-    await actor.click(screen.getByRole('button', { name: 'Create new version' }));
+    await actor.click(screen.getByRole('button', { name: 'Tạo phiên bản mới' }));
     await waitFor(() =>
       expect(fake.createTemplateVersion).toHaveBeenCalledWith('template-1', {
         requiredFields: ['BarcodeValue', 'OwnerCode'],
@@ -303,7 +303,7 @@ describe('BarcodeLabel list/detail pages', () => {
       }),
     );
 
-    await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
+    await actor.click(screen.getByRole('button', { name: 'Xem trước lệnh in' }));
     await waitFor(() =>
       expect(fake.previewPrintJob).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -326,9 +326,9 @@ describe('BarcodeLabel list/detail pages', () => {
     await screen.findByText('LPN-STD');
     expect(fake.getTemplateById).toHaveBeenCalledWith('template-1');
     fireEvent.change(screen.getByLabelText('Payload JSON'), { target: { value: '{bad-json' } });
-    await actor.click(screen.getByRole('button', { name: 'Preview print job' }));
+    await actor.click(screen.getByRole('button', { name: 'Xem trước lệnh in' }));
 
-    expect(await screen.findByText(/Payload JSON is invalid/i)).toBeTruthy();
+    expect(await screen.findByText(/Payload JSON không hợp lệ/i)).toBeTruthy();
     expect(fake.previewPrintJob).not.toHaveBeenCalled();
   });
 
@@ -340,7 +340,7 @@ describe('BarcodeLabel list/detail pages', () => {
 
     await screen.findByRole('heading', { name: 'PJ-001' });
     expect(fake.getPrintJobById).toHaveBeenCalledWith('job-1');
-    await actor.click(screen.getByRole('button', { name: 'Reprint job' }));
+    await actor.click(screen.getByRole('button', { name: 'In lại lệnh in' }));
 
     await waitFor(() =>
       expect(fake.reprintPrintJob).toHaveBeenCalledWith('job-1', {
@@ -358,8 +358,8 @@ describe('BarcodeLabel list/detail pages', () => {
     repo.current = fake;
     renderListPage();
 
-    expect((await screen.findAllByText(/permission denied/i)).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Preview print job' })).toBeNull();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Xem trước lệnh in' })).toBeNull();
   });
 
   it('validates label blocking readiness and renders blocked decision on detail route', async () => {
@@ -369,7 +369,7 @@ describe('BarcodeLabel list/detail pages', () => {
     renderTemplateDetail('/labels/templates/template-1/blocking');
 
     await screen.findByText('LPN-STD');
-    await actor.click(screen.getByRole('button', { name: 'Validate label block' }));
+    await actor.click(screen.getByRole('button', { name: 'Kiểm tra chặn nhãn' }));
 
     await waitFor(() =>
       expect(fake.validateLabelBlocking).toHaveBeenCalledWith(
@@ -392,11 +392,11 @@ describe('BarcodeLabel list/detail pages', () => {
     renderTemplateDetail();
 
     await screen.findByText('LPN-STD');
-    await actor.click(screen.getByLabelText('Attempt override'));
-    fireEvent.change(screen.getByLabelText('Override reason code'), { target: { value: '' } });
+    await actor.click(screen.getByLabelText('Thử ghi đè'));
+    fireEvent.change(screen.getByLabelText('Mã lý do ghi đè kiểm soát'), { target: { value: '' } });
 
     expect(
-      screen.getByRole<HTMLButtonElement>('button', { name: 'Validate label block' }).disabled,
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Kiểm tra chặn nhãn' }).disabled,
     ).toBe(true);
   });
 });

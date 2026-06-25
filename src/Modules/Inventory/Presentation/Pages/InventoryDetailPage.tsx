@@ -25,7 +25,7 @@ export function InventoryDetailPage() {
       <Button asChild variant="ghost" size="sm">
         <Link to={ROUTES.INVENTORY.ROOT}>
           <ArrowLeft className="size-4" />
-          Back to inventory
+          Quay lại tồn kho
         </Link>
       </Button>
 
@@ -40,14 +40,14 @@ export function InventoryDetailPage() {
             <Field label="Location" value={item.locationCode} />
             <Field label="On hand" value={String(item.quantityOnHand)} />
             <Field label="Reserved" value={String(item.quantityReserved)} />
-            <Field label="Available" value={String(availableQuantity(item))} />
-            <Field label="Unit" value={item.unitOfMeasure} />
+            <Field label="Khả dụng" value={String(availableQuantity(item))} />
+            <Field label="Đơn vị" value={item.unitOfMeasure} />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Adjust stock</CardTitle>
+            <CardTitle className="text-base">Điều chỉnh tồn kho</CardTitle>
           </CardHeader>
           <CardContent>
             <AdjustQuantityForm itemId={item.id} />

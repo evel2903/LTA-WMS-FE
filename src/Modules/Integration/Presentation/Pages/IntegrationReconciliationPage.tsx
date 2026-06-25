@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import { ROUTES } from '@app/Config/Routes';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { RECONCILIATION_RUN_STATUSES } from '@modules/Integration/Domain/Constants/IntegrationConstants';
 import { useIntegrationReconciliationRuns } from '@modules/Integration/Application/Queries/UseIntegrationReconciliation';
 import type { ReconciliationRun, ReconciliationRunStatus } from '@modules/Integration/Domain/Types/Integration';
@@ -12,11 +13,11 @@ import type { ReconciliationRun, ReconciliationRunStatus } from '@modules/Integr
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to load reconciliation runs.';
+  return 'Không thể tải lần đối soát.';
 }
 
 function StatusBadge({ status }: { status: ReconciliationRunStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function ReconciliationRunRow({ run }: { run: ReconciliationRun }) {
@@ -30,16 +31,16 @@ function ReconciliationRunRow({ run }: { run: ReconciliationRun }) {
           <div className="truncate font-semibold">{run.businessReference}</div>
           <div className="text-muted-foreground truncate text-xs">
             {run.warehouseId}
-            {run.ownerId ? ` / ${run.ownerId}` : ' / no owner'}
+            {run.ownerId ? ` / ${run.ownerId}` : ' / chưa có chủ hàng'}
           </div>
         </div>
         <StatusBadge status={run.runStatus} />
       </div>
       <div className="text-muted-foreground grid grid-cols-2 gap-2 text-xs">
-        <span>Items: {run.itemCount}</span>
-        <span>Mismatches: {run.mismatchCount}</span>
-        <span>Exceptions: {run.exceptionCount}</span>
-        <span>Updated: {run.updatedAt}</span>
+        <span>Dòng: {run.itemCount}</span>
+        <span>Sai lệch: {run.mismatchCount}</span>
+        <span>Ngoại lệ: {run.exceptionCount}</span>
+        <span>Cập nhật: {run.updatedAt}</span>
       </div>
     </Link>
   );
@@ -66,42 +67,42 @@ export function IntegrationReconciliationPage() {
 
   return (
     <ListPageShell
-      title="Integration reconciliation"
-      description="Scan reconciliation runs by business reference, warehouse and owner before opening detail/action."
+      title="Đối soát tích hợp"
+      description="Quét các lần đối soát theo tham chiếu nghiệp vụ, kho và chủ hàng trước khi mở chi tiết/thao tác."
       state={state}
-      stateTitle={query.error ? 'Unable to load reconciliation runs' : undefined}
-      stateMessage={query.error ? errorMessage(query.error) ?? undefined : 'No reconciliation runs match the filters.'}
+      stateTitle={query.error ? 'Không thể tải lần đối soát' : undefined}
+      stateMessage={query.error ? errorMessage(query.error) ?? undefined : 'Không có lần đối soát khớp bộ lọc.'}
       filters={
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="grid gap-1 text-sm">
-            Business reference
+            Tham chiếu nghiệp vụ
             <Input value={businessReference} onChange={(event) => setBusinessReference(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Warehouse
+            Kho
             <Input value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Owner
+            Chủ hàng
             <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Status
+            Trạng thái
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={runStatus}
               onChange={(event) => setRunStatus(event.target.value as ReconciliationRunStatus | '')}
             >
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {RECONCILIATION_RUN_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {vietnameseOperationalLabel(status)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            Updated from
+            Cập nhật từ
             <Input
               value={updatedFrom}
               placeholder="2026-06-25T00:00:00.000Z"
@@ -109,7 +110,7 @@ export function IntegrationReconciliationPage() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Updated to
+            Cập nhật đến
             <Input
               value={updatedTo}
               placeholder="2026-06-25T23:59:59.999Z"
@@ -122,7 +123,7 @@ export function IntegrationReconciliationPage() {
       {query.isLoading ? (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <RefreshCw className="size-4 animate-spin" />
-          Loading reconciliation runs
+          Đang tải lần đối soát
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

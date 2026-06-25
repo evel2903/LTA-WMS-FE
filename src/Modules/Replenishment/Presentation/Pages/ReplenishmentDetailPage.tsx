@@ -8,6 +8,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useReplenishmentMutations } from '@modules/Replenishment/Application/Commands/UseReplenishmentMutations';
 import { useReplenishmentTask } from '@modules/Replenishment/Application/Queries/UseReplenishmentTasks';
 import {
@@ -37,11 +38,11 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete replenishment action.';
+  return 'Không thể hoàn tất thao tác bổ sung hàng.';
 }
 
 function StatusBadge({ status }: { status: ReplenishmentTaskStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail' }) {
@@ -184,7 +185,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
         payload = JSON.parse(payloadText) as Record<string, unknown>;
         setPayloadError('');
       } catch {
-        setPayloadError('Payload must be valid JSON.');
+        setPayloadError('Payload phải là JSON hợp lệ.');
         return;
       }
     }
@@ -207,10 +208,10 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
 
   return (
     <DetailPageShell
-      title={mode === 'new' ? 'Release replenishment task' : task?.taskCode ?? 'Replenishment task'}
-      subtitle="Replenishment detail and governed action surface"
+      title={mode === 'new' ? 'Phát hành tác vụ bổ sung hàng' : task?.taskCode ?? 'Tác vụ bổ sung hàng'}
+      subtitle="Chi tiết bổ sung hàng và khu vực thao tác có kiểm soát"
       backTo={ROUTES.REPLENISHMENT.ROOT}
-      backLabel="Back to replenishment"
+      backLabel="Quay lại bổ sung hàng"
       status={task ? <StatusBadge status={task.taskStatus} /> : null}
       summary={
         task ? (
@@ -224,17 +225,17 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : detailQuery.error
-            ? 'Unable to load replenishment detail'
+            ? 'Không thể tải chi tiết bổ sung hàng'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for replenishment detail.'
+          ? 'Bạn không có quyền xem chi tiết bổ sung hàng.'
           : detailQuery.error
-            ? errorMessage(detailQuery.error) ?? 'The replenishment detail could not be loaded.'
-            : 'The requested replenishment task was not found.'
+            ? errorMessage(detailQuery.error) ?? 'Không thể tải chi tiết bổ sung hàng.'
+            : 'Không tìm thấy tác vụ bổ sung hàng được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
@@ -243,10 +244,10 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
             <form className="space-y-3 rounded-md border p-4" onSubmit={handleRelease}>
               <div className="flex items-center gap-2 font-semibold">
                 <PackagePlus className="size-4" />
-                Release replenishment
+                Phát hành bổ sung hàng
               </div>
               <label className="grid gap-1 text-sm">
-                Trigger
+                Loại kích hoạt
                 <select
                   className="h-9 rounded-md border bg-transparent px-3 text-sm"
                   value={triggerType}
@@ -254,26 +255,26 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
                 >
                   {REPLENISHMENT_TRIGGER_TYPES.map((trigger) => (
                     <option key={trigger} value={trigger}>
-                      {trigger}
+                      {vietnameseOperationalLabel(trigger)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Source balance id
+                ID số dư nguồn
                 <Input value={sourceBalanceId} onChange={(event) => setSourceBalanceId(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Target location id
+                ID vị trí đích
                 <Input value={targetLocationId} onChange={(event) => setTargetLocationId(event.target.value)} />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm">
-                  Quantity
+                  Số lượng
                   <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Short pick reference
+                  Tham chiếu lấy thiếu
                   <Input value={shortPickReference} onChange={(event) => setShortPickReference(event.target.value)} />
                 </label>
               </div>
@@ -283,7 +284,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
                 disabled={!canRelease || mutations.releaseTask.isPending}
               >
                 <Send className="size-4" />
-                Release task
+                Phát hành tác vụ
               </button>
               {releaseError ? <p className="text-destructive text-sm">{releaseError}</p> : null}
             </form>
@@ -292,13 +293,13 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
           {task ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Task context</CardTitle>
+                <CardTitle className="text-base">Ngữ cảnh tác vụ</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <div>Source: {task.sourceBalanceId}</div>
-                <div>Target: {task.targetLocationCode ?? task.targetLocationId}</div>
-                <div>Outbox: {task.outboxMessageId ?? 'not emitted'}</div>
-                <div>Confirm transaction: {task.confirmTransactionId ?? 'not confirmed'}</div>
+                <div>Nguồn: {task.sourceBalanceId}</div>
+                <div>Đích: {task.targetLocationCode ?? task.targetLocationId}</div>
+                <div>Outbox: {task.outboxMessageId ?? 'chưa phát'}</div>
+                <div>Giao dịch xác nhận: {task.confirmTransactionId ?? 'chưa xác nhận'}</div>
               </CardContent>
             </Card>
           ) : null}
@@ -306,7 +307,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
 
         <aside className="space-y-4">
           <div className="space-y-3 rounded-md border p-4">
-            <div className="font-semibold">Task lifecycle</div>
+            <div className="font-semibold">Vòng đời tác vụ</div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -315,7 +316,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
                 onClick={handleConfirm}
               >
                 <CheckCircle2 className="size-4" />
-                Confirm
+                Xác nhận
               </button>
               <button
                 type="button"
@@ -324,7 +325,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
                 onClick={handleCancel}
               >
                 <XCircle className="size-4" />
-                Cancel
+                Hủy
               </button>
             </div>
             {(confirmError || cancelError) ? (
@@ -335,22 +336,22 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
           <form className="space-y-3 rounded-md border p-4" onSubmit={handleRecordFailure}>
             <div className="flex items-center gap-2 font-semibold">
               <AlertTriangle className="size-4" />
-              Reconciliation failure
+              Lỗi đối soát
             </div>
             <label className="grid gap-1 text-sm">
-              Business reference
+              Tham chiếu nghiệp vụ
               <Input value={businessReference} onChange={(event) => setBusinessReference(event.target.value)} />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-sm">
-                Event type
+                Loại sự kiện
                 <Input
                   value={reconciliationEventType}
                   onChange={(event) => setReconciliationEventType(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Retry status
+                Trạng thái retry
                 <select
                   className="h-9 rounded-md border bg-transparent px-3 text-sm"
                   value={retryStatus}
@@ -358,14 +359,14 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
                 >
                   {INVENTORY_RECONCILIATION_RETRY_STATUSES.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {vietnameseOperationalLabel(status)}
                     </option>
                   ))}
                 </select>
               </label>
             </div>
             <label className="grid gap-1 text-sm">
-              Error message
+              Thông báo lỗi
               <Input value={errorText} onChange={(event) => setErrorText(event.target.value)} />
             </label>
             <label className="grid gap-1 text-sm">
@@ -386,33 +387,33 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
               disabled={!canRecordFailure || mutations.recordReconciliationFailure.isPending}
             >
               <Send className="size-4" />
-              Record failure
+              Ghi nhận lỗi
             </button>
             {failureError ? <p className="text-destructive text-sm">{failureError}</p> : null}
           </form>
 
           <div className="space-y-3 rounded-md border p-4">
-            <div className="font-semibold">Reason and evidence</div>
+            <div className="font-semibold">Lý do và bằng chứng</div>
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-sm">
-                Release reason
+                Lý do phát hành
                 <Input value={releaseReasonCode} onChange={(event) => setReleaseReasonCode(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Movement reason
+                Lý do dịch chuyển
                 <Input value={movementReasonCode} onChange={(event) => setMovementReasonCode(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Cancel reason
+                Lý do hủy
                 <Input value={cancelReasonCode} onChange={(event) => setCancelReasonCode(event.target.value)} />
               </label>
             </div>
             <label className="grid gap-1 text-sm">
-              Reason note
+              Ghi chú lý do
               <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
             </label>
             <label className="grid gap-1 text-sm">
-              Evidence refs
+              Tham chiếu bằng chứng
               <textarea
                 className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                 value={evidenceRefs}
@@ -420,7 +421,7 @@ export function ReplenishmentDetailPage({ mode = 'detail' }: { mode?: 'new' | 'd
               />
             </label>
             <label className="grid gap-1 text-sm">
-              Idempotency key
+              Khóa idempotency
               <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
             </label>
           </div>

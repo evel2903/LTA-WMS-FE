@@ -136,8 +136,8 @@ describe('Shipping list/detail pages', () => {
 
     const link = screen.getByRole('link', { name: /STG-001/i });
     expect(link.getAttribute('href')).toBe('/shipping/staging-1');
-    expect(screen.queryByText('Shipping actions')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Assign dock$/i })).toBeNull();
+    expect(screen.queryByText('Thao tác giao hàng')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Gán dock$/i })).toBeNull();
     expect(useShippingStagingList).toHaveBeenCalledWith({
       warehouseId: undefined,
       ownerId: undefined,
@@ -171,14 +171,14 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/new'],
     );
 
-    fireEvent.change(screen.getByLabelText('Package id'), { target: { value: 'package-1' } });
-    fireEvent.change(screen.getByLabelText('Shipment reference'), {
+    fireEvent.change(screen.getByLabelText('ID kiện hàng'), { target: { value: 'package-1' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu lô giao hàng'), {
       target: { value: 'SHIP-001' },
     });
-    fireEvent.change(screen.getByLabelText('Staging lane code'), { target: { value: 'STAGE-A' } });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'scan:stage' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'stage-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Stage package$/i }));
+    fireEvent.change(screen.getByLabelText('Mã làn staging'), { target: { value: 'STAGE-A' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'scan:stage' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'stage-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Đưa kiện vào staging$/i }));
 
     expect(mutations.stagePackage.mutate).toHaveBeenCalledWith(
       {
@@ -230,10 +230,10 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1/dock'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'dock:scan' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'dock-1' } });
-    fireEvent.change(screen.getByLabelText('Dock door code'), { target: { value: 'DOCK-01' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Assign dock$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'dock:scan' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'dock-1' } });
+    fireEvent.change(screen.getByLabelText('Mã cửa dock'), { target: { value: 'DOCK-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Gán dock$/i }));
 
     expect(mutations.assignDock.mutate).toHaveBeenCalledWith(
       {
@@ -250,10 +250,10 @@ describe('Shipping list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'truck-1' } });
-    fireEvent.change(screen.getByLabelText('Truck reference'), { target: { value: 'TRUCK-001' } });
-    fireEvent.change(screen.getByLabelText('Vehicle number'), { target: { value: '51C-001' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Assign truck$/i }));
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'truck-1' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu xe tải'), { target: { value: 'TRUCK-001' } });
+    fireEvent.change(screen.getByLabelText('Biển số xe'), { target: { value: '51C-001' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Gán xe tải$/i }));
 
     expect(mutations.assignTruck.mutate).toHaveBeenCalledWith(
       {
@@ -288,8 +288,8 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1'],
     );
 
-    expect(screen.getByRole('heading', { name: 'Permission denied' })).toBeTruthy();
-    expect(screen.queryByText('Shipping actions')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Từ chối quyền truy cập' })).toBeTruthy();
+    expect(screen.queryByText('Thao tác giao hàng')).toBeNull();
   });
 
   it('opens loading action for ReadyForLoading staging without putting actions on the list', () => {
@@ -310,14 +310,14 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1'],
     );
 
-    expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /Mở chất hàng/i }).getAttribute('href')).toBe(
       '/shipping/staging-1/loading',
     );
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'dock-after-ready' },
     });
     expect(
-      screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled'),
+      screen.getByRole('button', { name: /^Gán dock$/i }).getAttribute('disabled'),
     ).not.toBeNull();
   });
 
@@ -340,14 +340,14 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1'],
     );
 
-    expect(screen.getByRole('link', { name: /Open loading/i }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /Mở chất hàng/i }).getAttribute('href')).toBe(
       '/shipping/staging-1/loading',
     );
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'dock-after-loaded' },
     });
     expect(
-      screen.getByRole('button', { name: /^Assign dock$/i }).getAttribute('disabled'),
+      screen.getByRole('button', { name: /^Gán dock$/i }).getAttribute('disabled'),
     ).not.toBeNull();
   });
 
@@ -404,10 +404,10 @@ describe('Shipping list/detail pages', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'STG-001' })).toBeTruthy());
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'loading:scan' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'loading-1' } });
-    fireEvent.change(screen.getByLabelText('Load reference'), { target: { value: 'LOAD-001' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Scan loading$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'loading:scan' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'loading-1' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu chất hàng'), { target: { value: 'LOAD-001' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Quét chất hàng$/i }));
 
     expect(mutations.scanLoading.mutate).toHaveBeenCalledWith(
       {
@@ -446,11 +446,11 @@ describe('Shipping list/detail pages', () => {
       </Routes>,
       ['/shipping/staging-1/loading'],
     );
-    fireEvent.change(screen.getByLabelText('Evidence refs'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), {
       target: { value: 'confirm:shipment' },
     });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'confirm-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Confirm shipment$/i }));
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'confirm-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Xác nhận lô giao hàng$/i }));
 
     expect(mutations.confirmShipment.mutate).toHaveBeenCalledWith(
       {
@@ -466,8 +466,8 @@ describe('Shipping list/detail pages', () => {
       },
       expect.any(Object),
     );
-    expect(screen.queryByRole('button', { name: /Gate out/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Goods Issue/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Ghi nhận cổng ra/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /ghi nhận xuất kho/i })).toBeNull();
   });
 
   it('submits gate-out from the dedicated action route', () => {
@@ -511,12 +511,12 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1/gate-out'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'gate:out' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'gate-out-1' } });
-    fireEvent.change(screen.getByLabelText('Gate-out reference'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'gate:out' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'gate-out-1' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu cổng ra'), {
       target: { value: 'GATE-OUT-001' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Record gate-out$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Ghi nhận cổng ra$/i }));
 
     expect(mutations.recordGateOut.mutate).toHaveBeenCalledWith(
       {
@@ -579,11 +579,11 @@ describe('Shipping list/detail pages', () => {
       ['/shipping/staging-1/goods-issue'],
     );
 
-    expect(screen.getByRole('heading', { name: 'Goods Issue posting' })).toBeTruthy();
-    expect(screen.getByText('Pending downstream event')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'gi:post' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'gi-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Post Goods Issue$/i }));
+    expect(screen.getByRole('heading', { name: 'Ghi nhận xuất kho' })).toBeTruthy();
+    expect(screen.getByText('Sự kiện hạ nguồn đang chờ')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'gi:post' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'gi-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Ghi nhận xuất kho$/i }));
 
     expect(mutations.postGoodsIssue.mutate).toHaveBeenCalledWith(
       {

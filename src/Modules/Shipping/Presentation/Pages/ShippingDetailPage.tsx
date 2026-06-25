@@ -8,6 +8,7 @@ import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useShippingMutations } from '@modules/Shipping/Application/Commands/UseShippingMutations';
 import { useShippingStaging } from '@modules/Shipping/Application/Queries/UseShipping';
 import { DEFAULT_SHIPPING_REASON_CODE } from '@modules/Shipping/Domain/Constants/ShippingConstants';
@@ -28,77 +29,77 @@ function evidence(value: string): string[] {
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete shipping action.';
+  return 'Không thể hoàn tất thao tác giao hàng.';
 }
 
 function StatusBadge({ status }: { status: ShipmentPackageStagingStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function StagingSummary({ staging }: { staging: ShipmentPackageStaging }) {
   return (
     <div className="space-y-3 rounded-md border p-4 text-sm">
-      <h2 className="text-base font-semibold">Staging milestone</h2>
+      <h2 className="text-base font-semibold">Mốc staging</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <div className="text-muted-foreground text-xs">Package</div>
+          <div className="text-muted-foreground text-xs">Kiện hàng</div>
           <div>{staging.packageCode}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Outbound order</div>
+          <div className="text-muted-foreground text-xs">Đơn xuất kho</div>
           <div>{staging.outboundOrderId}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Shipment</div>
-          <div>{staging.shipmentReference ?? 'n/a'}</div>
+          <div className="text-muted-foreground text-xs">Lô giao hàng</div>
+          <div>{staging.shipmentReference ?? 'không áp dụng'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Lane</div>
+          <div className="text-muted-foreground text-xs">Làn staging</div>
           <div>{staging.stagingLaneCode}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Dock</div>
-          <div>{staging.dockDoorCode ?? staging.dockDoorId ?? 'not assigned'}</div>
+          <div className="text-muted-foreground text-xs">Cửa dock</div>
+          <div>{staging.dockDoorCode ?? staging.dockDoorId ?? 'chưa gán'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Truck</div>
-          <div>{staging.truckReference ?? staging.vehicleNumber ?? 'not assigned'}</div>
+          <div className="text-muted-foreground text-xs">Xe tải</div>
+          <div>{staging.truckReference ?? staging.vehicleNumber ?? 'chưa gán'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Load</div>
-          <div>{staging.loadReference ?? 'not loaded'}</div>
+          <div className="text-muted-foreground text-xs">Chất hàng</div>
+          <div>{staging.loadReference ?? 'chưa chất hàng'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Loaded at</div>
-          <div>{staging.loadedAt ?? 'not loaded'}</div>
+          <div className="text-muted-foreground text-xs">Đã chất hàng lúc</div>
+          <div>{staging.loadedAt ?? 'chưa chất hàng'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Confirmed at</div>
-          <div>{staging.shipmentConfirmedAt ?? 'not confirmed'}</div>
+          <div className="text-muted-foreground text-xs">Xác nhận lúc</div>
+          <div>{staging.shipmentConfirmedAt ?? 'chưa xác nhận'}</div>
         </div>
         <div>
           <div className="text-muted-foreground text-xs">Gate-out</div>
-          <div>{staging.gateOutAt ?? 'not recorded'}</div>
+          <div>{staging.gateOutAt ?? 'chưa ghi nhận'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Goods Issue trigger</div>
-          <div>{staging.goodsIssueTriggerStatus ?? 'not evaluated'}</div>
+          <div className="text-muted-foreground text-xs">Kích hoạt ghi nhận xuất kho</div>
+          <div>{staging.goodsIssueTriggerStatus ? vietnameseOperationalLabel(staging.goodsIssueTriggerStatus) : 'chưa đánh giá'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Goods Issue status</div>
-          <div>{staging.goodsIssueStatus ?? 'not posted'}</div>
+          <div className="text-muted-foreground text-xs">Trạng thái ghi nhận xuất kho</div>
+          <div>{staging.goodsIssueStatus ? vietnameseOperationalLabel(staging.goodsIssueStatus) : 'chưa ghi nhận'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">GI transaction</div>
-          <div>{staging.goodsIssueInventoryTransactionId ?? 'pending'}</div>
+          <div className="text-muted-foreground text-xs">Giao dịch xuất kho</div>
+          <div>{staging.goodsIssueInventoryTransactionId ?? 'đang chờ'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Pending event</div>
-          <div>{staging.goodsIssueOutboxMessageId ?? staging.shipmentClosedOutboxMessageId ?? 'pending'}</div>
+          <div className="text-muted-foreground text-xs">Sự kiện đang chờ</div>
+          <div>{staging.goodsIssueOutboxMessageId ?? staging.shipmentClosedOutboxMessageId ?? 'đang chờ'}</div>
         </div>
       </div>
       <div className="text-muted-foreground text-xs">
-        Inventory milestone: {staging.inventoryStatusCode ?? 'document-only'}
+        Mốc tồn kho: {staging.inventoryStatusCode ?? 'chỉ ở chứng từ'}
       </div>
     </div>
   );
@@ -299,7 +300,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Dock milestone recorded');
+          setLastMessage('Đã ghi nhận mốc cửa dock');
         },
       },
     );
@@ -323,7 +324,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Truck milestone recorded');
+          setLastMessage('Đã ghi nhận mốc xe tải');
         },
       },
     );
@@ -348,7 +349,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Loading scan recorded');
+          setLastMessage('Đã ghi nhận quét chất hàng');
         },
       },
     );
@@ -369,7 +370,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Shipment confirmation recorded');
+          setLastMessage('Đã xác nhận lô giao hàng');
         },
       },
     );
@@ -408,7 +409,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Goods Issue trigger evaluated');
+          setLastMessage('Đã đánh giá kích hoạt ghi nhận xuất kho');
         },
       },
     );
@@ -425,7 +426,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       {
         onSuccess: () => {
           setIdempotencyKey('');
-          setLastMessage('Goods Issue posted and pending events queued');
+          setLastMessage('Đã ghi nhận xuất kho và đưa sự kiện hạ nguồn vào hàng đợi');
         },
       },
     );
@@ -433,85 +434,85 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
   return (
     <DetailPageShell
-      title={mode === 'new' ? 'Stage package' : (staging?.stagingCode ?? 'Shipping staging detail')}
-      subtitle="Package staging, dock, truck, loading scan, shipment confirmation and gate-out"
+      title={mode === 'new' ? 'Đưa kiện vào staging' : (staging?.stagingCode ?? 'Chi tiết staging giao hàng')}
+      subtitle="Staging kiện, cửa dock, xe tải, quét chất hàng, xác nhận lô giao hàng và cổng ra"
       backTo={ROUTES.SHIPPING.ROOT}
-      backLabel="Back to shipping"
+      backLabel="Quay lại giao hàng"
       status={staging ? <StatusBadge status={staging.status} /> : null}
       summary={
         staging ? (
           <>
-            <span>{staging.warehouseCode ?? staging.warehouseId ?? 'warehouse unresolved'}</span>
-            <span>{staging.ownerCode ?? staging.ownerId ?? 'owner unresolved'}</span>
-            <span>{staging.shipmentReference ?? 'shipment reference pending'}</span>
+            <span>{staging.warehouseCode ?? staging.warehouseId ?? 'kho chưa xác định'}</span>
+            <span>{staging.ownerCode ?? staging.ownerId ?? 'chủ hàng chưa xác định'}</span>
+            <span>{staging.shipmentReference ?? 'đang chờ tham chiếu lô giao hàng'}</span>
           </>
         ) : null
       }
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : isBlocked
-            ? 'Shipping staging blocked'
+            ? 'Staging giao hàng bị chặn'
             : isReadOnly
-              ? 'Goods Issue posted'
+              ? 'Đã ghi nhận xuất kho'
               : stagingQuery.error
-                ? 'Unable to load shipping staging'
+                ? 'Không thể tải staging giao hàng'
                 : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for shipment detail.'
+          ? 'Không có quyền xem chi tiết lô giao hàng.'
           : isBlocked
-            ? 'Resolve the blocking condition before changing this staging record.'
+            ? 'Hãy xử lý điều kiện chặn trước khi thay đổi bản ghi staging này.'
             : isReadOnly
-              ? 'Goods Issue has been posted; this shipping record is read-only.'
+              ? 'Ghi nhận xuất kho đã được ghi nhận; bản ghi giao hàng này chỉ đọc.'
               : stagingQuery.error
                 ? (errorMessage(stagingQuery.error) ??
-                  'The shipping staging record could not be loaded.')
-                : 'The requested shipping staging record was not found.'
+                  'Không thể tải bản ghi staging giao hàng.')
+                : 'Không tìm thấy bản ghi staging giao hàng được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="space-y-4">
           {mode === 'new' ? (
             <ActionPanel
-              title="Stage package"
-              description="Only packages already ReadyForStaging can be moved into a staging lane."
+              title="Đưa kiện vào staging"
+              description="Chỉ kiện hàng đủ điều kiện staging mới được chuyển vào làn staging."
               state={mutations.stagePackage.isPending ? 'pending' : 'idle'}
             >
               <form className="space-y-3" onSubmit={handleStage}>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm">
-                    Package id
+                    ID kiện hàng
                     <Input
                       value={packageId}
                       onChange={(event) => setPackageId(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Shipment reference
+                    Tham chiếu lô giao hàng
                     <Input
                       value={shipmentReference}
                       onChange={(event) => setShipmentReference(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Staging lane code
+                    Mã làn staging
                     <Input
                       value={stagingLaneCode}
                       onChange={(event) => setStagingLaneCode(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Staging location id
+                    ID vị trí staging
                     <Input
                       value={stagingLocationId}
                       onChange={(event) => setStagingLocationId(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm md:col-span-2">
-                    Staging location code
+                    Mã vị trí staging
                     <Input
                       value={stagingLocationCode}
                       onChange={(event) => setStagingLocationCode(event.target.value)}
@@ -520,7 +521,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 </div>
                 <Button type="submit" disabled={!canStage || mutations.stagePackage.isPending}>
                   <PackageCheck className="size-4" aria-hidden="true" />
-                  Stage package
+                  Đưa kiện vào staging
                 </Button>
               </form>
             </ActionPanel>
@@ -528,34 +529,34 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
           {staging ? <StagingSummary staging={staging} /> : null}
           {staging?.status === 'ReadyForLoading' || staging?.status === 'Loaded' ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="min-w-0 whitespace-normal text-center">
               <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'loading')}>
                 <ScanLine className="size-4" aria-hidden="true" />
-                Open loading
+                Mở chất hàng
               </Link>
             </Button>
           ) : null}
           {staging?.status === 'ShipmentConfirmed' ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="min-w-0 whitespace-normal text-center">
               <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'gate-out')}>
                 <Ship className="size-4" aria-hidden="true" />
-                Open gate-out
+                Mở cổng ra
               </Link>
             </Button>
           ) : null}
           {staging && canOpenGoodsIssueTrigger ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="min-w-0 whitespace-normal text-center">
               <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'goods-issue-trigger')}>
                 <CheckCircle2 className="size-4" aria-hidden="true" />
-                Open Goods Issue trigger
+                Mở kích hoạt ghi nhận xuất kho
               </Link>
             </Button>
           ) : null}
           {staging && canOpenGoodsIssue ? (
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="min-w-0 whitespace-normal text-center">
               <Link to={ROUTES.SHIPPING.ACTION(staging.id, 'goods-issue')}>
                 <CheckCircle2 className="size-4" aria-hidden="true" />
-                Open Goods Issue
+                Mở ghi nhận xuất kho
               </Link>
             </Button>
           ) : null}
@@ -565,44 +566,44 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           <ActionPanel
             title={
               isLoadingAction
-                ? 'Loading actions'
+                ? 'Thao tác chất hàng'
                 : isGateOutAction
-                  ? 'Gate-out actions'
+                  ? 'Thao tác cổng ra'
                   : isGoodsIssueTriggerAction
-                    ? 'Goods Issue trigger'
+                    ? 'Kích hoạt ghi nhận xuất kho'
                     : isGoodsIssueAction
-                      ? 'Goods Issue posting'
-                    : 'Shipping actions'
+                      ? 'Ghi nhận xuất kho'
+                    : 'Thao tác giao hàng'
             }
             description={
               isLoadingAction
-                ? 'Scan package loading and confirm shipment with reason/evidence and an idempotency key.'
+                ? 'Quét chất hàng và xác nhận lô giao hàng với lý do/bằng chứng và khóa idempotency.'
                 : isGateOutAction
-                  ? 'Record gate-out after shipment confirmation and trigger Goods Issue when profile strategy requires it.'
+                  ? 'Ghi nhận cổng ra sau khi xác nhận lô giao hàng và kích hoạt ghi nhận xuất kho khi strategy hồ sơ yêu cầu.'
                   : isGoodsIssueTriggerAction
-                    ? 'Evaluate the Goods Issue trigger using the WarehouseProfile strategy.'
+                    ? 'Đánh giá kích hoạt ghi nhận xuất kho bằng strategy WarehouseProfile.'
                     : isGoodsIssueAction
-                      ? 'Post WMS Goods Issue once and queue pending downstream events.'
-                    : 'Dock and truck milestones require reason/evidence when policy requires it and an idempotency key.'
+                      ? 'Ghi nhận xuất kho WMS một lần và đưa sự kiện hạ nguồn vào hàng đợi.'
+                    : 'Mốc dock và xe tải yêu cầu lý do/bằng chứng khi chính sách yêu cầu và cần khóa idempotency.'
             }
             state={isReadOnly ? 'disabled' : mutationError ? 'error' : 'idle'}
             stateMessage={
               isReadOnly
-                ? 'Goods Issue has been posted; this shipping record is read-only.'
+                ? 'Ghi nhận xuất kho đã được ghi nhận; bản ghi giao hàng này chỉ đọc.'
                 : (mutationError ?? undefined)
             }
           >
             <div className="grid gap-3">
               <label className="grid gap-1 text-sm">
-                Reason code
+                Mã lý do
                 <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Reason note
+                Ghi chú lý do
                 <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Evidence refs
+                Tham chiếu bằng chứng
                 <textarea
                   className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={evidenceRefs}
@@ -610,7 +611,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Idempotency key
+                Khóa idempotency
                 <Input
                   value={idempotencyKey}
                   onChange={(event) => setIdempotencyKey(event.target.value)}
@@ -620,42 +621,42 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Scanned package id
+                      ID kiện đã quét
                       <Input
                         value={scannedPackageId}
                         onChange={(event) => setScannedPackageId(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Scanned package code
+                      Mã kiện đã quét
                       <Input
                         value={scannedPackageCode}
                         onChange={(event) => setScannedPackageCode(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Shipment reference
+                      Tham chiếu lô giao hàng
                       <Input
                         value={loadingShipmentReference}
                         onChange={(event) => setLoadingShipmentReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Load reference
+                      Tham chiếu chất hàng
                       <Input
                         value={loadReference}
                         onChange={(event) => setLoadReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Truck reference
+                      Tham chiếu xe tải
                       <Input
                         value={loadingTruckReference}
                         onChange={(event) => setLoadingTruckReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Vehicle number
+                      Biển số xe
                       <Input
                         value={loadingVehicleNumber}
                         onChange={(event) => setLoadingVehicleNumber(event.target.value)}
@@ -665,11 +666,12 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   <Button
                     type="button"
                     variant="outline"
+                    className="min-w-0 whitespace-normal text-center"
                     disabled={!canScanLoading || isReadOnly || mutations.scanLoading.isPending}
                     onClick={runScanLoading}
                   >
                     <ScanLine className="size-4" aria-hidden="true" />
-                    Scan loading
+                    Quét chất hàng
                   </Button>
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -677,39 +679,40 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                       checked={requireFullLoad}
                       onChange={(event) => setRequireFullLoad(event.target.checked)}
                     />
-                    Require full load
+                    Yêu cầu chất đủ hàng
                   </label>
                   <Button
                     type="button"
                     variant="outline"
+                    className="min-w-0 whitespace-normal text-center"
                     disabled={
                       !canConfirmShipment || isReadOnly || mutations.confirmShipment.isPending
                     }
                     onClick={runConfirmShipment}
                   >
                     <CheckCircle2 className="size-4" aria-hidden="true" />
-                    Confirm shipment
+                    Xác nhận lô giao hàng
                   </Button>
                 </>
               ) : mode === 'detail' && isGateOutAction ? (
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Gate-out reference
+                      Tham chiếu cổng ra
                       <Input
                         value={gateOutReference}
                         onChange={(event) => setGateOutReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Truck reference
+                      Tham chiếu xe tải
                       <Input
                         value={gateOutTruckReference}
                         onChange={(event) => setGateOutTruckReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm sm:col-span-2">
-                      Vehicle number
+                      Biển số xe
                       <Input
                         value={gateOutVehicleNumber}
                         onChange={(event) => setGateOutVehicleNumber(event.target.value)}
@@ -723,13 +726,14 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                     onClick={runRecordGateOut}
                   >
                     <Ship className="size-4" aria-hidden="true" />
-                    Record gate-out
+                    Ghi nhận cổng ra
                   </Button>
                 </>
               ) : mode === 'detail' && isGoodsIssueTriggerAction ? (
                 <Button
                   type="button"
                   variant="outline"
+                  className="min-w-0 whitespace-normal text-center"
                   disabled={
                     !canEvaluateGoodsIssueTrigger ||
                     isReadOnly ||
@@ -738,40 +742,41 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={runEvaluateGoodsIssueTrigger}
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
-                  Evaluate Goods Issue trigger
+                  Đánh giá kích hoạt ghi nhận xuất kho
                 </Button>
               ) : mode === 'detail' && isGoodsIssueAction ? (
                 <>
                   <div className="space-y-1 rounded-md border p-3 text-sm">
-                    <div className="font-medium">Pending downstream event</div>
+                    <div className="font-medium">Sự kiện hạ nguồn đang chờ</div>
                     <div className="text-muted-foreground">
-                      Goods Issue and Shipment Closed events remain pending until Integration dispatch handles them.
+                      Sự kiện ghi nhận xuất kho và đóng lô giao hàng vẫn chờ đến khi điều phối tích hợp xử lý.
                     </div>
-                    <div>Owner: {staging?.ownerCode ?? staging?.ownerId ?? 'n/a'}</div>
-                    <div>Warehouse: {staging?.warehouseCode ?? staging?.warehouseId ?? 'n/a'}</div>
+                    <div>Chủ hàng: {staging?.ownerCode ?? staging?.ownerId ?? 'không áp dụng'}</div>
+                    <div>Kho: {staging?.warehouseCode ?? staging?.warehouseId ?? 'không áp dụng'}</div>
                   </div>
                   <Button
                     type="button"
                     variant="outline"
+                    className="min-w-0 whitespace-normal text-center"
                     disabled={!canPostGoodsIssue || isReadOnly || mutations.postGoodsIssue.isPending}
                     onClick={runPostGoodsIssue}
                   >
                     <CheckCircle2 className="size-4" aria-hidden="true" />
-                    Post Goods Issue
+                    Ghi nhận xuất kho
                   </Button>
                 </>
               ) : mode === 'detail' ? (
                 <>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Dock door id
+                      ID cửa dock
                       <Input
                         value={dockDoorId}
                         onChange={(event) => setDockDoorId(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Dock door code
+                      Mã cửa dock
                       <Input
                         value={dockDoorCode}
                         onChange={(event) => setDockDoorCode(event.target.value)}
@@ -781,43 +786,44 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   <Button
                     type="button"
                     variant="outline"
+                    className="min-w-0 whitespace-normal text-center"
                     disabled={!canDock || isReadOnly || mutations.assignDock.isPending}
                     onClick={runDock}
                   >
                     <Ship className="size-4" aria-hidden="true" />
-                    Assign dock
+                    Gán dock
                   </Button>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Truck reference
+                      Tham chiếu xe tải
                       <Input
                         value={truckReference}
                         onChange={(event) => setTruckReference(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Vehicle number
+                      Biển số xe
                       <Input
                         value={vehicleNumber}
                         onChange={(event) => setVehicleNumber(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Driver name
+                      Tên tài xế
                       <Input
                         value={driverName}
                         onChange={(event) => setDriverName(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Carrier code
+                      Mã carrier
                       <Input
                         value={carrierCode}
                         onChange={(event) => setCarrierCode(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm sm:col-span-2">
-                      Carrier id
+                      ID carrier
                       <Input
                         value={carrierId}
                         onChange={(event) => setCarrierId(event.target.value)}
@@ -831,7 +837,7 @@ export function ShippingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                     onClick={runTruck}
                   >
                     <Truck className="size-4" aria-hidden="true" />
-                    Assign truck
+                    Gán xe tải
                   </Button>
                 </>
               ) : null}

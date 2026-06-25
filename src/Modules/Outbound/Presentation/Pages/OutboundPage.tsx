@@ -7,6 +7,7 @@ import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useOutboundOrders } from '@modules/Outbound/Application/Queries/UseOutboundOrders';
 import { OUTBOUND_ORDER_STATUSES } from '@modules/Outbound/Domain/Constants/OutboundConstants';
 import type {
@@ -17,7 +18,7 @@ import type {
 type StatusFilter = 'All' | OutboundOrderStatus;
 
 function StatusBadge({ status }: { status: OutboundOrderStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function OrderRow({ order }: { order: OutboundOrder }) {
@@ -34,9 +35,9 @@ function OrderRow({ order }: { order: OutboundOrder }) {
         <StatusBadge status={order.documentStatus} />
       </div>
       <div className="text-muted-foreground grid gap-1 text-xs">
-        <div>Customer: {order.customerCode ?? order.customerId ?? 'unresolved'}</div>
-        <div>Warehouse: {order.warehouseCode ?? order.warehouseId}</div>
-        <div>Lines: {order.lines.length}</div>
+        <div>Khách hàng: {order.customerCode ?? order.customerId ?? 'chưa xác định'}</div>
+        <div>Kho: {order.warehouseCode ?? order.warehouseId}</div>
+        <div>Dòng: {order.lines.length}</div>
       </div>
     </Link>
   );
@@ -45,7 +46,7 @@ function OrderRow({ order }: { order: OutboundOrder }) {
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to load outbound orders.';
+  return 'Không thể tải đơn xuất kho.';
 }
 
 export function OutboundPage() {
@@ -74,59 +75,59 @@ export function OutboundPage() {
 
   return (
     <ListPageShell
-      title="Outbound orders"
-      description="Scan imported outbound demand and open focused detail/action pages for validation, hold, reject or cancel."
+      title="Đơn xuất kho"
+      description="Quét nhu cầu xuất kho đã nhập và mở trang chi tiết/thao tác riêng để xác thực, giữ, từ chối hoặc hủy."
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : query.error
-            ? 'Unable to load outbound orders'
+            ? 'Không thể tải đơn xuất kho'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for outbound orders.'
+          ? 'Bạn không có quyền xem đơn xuất kho.'
           : query.error
-            ? (errorMessage(query.error) ?? 'Unable to load outbound orders.')
-            : 'No outbound orders match the filters.'
+            ? (errorMessage(query.error) ?? 'Không thể tải đơn xuất kho.')
+            : 'Không có đơn xuất kho nào khớp bộ lọc.'
       }
       toolbar={
         <Button asChild size="sm">
           <Link to={ROUTES.OUTBOUND.NEW}>
             <FileInput className="size-4" aria-hidden="true" />
-            Import order
+            Nhập đơn xuất kho
           </Link>
         </Button>
       }
       filters={
         <div className="grid gap-3 sm:grid-cols-4">
           <label className="grid gap-1 text-sm">
-            Warehouse
+            Kho
             <Input value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Owner
+            Chủ hàng
             <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Source reference
+            Tham chiếu nguồn
             <Input
               value={sourceReference}
               onChange={(event) => setSourceReference(event.target.value)}
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Status
+            Trạng thái
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={status}
               onChange={(event) => setStatus(event.target.value as StatusFilter)}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {OUTBOUND_ORDER_STATUSES.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {vietnameseOperationalLabel(item)}
                 </option>
               ))}
             </select>
@@ -137,7 +138,7 @@ export function OutboundPage() {
       {query.isLoading ? (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <RefreshCw className="size-4 animate-spin" />
-          Loading outbound orders
+          Đang tải đơn xuất kho
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

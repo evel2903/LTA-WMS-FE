@@ -8,11 +8,12 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundPlans } from '@modules/Inbound/Application/Queries/UseInboundPlans';
 import type { InboundPlan } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 function statusLabel(plan: InboundPlan) {
-  return `${plan.status} / ${plan.gateInStatus}`;
+  return `${vietnameseOperationalLabel(plan.status)} / ${vietnameseOperationalLabel(plan.gateInStatus)}`;
 }
 
 function InboundPlanCard({ plan }: { plan: InboundPlan }) {
@@ -32,29 +33,29 @@ function InboundPlanCard({ plan }: { plan: InboundPlan }) {
 
       <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-medium text-foreground">Warehouse</dt>
+          <dt className="font-medium text-foreground">Kho</dt>
           <dd>{plan.warehouseCode ?? plan.warehouseId}</dd>
         </div>
         <div>
-          <dt className="font-medium text-foreground">Owner</dt>
+          <dt className="font-medium text-foreground">Chủ hàng</dt>
           <dd>{plan.ownerCode ?? plan.ownerId}</dd>
         </div>
         <div>
-          <dt className="font-medium text-foreground">Lines</dt>
+          <dt className="font-medium text-foreground">Số dòng</dt>
           <dd>{plan.lines.length}</dd>
         </div>
         <div>
           <dt className="font-medium text-foreground">CoreFlow</dt>
-          <dd>{plan.coreFlowInstanceId ?? 'not linked'}</dd>
+          <dd>{plan.coreFlowInstanceId ?? 'chưa liên kết'}</dd>
         </div>
       </dl>
 
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm">
-          <Link to={ROUTES.INBOUND.DETAIL(plan.id)}>Open detail</Link>
+          <Link to={ROUTES.INBOUND.DETAIL(plan.id)}>Mở chi tiết</Link>
         </Button>
         <Button asChild variant="secondary" size="sm">
-          <Link to={ROUTES.INBOUND.ACTION(plan.id, 'receiving')}>Receiving actions</Link>
+          <Link to={ROUTES.INBOUND.ACTION(plan.id, 'receiving')}>Thao tác tiếp nhận</Link>
         </Button>
       </div>
     </article>
@@ -85,17 +86,17 @@ export function InboundPage() {
 
   return (
     <ListPageShell
-      title="Inbound source documents"
-      description="Scan, filter and select inbound plans. Receiving, QC, LPN and release actions run on detail/action pages."
+      title="Chứng từ nguồn nhập kho"
+      description="Quét, lọc và chọn kế hoạch nhập kho. Tiếp nhận, QC, LPN và phát hành được xử lý ở trang chi tiết/thao tác."
       toolbar={
         <>
           <Button asChild>
             <Link to={ROUTES.INBOUND.NEW}>
               <Plus className="size-4" aria-hidden="true" />
-              New inbound plan
+              Tạo kế hoạch nhập kho
             </Link>
           </Button>
-          <Button variant="secondary" size="icon" onClick={() => void query.refetch()} aria-label="Refresh inbound list">
+          <Button variant="secondary" size="icon" onClick={() => void query.refetch()} aria-label="Làm mới danh sách nhập kho">
             <RefreshCw className="size-4" aria-hidden="true" />
           </Button>
         </>
@@ -103,7 +104,7 @@ export function InboundPage() {
       filters={
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm">
-            Source system filter
+            Lọc hệ thống nguồn
             <Input
               value={sourceSystemFilter}
               onChange={(event) => setSourceSystemFilter(event.target.value)}
@@ -111,7 +112,7 @@ export function InboundPage() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Document number filter
+            Lọc số chứng từ
             <Input
               value={documentFilter}
               onChange={(event) => setDocumentFilter(event.target.value)}
@@ -123,11 +124,11 @@ export function InboundPage() {
       state={state}
       stateTitle={
         state === 'forbidden'
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : state === 'error'
-            ? 'Unable to load inbound plans'
+            ? 'Không thể tải kế hoạch nhập kho'
             : state === 'empty'
-              ? 'No inbound plans'
+              ? 'Chưa có kế hoạch nhập kho'
               : undefined
       }
       stateMessage={
@@ -136,9 +137,9 @@ export function InboundPage() {
           : state === 'error'
             ? query.error instanceof Error
               ? query.error.message
-              : 'Unable to load inbound plans.'
+              : 'Không thể tải kế hoạch nhập kho.'
             : state === 'empty'
-              ? 'No source documents match the current filters.'
+              ? 'Không có chứng từ nguồn khớp bộ lọc hiện tại.'
               : undefined
       }
     >

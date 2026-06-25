@@ -132,15 +132,15 @@ describe('InventoryControlPanel', () => {
     repo.current = fake;
 
     renderPanel();
-    const statusForm = within(screen.getByRole('form', { name: /Status change/i }));
+    const statusForm = within(screen.getByRole('form', { name: /Đổi trạng thái/i }));
 
-    await actor.type(statusForm.getByLabelText('Status source balance id'), 'balance-source');
-    await actor.clear(statusForm.getByLabelText('Target status'));
-    await actor.type(statusForm.getByLabelText('Target status'), 'AVAILABLE');
-    await actor.type(statusForm.getByLabelText('Status quantity'), '2');
-    await actor.type(statusForm.getByLabelText('Status reason code'), 'INV_RELEASE');
-    await actor.type(statusForm.getByLabelText('Status idempotency key'), 'status-key-1');
-    await actor.click(statusForm.getByRole('button', { name: /Post status change/i }));
+    await actor.type(statusForm.getByLabelText('ID số dư nguồn đổi trạng thái'), 'balance-source');
+    await actor.clear(statusForm.getByLabelText('Trạng thái đích'));
+    await actor.type(statusForm.getByLabelText('Trạng thái đích'), 'AVAILABLE');
+    await actor.type(statusForm.getByLabelText('Số lượng đổi trạng thái'), '2');
+    await actor.type(statusForm.getByLabelText('Mã lý do đổi trạng thái'), 'INV_RELEASE');
+    await actor.type(statusForm.getByLabelText('Khóa idempotency đổi trạng thái'), 'status-key-1');
+    await actor.click(statusForm.getByRole('button', { name: /Ghi nhận đổi trạng thái/i }));
 
     await waitFor(() =>
       expect(changeStatus).toHaveBeenCalledWith({
@@ -154,7 +154,7 @@ describe('InventoryControlPanel', () => {
       }),
     );
     expect(await screen.findByText(/InventoryStatusChanged/i)).toBeTruthy();
-    expect(await screen.findByText(/Transaction: ITX-001/i)).toBeTruthy();
+    expect(await screen.findByText(/Giao dịch: ITX-001/i)).toBeTruthy();
   });
 
   it('surfaces backend reason requirement inline', async () => {
@@ -177,15 +177,15 @@ describe('InventoryControlPanel', () => {
     repo.current = fake;
 
     renderPanel();
-    const statusForm = within(screen.getByRole('form', { name: /Status change/i }));
+    const statusForm = within(screen.getByRole('form', { name: /Đổi trạng thái/i }));
 
-    await actor.type(statusForm.getByLabelText('Status source balance id'), 'balance-source');
-    await actor.clear(statusForm.getByLabelText('Target status'));
-    await actor.type(statusForm.getByLabelText('Target status'), 'AVAILABLE');
-    await actor.type(statusForm.getByLabelText('Status quantity'), '2');
-    await actor.type(statusForm.getByLabelText('Status reason code'), 'INV_RELEASE');
-    await actor.type(statusForm.getByLabelText('Status idempotency key'), 'status-key-1');
-    await actor.click(statusForm.getByRole('button', { name: /Post status change/i }));
+    await actor.type(statusForm.getByLabelText('ID số dư nguồn đổi trạng thái'), 'balance-source');
+    await actor.clear(statusForm.getByLabelText('Trạng thái đích'));
+    await actor.type(statusForm.getByLabelText('Trạng thái đích'), 'AVAILABLE');
+    await actor.type(statusForm.getByLabelText('Số lượng đổi trạng thái'), '2');
+    await actor.type(statusForm.getByLabelText('Mã lý do đổi trạng thái'), 'INV_RELEASE');
+    await actor.type(statusForm.getByLabelText('Khóa idempotency đổi trạng thái'), 'status-key-1');
+    await actor.click(statusForm.getByRole('button', { name: /Ghi nhận đổi trạng thái/i }));
 
     expect(
       await screen.findByText(/ReasonCode is required for inventory status\/movement control/i),
@@ -206,8 +206,8 @@ describe('InventoryControlPanel', () => {
 
     renderPanel();
 
-    fireEvent.submit(screen.getByRole('form', { name: /Status change/i }));
-    fireEvent.submit(screen.getByRole('form', { name: /Internal movement/i }));
+    fireEvent.submit(screen.getByRole('form', { name: /Đổi trạng thái/i }));
+    fireEvent.submit(screen.getByRole('form', { name: /Dịch chuyển nội bộ/i }));
 
     expect(changeStatus).not.toHaveBeenCalled();
     expect(moveInternal).not.toHaveBeenCalled();

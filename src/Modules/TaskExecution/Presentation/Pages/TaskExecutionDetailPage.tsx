@@ -7,6 +7,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useCurrentUser } from '@modules/Auth/Application/UseCases/UseCurrentUser';
 import { useMobileTaskMutations } from '@modules/TaskExecution/Application/Commands/UseMobileTaskMutations';
 import { useMobileTask } from '@modules/TaskExecution/Application/Queries/UseMobileTasks';
@@ -33,14 +34,14 @@ const SUBSTITUTION_POLICY_DECISIONS: PickSubstitutionPolicyDecision[] = [
 ];
 
 function taskPayloadText(task: MobileTask): string {
-  if (!task.taskPayload || Object.keys(task.taskPayload).length === 0) return 'No task payload';
+  if (!task.taskPayload || Object.keys(task.taskPayload).length === 0) return 'Chưa có payload tác vụ';
   return Object.entries(task.taskPayload)
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join(' | ');
 }
 
 function StatusBadge({ status }: { status: MobileTaskStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function parsedScanText(scan: MobileScanEvent): string {
@@ -105,8 +106,8 @@ function optionalScanMatches(
 function acceptedScanSummary(scans: Partial<Record<MobileScanType, MobileScanEvent>>): string {
   const labels = Object.entries(scans)
     .filter(([, scan]) => scan?.result === 'Accepted')
-    .map(([type]) => type);
-  return labels.length > 0 ? labels.join(', ') : 'No accepted scan in this session';
+    .map(([type]) => vietnameseOperationalLabel(type));
+  return labels.length > 0 ? labels.join(', ') : 'Chưa có lượt quét được chấp nhận trong phiên này';
 }
 
 export function TaskExecutionDetailPage() {
@@ -195,7 +196,7 @@ export function TaskExecutionDetailPage() {
     scanMatchesExpected(itemScan, expectedSkuId) &&
     (scanMatchesExpected(quantityScan, expectedQuantity) ||
       scanMatchesExpected(itemScan, expectedQuantity, 'Quantity')) &&
-    optionalScanMatches(itemScan, expectedLot, 'Lot') &&
+    optionalScanMatches(itemScan, expectedLot, 'LotNumber') &&
     optionalScanMatches(itemScan, expectedSerial, 'Serial') &&
     optionalScanMatches(itemScan, expectedExpiry, 'ExpiryDate') &&
     (scanHasQuantity(quantityScan) || scanHasQuantity(itemScan)),
@@ -264,18 +265,18 @@ export function TaskExecutionDetailPage() {
 
   return (
     <DetailPageShell
-      title={task?.taskCode ?? 'Mobile task'}
-      subtitle="RF/PWA task detail and action surface"
+      title={task?.taskCode ?? 'Tác vụ mobile'}
+      subtitle="Chi tiết tác vụ RF/PWA và khu vực thao tác"
       backTo={ROUTES.MOBILE.TASKS}
-      backLabel="Back to mobile tasks"
+      backLabel="Quay lại tác vụ mobile"
       status={task ? <StatusBadge status={task.taskStatus} /> : null}
       summary={
         task ? (
           <>
-            <span>{task.taskType}</span>
+            <span>{vietnameseOperationalLabel(task.taskType)}</span>
             <span>{task.warehouseCode}</span>
             <span>
-              {task.sourceDocumentCode ?? task.sourceDocumentType ?? 'No source document'}
+              {task.sourceDocumentCode ?? task.sourceDocumentType ?? 'Chưa có chứng từ nguồn'}
             </span>
           </>
         ) : null
@@ -283,17 +284,17 @@ export function TaskExecutionDetailPage() {
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : taskQuery.error
-            ? 'Unable to load mobile task'
+            ? 'Không thể tải tác vụ mobile'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for mobile task detail.'
+          ? 'Bạn không có quyền xem chi tiết tác vụ mobile.'
           : taskQuery.error
-            ? 'The mobile task detail could not be loaded.'
-            : 'The requested mobile task was not found.'
+            ? 'Không thể tải chi tiết tác vụ mobile.'
+            : 'Không tìm thấy tác vụ mobile được yêu cầu.'
       }
     >
       {task ? (
@@ -301,20 +302,20 @@ export function TaskExecutionDetailPage() {
           <section className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Task context</CardTitle>
+                <CardTitle className="text-base">Ngữ cảnh tác vụ</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="grid gap-1">
-                  <span className="text-muted-foreground">Payload</span>
+                  <span className="text-muted-foreground">Payload tác vụ</span>
                   <span>{taskPayloadText(task)}</span>
                 </div>
                 <div className="grid gap-1">
-                  <span className="text-muted-foreground">Assigned user</span>
-                  <span>{task.assignedUserId ?? 'Unassigned'}</span>
+                  <span className="text-muted-foreground">Người được gán</span>
+                  <span>{task.assignedUserId ?? 'Chưa gán'}</span>
                 </div>
                 {task.taskStatus === 'Blocked' ? (
                   <p className="text-destructive text-sm">
-                    This task is blocked. Resolve the blocking rule before recording scan evidence.
+                    Tác vụ này đang bị chặn. Hãy xử lý quy tắc chặn trước khi ghi nhận bằng chứng quét.
                   </p>
                 ) : null}
               </CardContent>
@@ -322,26 +323,26 @@ export function TaskExecutionDetailPage() {
             {task.taskType === 'Pick' ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Pick execution expectation</CardTitle>
+                  <CardTitle className="text-base">Kỳ vọng thực hiện lấy hàng</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
                   {[
-                    ['Pick task', currentPickTaskId],
-                    ['Source location', payloadValue(task, 'SourceLocationId')],
-                    ['Item', payloadValue(task, 'SkuCode') ?? payloadValue(task, 'SkuId')],
-                    ['Quantity', payloadValue(task, 'Quantity')],
-                    ['Lot', payloadValue(task, 'LotNumber')],
+                    ['Tác vụ lấy hàng', currentPickTaskId],
+                    ['Vị trí nguồn', payloadValue(task, 'SourceLocationId')],
+                    ['Hàng hóa', payloadValue(task, 'SkuCode') ?? payloadValue(task, 'SkuId')],
+                    ['Số lượng', payloadValue(task, 'Quantity')],
+                    ['Lô', payloadValue(task, 'LotNumber')],
                     ['Serial', payloadValue(task, 'SerialNumber')],
-                    ['Expiry', payloadValue(task, 'ExpiryDate')],
+                    ['Hạn dùng', payloadValue(task, 'ExpiryDate')],
                     [
-                      'Target',
+                      'Đích',
                       payloadValue(task, 'TargetReference') ??
                         payloadValue(task, 'TargetLocationId'),
                     ],
                   ].map(([label, value]) => (
                     <div key={label} className="grid gap-1">
                       <span className="text-muted-foreground">{label}</span>
-                      <span>{value ?? 'Not required'}</span>
+                      <span>{value ?? 'Không bắt buộc'}</span>
                     </div>
                   ))}
                 </CardContent>
@@ -353,12 +354,12 @@ export function TaskExecutionDetailPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Smartphone className="size-4" />
-                <CardTitle className="text-base">Scan and confirm controls</CardTitle>
+                <CardTitle className="text-base">Điều khiển quét và xác nhận</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <label className="grid gap-1 text-sm">
-                Device code
+                Mã thiết bị
                 <Input
                   value={deviceCode}
                   onChange={(event) => setDeviceCode(event.target.value)}
@@ -378,7 +379,7 @@ export function TaskExecutionDetailPage() {
                     })
                   }
                 >
-                  Claim task
+                  Nhận tác vụ
                 </button>
                 <button
                   type="button"
@@ -386,29 +387,29 @@ export function TaskExecutionDetailPage() {
                   disabled={!canRelease || mutations.releaseTask.isPending}
                   onClick={() => mutations.releaseTask.mutate(task.id)}
                 >
-                  Release task
+                  Nhả tác vụ
                 </button>
               </div>
               {!canClaim && !canRelease ? (
                 <p className="text-muted-foreground text-xs">
-                  Available actions depend on task state and claimant.
+                  Thao tác khả dụng phụ thuộc trạng thái tác vụ và người đang nhận.
                 </p>
               ) : null}
 
               {(mutations.claimTask.isPending || mutations.releaseTask.isPending) && (
                 <p className="text-muted-foreground flex items-center gap-2 text-sm">
                   <RefreshCw className="size-4 animate-spin" />
-                  Updating task
+                  Đang cập nhật tác vụ
                 </p>
               )}
 
               <div className="space-y-3 rounded-md border p-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <ScanLine className="size-4" />
-                  Scan evidence
+                  Bằng chứng quét
                 </div>
                 <label className="grid gap-1 text-sm">
-                  Scan type
+                  Loại quét
                   <select
                     className="h-9 rounded-md border bg-transparent px-3 text-sm"
                     value={scanType}
@@ -416,13 +417,13 @@ export function TaskExecutionDetailPage() {
                   >
                     {MOBILE_SCAN_TYPES.map((type) => (
                       <option key={type} value={type}>
-                        {type}
+                        {vietnameseOperationalLabel(type)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Scan value
+                  Giá trị quét
                   <Input
                     value={scanValue}
                     onChange={(event) => setScanValue(event.target.value)}
@@ -435,11 +436,11 @@ export function TaskExecutionDetailPage() {
                     checked={manualEntry}
                     onChange={(event) => setManualEntry(event.target.checked)}
                   />
-                  Manual entry
+                  Nhập thủ công
                 </label>
                 {manualEntry ? (
                   <label className="grid gap-1 text-sm">
-                    Reason code
+                    Mã lý do
                     <Input
                       value={reasonCode}
                       onChange={(event) => setReasonCode(event.target.value)}
@@ -484,22 +485,22 @@ export function TaskExecutionDetailPage() {
                     );
                   }}
                 >
-                  Record scan
+                  Ghi nhận quét
                 </button>
                 {mutations.recordScan.isPending ? (
                   <p className="text-muted-foreground flex items-center gap-2 text-sm">
                     <RefreshCw className="size-4 animate-spin" />
-                    Recording scan
+                    Đang ghi nhận quét
                   </p>
                 ) : null}
                 {latestScan ? (
                   <div className="rounded-md border p-3 text-sm">
                     <div className="font-medium">
                       {latestScan.result === 'Accepted'
-                        ? 'Accepted scan'
+                        ? 'Lượt quét được chấp nhận'
                         : latestScan.result === 'Rejected'
-                          ? 'Rejected scan'
-                          : 'Manual override accepted'}
+                          ? 'Lượt quét bị từ chối'
+                          : 'Ghi đè thủ công được chấp nhận'}
                     </div>
                     <div className="text-muted-foreground mt-1 space-y-1">
                       {latestScan.normalizedValue ? <div>{latestScan.normalizedValue}</div> : null}
@@ -515,13 +516,13 @@ export function TaskExecutionDetailPage() {
                 <div className="space-y-3 rounded-md border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <CheckCircle2 className="size-4" />
-                    Pick confirmation
+                    Xác nhận lấy hàng
                   </div>
                   <div className="text-muted-foreground text-xs">
                     {acceptedScanSummary(acceptedScans)}
                   </div>
                   <label className="grid gap-1 text-sm">
-                    Reason code
+                    Mã lý do
                     <Input
                       value={confirmReasonCode}
                       onChange={(event) => setConfirmReasonCode(event.target.value)}
@@ -529,11 +530,11 @@ export function TaskExecutionDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason note
+                    Ghi chú lý do
                     <Input
                       value={confirmReasonNote}
                       onChange={(event) => setConfirmReasonNote(event.target.value)}
-                      placeholder="RF pick scan confirmed"
+                      placeholder="Đã xác nhận quét lấy hàng bằng RF"
                     />
                   </label>
                   <button
@@ -559,8 +560,8 @@ export function TaskExecutionDetailPage() {
                           onSuccess: (result) => {
                             setLastConfirmMessage(
                               result.isDuplicate
-                                ? 'Pick confirmation already posted'
-                                : 'Pick confirmation posted',
+                                ? 'Xác nhận lấy hàng đã được ghi nhận trước đó'
+                                : 'Đã ghi nhận xác nhận lấy hàng',
                             );
                           },
                           onError: () => setLastConfirmMessage(null),
@@ -568,18 +569,17 @@ export function TaskExecutionDetailPage() {
                       );
                     }}
                   >
-                    Confirm pick
+                    Xác nhận lấy hàng
                   </button>
                   {!canConfirmPick ? (
                     <p className="text-muted-foreground text-xs">
-                      Confirm requires claimed task plus accepted location, item and quantity
-                      evidence in this session.
+                      Cần nhận tác vụ và có bằng chứng vị trí, hàng hóa, số lượng được chấp nhận trong phiên này.
                     </p>
                   ) : null}
                   {mutations.confirmPickTask.isPending ? (
                     <p className="text-muted-foreground flex items-center gap-2 text-sm">
                       <RefreshCw className="size-4 animate-spin" />
-                      Confirming pick
+                      Đang xác nhận lấy hàng
                     </p>
                   ) : null}
                   {lastConfirmMessage ? (
@@ -591,10 +591,10 @@ export function TaskExecutionDetailPage() {
                 <div className="space-y-4 rounded-md border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <AlertTriangle className="size-4" />
-                    Pick exception
+                    Ngoại lệ lấy hàng
                   </div>
                   <label className="grid gap-1 text-sm">
-                    Exception type
+                    Loại ngoại lệ
                     <select
                       className="h-9 rounded-md border bg-transparent px-3 text-sm"
                       value={exceptionType}
@@ -602,13 +602,13 @@ export function TaskExecutionDetailPage() {
                     >
                       {PICK_EXCEPTION_TYPES.map((type) => (
                         <option key={type} value={type}>
-                          {type}
+                          {vietnameseOperationalLabel(type)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason code
+                    Mã lý do
                     <Input
                       value={exceptionReasonCode}
                       onChange={(event) => setExceptionReasonCode(event.target.value)}
@@ -616,7 +616,7 @@ export function TaskExecutionDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Evidence reference
+                    Tham chiếu bằng chứng
                     <Input
                       value={exceptionEvidenceRef}
                       onChange={(event) => setExceptionEvidenceRef(event.target.value)}
@@ -625,7 +625,7 @@ export function TaskExecutionDetailPage() {
                   </label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Observed quantity
+                      Số lượng quan sát
                       <Input
                         value={observedQuantity}
                         onChange={(event) => setObservedQuantity(event.target.value)}
@@ -633,7 +633,7 @@ export function TaskExecutionDetailPage() {
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Damaged quantity
+                      Số lượng hư hỏng
                       <Input
                         value={damagedQuantity}
                         onChange={(event) => setDamagedQuantity(event.target.value)}
@@ -643,14 +643,14 @@ export function TaskExecutionDetailPage() {
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Observed SKU ID
+                      ID SKU quan sát
                       <Input
                         value={observedSkuId}
                         onChange={(event) => setObservedSkuId(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Observed SKU code
+                      Mã SKU quan sát
                       <Input
                         value={observedSkuCode}
                         onChange={(event) => setObservedSkuCode(event.target.value)}
@@ -658,14 +658,14 @@ export function TaskExecutionDetailPage() {
                     </label>
                   </div>
                   <label className="grid gap-1 text-sm">
-                    Replenishment target location
+                    Vị trí đích bổ sung hàng
                     <Input
                       value={replenishmentTargetLocationId}
                       onChange={(event) => setReplenishmentTargetLocationId(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason note
+                    Ghi chú lý do
                     <Input
                       value={exceptionReasonNote}
                       onChange={(event) => setExceptionReasonNote(event.target.value)}
@@ -700,10 +700,10 @@ export function TaskExecutionDetailPage() {
                           onSuccess: (result) => {
                             setLastExceptionMessage(
                               result.replenishmentTask
-                                ? 'Pick exception recorded with replenishment task'
+                                ? 'Đã ghi nhận ngoại lệ lấy hàng với tác vụ bổ sung hàng'
                                 : result.replenishmentRequired
-                                  ? 'Pick exception recorded with replenishment required'
-                                  : 'Pick exception recorded',
+                                  ? 'Đã ghi nhận ngoại lệ lấy hàng cần bổ sung hàng'
+                                  : 'Đã ghi nhận ngoại lệ lấy hàng',
                             );
                           },
                           onError: () => setLastExceptionMessage(null),
@@ -711,12 +711,12 @@ export function TaskExecutionDetailPage() {
                       );
                     }}
                   >
-                    Report exception
+                    Ghi nhận ngoại lệ
                   </button>
                   {mutations.reportPickException.isPending ? (
                     <p className="text-muted-foreground flex items-center gap-2 text-sm">
                       <RefreshCw className="size-4 animate-spin" />
-                      Reporting exception
+                      Đang ghi nhận ngoại lệ
                     </p>
                   ) : null}
                   {lastExceptionMessage ? (
@@ -728,18 +728,18 @@ export function TaskExecutionDetailPage() {
                 <div className="space-y-4 rounded-md border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Shuffle className="size-4" />
-                    Pick substitution
+                    Thay thế lấy hàng
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <label className="grid gap-1 text-sm">
-                      Substitute SKU ID
+                      ID SKU thay thế
                       <Input
                         value={substituteSkuId}
                         onChange={(event) => setSubstituteSkuId(event.target.value)}
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Substitute SKU code
+                      Mã SKU thay thế
                       <Input
                         value={substituteSkuCode}
                         onChange={(event) => setSubstituteSkuCode(event.target.value)}
@@ -747,7 +747,7 @@ export function TaskExecutionDetailPage() {
                     </label>
                   </div>
                   <label className="grid gap-1 text-sm">
-                    Quantity
+                    Số lượng
                     <Input
                       value={substituteQuantity}
                       onChange={(event) => setSubstituteQuantity(event.target.value)}
@@ -755,7 +755,7 @@ export function TaskExecutionDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Policy decision
+                    Quyết định chính sách
                     <select
                       className="h-9 rounded-md border bg-transparent px-3 text-sm"
                       value={substitutionPolicyDecision}
@@ -767,20 +767,20 @@ export function TaskExecutionDetailPage() {
                     >
                       {SUBSTITUTION_POLICY_DECISIONS.map((decision) => (
                         <option key={decision} value={decision}>
-                          {decision}
+                          {vietnameseOperationalLabel(decision)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Policy reason
+                    Lý do chính sách
                     <Input
                       value={substitutionPolicyReason}
                       onChange={(event) => setSubstitutionPolicyReason(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason note
+                    Ghi chú lý do
                     <Input
                       value={substitutionReasonNote}
                       onChange={(event) => setSubstitutionReasonNote(event.target.value)}
@@ -813,10 +813,10 @@ export function TaskExecutionDetailPage() {
                           onSuccess: (result) => {
                             setLastSubstitutionMessage(
                               result.approvalRequest
-                                ? 'Substitution routed for approval'
+                                ? 'Thay thế đã chuyển phê duyệt'
                                 : result.substitutionStatus === 'Rejected'
-                                  ? 'Substitution rejected by policy'
-                                  : 'Substitution context recorded',
+                                  ? 'Thay thế bị chính sách từ chối'
+                                  : 'Ngữ cảnh thay thế đã được ghi nhận',
                             );
                           },
                           onError: () => setLastSubstitutionMessage(null),
@@ -824,12 +824,12 @@ export function TaskExecutionDetailPage() {
                       );
                     }}
                   >
-                    Request substitution
+                    Yêu cầu thay thế
                   </button>
                   {mutations.requestPickSubstitution.isPending ? (
                     <p className="text-muted-foreground flex items-center gap-2 text-sm">
                       <RefreshCw className="size-4 animate-spin" />
-                      Routing substitution
+                      Đang điều phối thay thế
                     </p>
                   ) : null}
                   {lastSubstitutionMessage ? (

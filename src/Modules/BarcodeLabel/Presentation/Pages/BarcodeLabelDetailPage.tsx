@@ -7,6 +7,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useBarcodeLabelMutations } from '@modules/BarcodeLabel/Application/Commands/UseBarcodeLabelMutations';
 import {
   useLabelTemplate,
@@ -38,7 +39,7 @@ function parseRequiredFields(value: string): string[] {
 }
 
 function StatusBadge({ status }: { status: LabelTemplateStatus | PrintJobStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
@@ -162,18 +163,18 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
     <DetailPageShell
       title={
         mode === 'new'
-          ? 'New label template'
-          : selectedPrintJob?.jobCode ?? selectedTemplate?.templateCode ?? 'Label detail'
+          ? 'Tạo mẫu nhãn mới'
+          : selectedPrintJob?.jobCode ?? selectedTemplate?.templateCode ?? 'Chi tiết nhãn'
       }
       subtitle={
         mode === 'new'
-          ? 'Create a template away from the label list page'
+          ? 'Tạo mẫu ở trang riêng khỏi danh sách nhãn'
           : mode === 'printJob'
-            ? 'Print job detail, preview and reprint action surface'
-            : 'Template detail, version and preview action surface'
+            ? 'Chi tiết lệnh in, xem trước và khu vực thao tác in lại'
+            : 'Chi tiết mẫu, phiên bản và khu vực thao tác xem trước'
       }
       backTo={ROUTES.LABELS.ROOT}
-      backLabel="Back to labels"
+      backLabel="Quay lại nhãn"
       status={
         selectedPrintJob ? (
           <StatusBadge status={selectedPrintJob.status} />
@@ -186,7 +187,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
           <>
             <span>{selectedPrintJob.businessObjectType}</span>
             <span>{selectedPrintJob.businessObjectCode ?? selectedPrintJob.businessObjectId}</span>
-            <span>Reprints: {selectedPrintJob.reprintCount}</span>
+            <span>Số lần in lại: {selectedPrintJob.reprintCount}</span>
           </>
         ) : selectedTemplate ? (
           <>
@@ -199,38 +200,38 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
       state={state}
       stateTitle={
         denied
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : (mode === 'template' && templateQuery.error) || (mode === 'printJob' && printJobQuery.error)
-            ? 'Unable to load label detail'
+            ? 'Không thể tải chi tiết nhãn'
             : undefined
       }
       stateMessage={
         denied
-          ? 'Permission denied for label detail.'
+          ? 'Bạn không có quyền xem chi tiết nhãn.'
           : (mode === 'template' && templateQuery.error) || (mode === 'printJob' && printJobQuery.error)
-            ? 'The label detail could not be loaded.'
-            : 'The requested template or print job was not found.'
+            ? 'Không thể tải chi tiết nhãn.'
+            : 'Không tìm thấy mẫu hoặc lệnh in được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Template setup</CardTitle>
+              <CardTitle className="text-base">Thiết lập mẫu</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {mutationDenied ? (
                 <p className="text-destructive text-sm">
-                  Permission denied for the requested label action.
+                  Bạn không có quyền thực hiện thao tác nhãn được yêu cầu.
                 </p>
               ) : null}
               {printJobTemplateError ? (
                 <p className="text-muted-foreground text-sm">
-                  Template detail is not available for this print job, so preview/version actions are disabled.
+                  Không có chi tiết mẫu cho lệnh in này, nên thao tác xem trước/phiên bản bị tắt.
                 </p>
               ) : null}
               <label className="grid gap-1 text-sm">
-                Template code
+                Mã mẫu
                 <Input
                   value={templateCode}
                   onChange={(event) => setTemplateCode(event.target.value)}
@@ -238,7 +239,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Template name
+                Tên mẫu
                 <Input
                   value={templateName}
                   onChange={(event) => setTemplateName(event.target.value)}
@@ -246,7 +247,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Label type
+                Loại nhãn
                 <select
                   className="h-9 rounded-md border bg-transparent px-3 text-sm"
                   value={labelType}
@@ -257,20 +258,20 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 >
                   {LABEL_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {type}
+                      {vietnameseOperationalLabel(type)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Required fields
+                Trường bắt buộc
                 <Input
                   value={requiredFields}
                   onChange={(event) => setRequiredFields(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Template body
+                Nội dung mẫu
                 <textarea
                   className="min-h-24 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={templateBody}
@@ -300,7 +301,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                     )
                   }
                 >
-                  Create template
+                  Tạo mẫu
                 </button>
               ) : (
                 <button
@@ -323,7 +324,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                     });
                   }}
                 >
-                  Create new version
+                  Tạo phiên bản mới
                 </button>
               )}
             </CardContent>
@@ -331,25 +332,25 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Payload preview and reprint</CardTitle>
+              <CardTitle className="text-base">Xem trước payload và in lại</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <label className="grid gap-1 text-sm">
-                Business object type
+                Loại đối tượng nghiệp vụ
                 <Input
                   value={businessObjectType}
                   onChange={(event) => setBusinessObjectType(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Business object id
+                ID đối tượng nghiệp vụ
                 <Input
                   value={businessObjectId}
                   onChange={(event) => setBusinessObjectId(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Business object code
+                Mã đối tượng nghiệp vụ
                 <Input
                   value={businessObjectCode}
                   onChange={(event) => setBusinessObjectCode(event.target.value)}
@@ -357,14 +358,14 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm">
-                  Warehouse id
+                  ID kho
                   <Input
                     value={warehouseId}
                     onChange={(event) => setWarehouseId(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Owner id
+                  ID chủ hàng
                   <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
                 </label>
               </div>
@@ -390,7 +391,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                   try {
                     payload = JSON.parse(payloadText) as Record<string, unknown>;
                   } catch {
-                    setPayloadError('Payload JSON is invalid.');
+                    setPayloadError('Payload JSON không hợp lệ.');
                     return;
                   }
                   if (!selectedTemplate) return;
@@ -406,12 +407,12 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                   });
                 }}
               >
-                Preview print job
+                Xem trước lệnh in
               </button>
               {mutations.previewPrintJob.isPending ? (
                 <p className="text-muted-foreground flex items-center gap-2 text-sm">
                   <RefreshCw className="size-4 animate-spin" />
-                  Creating preview
+                  Đang tạo xem trước
                 </p>
               ) : null}
               {currentPreview ? (
@@ -421,17 +422,17 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                     <StatusBadge status={currentPreview.status} />
                   </div>
                   <pre className="bg-muted/50 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">
-                    {currentPreview.previewContent ?? 'No preview content'}
+                    {currentPreview.previewContent ?? 'Chưa có nội dung xem trước'}
                   </pre>
                   <label className="grid gap-1 text-sm">
-                    Reprint reason code
+                    Mã lý do in lại
                     <Input
                       value={reasonCode}
                       onChange={(event) => setReasonCode(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reprint reason note
+                    Ghi chú lý do in lại
                     <Input
                       value={reasonNote}
                       onChange={(event) => setReasonNote(event.target.value)}
@@ -451,7 +452,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                       })
                     }
                   >
-                    Reprint job
+                    In lại lệnh in
                   </button>
                 </div>
               ) : null}
@@ -463,13 +464,13 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-4" />
-              <CardTitle className="text-base">Label blocking</CardTitle>
+              <CardTitle className="text-base">Chặn theo nhãn</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1 text-sm">
-                Downstream action
+                Thao tác hạ nguồn
                 <select
                   className="h-9 rounded-md border bg-transparent px-3 text-sm"
                   value={blockingAction}
@@ -479,13 +480,13 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 >
                   {LABEL_BLOCKING_ACTIONS.map((downstreamAction) => (
                     <option key={downstreamAction} value={downstreamAction}>
-                      {downstreamAction}
+                      {vietnameseOperationalLabel(downstreamAction)}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Warehouse profile id
+                ID hồ sơ kho
                 <Input
                   value={blockingProfileId}
                   onChange={(event) => setBlockingProfileId(event.target.value)}
@@ -493,7 +494,7 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
               </label>
             </div>
             <label className="grid gap-1 text-sm">
-              Required label type
+              Loại nhãn bắt buộc
               <Input
                 value={blockingLabelType}
                 onChange={(event) => setBlockingLabelType(event.target.value)}
@@ -505,19 +506,19 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 checked={attemptOverride}
                 onChange={(event) => setAttemptOverride(event.target.checked)}
               />
-              Attempt override
+              Thử ghi đè
             </label>
             {attemptOverride ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm">
-                  Override reason code
+                  Mã lý do ghi đè kiểm soát
                   <Input
                     value={overrideReasonCode}
                     onChange={(event) => setOverrideReasonCode(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Override reason note
+                  Ghi chú ghi đè kiểm soát
                   <Input
                     value={overrideReasonNote}
                     onChange={(event) => setOverrideReasonNote(event.target.value)}
@@ -550,12 +551,12 @@ function BarcodeLabelDetailSurface({ mode }: { mode: DetailMode }) {
                 });
               }}
             >
-              Validate label block
+              Kiểm tra chặn nhãn
             </button>
             {mutations.validateLabelBlocking.isPending ? (
               <p className="text-muted-foreground flex items-center gap-2 text-sm">
                 <RefreshCw className="size-4 animate-spin" />
-                Validating label readiness
+                Đang kiểm tra sẵn sàng nhãn
               </p>
             ) : null}
             {labelBlockingResult ? (

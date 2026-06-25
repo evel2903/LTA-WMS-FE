@@ -124,7 +124,7 @@ describe('Outbound list/detail pages', () => {
             totalOrderedQuantity: 12,
             totalAllocatedQuantity: 8,
             totalBackorderedQuantity: 4,
-            shortageReason: 'Insufficient eligible Available inventory in order warehouse',
+            shortageReason: 'Không đủ tồn Available hợp lệ trong kho của đơn hàng',
             outboxMessageId: 'outbox-allocation-1',
             reasonCode: 'RC-V1-DISCREPANCY',
             reasonCodeId: 'reason-1',
@@ -219,8 +219,8 @@ describe('Outbound list/detail pages', () => {
 
     const link = screen.getByRole('link', { name: /OB-001/i });
     expect(link.getAttribute('href')).toBe('/outbound/outbound-1');
-    expect(screen.queryByText('Governed actions')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Hold$/i })).toBeNull();
+    expect(screen.queryByText('Thao tác có kiểm soát')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Giữ$/i })).toBeNull();
     expect(useOutboundOrders).toHaveBeenCalledWith({
       warehouseId: undefined,
       ownerId: undefined,
@@ -242,23 +242,23 @@ describe('Outbound list/detail pages', () => {
       ['/outbound/new'],
     );
 
-    fireEvent.change(screen.getByLabelText('Source reference'), { target: { value: 'SO-002' } });
-    fireEvent.change(screen.getByLabelText('Customer reference'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu nguồn'), { target: { value: 'SO-002' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu khách hàng'), {
       target: { value: 'CUST-1' },
     });
-    fireEvent.change(screen.getByLabelText('Ship-to reference'), { target: { value: 'STORE-1' } });
-    fireEvent.change(screen.getByLabelText('Owner id'), { target: { value: 'owner-1' } });
-    fireEvent.change(screen.getByLabelText('Warehouse id'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu giao đến'), { target: { value: 'STORE-1' } });
+    fireEvent.change(screen.getByLabelText('ID chủ hàng'), { target: { value: 'owner-1' } });
+    fireEvent.change(screen.getByLabelText('ID kho'), {
       target: { value: 'warehouse-1' },
     });
-    fireEvent.change(screen.getByLabelText('SKU id'), { target: { value: 'sku-1' } });
-    fireEvent.change(screen.getByLabelText('UOM id'), { target: { value: 'uom-1' } });
-    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '12' } });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'case:2' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('ID SKU'), { target: { value: 'sku-1' } });
+    fireEvent.change(screen.getByLabelText('ID đơn vị tính'), { target: { value: 'uom-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'case:2' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'outbound-import-1' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Import order$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Nhập đơn xuất kho$/i }));
 
     expect(mutations.importOrder.mutate).toHaveBeenCalledWith(
       {
@@ -301,9 +301,9 @@ describe('Outbound list/detail pages', () => {
     );
 
     expect(useOutboundOrder).toHaveBeenCalledWith('outbound-1');
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'case:1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'hold-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Hold$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'case:1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'hold-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Giữ$/i }));
 
     expect(mutations.holdOrder.mutate).toHaveBeenCalledWith(
       {
@@ -334,14 +334,14 @@ describe('Outbound list/detail pages', () => {
 
     expect(useOutboundAllocations).toHaveBeenCalledWith('outbound-1');
     expect(screen.getByText('AL-001')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'shortage:1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'shortage:1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'allocate-1' },
     });
-    fireEvent.change(screen.getByLabelText('Allocation policy'), {
+    fireEvent.change(screen.getByLabelText('Chính sách phân bổ'), {
       target: { value: 'PartialBackorder' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Allocate$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Phân bổ$/i }));
 
     expect(mutations.allocateOrder.mutate).toHaveBeenCalledWith(
       {
@@ -374,15 +374,15 @@ describe('Outbound list/detail pages', () => {
     expect(useOutboundPickReleases).toHaveBeenCalledWith('outbound-1');
     expect(screen.getByText('REL-001')).toBeTruthy();
     expect(screen.getByText('PT-001')).toBeTruthy();
-    expect(screen.getByText('Seq 1')).toBeTruthy();
-    expect(screen.getByText('Task status Released')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'cutoff:1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    expect(screen.getByText('Thứ tự 1')).toBeTruthy();
+    expect(screen.getByText('Trạng thái tác vụ Released')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'cutoff:1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'release-1' },
     });
-    fireEvent.change(screen.getByLabelText('Release mode'), { target: { value: 'Batch' } });
-    fireEvent.change(screen.getByLabelText('Batch size'), { target: { value: '25' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Release$/i }));
+    fireEvent.change(screen.getByLabelText('Chế độ phát hành'), { target: { value: 'Batch' } });
+    fireEvent.change(screen.getByLabelText('Cỡ batch'), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Phát hành$/i }));
 
     expect(mutations.releaseOrder.mutate).toHaveBeenCalledWith(
       {
@@ -450,10 +450,10 @@ describe('Outbound list/detail pages', () => {
       ['/outbound/outbound-1/release'],
     );
 
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'release-again' },
     });
-    const button = screen.getByRole('button', { name: /^Release$/i });
+    const button = screen.getByRole('button', { name: /^Phát hành$/i });
     expect(button).toHaveProperty('disabled', true);
     fireEvent.click(button);
     expect(mutations.releaseOrder.mutate).not.toHaveBeenCalled();
@@ -473,8 +473,8 @@ describe('Outbound list/detail pages', () => {
       ['/outbound/outbound-1'],
     );
 
-    expect(screen.getByRole('heading', { name: 'Permission denied' })).toBeTruthy();
-    expect(screen.queryByText('Governed actions')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Hold$/i })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Từ chối quyền truy cập' })).toBeTruthy();
+    expect(screen.queryByText('Thao tác có kiểm soát')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Giữ$/i })).toBeNull();
   });
 });

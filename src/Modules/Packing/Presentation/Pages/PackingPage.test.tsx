@@ -148,7 +148,7 @@ describe('Packing list/detail pages', () => {
 
     const link = screen.getByRole('link', { name: /PKG-001/i });
     expect(link.getAttribute('href')).toBe('/packing/package-1');
-    expect(screen.queryByText('Packing actions')).toBeNull();
+    expect(screen.queryByText('Thao tác đóng gói')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Close package$/i })).toBeNull();
     expect(usePackages).toHaveBeenCalledWith({
       warehouseId: undefined,
@@ -181,18 +181,18 @@ describe('Packing list/detail pages', () => {
       ['/packing/new'],
     );
 
-    fireEvent.change(screen.getByLabelText('Pick task id'), { target: { value: 'pick-task-1' } });
-    fireEvent.change(screen.getByLabelText('Mobile task id'), {
+    fireEvent.change(screen.getByLabelText('ID tác vụ lấy hàng'), { target: { value: 'pick-task-1' } });
+    fireEvent.change(screen.getByLabelText('ID tác vụ mobile'), {
       target: { value: 'mobile-task-1' },
     });
-    fireEvent.change(screen.getByLabelText('Warehouse profile id'), {
+    fireEvent.change(screen.getByLabelText('ID hồ sơ kho'), {
       target: { value: 'profile-1' },
     });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'scan:1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'scan:1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), {
       target: { value: 'session-1' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Start session$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Bắt đầu phiên$/i }));
 
     expect(mutations.startSession.mutate).toHaveBeenCalledWith(
       {
@@ -207,10 +207,10 @@ describe('Packing list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'create-1' } });
-    fireEvent.change(screen.getByLabelText('Observed quantity'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('Weight'), { target: { value: '10' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Create package$/i }));
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'create-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng quan sát'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Khối lượng'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Tạo kiện hàng$/i }));
 
     expect(mutations.createPackage.mutate).toHaveBeenCalledWith(
       {
@@ -269,10 +269,10 @@ describe('Packing list/detail pages', () => {
     );
 
     expect(usePackage).toHaveBeenCalledWith('package-1');
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'label:1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'ready-1' } });
-    fireEvent.change(screen.getByLabelText('Label type'), { target: { value: 'PACKAGE' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Ready for staging$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'label:1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'ready-1' } });
+    fireEvent.change(screen.getByLabelText('Loại nhãn'), { target: { value: 'PACKAGE' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Sẵn sàng staging$/i }));
 
     expect(mutations.readyForStaging.mutate).toHaveBeenCalledWith(
       {
@@ -288,7 +288,7 @@ describe('Packing list/detail pages', () => {
       },
       expect.any(Object),
     );
-    expect(screen.getByText('Ready for staging posted')).toBeTruthy();
+    expect(screen.getByText('Đã ghi nhận sẵn sàng staging')).toBeTruthy();
   });
 
   it('shows permission denied state without action controls when detail read is forbidden', () => {
@@ -305,9 +305,9 @@ describe('Packing list/detail pages', () => {
       ['/packing/package-1'],
     );
 
-    expect(screen.getByRole('heading', { name: 'Permission denied' })).toBeTruthy();
-    expect(screen.queryByText('Packing actions')).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Close package$/i })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Từ chối quyền truy cập' })).toBeTruthy();
+    expect(screen.queryByText('Thao tác đóng gói')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Đóng kiện$/i })).toBeNull();
   });
 
   it('shows blocked detail state without mutation controls', () => {
@@ -324,8 +324,8 @@ describe('Packing list/detail pages', () => {
       ['/packing/package-1'],
     );
 
-    expect(screen.getByRole('heading', { name: 'Package blocked' })).toBeTruthy();
-    expect(screen.queryByText('Packing actions')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Kiện hàng bị chặn' })).toBeTruthy();
+    expect(screen.queryByText('Thao tác đóng gói')).toBeNull();
   });
 
   it('keeps ready-for-staging package read-only on detail page', () => {
@@ -342,8 +342,8 @@ describe('Packing list/detail pages', () => {
       ['/packing/package-1'],
     );
 
-    expect(screen.getByText('Package read-only')).toBeTruthy();
-    const readyButton = screen.getByRole('button', { name: /^Ready for staging$/i });
+    expect(screen.getByText('Kiện hàng chỉ đọc')).toBeTruthy();
+    const readyButton = screen.getByRole('button', { name: /^Sẵn sàng staging$/i });
     expect((readyButton as HTMLButtonElement).disabled).toBe(true);
   });
 });

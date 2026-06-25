@@ -8,6 +8,7 @@ import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { usePackingMutations } from '@modules/Packing/Application/Commands/UsePackingMutations';
 import { usePackage } from '@modules/Packing/Application/Queries/UsePacking';
 import {
@@ -39,17 +40,17 @@ function numberOrUndefined(value: string): number | undefined {
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete packing action.';
+  return 'Không thể hoàn tất thao tác đóng gói.';
 }
 
 function StatusBadge({ status }: { status: PackageStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function SessionBadge({ session }: { session: PackSession }) {
   return (
     <span className="rounded-md border px-2 py-1 text-xs font-medium">
-      {session.status} / {session.checkResult}
+      {vietnameseOperationalLabel(session.status)} / {vietnameseOperationalLabel(session.checkResult)}
     </span>
   );
 }
@@ -57,34 +58,34 @@ function SessionBadge({ session }: { session: PackSession }) {
 function PackageSummary({ pack }: { pack: Package }) {
   return (
     <div className="space-y-3 rounded-md border p-4 text-sm">
-      <h2 className="text-base font-semibold">Package content</h2>
+      <h2 className="text-base font-semibold">Nội dung kiện hàng</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <div className="text-muted-foreground text-xs">Pack session</div>
+          <div className="text-muted-foreground text-xs">Phiên đóng gói</div>
           <div>{pack.packSessionId}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Pick task</div>
+          <div className="text-muted-foreground text-xs">Tác vụ lấy hàng</div>
           <div>{pack.pickTaskId}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Outbound order</div>
+          <div className="text-muted-foreground text-xs">Đơn xuất kho</div>
           <div>{pack.outboundOrderId}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Carton</div>
+          <div className="text-muted-foreground text-xs">Thùng</div>
           <div>{pack.cartonType}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Weight</div>
-          <div>{pack.weight ?? 'n/a'}</div>
+          <div className="text-muted-foreground text-xs">Khối lượng</div>
+          <div>{pack.weight ?? 'không áp dụng'}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Dimensions</div>
+          <div className="text-muted-foreground text-xs">Kích thước</div>
           <div>
             {[pack.length, pack.width, pack.height].every((item) => typeof item === 'number')
               ? `${pack.length} x ${pack.width} x ${pack.height}`
-              : 'n/a'}
+              : 'không áp dụng'}
           </div>
         </div>
       </div>
@@ -92,18 +93,18 @@ function PackageSummary({ pack }: { pack: Package }) {
         {pack.contents.map((content) => (
           <div key={content.id} className="grid gap-1 rounded-md border p-3 sm:grid-cols-5">
             <span>{content.skuCode ?? content.skuId}</span>
-            <span>Qty {content.quantity}</span>
+            <span>Số lượng {content.quantity}</span>
             <span>{content.uomCode ?? content.uomId}</span>
-            <span>{content.inventoryStatusCode ?? 'No inventory status'}</span>
-            <span>{content.lotNumber ?? content.serialNumber ?? content.expiryDate ?? 'No lot data'}</span>
+            <span>{content.inventoryStatusCode ?? 'Chưa có trạng thái tồn kho'}</span>
+            <span>{content.lotNumber ?? content.serialNumber ?? content.expiryDate ?? 'Chưa có dữ liệu lô'}</span>
           </div>
         ))}
       </div>
       {pack.labelBlockingDecision ? (
         <div className="rounded-md border p-3">
-          <div className="font-medium">Label gate</div>
+          <div className="font-medium">Cổng kiểm soát nhãn</div>
           <div className="text-muted-foreground">
-            {pack.labelBlockingDecision} | {pack.labelPrintJobCode ?? pack.labelPrintJobId ?? 'No print job'}
+            {vietnameseOperationalLabel(pack.labelBlockingDecision)} | {pack.labelPrintJobCode ?? pack.labelPrintJobId ?? 'Chưa có lệnh in'}
           </div>
         </div>
       ) : null}
@@ -314,10 +315,10 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
           setIdempotencyKey('');
           setLastReadyMessage(
             result.labelValidation.blocked
-              ? `Label gate blocked: ${result.labelValidation.reason}`
+              ? `Cổng kiểm soát nhãn bị chặn: ${result.labelValidation.reason}`
               : result.isDuplicate
-                ? 'Ready for staging already posted'
-                : 'Ready for staging posted',
+                ? 'Sẵn sàng staging đã được ghi nhận trước đó'
+                : 'Đã ghi nhận sẵn sàng staging',
           );
         },
       },
@@ -326,73 +327,77 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
 
   return (
     <DetailPageShell
-      title={mode === 'new' ? 'New package workflow' : (pack?.packageCode ?? 'Package detail')}
-      subtitle="Checking, packing, label gate and ready-for-staging actions"
+      title={mode === 'new' ? 'Quy trình tạo kiện hàng mới' : (pack?.packageCode ?? 'Chi tiết kiện hàng')}
+      subtitle="Thao tác kiểm tra, đóng gói, cổng nhãn và sẵn sàng staging"
       backTo={ROUTES.PACKING.ROOT}
-      backLabel="Back to packages"
+      backLabel="Quay lại kiện hàng"
       status={pack ? <StatusBadge status={pack.status} /> : session ? <SessionBadge session={session} /> : null}
       summary={
         pack ? (
           <>
-            <span>{pack.warehouseCode ?? pack.warehouseId ?? 'warehouse unresolved'}</span>
-            <span>{pack.ownerCode ?? pack.ownerId ?? 'owner unresolved'}</span>
-            <span>{pack.checkRequired ? `Check ${pack.checkResult}` : 'Check not required'}</span>
+            <span>{pack.warehouseCode ?? pack.warehouseId ?? 'chưa xác định kho'}</span>
+            <span>{pack.ownerCode ?? pack.ownerId ?? 'chưa xác định chủ hàng'}</span>
+            <span>{pack.checkRequired ? `Kiểm tra ${vietnameseOperationalLabel(pack.checkResult)}` : 'Không yêu cầu kiểm tra'}</span>
           </>
         ) : session ? (
           <>
             <span>{session.sessionNumber}</span>
             <span>{session.pickTaskId}</span>
-            <span>{session.checkRequired ? `Check ${session.checkResult}` : 'Check not required'}</span>
+            <span>
+              {session.checkRequired
+                ? `Kiểm tra ${vietnameseOperationalLabel(session.checkResult)}`
+                : 'Không yêu cầu kiểm tra'}
+            </span>
           </>
         ) : null
       }
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : isBlockedPackage
-            ? 'Package blocked'
+            ? 'Kiện hàng bị chặn'
             : isReadOnlyPackage
-              ? 'Package read-only'
+              ? 'Kiện hàng chỉ đọc'
           : packageQuery.error
-            ? 'Unable to load package'
+            ? 'Không thể tải kiện hàng'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for package detail.'
+          ? 'Bạn không có quyền xem chi tiết kiện hàng.'
           : isBlockedPackage
-            ? 'Resolve the blocking condition before changing this package.'
+            ? 'Hãy xử lý điều kiện chặn trước khi thay đổi kiện hàng này.'
             : isReadOnlyPackage
-              ? 'This package is already ready for staging; mutation actions are disabled.'
+              ? 'Kiện hàng đã sẵn sàng staging; thao tác thay đổi bị tắt.'
           : packageQuery.error
-            ? (errorMessage(packageQuery.error) ?? 'The package could not be loaded.')
-            : 'The requested package was not found.'
+            ? (errorMessage(packageQuery.error) ?? 'Không thể tải kiện hàng.')
+            : 'Không tìm thấy kiện hàng được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="space-y-4">
           {mode === 'new' ? (
             <ActionPanel
-              title="Start pack session"
-              description="Creates the package work session from a completed pick task."
+              title="Bắt đầu phiên đóng gói"
+              description="Tạo phiên đóng gói từ tác vụ lấy hàng đã hoàn tất."
               state={mutations.startSession.isPending ? 'pending' : 'idle'}
             >
               <form className="space-y-3" onSubmit={handleStartSession}>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm">
-                    Pick task id
+                    ID tác vụ lấy hàng
                     <Input value={pickTaskId} onChange={(event) => setPickTaskId(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Mobile task id
+                    ID tác vụ mobile
                     <Input
                       value={mobileTaskId}
                       onChange={(event) => setMobileTaskId(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Warehouse profile id
+                    ID hồ sơ kho
                     <Input
                       value={warehouseProfileId}
                       onChange={(event) => setWarehouseProfileId(event.target.value)}
@@ -404,12 +409,12 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                       checked={checkRequired}
                       onChange={(event) => setCheckRequired(event.target.checked)}
                     />
-                    Force checking
+                    Bắt buộc kiểm tra
                   </label>
                 </div>
                 <Button type="submit" disabled={!canStart || mutations.startSession.isPending}>
                   <PackagePlus className="size-4" aria-hidden="true" />
-                  Start session
+                  Bắt đầu phiên
                 </Button>
               </form>
             </ActionPanel>
@@ -419,23 +424,23 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
 
           {session ? (
             <div className="space-y-3 rounded-md border p-4 text-sm">
-              <h2 className="text-base font-semibold">Session state</h2>
+              <h2 className="text-base font-semibold">Trạng thái phiên</h2>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <div className="text-muted-foreground text-xs">Session</div>
+                  <div className="text-muted-foreground text-xs">Phiên</div>
                   <div>{session.sessionNumber}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground text-xs">Status</div>
+                  <div className="text-muted-foreground text-xs">Trạng thái</div>
                   <div>{session.status}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground text-xs">Check result</div>
+                  <div className="text-muted-foreground text-xs">Kết quả kiểm tra</div>
                   <div>{session.checkResult}</div>
                 </div>
               </div>
               {session.checkExceptionCaseId ? (
-                <div className="text-destructive">Exception case: {session.checkExceptionCaseId}</div>
+                <div className="text-destructive">Hồ sơ ngoại lệ: {session.checkExceptionCaseId}</div>
               ) : null}
             </div>
           ) : null}
@@ -443,26 +448,26 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
 
         <aside className="space-y-4">
           <ActionPanel
-            title="Packing actions"
-            description="Actions require reason/evidence when policy requires it and an idempotency key."
+            title="Thao tác đóng gói"
+            description="Thao tác yêu cầu lý do/bằng chứng khi chính sách yêu cầu và cần khóa idempotency."
             state={isReadOnlyPackage ? 'disabled' : mutationError ? 'error' : 'idle'}
             stateMessage={
               isReadOnlyPackage
-                ? 'Package is ready for staging and cannot be changed from this action surface.'
+                ? 'Kiện hàng đã sẵn sàng staging và không thể đổi từ khu vực thao tác này.'
                 : (mutationError ?? undefined)
             }
           >
             <div className="grid gap-3">
               <label className="grid gap-1 text-sm">
-                Reason code
+                Mã lý do
                 <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Reason note
+                Ghi chú lý do
                 <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Evidence refs
+                Tham chiếu bằng chứng
                 <textarea
                   className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={evidenceRefs}
@@ -470,14 +475,14 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Idempotency key
+                Khóa idempotency
                 <Input
                   value={idempotencyKey}
                   onChange={(event) => setIdempotencyKey(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Check result
+                Kết quả kiểm tra
                 <select
                   className="rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={checkResult}
@@ -492,7 +497,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm">
-                  Observed quantity
+                  Số lượng quan sát
                   <Input
                     value={observedQuantity}
                     onChange={(event) => setObservedQuantity(event.target.value)}
@@ -500,7 +505,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Observed SKU id
+                  ID SKU quan sát
                   <Input
                     value={observedSkuId}
                     onChange={(event) => setObservedSkuId(event.target.value)}
@@ -508,32 +513,32 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                 </label>
               </div>
               <label className="grid gap-1 text-sm">
-                Observed SKU code
+                Mã SKU quan sát
                 <Input value={observedSkuCode} onChange={(event) => setObservedSkuCode(event.target.value)} />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm">
-                  Carton type
+                  Loại thùng
                   <Input value={cartonType} onChange={(event) => setCartonType(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Weight
+                  Khối lượng
                   <Input value={weight} onChange={(event) => setWeight(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Length
+                  Dài
                   <Input value={length} onChange={(event) => setLength(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Width
+                  Rộng
                   <Input value={width} onChange={(event) => setWidth(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Height
+                  Cao
                   <Input value={height} onChange={(event) => setHeight(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Label type
+                  Loại nhãn
                   <Input value={labelType} onChange={(event) => setLabelType(event.target.value)} />
                 </label>
               </div>
@@ -543,7 +548,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   checked={attemptOverride}
                   onChange={(event) => setAttemptOverride(event.target.checked)}
                 />
-                Attempt override
+                Thử ghi đè
               </label>
             </div>
             {mode === 'new' ? (
@@ -555,7 +560,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   onClick={runCheck}
                 >
                   <ClipboardCheck className="size-4" aria-hidden="true" />
-                  Record check
+                  Ghi nhận kiểm tra
                 </Button>
                 <Button
                   type="button"
@@ -564,7 +569,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   onClick={runCreatePackage}
                 >
                   <PackagePlus className="size-4" aria-hidden="true" />
-                  Create package
+                  Tạo kiện hàng
                 </Button>
               </div>
             ) : (
@@ -576,7 +581,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   onClick={runClosePackage}
                 >
                   <PackageCheck className="size-4" aria-hidden="true" />
-                  Close package
+                  Đóng kiện
                 </Button>
                 <Button
                   type="button"
@@ -585,7 +590,7 @@ export function PackingDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail'
                   onClick={runReadyForStaging}
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
-                  Ready for staging
+                  Sẵn sàng staging
                 </Button>
               </div>
             )}
