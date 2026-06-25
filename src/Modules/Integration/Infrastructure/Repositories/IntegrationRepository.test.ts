@@ -2,8 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
 import { IntegrationRepository } from '@modules/Integration/Infrastructure/Repositories/IntegrationRepository';
-import { outboxDto } from '@modules/Integration/Infrastructure/Mappers/IntegrationMapper.test';
-import type { PagedOutboxMessageDto } from '@modules/Integration/Infrastructure/Dtos/IntegrationDtos';
+import {
+  outboxDto,
+  reconciliationItemDto,
+  reconciliationRunDto,
+} from '@modules/Integration/Infrastructure/Mappers/IntegrationMapper.test';
+import type {
+  PagedOutboxMessageDto,
+  PagedReconciliationItemDto,
+  PagedReconciliationRunDto,
+} from '@modules/Integration/Infrastructure/Dtos/IntegrationDtos';
 
 class FakeHttpClient implements HttpClient {
   public calls: Array<{ method: string; url: string; body?: unknown; config?: unknown }> = [];
@@ -17,11 +25,26 @@ class FakeHttpClient implements HttpClient {
       TotalItems: 1,
       TotalPages: 1,
     };
+    const reconciliationRuns: PagedReconciliationRunDto = {
+      Items: [reconciliationRunDto],
+      Meta: { Page: 1, PageSize: 100, TotalItems: 1, TotalPages: 1 },
+    };
+    const reconciliationItems: PagedReconciliationItemDto = {
+      Items: [reconciliationItemDto],
+      Meta: { Page: 1, PageSize: 100, TotalItems: 1, TotalPages: 1 },
+    };
+    if (url.includes('/reconciliation/runs/run-1/items')) return Promise.resolve(reconciliationItems as T);
+    if (url.includes('/reconciliation/runs/run-1')) return Promise.resolve(reconciliationRunDto as T);
+    if (url.includes('/reconciliation/runs')) return Promise.resolve(reconciliationRuns as T);
     return Promise.resolve((url.includes('/dead-letters/outbox-1') ? outboxDto : page) as T);
   }
 
   post<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
     this.calls.push({ method: 'post', url, body, config });
+    if (url.includes('/reconciliation/items/item-1/resolve')) return Promise.resolve(reconciliationItemDto as T);
+    if (url.includes('/reconciliation/runs')) {
+      return Promise.resolve({ Run: reconciliationRunDto, Items: [reconciliationItemDto] } as T);
+    }
     return Promise.resolve(outboxDto as T);
   }
 
@@ -112,5 +135,87 @@ describe('IntegrationRepository', () => {
     });
     expect(http.calls[2].body).toMatchObject({ ManualFixPayload: { owner: 'OWNER-A' } });
     expect(http.calls[5].body).toEqual({ FailureCategory: 'Validation', ErrorMessage: 'Missing owner' });
+  });
+
+  it('uses reconciliation endpoints, clamps PageSize and posts reason/evidence/idempotency payloads', async () => {
+    const http = new FakeHttpClient();
+    const repository = new IntegrationRepository(http);
+
+    await repository.listReconciliationRuns({
+      page: 2,
+      pageSize: 500,
+      businessReference: 'SHIP-001',
+      warehouseId: 'WT-01',
+      ownerId: 'OWNER-A',
+      runStatus: 'CompletedWithMismatch',
+    });
+    await repository.getReconciliationRun('run-1');
+    await repository.listReconciliationItems('run-1', {
+      pageSize: 500,
+      businessReference: 'SHIP-001',
+      warehouseId: 'WT-01',
+      ownerId: 'OWNER-A',
+      itemStatus: 'Open',
+      severity: 'High',
+      updatedFrom: '2026-06-25T00:00:00.000Z',
+      updatedTo: '2026-06-25T23:59:59.000Z',
+    });
+    await repository.createReconciliationRun({
+      businessReference: 'SHIP-001',
+      warehouseId: 'WT-01',
+      reasonCode: 'RC-V1-DEAD-LETTER-FIX',
+      evidenceRefs: ['ticket:RECON-1'],
+      idempotencyKey: 'recon-1',
+    });
+    await repository.resolveReconciliationItem('item-1', {
+      reasonCode: 'RC-V1-DEAD-LETTER-FIX',
+      evidenceRefs: ['ticket:RECON-2'],
+      idempotencyKey: 'resolve-1',
+      resolutionNote: 'External correction confirmed',
+    });
+
+    expect(http.calls.map((call) => [call.method, call.url])).toEqual([
+      ['get', '/integration/reconciliation/runs'],
+      ['get', '/integration/reconciliation/runs/run-1'],
+      ['get', '/integration/reconciliation/runs/run-1/items'],
+      ['post', '/integration/reconciliation/runs'],
+      ['post', '/integration/reconciliation/items/item-1/resolve'],
+    ]);
+    expect(http.calls[0].config).toMatchObject({
+      params: {
+        Page: 2,
+        PageSize: 100,
+        BusinessReference: 'SHIP-001',
+        WarehouseId: 'WT-01',
+        OwnerId: 'OWNER-A',
+        RunStatus: 'CompletedWithMismatch',
+      },
+    });
+    expect(http.calls[2].config).toMatchObject({
+      params: {
+        Page: 1,
+        PageSize: 100,
+        BusinessReference: 'SHIP-001',
+        WarehouseId: 'WT-01',
+        OwnerId: 'OWNER-A',
+        ItemStatus: 'Open',
+        Severity: 'High',
+        UpdatedFrom: '2026-06-25T00:00:00.000Z',
+        UpdatedTo: '2026-06-25T23:59:59.000Z',
+      },
+    });
+    expect(http.calls[3].body).toMatchObject({
+      BusinessReference: 'SHIP-001',
+      WarehouseId: 'WT-01',
+      ReasonCode: 'RC-V1-DEAD-LETTER-FIX',
+      EvidenceRefs: ['ticket:RECON-1'],
+      IdempotencyKey: 'recon-1',
+    });
+    expect(http.calls[4].body).toMatchObject({
+      ReasonCode: 'RC-V1-DEAD-LETTER-FIX',
+      EvidenceRefs: ['ticket:RECON-2'],
+      IdempotencyKey: 'resolve-1',
+      ResolutionNote: 'External correction confirmed',
+    });
   });
 });

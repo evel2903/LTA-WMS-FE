@@ -23,3 +23,9 @@ export const INTEGRATION_FAILURE_CATEGORIES = [
   'DuplicateConflict',
   'RetryExhausted',
 ] as const;
+
+export const RECONCILIATION_RUN_STATUSES = ['Completed', 'CompletedWithMismatch', 'Resolved', 'Failed'] as const;
+
+export const RECONCILIATION_ITEM_STATUSES = ['Open', 'Resolved', 'Blocked'] as const;
+
+export const RECONCILIATION_SEVERITIES = ['Low', 'Medium', 'High'] as const;
