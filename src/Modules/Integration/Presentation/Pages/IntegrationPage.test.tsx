@@ -88,7 +88,7 @@ function makeRun(overrides: Partial<ReconciliationRun> = {}): ReconciliationRun 
     idempotencyKey: 'recon-1',
     reasonCode: 'RC-V1-DEAD-LETTER-FIX',
     reasonCodeId: 'reason-1',
-    reasonNote: 'Manual reconciliation',
+    reasonNote: 'Đối soát thủ công',
     evidenceRefs: ['ticket:RECON-1'],
     resolvedAt: null,
     resolvedBy: null,
@@ -189,7 +189,7 @@ describe('Integration list/detail pages', () => {
     expect(screen.getByRole('link', { name: /SHIP-001/i }).getAttribute('href')).toBe(
       '/integration/dead-letters/outbox-1',
     );
-    expect(screen.queryByRole('button', { name: /Apply action/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Áp dụng thao tác/i })).toBeNull();
     expect(useIntegrationDeadLetters).toHaveBeenCalledWith({
       businessReference: undefined,
       warehouseContext: undefined,
@@ -218,9 +218,9 @@ describe('Integration list/detail pages', () => {
       ['/integration/dead-letters/outbox-1/retry'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:INT-1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'retry-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Apply action$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'ticket:INT-1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'retry-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Áp dụng thao tác$/i }));
 
     expect(mutations.retryDeadLetter.mutate).toHaveBeenCalledWith(
       {
@@ -252,12 +252,12 @@ describe('Integration list/detail pages', () => {
       ['/integration/dead-letters/outbox-1/manual-fix'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:INT-2' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'fix-1' } });
-    fireEvent.change(screen.getByLabelText('Manual fix payload JSON'), { target: { value: '{bad-json' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Apply action$/i }));
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'ticket:INT-2' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'fix-1' } });
+    fireEvent.change(screen.getByLabelText('Payload JSON sửa thủ công'), { target: { value: '{bad-json' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Áp dụng thao tác$/i }));
 
-    expect(screen.getByText('Manual fix payload must be valid JSON.')).toBeTruthy();
+    expect(screen.getByText('Payload sửa thủ công phải là JSON hợp lệ.')).toBeTruthy();
     expect(mutations.manualFixDeadLetter.mutate).not.toHaveBeenCalled();
   });
 
@@ -283,11 +283,11 @@ describe('Integration list/detail pages', () => {
       ['/integration/dead-letters/outbox-1'],
     );
 
-    expect(screen.getByText('Read-only dead-letter')).toBeTruthy();
-    expect(screen.getByText('Resolution action: Acknowledge')).toBeTruthy();
+    expect(screen.getByText('Dead-letter chỉ đọc')).toBeTruthy();
+    expect(screen.getByText('Thao tác xử lý: Acknowledge')).toBeTruthy();
     expect(screen.getByText(/ticket:ACK-1/i)).toBeTruthy();
-    expect(screen.queryByRole('link', { name: /Retry/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Apply action/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Thử lại/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Áp dụng thao tác/i })).toBeNull();
   });
 
   it('renders reconciliation list as links and keeps resolve form off the list page', () => {
@@ -296,7 +296,7 @@ describe('Integration list/detail pages', () => {
     expect(screen.getByRole('link', { name: /SHIP-001/i }).getAttribute('href')).toBe(
       '/integration/reconciliation/run-1',
     );
-    expect(screen.queryByRole('button', { name: /Resolve item/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Xử lý dòng/i })).toBeNull();
     expect(useIntegrationReconciliationRuns).toHaveBeenCalledWith({
       businessReference: undefined,
       warehouseId: undefined,
@@ -322,12 +322,12 @@ describe('Integration list/detail pages', () => {
       ['/integration/reconciliation/run-1/resolve'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:RECON-1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'resolve-1' } });
-    fireEvent.change(screen.getByLabelText('Resolution note'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'ticket:RECON-1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'resolve-1' } });
+    fireEvent.change(screen.getByLabelText('Ghi chú xử lý'), {
       target: { value: 'External correction confirmed' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^Resolve item$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Xử lý dòng$/i }));
 
     expect(mutations.resolveReconciliationItem.mutate).toHaveBeenCalledWith(
       {
@@ -362,13 +362,13 @@ describe('Integration list/detail pages', () => {
       ['/integration/reconciliation/run-1/resolve'],
     );
 
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:RECON-1' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'resolve-1' } });
-    fireEvent.change(screen.getByLabelText('Resolution note'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'ticket:RECON-1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'resolve-1' } });
+    fireEvent.change(screen.getByLabelText('Ghi chú xử lý'), {
       target: { value: 'Would affect inventory' },
     });
-    fireEvent.click(screen.getByLabelText('Impacts inventory'));
-    fireEvent.click(screen.getByRole('button', { name: /^Resolve item$/i }));
+    fireEvent.click(screen.getByLabelText('Ảnh hưởng tồn kho'));
+    fireEvent.click(screen.getByRole('button', { name: /^Xử lý dòng$/i }));
 
     expect(screen.getByText('Blocked by workflow control')).toBeTruthy();
     expect(mutations.resolveReconciliationItem.mutate).not.toHaveBeenCalled();

@@ -7,6 +7,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useOutboundMutations } from '@modules/Outbound/Application/Commands/UseOutboundMutations';
 import {
@@ -34,19 +35,19 @@ function evidence(value: string): string[] {
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete outbound action.';
+  return 'Không thể hoàn tất thao tác xuất kho.';
 }
 
 function StatusBadge({ status }: { status: OutboundOrderStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function AllocationBadge({ status }: { status: AllocationStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function PickReleaseBadge({ status }: { status: PickReleaseStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail' }) {
@@ -238,16 +239,16 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
   return (
     <DetailPageShell
-      title={mode === 'new' ? 'Import outbound order' : (order?.orderNumber ?? 'Outbound order')}
-      subtitle="Outbound import, validation and governed document actions"
+      title={mode === 'new' ? 'Import đơn xuất kho' : (order?.orderNumber ?? 'Đơn xuất kho')}
+      subtitle="Import đơn xuất, xác thực và thao tác chứng từ có kiểm soát"
       backTo={ROUTES.OUTBOUND.ROOT}
-      backLabel="Back to outbound orders"
+      backLabel="Quay lại đơn xuất kho"
       status={order ? <StatusBadge status={order.documentStatus} /> : null}
       summary={
         order ? (
           <>
             <span>{order.businessReference}</span>
-            <span>{order.customerCode ?? order.customerId ?? 'customer unresolved'}</span>
+            <span>{order.customerCode ?? order.customerId ?? 'chưa xác định khách hàng'}</span>
             <span>{order.warehouseCode ?? order.warehouseId}</span>
           </>
         ) : null
@@ -255,77 +256,77 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : orderQuery.error
-            ? 'Unable to load outbound order'
+            ? 'Không thể tải đơn xuất kho'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for outbound order detail.'
+          ? 'Bạn không có quyền xem chi tiết đơn xuất kho.'
           : orderQuery.error
-            ? (errorMessage(orderQuery.error) ?? 'The outbound order could not be loaded.')
-            : 'The requested outbound order was not found.'
+            ? (errorMessage(orderQuery.error) ?? 'Không thể tải chi tiết đơn xuất kho.')
+            : 'Không tìm thấy đơn xuất kho được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <section className="space-y-4">
           {mode === 'new' ? (
             <ActionPanel
-              title="Import order"
-              description="Creates validated or held outbound demand from source data."
+              title="Nhập đơn xuất kho"
+              description="Tạo nhu cầu xuất kho đã xác thực hoặc đang giữ từ dữ liệu nguồn."
             >
               <form className="space-y-3" onSubmit={handleImport}>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-1 text-sm">
-                    Source system
+                    Hệ thống nguồn
                     <Input
                       value={sourceSystem}
                       onChange={(event) => setSourceSystem(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Source reference
+                    Tham chiếu nguồn
                     <Input
                       value={sourceReference}
                       onChange={(event) => setSourceReference(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Customer reference
+                    Tham chiếu khách hàng
                     <Input
                       value={customerExternalReference}
                       onChange={(event) => setCustomerExternalReference(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Ship-to reference
+                    Tham chiếu giao đến
                     <Input
                       value={shipToReference}
                       onChange={(event) => setShipToReference(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Owner id
+                    ID chủ hàng
                     <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Warehouse id
+                    ID kho
                     <Input
                       value={warehouseId}
                       onChange={(event) => setWarehouseId(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    SKU id
+                    ID SKU
                     <Input value={skuId} onChange={(event) => setSkuId(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    UOM id
+                    ID đơn vị tính
                     <Input value={uomId} onChange={(event) => setUomId(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Quantity
+                    Số lượng
                     <Input
                       value={quantity}
                       onChange={(event) => setQuantity(event.target.value)}
@@ -338,7 +339,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   disabled={!sourceReference || !ownerId || !warehouseId || !idempotencyKey}
                 >
                   <FileInput className="size-4" aria-hidden="true" />
-                  Import order
+                  Nhập đơn xuất kho
                 </Button>
               </form>
             </ActionPanel>
@@ -346,7 +347,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
           {order ? (
             <div className="space-y-3 rounded-md border p-4 text-sm">
-              <h2 className="text-base font-semibold">Order lines</h2>
+              <h2 className="text-base font-semibold">Dòng đơn hàng</h2>
               {order.lines.map((line) => (
                 <div key={line.id} className="rounded-md border p-3">
                   <div className="font-medium">
@@ -366,7 +367,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
               ))}
               {order.validationErrors.length ? (
                 <div className="text-destructive rounded-md border p-3">
-                  <div className="font-medium">Validation errors</div>
+                  <div className="font-medium">Lỗi xác thực</div>
                   <ul className="mt-2 list-disc pl-5">
                     {order.validationErrors.map((item) => (
                       <li key={item}>{item}</li>
@@ -380,13 +381,13 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           {order ? (
             <div className="space-y-3 rounded-md border p-4 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold">Allocations</h2>
+                <h2 className="text-base font-semibold">Phân bổ</h2>
                 <span className="text-muted-foreground text-xs">
-                  {allocationsQuery.data?.totalItems ?? 0} records
+                  {allocationsQuery.data?.totalItems ?? 0} bản ghi
                 </span>
               </div>
               {allocationsQuery.isLoading ? (
-                <div className="text-muted-foreground">Loading allocations...</div>
+                <div className="text-muted-foreground">Đang tải phân bổ...</div>
               ) : allocationsQuery.data?.items.length ? (
                 allocationsQuery.data.items.map((allocation) => (
                   <div key={allocation.id} className="space-y-2 rounded-md border p-3">
@@ -395,9 +396,9 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                       <AllocationBadge status={allocation.status} />
                     </div>
                     <div className="text-muted-foreground grid gap-1 sm:grid-cols-3">
-                      <span>Policy: {allocation.policy}</span>
-                      <span>Allocated: {allocation.totalAllocatedQuantity}</span>
-                      <span>Backorder: {allocation.totalBackorderedQuantity}</span>
+                      <span>Chính sách: {allocation.policy}</span>
+                      <span>Đã phân bổ: {allocation.totalAllocatedQuantity}</span>
+                      <span>Đặt sau: {allocation.totalBackorderedQuantity}</span>
                     </div>
                     {allocation.shortageReason ? (
                       <div className="text-destructive">{allocation.shortageReason}</div>
@@ -408,17 +409,17 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                           key={line.id}
                           className="grid gap-1 rounded-md bg-muted/40 p-2 sm:grid-cols-4"
                         >
-                          <span>Line {line.lineNumber}</span>
+                          <span>Dòng {line.lineNumber}</span>
                           <span>{line.skuCode ?? line.skuId}</span>
-                          <span>Allocated {line.allocatedQuantity}</span>
-                          <span>Backorder {line.backorderedQuantity}</span>
+                          <span>Đã phân bổ {line.allocatedQuantity}</span>
+                          <span>Đặt sau {line.backorderedQuantity}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-muted-foreground">No allocations recorded.</div>
+                <div className="text-muted-foreground">Chưa có phân bổ nào.</div>
               )}
             </div>
           ) : null}
@@ -426,13 +427,13 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
           {order ? (
             <div className="space-y-3 rounded-md border p-4 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold">Pick releases</h2>
+                <h2 className="text-base font-semibold">Phát hành lấy hàng</h2>
                 <span className="text-muted-foreground text-xs">
-                  {releasesQuery.data?.totalItems ?? 0} records
+                  {releasesQuery.data?.totalItems ?? 0} bản ghi
                 </span>
               </div>
               {releasesQuery.isLoading ? (
-                <div className="text-muted-foreground">Loading pick releases...</div>
+                <div className="text-muted-foreground">Đang tải phát hành lấy hàng...</div>
               ) : releasesQuery.data?.items.length ? (
                 releasesQuery.data.items.map((release) => (
                   <div key={release.id} className="space-y-2 rounded-md border p-3">
@@ -441,10 +442,10 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                       <PickReleaseBadge status={release.status} />
                     </div>
                     <div className="text-muted-foreground grid gap-1 sm:grid-cols-4">
-                      <span>Mode: {release.releaseMode}</span>
-                      <span>Batch size: {release.batchSize}</span>
-                      <span>Tasks: {release.totalTaskCount}</span>
-                      <span>Released: {release.totalReleasedQuantity}</span>
+                      <span>Chế độ: {release.releaseMode}</span>
+                      <span>Cỡ batch: {release.batchSize}</span>
+                      <span>Tác vụ: {release.totalTaskCount}</span>
+                      <span>Đã phát hành: {release.totalReleasedQuantity}</span>
                     </div>
                     {release.blockReason ? (
                       <div className="text-destructive">{release.blockReason}</div>
@@ -456,19 +457,19 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                           className="grid gap-1 rounded-md bg-muted/40 p-2 sm:grid-cols-6"
                         >
                           <span>{task.taskNumber}</span>
-                          <span>Seq {task.sequence}</span>
+                          <span>Thứ tự {task.sequence}</span>
                           <span>{task.skuCode ?? task.skuId}</span>
-                          <span>Qty {task.quantity}</span>
-                          <span>Task status {task.status}</span>
-                          <span>From {task.sourceLocationId}</span>
-                          <span>{task.batchNumber ?? 'Discrete'}</span>
+                          <span>Số lượng {task.quantity}</span>
+                          <span>Trạng thái tác vụ {task.status}</span>
+                          <span>Từ {task.sourceLocationId}</span>
+                          <span>{task.batchNumber ?? 'Rời rạc'}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-muted-foreground">No pick releases recorded.</div>
+                <div className="text-muted-foreground">Chưa có phát hành lấy hàng nào.</div>
               )}
             </div>
           ) : null}
@@ -476,22 +477,22 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
 
         <aside className="space-y-4">
           <ActionPanel
-            title="Governed actions"
-            description="Hold, reject and cancel require reason, evidence when catalog requires it, and idempotency."
+            title="Thao tác có kiểm soát"
+            description="Giữ, từ chối và hủy yêu cầu mã lý do, bằng chứng khi catalog bắt buộc và khóa idempotency."
             state={mutationError ? 'error' : 'idle'}
             stateMessage={mutationError ?? undefined}
           >
             <div className="grid gap-3">
               <label className="grid gap-1 text-sm">
-                Reason code
+                Mã lý do
                 <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Reason note
+                Ghi chú lý do
                 <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
               </label>
               <label className="grid gap-1 text-sm">
-                Evidence refs
+                Tham chiếu bằng chứng
                 <textarea
                   className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={evidenceRefs}
@@ -499,36 +500,36 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Idempotency key
+                Khóa idempotency
                 <Input
                   value={idempotencyKey}
                   onChange={(event) => setIdempotencyKey(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Allocation policy
+                Chính sách phân bổ
                 <select
                   className="rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={allocationPolicy}
                   onChange={(event) => setAllocationPolicy(event.target.value as AllocationPolicy)}
                 >
-                  <option value="PartialBackorder">Partial backorder</option>
-                  <option value="FullOnly">Full only</option>
+                  <option value="PartialBackorder">Backorder một phần</option>
+                  <option value="FullOnly">Chỉ đủ toàn bộ</option>
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Release mode
+                Chế độ phát hành
                 <select
                   className="rounded-md border bg-transparent px-3 py-2 text-sm"
                   value={releaseMode}
                   onChange={(event) => setReleaseMode(event.target.value as PickReleaseMode)}
                 >
-                  <option value="Discrete">Discrete</option>
-                  <option value="Batch">Batch</option>
+                  <option value="Discrete">Rời rạc</option>
+                  <option value="Batch">Theo batch</option>
                 </select>
               </label>
               <label className="grid gap-1 text-sm">
-                Batch size
+                Cỡ batch
                 <Input
                   value={batchSize}
                   onChange={(event) => setBatchSize(event.target.value)}
@@ -545,7 +546,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={() => order && mutations.validateOrder.mutate(order.id)}
                 >
                   <CheckCircle2 className="size-4" aria-hidden="true" />
-                  Validate
+                  Xác thực
                 </Button>
                 <Button
                   type="button"
@@ -554,7 +555,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={() => runReasonAction('hold')}
                 >
                   <PauseCircle className="size-4" aria-hidden="true" />
-                  Hold
+                  Giữ
                 </Button>
                 <Button
                   type="button"
@@ -563,7 +564,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={() => runReasonAction('reject')}
                 >
                   <ShieldX className="size-4" aria-hidden="true" />
-                  Reject
+                  Từ chối
                 </Button>
                 <Button
                   type="button"
@@ -572,7 +573,7 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={() => runReasonAction('cancel')}
                 >
                   <XCircle className="size-4" aria-hidden="true" />
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   type="button"
@@ -581,11 +582,11 @@ export function OutboundDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail
                   onClick={runAllocate}
                 >
                   <PackageCheck className="size-4" aria-hidden="true" />
-                  Allocate
+                  Phân bổ
                 </Button>
                 <Button type="button" variant="outline" disabled={!canRelease} onClick={runRelease}>
                   <PackageCheck className="size-4" aria-hidden="true" />
-                  Release
+                  Phát hành
                 </Button>
               </div>
             ) : null}

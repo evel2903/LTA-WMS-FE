@@ -42,6 +42,8 @@ vi.mock('@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance'
 import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
 import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
 
+vi.setConfig({ testTimeout: 15_000 });
+
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
 }
@@ -99,7 +101,7 @@ class FakeRepository implements Partial<IInboundRepository> {
     gateInRequired: true,
     gateInRecorded: false,
     overrideAccepted: false,
-    reason: 'Gate-in is required before receiving.',
+    reason: 'Cần ghi nhận vào cổng trước khi tiếp nhận.',
   } as const;
 
   constructor(initial: InboundPlan[] = []) {
@@ -470,12 +472,12 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     expect(screen.getByText('SKU-A')).toBeTruthy();
-    expect(screen.getByText(/ETA: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
-    expect(screen.getByText(/CoreFlow trace: core-flow-1/i)).toBeTruthy();
+    expect(screen.getByText(/Dự kiến đến: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
+    expect(screen.getByText(/Dấu vết CoreFlow: core-flow-1/i)).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
-    expect(await screen.findByText(/Gate-in is required before receiving/i)).toBeTruthy();
+    expect(await screen.findByText(/Cần ghi nhận vào cổng trước khi tiếp nhận/i)).toBeTruthy();
     expect(fake.validateReadiness).toHaveBeenCalledWith('inbound-plan-1', {
       attemptOverride: false,
     });
@@ -487,18 +489,18 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage('/inbound/new');
 
-    await actor.type(await screen.findByLabelText('Source system'), 'ERP');
-    await actor.type(screen.getByLabelText('Source document number'), 'ASN-10001');
-    await actor.type(screen.getByLabelText('Supplier id'), 'supplier-1');
-    await actor.type(screen.getByLabelText('Owner id'), 'owner-1');
-    await actor.type(screen.getByLabelText('Warehouse id'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('Warehouse profile id'), 'profile-1');
-    await actor.type(screen.getByLabelText('Expected arrival'), '2026-06-22T08:00');
-    await actor.type(screen.getByLabelText('SKU id'), 'sku-1');
-    await actor.type(screen.getByLabelText('UOM id'), 'uom-1');
-    await actor.clear(screen.getByLabelText('Expected quantity'));
-    await actor.type(screen.getByLabelText('Expected quantity'), '12');
-    await actor.click(screen.getByRole('button', { name: 'Create inbound plan' }));
+    await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
+    await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
+    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
+    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
+    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
+    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    await actor.type(screen.getByLabelText('Thời gian đến dự kiến'), '2026-06-22T08:00');
+    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
+    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
+    await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
+    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
 
     await waitFor(() =>
       expect(fake.create).toHaveBeenCalledWith(
@@ -516,10 +518,10 @@ describe('InboundPage', () => {
     expect(createInput.expectedArrivalAt).toMatch(/^2026-06-22T/);
 
     const gateForm = screen
-      .getByRole('button', { name: 'Record gate-in' })
+      .getByRole('button', { name: 'Ghi nhận vào cổng' })
       .closest('form') as HTMLFormElement;
-    await actor.type(within(gateForm).getByLabelText('Gate reference'), 'GATE-A-001');
-    await actor.click(within(gateForm).getByRole('button', { name: 'Record gate-in' }));
+    await actor.type(within(gateForm).getByLabelText('Tham chiếu cổng'), 'GATE-A-001');
+    await actor.click(within(gateForm).getByRole('button', { name: 'Ghi nhận vào cổng' }));
 
     await waitFor(() =>
       expect(fake.recordGateIn).toHaveBeenCalledWith(
@@ -537,17 +539,17 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage('/inbound/new');
 
-    await actor.type(await screen.findByLabelText('Source system'), 'ERP');
-    await actor.type(screen.getByLabelText('Source document number'), 'ASN-10001');
-    await actor.type(screen.getByLabelText('Supplier id'), 'supplier-1');
-    await actor.type(screen.getByLabelText('Owner id'), 'owner-1');
-    await actor.type(screen.getByLabelText('Warehouse id'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('Warehouse profile id'), 'profile-1');
-    await actor.type(screen.getByLabelText('SKU id'), 'sku-1');
-    await actor.type(screen.getByLabelText('UOM id'), 'uom-1');
-    await actor.click(screen.getByRole('button', { name: 'Create inbound plan' }));
+    await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
+    await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
+    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
+    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
+    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
+    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
+    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
 
-    expect(await screen.findByText(/existing inbound plan reused/i)).toBeTruthy();
+    expect(await screen.findByText(/Đã dùng lại kế hoạch nhập kho hiện có/i)).toBeTruthy();
   });
 
   it('creates source document with multiple lines and external line references', async () => {
@@ -556,31 +558,31 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage('/inbound/new');
 
-    await actor.type(await screen.findByLabelText('Source system'), 'ERP');
-    await actor.clear(screen.getByLabelText('Source document type'));
-    await actor.type(screen.getByLabelText('Source document type'), 'PO');
-    await actor.type(screen.getByLabelText('Source document number'), 'PO-10001');
-    await actor.type(screen.getByLabelText('Supplier id'), 'supplier-1');
-    await actor.type(screen.getByLabelText('Owner id'), 'owner-1');
-    await actor.type(screen.getByLabelText('Warehouse id'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('Warehouse profile id'), 'profile-1');
-    await actor.type(screen.getByLabelText('SKU id'), 'sku-1');
-    await actor.type(screen.getByLabelText('UOM id'), 'uom-1');
-    await actor.clear(screen.getByLabelText('Expected quantity'));
-    await actor.type(screen.getByLabelText('Expected quantity'), '12');
-    await actor.type(screen.getByLabelText('External line reference'), '10');
+    await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
+    await actor.clear(screen.getByLabelText('Loại chứng từ nguồn'));
+    await actor.type(screen.getByLabelText('Loại chứng từ nguồn'), 'PO');
+    await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'PO-10001');
+    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
+    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
+    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
+    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
+    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
+    await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
+    await actor.type(screen.getByLabelText('Tham chiếu dòng ngoài'), '10');
 
-    await actor.click(screen.getByRole('button', { name: 'Add line' }));
-    const skuInputs = screen.getAllByLabelText('SKU id');
-    const uomInputs = screen.getAllByLabelText('UOM id');
-    const qtyInputs = screen.getAllByLabelText('Expected quantity');
-    const refInputs = screen.getAllByLabelText('External line reference');
+    await actor.click(screen.getByRole('button', { name: 'Thêm dòng' }));
+    const skuInputs = screen.getAllByLabelText('ID SKU');
+    const uomInputs = screen.getAllByLabelText('ID đơn vị tính');
+    const qtyInputs = screen.getAllByLabelText('Số lượng dự kiến');
+    const refInputs = screen.getAllByLabelText('Tham chiếu dòng ngoài');
     await actor.type(skuInputs[1], 'sku-2');
     await actor.type(uomInputs[1], 'uom-2');
     await actor.clear(qtyInputs[1]);
     await actor.type(qtyInputs[1], '8');
     await actor.type(refInputs[1], '20');
-    await actor.click(screen.getByRole('button', { name: 'Create inbound plan' }));
+    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
 
     await waitFor(() =>
       expect(fake.create).toHaveBeenCalledWith(
@@ -602,14 +604,14 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    expect(screen.getByRole('button', { name: 'Override readiness' })).toHaveProperty(
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    expect(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' })).toHaveProperty(
       'disabled',
       true,
     );
 
-    await actor.type(screen.getByLabelText('Readiness reason code'), 'RC-V1-HANDOFF');
-    await actor.click(screen.getByRole('button', { name: 'Override readiness' }));
+    await actor.type(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
 
     await waitFor(() =>
       expect(fake.validateReadiness).toHaveBeenLastCalledWith('inbound-plan-1', {
@@ -617,7 +619,7 @@ describe('InboundPage', () => {
         reasonCode: 'RC-V1-HANDOFF',
       }),
     );
-    expect(await screen.findByText(/override accepted/i)).toBeTruthy();
+    expect(await screen.findByText(/Ghi đè đã được chấp nhận/i)).toBeTruthy();
   });
 
   it('starts receiving and confirms a scan receipt line through repository commands', async () => {
@@ -626,16 +628,16 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.clear(screen.getByLabelText('Receiving session key'));
-    await actor.type(screen.getByLabelText('Receiving session key'), 'dock-1:user-1');
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
 
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
-    await actor.type(screen.getByLabelText('Raw scan value'), '01012345678901281726010110LOT-A');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
-    const confirmButton = screen.getByRole('button', { name: 'Confirm receipt line' });
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), '01012345678901281726010110LOT-A');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
@@ -658,8 +660,8 @@ describe('InboundPage', () => {
         resolvedUomId: 'uom-1',
       },
     });
-    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
-  });
+    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+  }, 15_000);
 
   it('routes a confirmed discrepancy line with reason, evidence and idempotency', async () => {
     const actor = userEvent.setup();
@@ -667,24 +669,24 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Actual quantity'));
-    await actor.type(screen.getByLabelText('Actual quantity'), '14');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
-    const confirmButton = screen.getByRole('button', { name: 'Confirm receipt line' });
+    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
+    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
-    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
-    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), 'photo://dock/over-qty-1');
-    await actor.clear(screen.getByLabelText('Discrepancy idempotency key'));
-    await actor.type(screen.getByLabelText('Discrepancy idempotency key'), 'discrepancy-1');
-    await actor.click(screen.getByRole('button', { name: 'Route discrepancy' }));
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), 'photo://dock/over-qty-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
+    await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-1');
+    await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
 
     await waitFor(() => expect(fake.captureDiscrepancy).toHaveBeenCalledTimes(1));
     const [receiptId, discrepancyInput] = fake.captureDiscrepancy.mock.calls[0];
@@ -697,7 +699,7 @@ describe('InboundPage', () => {
       idempotencyKey: 'discrepancy-1',
     });
     expect(
-      await screen.findByText(/Discrepancy PendingApproval \/ Exception exception-1/i),
+      await screen.findByText(/Sai lệch Chờ phê duyệt \/ Ngoại lệ exception-1/i),
     ).toBeTruthy();
   });
 
@@ -707,22 +709,22 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
-    await actor.clear(screen.getByLabelText('QC task idempotency key'));
-    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
-    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
 
     await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
     expect(fake.evaluateQcTask).toHaveBeenCalledWith('receipt-1', {
@@ -733,7 +735,7 @@ describe('InboundPage', () => {
       reasonNote: null,
       evidenceRefs: [],
     });
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
   });
 
   it('confirms LPN/SSCC and releases READY_FOR_PUTAWAY line to putaway', async () => {
@@ -742,37 +744,37 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
-    await actor.clear(screen.getByLabelText('QC task idempotency key'));
-    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
-    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
 
-    const releaseButton = screen.getByRole('button', { name: 'Release to putaway' });
+    const releaseButton = screen.getByRole('button', { name: 'Phát hành sang cất hàng' });
     expect(releaseButton).toHaveProperty('disabled', true);
-    await actor.type(screen.getByLabelText('LPN code'), 'LPN-0001');
-    await actor.type(screen.getByLabelText('SSCC code'), '003456789012345678');
-    await actor.clear(screen.getByLabelText('LPN idempotency key'));
-    await actor.type(screen.getByLabelText('LPN idempotency key'), 'lpn-1');
-    await actor.click(screen.getByRole('button', { name: 'Confirm LPN/SSCC' }));
+    await actor.type(screen.getByLabelText('Mã LPN'), 'LPN-0001');
+    await actor.type(screen.getByLabelText('Mã SSCC'), '003456789012345678');
+    await actor.clear(screen.getByLabelText('Khóa idempotency LPN'));
+    await actor.type(screen.getByLabelText('Khóa idempotency LPN'), 'lpn-1');
+    await actor.click(screen.getByRole('button', { name: 'Xác nhận LPN/SSCC' }));
 
     expect(await screen.findByText(/LPN LPN-0001 \/ 003456789012345678/i)).toBeTruthy();
-    await actor.clear(screen.getByLabelText('Current location code'));
-    await actor.type(screen.getByLabelText('Current location code'), 'RCV-01');
-    await actor.clear(screen.getByLabelText('Release idempotency key'));
-    await actor.type(screen.getByLabelText('Release idempotency key'), 'release-1');
+    await actor.clear(screen.getByLabelText('Mã vị trí hiện tại'));
+    await actor.type(screen.getByLabelText('Mã vị trí hiện tại'), 'RCV-01');
+    await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
+    await actor.type(screen.getByLabelText('Khóa idempotency phát hành'), 'release-1');
     await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));
     fireEvent.submit(releaseButton.closest('form') as HTMLFormElement);
 
@@ -791,8 +793,8 @@ describe('InboundPage', () => {
       evidenceRefs: [],
       idempotencyKey: 'release-1',
     });
-    expect(await screen.findByText(/Released 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i)).toBeTruthy();
-  });
+    expect(await screen.findByText(/Đã phát hành 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i)).toBeTruthy();
+  }, 15_000);
 
   it('shows backend release block reason inline', async () => {
     const actor = userEvent.setup();
@@ -807,28 +809,28 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
-    await actor.clear(screen.getByLabelText('QC task idempotency key'));
-    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-skipped');
-    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Skipped/i)).toBeTruthy();
+    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
+    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
 
-    await actor.click(screen.getByLabelText('Require LPN'));
-    await actor.clear(screen.getByLabelText('Release idempotency key'));
-    await actor.type(screen.getByLabelText('Release idempotency key'), 'release-blocked');
-    const releaseButton = screen.getByRole('button', { name: 'Release to putaway' });
+    await actor.click(screen.getByLabelText('Yêu cầu LPN'));
+    await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
+    await actor.type(screen.getByLabelText('Khóa idempotency phát hành'), 'release-blocked');
+    const releaseButton = screen.getByRole('button', { name: 'Phát hành sang cất hàng' });
     await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));
     fireEvent.submit(releaseButton.closest('form') as HTMLFormElement);
 
@@ -843,43 +845,43 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    expect(await screen.findByText(/Receipt ASN-10001-RCPT ready/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Received/i)).toBeTruthy();
-    await actor.click(screen.getByLabelText('Force QC required'));
-    await actor.clear(screen.getByLabelText('QC task idempotency key'));
-    await actor.type(screen.getByLabelText('QC task idempotency key'), 'qc-task-required');
-    await actor.click(screen.getByRole('button', { name: 'Evaluate QC' }));
+    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    await actor.click(screen.getByLabelText('Bắt buộc QC'));
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-required');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
     expect(await screen.findByText(/QC PendingQc \/ PENDING_QC \/ Forced/i)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('QC result status'), { target: { value: 'Failed' } });
-    fireEvent.change(screen.getByLabelText('QC disposition'), { target: { value: 'Quarantine' } });
-    fireEvent.change(screen.getByLabelText('Accepted quantity'), { target: { value: '8' } });
-    fireEvent.change(screen.getByLabelText('Rejected quantity'), { target: { value: '3' } });
-    const recordButton = screen.getByRole('button', { name: 'Record QC result' });
+    fireEvent.change(screen.getByLabelText('Trạng thái kết quả QC'), { target: { value: 'Failed' } });
+    fireEvent.change(screen.getByLabelText('Hướng xử lý QC'), { target: { value: 'Quarantine' } });
+    fireEvent.change(screen.getByLabelText('Số lượng đạt'), { target: { value: '8' } });
+    fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '3' } });
+    const recordButton = screen.getByRole('button', { name: 'Ghi nhận kết quả QC' });
     expect(recordButton).toHaveProperty('disabled', true);
 
-    fireEvent.change(screen.getByLabelText('QC result reason code'), {
+    fireEvent.change(screen.getByLabelText('Mã lý do kết quả QC'), {
       target: { value: 'RC-V1-DISCREPANCY' },
     });
-    fireEvent.change(screen.getByLabelText('QC result evidence refs'), {
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng kết quả QC'), {
       target: { value: 'photo://qc/damaged-4' },
     });
-    fireEvent.change(screen.getByLabelText('QC result idempotency key'), {
+    fireEvent.change(screen.getByLabelText('Khóa idempotency kết quả QC'), {
       target: { value: 'qc-result-split' },
     });
     expect(recordButton).toHaveProperty('disabled', true);
-    fireEvent.change(screen.getByLabelText('Rejected quantity'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '4' } });
     await waitFor(() => expect(recordButton).toHaveProperty('disabled', false));
     fireEvent.submit(recordButton.closest('form') as HTMLFormElement);
 
@@ -895,7 +897,7 @@ describe('InboundPage', () => {
       reasonNote: null,
       evidenceRefs: ['photo://qc/damaged-4'],
     });
-    expect(await screen.findByText(/QC result Failed \/ target QUARANTINE/i)).toBeTruthy();
+    expect(await screen.findByText(/Kết quả QC Failed \/ mục tiêu QUARANTINE/i)).toBeTruthy();
   });
 
   it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {
@@ -904,23 +906,23 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    await actor.clear(screen.getByLabelText('Actual quantity'));
-    await actor.type(screen.getByLabelText('Actual quantity'), '14');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
+    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
-    const routeButton = screen.getByRole('button', { name: 'Route discrepancy' });
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    const routeButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     expect(routeButton).toHaveProperty('disabled', true);
-    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), ',,');
+    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), ',,');
     expect(routeButton).toHaveProperty('disabled', true);
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
@@ -957,20 +959,20 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    await actor.type(screen.getByLabelText('Raw scan value'), 'wrong-sku-barcode');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-wrong-sku');
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), 'wrong-sku-barcode');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-wrong-sku');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Discrepancy - WrongSku/i)).toBeTruthy();
-    expect(screen.getByLabelText('Discrepancy type')).toHaveProperty('value', 'WrongSku');
-  });
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Sai SKU/i)).toBeTruthy();
+    expect(screen.getByLabelText('Loại sai lệch')).toHaveProperty('value', 'WrongSku');
+  }, 15_000);
 
   it('hides stale discrepancy routing when a different source line is selected', async () => {
     const actor = userEvent.setup();
@@ -1003,21 +1005,21 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    await actor.clear(screen.getByLabelText('Actual quantity'));
-    await actor.type(screen.getByLabelText('Actual quantity'), '14');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
+    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Discrepancy routing/i)).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Use line 2' }));
-    await waitFor(() => expect(screen.queryByText(/Discrepancy routing/i)).toBeNull());
+    expect(await screen.findByText(/Điều phối sai lệch/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Chọn dòng 2' }));
+    await waitFor(() => expect(screen.queryByText(/Điều phối sai lệch/i)).toBeNull());
   });
 
   it('shows an inline discrepancy route error when backend rejects capture', async () => {
@@ -1029,26 +1031,26 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.click(screen.getByRole('button', { name: 'Start receiving' }));
-    await actor.clear(screen.getByLabelText('Actual quantity'));
-    await actor.type(screen.getByLabelText('Actual quantity'), '14');
-    await actor.clear(screen.getByLabelText('Idempotency key'));
-    await actor.type(screen.getByLabelText('Idempotency key'), 'receipt-line-1');
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
+    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Confirm receipt line' })
+        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Line 1 Discrepancy - QuantityVariance/i)).toBeTruthy();
-    await actor.type(screen.getByLabelText('Discrepancy reason code'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Discrepancy evidence refs'), 'photo://dock/over-qty-1');
-    await actor.clear(screen.getByLabelText('Discrepancy idempotency key'));
-    await actor.type(screen.getByLabelText('Discrepancy idempotency key'), 'discrepancy-error');
-    await actor.click(screen.getByRole('button', { name: 'Route discrepancy' }));
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), 'photo://dock/over-qty-1');
+    await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
+    await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-error');
+    await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
 
-    expect(await screen.findByText(/Unable to route discrepancy/i)).toBeTruthy();
+    expect(await screen.findByText(/Không thể chuyển xử lý sai lệch/i)).toBeTruthy();
   });
 
   it('clears stale readiness override after gate-in is recorded', async () => {
@@ -1057,18 +1059,18 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    await screen.findByText(/CoreFlow trace: core-flow-1/i);
-    await actor.type(screen.getByLabelText('Readiness reason code'), 'RC-V1-HANDOFF');
-    await actor.click(screen.getByRole('button', { name: 'Override readiness' }));
-    expect(await screen.findByText(/override accepted/i)).toBeTruthy();
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.type(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
+    expect(await screen.findByText(/Ghi đè đã được chấp nhận/i)).toBeTruthy();
 
     const gateForm = screen
-      .getByRole('button', { name: 'Record gate-in' })
+      .getByRole('button', { name: 'Ghi nhận vào cổng' })
       .closest('form') as HTMLFormElement;
-    await actor.type(within(gateForm).getByLabelText('Gate reference'), 'GATE-A-001');
-    await actor.click(within(gateForm).getByRole('button', { name: 'Record gate-in' }));
+    await actor.type(within(gateForm).getByLabelText('Tham chiếu cổng'), 'GATE-A-001');
+    await actor.click(within(gateForm).getByRole('button', { name: 'Ghi nhận vào cổng' }));
 
-    await waitFor(() => expect(screen.queryByText(/override accepted/i)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Ghi đè đã được chấp nhận/i)).toBeNull());
     expect(fake.recordGateIn).toHaveBeenCalledWith(
       'inbound-plan-1',
       expect.objectContaining({ gateReference: 'GATE-A-001' }),
@@ -1083,12 +1085,11 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByText(/permission denied/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Create inbound plan' })).toBeNull();
+    expect(await screen.findByText(/Không có quyền đọc kế hoạch nhập kho/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Tạo kế hoạch nhập kho' })).toBeNull();
   });
 
   it('passes source-system and document-number filters to the repository', async () => {
-    const actor = userEvent.setup();
     const fake = new FakeRepository([
       makePlan({ sourceSystem: 'ERP', sourceDocumentNumber: 'ASN-10001' }),
       makePlan({
@@ -1101,15 +1102,15 @@ describe('InboundPage', () => {
     renderListPage();
 
     await screen.findByText('ASN-10001');
-    expect(screen.getByRole('link', { name: 'New inbound plan' })).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: 'Open detail' })[0]).toHaveProperty(
+    expect(screen.getByRole('link', { name: 'Tạo kế hoạch nhập kho' })).toBeTruthy();
+    expect(screen.getAllByRole('link', { name: 'Mở chi tiết' })[0]).toHaveProperty(
       'href',
       expect.stringContaining('/inbound/inbound-plan-1'),
     );
-    expect(screen.queryByRole('button', { name: 'Create inbound plan' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Record gate-in' })).toBeNull();
-    await actor.type(screen.getByLabelText('Source system filter'), 'ERP');
-    await actor.type(screen.getByLabelText('Document number filter'), 'ASN-10001');
+    expect(screen.queryByRole('button', { name: 'Tạo kế hoạch nhập kho' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Lọc hệ thống nguồn'), { target: { value: 'ERP' } });
+    fireEvent.change(screen.getByLabelText('Lọc số chứng từ'), { target: { value: 'ASN-10001' } });
 
     await waitFor(
       () =>

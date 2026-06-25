@@ -31,14 +31,14 @@ export function InventoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground">Stock levels across all locations</p>
+          <p className="text-muted-foreground">Mức tồn trên mọi vị trí</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-base">Items {data ? `(${data.totalItems})` : ''}</CardTitle>
+            <CardTitle className="text-base">Dòng hàng {data ? `(${data.totalItems})` : ''}</CardTitle>
             <InventoryToolbar />
           </CardHeader>
           <CardContent className="space-y-4">

@@ -16,6 +16,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { cn } from '@shared/Utils/Cn';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useInboundPlan, useReceivingReadiness } from '@modules/Inbound/Application/Queries/UseInboundPlans';
 import {
@@ -48,7 +49,7 @@ const initialLine = (): DraftLine => ({
 });
 
 function StatusBadge({ value }: { value: string }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{value}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(value)}</span>;
 }
 
 const INBOUND_ALLOWED_ACTIONS = new Set(['receiving', 'gate-in', 'qc', 'lpn', 'release']);
@@ -179,7 +180,7 @@ export function InboundDetailPage() {
   const apiError = detailQuery.error instanceof ApiError ? detailQuery.error : null;
   const denied = Boolean(apiError?.isForbidden);
   const detailError =
-    detailQuery.error instanceof Error ? detailQuery.error.message : 'Unable to load inbound plan.';
+    detailQuery.error instanceof Error ? detailQuery.error.message : 'Không thể tải kế hoạch nhập kho.';
   const canCreate = Boolean(
     sourceSystem.trim() &&
     sourceDocumentNumber.trim() &&
@@ -607,11 +608,11 @@ export function InboundDetailPage() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Inbound source detail</CardTitle>
+          <CardTitle className="text-base">Chi tiết chứng từ nhập kho</CardTitle>
         </CardHeader>
         <CardContent>
           <p className={denied ? 'text-muted-foreground text-sm' : 'text-destructive text-sm'}>
-            {denied ? 'Permission denied for inbound plan read.' : detailError}
+            {denied ? 'Không có quyền đọc kế hoạch nhập kho.' : detailError}
           </p>
         </CardContent>
       </Card>
@@ -624,28 +625,33 @@ export function InboundDetailPage() {
         {selected && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Inbound source detail</CardTitle>
+              <CardTitle className="text-base">Chi tiết chứng từ nhập kho</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge value={selected.status} />
                 <StatusBadge value={selected.gateInStatus} />
                 <span className="text-muted-foreground text-sm">{selected.businessReference}</span>
+                {selected.isDuplicate ? (
+                  <span className="text-muted-foreground text-sm">
+                    Đã dùng lại kế hoạch nhập kho hiện có.
+                  </span>
+                ) : null}
               </div>
               <div className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
-                <span>ETA: {selected.expectedArrivalAt ?? 'Not set'}</span>
-                <span>CoreFlow trace: {selected.coreFlowInstanceId ?? 'Not linked'}</span>
+                <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
+                <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="py-2">Line</th>
+                      <th className="py-2">Dòng</th>
                       <th className="py-2">SKU</th>
                       <th className="py-2">UOM</th>
-                      <th className="py-2 text-right">Expected</th>
-                      <th className="py-2 text-right">External ref</th>
-                      <th className="py-2 text-right">Receive</th>
+                      <th className="py-2 text-right">Dự kiến</th>
+                      <th className="py-2 text-right">Tham chiếu ngoài</th>
+                      <th className="py-2 text-right">Tiếp nhận</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -668,7 +674,7 @@ export function InboundDetailPage() {
                               setReceiptActualQuantity(String(line.expectedQuantity));
                             }}
                           >
-                            Use line {line.lineNumber}
+                            Chọn dòng {line.lineNumber}
                           </button>
                         </td>
                       </tr>
@@ -679,7 +685,7 @@ export function InboundDetailPage() {
               {readinessQuery.isLoading ? (
                 <p className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Loader2 className="size-4 animate-spin" />
-                  Checking readiness
+                  Đang kiểm tra sẵn sàng
                 </p>
               ) : readiness ? (
                 <p
@@ -688,7 +694,7 @@ export function InboundDetailPage() {
                     readiness.allowed ? 'text-emerald-700' : 'text-muted-foreground',
                   )}
                 >
-                  {readiness.overrideAccepted ? 'Override accepted' : readiness.reason}
+                  {readiness.overrideAccepted ? 'Ghi đè đã được chấp nhận' : readiness.reason}
                 </p>
               ) : null}
             </CardContent>
@@ -700,58 +706,58 @@ export function InboundDetailPage() {
         {isCreateRoute && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Create source document</CardTitle>
+              <CardTitle className="text-base">Tạo chứng từ nguồn</CardTitle>
             </CardHeader>
             <CardContent>
               <form className="space-y-3" onSubmit={submitCreate}>
                 <label className="grid gap-1 text-sm">
-                  Source system
+                  Hệ thống nguồn
                   <Input
                     value={sourceSystem}
                     onChange={(event) => setSourceSystem(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Source document type
+                  Loại chứng từ nguồn
                   <Input
                     value={sourceDocumentType}
                     onChange={(event) => setSourceDocumentType(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Source document number
+                  Số chứng từ nguồn
                   <Input
                     value={sourceDocumentNumber}
                     onChange={(event) => setSourceDocumentNumber(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Supplier id
+                  ID nhà cung cấp
                   <Input
                     value={supplierId}
                     onChange={(event) => setSupplierId(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Owner id
+                  ID chủ hàng
                   <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Warehouse id
+                  ID kho
                   <Input
                     value={warehouseId}
                     onChange={(event) => setWarehouseId(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Warehouse profile id
+                  ID hồ sơ kho
                   <Input
                     value={warehouseProfileId}
                     onChange={(event) => setWarehouseProfileId(event.target.value)}
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Expected arrival
+                  Thời gian đến dự kiến
                   <Input
                     type="datetime-local"
                     value={expectedArrivalAt}
@@ -762,21 +768,21 @@ export function InboundDetailPage() {
                   {lineDrafts.map((line, index) => (
                     <div key={line.id} className="grid gap-3 border-t pt-3 sm:grid-cols-4">
                       <label className="grid gap-1 text-sm">
-                        SKU id
+                        ID SKU
                         <Input
                           value={line.skuId}
                           onChange={(event) => updateLine(line.id, { skuId: event.target.value })}
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        UOM id
+                        ID đơn vị tính
                         <Input
                           value={line.uomId}
                           onChange={(event) => updateLine(line.id, { uomId: event.target.value })}
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        Expected quantity
+                        Số lượng dự kiến
                         <Input
                           type="number"
                           min="1"
@@ -787,7 +793,7 @@ export function InboundDetailPage() {
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        External line reference
+                        Tham chiếu dòng ngoài
                         <Input
                           value={line.externalLineReference}
                           onChange={(event) =>
@@ -803,7 +809,7 @@ export function InboundDetailPage() {
                             setLineDrafts((lines) => lines.filter((draft) => draft.id !== line.id))
                           }
                         >
-                          Remove line {index + 1}
+                          Xóa dòng {index + 1}
                         </button>
                       )}
                     </div>
@@ -813,7 +819,7 @@ export function InboundDetailPage() {
                     className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
                     onClick={() => setLineDrafts((lines) => [...lines, initialLine()])}
                   >
-                    Add line
+                    Thêm dòng
                   </button>
                 </div>
                 <button
@@ -821,16 +827,16 @@ export function InboundDetailPage() {
                   className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!canCreate || mutations.createInboundPlan.isPending}
                 >
-                  Create inbound plan
+                  Tạo kế hoạch nhập kho
                 </button>
                 {mutations.createInboundPlan.isPending && (
                   <p className="text-muted-foreground flex items-center gap-2 text-sm">
                     <RefreshCw className="size-4 animate-spin" />
-                    Creating source document
+                    Đang tạo chứng từ nguồn
                   </p>
                 )}
                 {mutations.createInboundPlan.data?.isDuplicate && (
-                  <p className="text-muted-foreground text-sm">Existing inbound plan reused.</p>
+                  <p className="text-muted-foreground text-sm">Đã dùng lại kế hoạch nhập kho hiện có.</p>
                 )}
               </form>
             </CardContent>
@@ -839,12 +845,12 @@ export function InboundDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Gate-in and readiness</CardTitle>
+            <CardTitle className="text-base">Vào cổng và kiểm tra sẵn sàng</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="space-y-3" onSubmit={submitGateIn}>
               <label className="grid gap-1 text-sm">
-                Gate reference
+                Tham chiếu cổng
                 <Input
                   value={gateReference}
                   onChange={(event) => setGateReference(event.target.value)}
@@ -855,13 +861,13 @@ export function InboundDetailPage() {
                 className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!canGateIn || mutations.recordGateIn.isPending}
               >
-                Record gate-in
+                Ghi nhận vào cổng
               </button>
             </form>
 
             <form className="space-y-3" onSubmit={submitOverride}>
               <label className="grid gap-1 text-sm">
-                Readiness reason code
+                Mã lý do sẵn sàng
                 <Input
                   value={readinessReasonCode}
                   onChange={(event) => setReadinessReasonCode(event.target.value)}
@@ -873,7 +879,7 @@ export function InboundDetailPage() {
                 className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!canOverride || mutations.validateReadiness.isPending}
               >
-                Override readiness
+                Ghi đè kiểm tra sẵn sàng
               </button>
             </form>
           </CardContent>
@@ -881,19 +887,19 @@ export function InboundDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Receiving scan</CardTitle>
+            <CardTitle className="text-base">Quét tiếp nhận</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form className="space-y-3" onSubmit={submitStartReceiving}>
               <label className="grid gap-1 text-sm">
-                Receiving session key
+                Khóa phiên tiếp nhận
                 <Input
                   value={receivingSessionKey}
                   onChange={(event) => setReceivingSessionKey(event.target.value)}
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Device code
+                Mã thiết bị
                 <Input
                   value={receivingDeviceCode}
                   onChange={(event) => setReceivingDeviceCode(event.target.value)}
@@ -905,25 +911,25 @@ export function InboundDetailPage() {
                 disabled={!canStartReceiving || mutations.startReceivingSession.isPending}
               >
                 <PlayCircle className="size-4" />
-                Start receiving
+                Bắt đầu tiếp nhận
               </button>
               {receivingSession && (
                 <p className="text-muted-foreground text-sm">
-                  Receipt {receivingSession.receiptNumber}
-                  {receivingSession.isDuplicate ? ' reused' : ' ready'}.
+                  Phiếu tiếp nhận {receivingSession.receiptNumber}
+                  {receivingSession.isDuplicate ? ' đã dùng lại' : ' đã sẵn sàng'}.
                 </p>
               )}
             </form>
 
             <form className="space-y-3" onSubmit={submitReceiptLine}>
               <div className="text-muted-foreground text-sm">
-                Selected line:{' '}
+                Dòng đã chọn:{' '}
                 {selectedLine
                   ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
-                  : 'None'}
+                  : 'Không có'}
               </div>
               <label className="grid gap-1 text-sm">
-                Actual quantity
+                Số lượng thực tế
                 <Input
                   type="number"
                   min="0.0001"
@@ -932,7 +938,7 @@ export function InboundDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Raw scan value
+                Giá trị quét thô
                 <Input
                   value={receiptRawScan}
                   onChange={(event) => setReceiptRawScan(event.target.value)}
@@ -945,10 +951,10 @@ export function InboundDetailPage() {
                   checked={receiptManualConfirm}
                   onChange={(event) => setReceiptManualConfirm(event.target.checked)}
                 />
-                Manual confirm
+                Xác nhận thủ công
               </label>
               <label className="grid gap-1 text-sm">
-                Receipt reason code
+                Mã lý do tiếp nhận
                 <Input
                   value={receiptReasonCode}
                   onChange={(event) => setReceiptReasonCode(event.target.value)}
@@ -957,7 +963,7 @@ export function InboundDetailPage() {
                 />
               </label>
               <label className="grid gap-1 text-sm">
-                Idempotency key
+                Khóa idempotency
                 <Input
                   value={receiptIdempotencyKey}
                   onChange={(event) => setReceiptIdempotencyKey(event.target.value)}
@@ -969,15 +975,15 @@ export function InboundDetailPage() {
                 disabled={!canConfirmReceiptLine || mutations.confirmReceiptLine.isPending}
               >
                 <ScanLine className="size-4" />
-                Confirm receipt line
+                Xác nhận dòng tiếp nhận
               </button>
               {mutations.confirmReceiptLine.data && (
                 <p className="text-muted-foreground text-sm">
-                  Line {mutations.confirmReceiptLine.data.lineNumber}{' '}
-                  {mutations.confirmReceiptLine.data.status}
-                  {mutations.confirmReceiptLine.data.isDuplicate ? ' duplicate reused' : ''}
+                  Dòng {mutations.confirmReceiptLine.data.lineNumber}{' '}
+                  {vietnameseOperationalLabel(mutations.confirmReceiptLine.data.status)}
+                  {mutations.confirmReceiptLine.data.isDuplicate ? ' đã dùng lại' : ''}
                   {mutations.confirmReceiptLine.data.discrepancySignals.length
-                    ? ` - ${mutations.confirmReceiptLine.data.discrepancySignals.join(', ')}`
+                    ? ` - ${mutations.confirmReceiptLine.data.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}`
                     : ''}
                 </p>
               )}
@@ -988,15 +994,16 @@ export function InboundDetailPage() {
                 <form className="space-y-3 rounded-md border p-3" onSubmit={submitDiscrepancy}>
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <AlertTriangle className="size-4" />
-                    Discrepancy routing
+                    Điều phối sai lệch
                   </div>
                   {confirmedReceiptLine.discrepancySignals.length > 0 && (
                     <div className="text-muted-foreground text-xs">
-                      Signals: {confirmedReceiptLine.discrepancySignals.join(', ')}
+                      Tín hiệu:{' '}
+                      {confirmedReceiptLine.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
                     </div>
                   )}
                   <label className="grid gap-1 text-sm">
-                    Discrepancy type
+                    Loại sai lệch
                     <select
                       value={discrepancyType}
                       onChange={(event) =>
@@ -1006,13 +1013,13 @@ export function InboundDetailPage() {
                     >
                       {INBOUND_DISCREPANCY_TYPES.map((type) => (
                         <option key={type} value={type}>
-                          {type}
+                          {vietnameseOperationalLabel(type)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Discrepancy reason code
+                    Mã lý do sai lệch
                     <Input
                       value={discrepancyReasonCode}
                       onChange={(event) => setDiscrepancyReasonCode(event.target.value)}
@@ -1020,15 +1027,15 @@ export function InboundDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Discrepancy reason note
+                    Ghi chú lý do sai lệch
                     <Input
                       value={discrepancyReasonNote}
                       onChange={(event) => setDiscrepancyReasonNote(event.target.value)}
-                      placeholder="Quantity differs from ASN"
+                      placeholder="Số lượng lệch so với ASN"
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Discrepancy evidence refs
+                    Tham chiếu bằng chứng sai lệch
                     <Input
                       value={discrepancyEvidenceRefs}
                       onChange={(event) => setDiscrepancyEvidenceRefs(event.target.value)}
@@ -1036,7 +1043,7 @@ export function InboundDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Discrepancy idempotency key
+                    Khóa idempotency sai lệch
                     <Input
                       value={discrepancyIdempotencyKey}
                       onChange={(event) => setDiscrepancyIdempotencyKey(event.target.value)}
@@ -1048,26 +1055,26 @@ export function InboundDetailPage() {
                     disabled={!canCaptureDiscrepancy || mutations.captureDiscrepancy.isPending}
                   >
                     <AlertTriangle className="size-4" />
-                    Route discrepancy
+                    Chuyển xử lý sai lệch
                   </button>
                   {mutations.captureDiscrepancy.data && (
                     <p className="text-muted-foreground text-sm">
-                      Discrepancy {mutations.captureDiscrepancy.data.status} / Exception{' '}
+                      Sai lệch {vietnameseOperationalLabel(mutations.captureDiscrepancy.data.status)} / Ngoại lệ{' '}
                       {mutations.captureDiscrepancy.data.exceptionCaseId}
                       {mutations.captureDiscrepancy.data.status === 'PendingApproval'
-                        ? ' / approval required'
+                        ? ' / cần phê duyệt'
                         : ''}
                     </p>
                   )}
                   {mutations.captureDiscrepancy.error ? (
-                    <p className="text-destructive text-sm">Unable to route discrepancy.</p>
+                    <p className="text-destructive text-sm">Không thể chuyển xử lý sai lệch.</p>
                   ) : null}
                 </form>
 
                 <div className="space-y-3 rounded-md border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <ClipboardCheck className="size-4" />
-                    QC task and result
+                    Tác vụ QC và kết quả
                   </div>
                   <form className="space-y-3" onSubmit={submitEvaluateQcTask}>
                     <label className="flex items-center gap-2 text-sm">
@@ -1076,10 +1083,10 @@ export function InboundDetailPage() {
                         checked={qcForceRequired}
                         onChange={(event) => setQcForceRequired(event.target.checked)}
                       />
-                      Force QC required
+                      Bắt buộc QC
                     </label>
                     <label className="grid gap-1 text-sm">
-                      QC trigger reason code
+                      Mã lý do kích hoạt QC
                       <Input
                         value={qcTaskReasonCode}
                         onChange={(event) => setQcTaskReasonCode(event.target.value)}
@@ -1087,15 +1094,15 @@ export function InboundDetailPage() {
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      QC trigger reason note
+                      Ghi chú lý do kích hoạt QC
                       <Input
                         value={qcTaskReasonNote}
                         onChange={(event) => setQcTaskReasonNote(event.target.value)}
-                        placeholder="Profile or discrepancy requires QC"
+                        placeholder="Hồ sơ hoặc sai lệch yêu cầu QC"
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      QC trigger evidence refs
+                      Tham chiếu bằng chứng kích hoạt QC
                       <Input
                         value={qcTaskEvidenceRefs}
                         onChange={(event) => setQcTaskEvidenceRefs(event.target.value)}
@@ -1103,7 +1110,7 @@ export function InboundDetailPage() {
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      QC task idempotency key
+                      Khóa idempotency tác vụ QC
                       <Input
                         value={qcTaskIdempotencyKey}
                         onChange={(event) => setQcTaskIdempotencyKey(event.target.value)}
@@ -1115,14 +1122,14 @@ export function InboundDetailPage() {
                       disabled={!canEvaluateQcTask || mutations.evaluateQcTask.isPending}
                     >
                       <ClipboardCheck className="size-4" />
-                      Evaluate QC
+                      Đánh giá QC
                     </button>
                   </form>
 
                   {evaluatedQcTask && (
                     <div className="text-muted-foreground text-sm">
                       QC {evaluatedQcTask.taskStatus} / {evaluatedQcTask.inventoryStatusCode} /{' '}
-                      {evaluatedQcTask.required ? evaluatedQcTask.triggerReason : 'Skipped'}
+                      {evaluatedQcTask.required ? evaluatedQcTask.triggerReason : 'Đã bỏ qua'}
                     </div>
                   )}
 
@@ -1130,7 +1137,7 @@ export function InboundDetailPage() {
                     <form className="space-y-3 border-t pt-3" onSubmit={submitQcResult}>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <label className="grid gap-1 text-sm">
-                          QC result status
+                          Trạng thái kết quả QC
                           <select
                             value={qcResultStatus}
                             onChange={(event) =>
@@ -1140,13 +1147,13 @@ export function InboundDetailPage() {
                           >
                             {QC_RESULT_STATUSES.map((status) => (
                               <option key={status} value={status}>
-                                {status}
+                                {vietnameseOperationalLabel(status)}
                               </option>
                             ))}
                           </select>
                         </label>
                         <label className="grid gap-1 text-sm">
-                          QC disposition
+                          Hướng xử lý QC
                           <select
                             value={qcDispositionCode}
                             onChange={(event) =>
@@ -1156,7 +1163,7 @@ export function InboundDetailPage() {
                           >
                             {QC_DISPOSITION_CODES.map((code) => (
                               <option key={code} value={code}>
-                                {code}
+                                {vietnameseOperationalLabel(code)}
                               </option>
                             ))}
                           </select>
@@ -1164,7 +1171,7 @@ export function InboundDetailPage() {
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3">
                         <label className="grid gap-1 text-sm">
-                          Inspected quantity
+                          Số lượng đã kiểm
                           <Input
                             type="number"
                             min="0.0001"
@@ -1173,7 +1180,7 @@ export function InboundDetailPage() {
                           />
                         </label>
                         <label className="grid gap-1 text-sm">
-                          Accepted quantity
+                          Số lượng đạt
                           <Input
                             type="number"
                             min="0"
@@ -1182,7 +1189,7 @@ export function InboundDetailPage() {
                           />
                         </label>
                         <label className="grid gap-1 text-sm">
-                          Rejected quantity
+                          Số lượng loại
                           <Input
                             type="number"
                             min="0"
@@ -1192,7 +1199,7 @@ export function InboundDetailPage() {
                         </label>
                       </div>
                       <label className="grid gap-1 text-sm">
-                        QC result reason code
+                        Mã lý do kết quả QC
                         <Input
                           value={qcResultReasonCode}
                           onChange={(event) => setQcResultReasonCode(event.target.value)}
@@ -1200,15 +1207,15 @@ export function InboundDetailPage() {
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        QC result reason note
+                        Ghi chú lý do kết quả QC
                         <Input
                           value={qcResultReasonNote}
                           onChange={(event) => setQcResultReasonNote(event.target.value)}
-                          placeholder="Rejected units damaged"
+                          placeholder="Đơn vị bị loại do hư hỏng"
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        QC result evidence refs
+                        Tham chiếu bằng chứng kết quả QC
                         <Input
                           value={qcResultEvidenceRefs}
                           onChange={(event) => setQcResultEvidenceRefs(event.target.value)}
@@ -1216,7 +1223,7 @@ export function InboundDetailPage() {
                         />
                       </label>
                       <label className="grid gap-1 text-sm">
-                        QC result idempotency key
+                        Khóa idempotency kết quả QC
                         <Input
                           value={qcResultIdempotencyKey}
                           onChange={(event) => setQcResultIdempotencyKey(event.target.value)}
@@ -1228,41 +1235,41 @@ export function InboundDetailPage() {
                         disabled={!canRecordQcResult || mutations.recordQcResult.isPending}
                       >
                         <ClipboardCheck className="size-4" />
-                        Record QC result
+                        Ghi nhận kết quả QC
                       </button>
                     </form>
                   )}
 
                   {recordedQcResult && (
                     <p className="text-muted-foreground text-sm">
-                      QC result {recordedQcResult.resultStatus} / target{' '}
+                      Kết quả QC {recordedQcResult.resultStatus} / mục tiêu{' '}
                       {recordedQcResult.targetInventoryStatusCode}
                     </p>
                   )}
                   {mutations.evaluateQcTask.error ? (
-                    <p className="text-destructive text-sm">Unable to evaluate QC.</p>
+                    <p className="text-destructive text-sm">Không thể đánh giá QC.</p>
                   ) : null}
                   {mutations.recordQcResult.error ? (
-                    <p className="text-destructive text-sm">Unable to record QC result.</p>
+                    <p className="text-destructive text-sm">Không thể ghi nhận kết quả QC.</p>
                   ) : null}
                 </div>
 
                 <div className="space-y-3 rounded-md border p-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <PackageCheck className="size-4" />
-                    LPN/SSCC and putaway release
+                    LPN/SSCC và phát hành cất hàng
                   </div>
                   <form className="space-y-3" onSubmit={submitInboundLpn}>
                     <label className="grid gap-1 text-sm">
-                      LPN code
+                      Mã LPN
                       <Input value={lpnCode} onChange={(event) => setLpnCode(event.target.value)} />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      SSCC code
+                      Mã SSCC
                       <Input value={ssccCode} onChange={(event) => setSsccCode(event.target.value)} />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      LPN idempotency key
+                      Khóa idempotency LPN
                       <Input
                         value={lpnIdempotencyKey}
                         onChange={(event) => setLpnIdempotencyKey(event.target.value)}
@@ -1274,7 +1281,7 @@ export function InboundDetailPage() {
                       disabled={!canConfirmInboundLpn || mutations.confirmInboundLpn.isPending}
                     >
                       <PackageCheck className="size-4" />
-                      Confirm LPN/SSCC
+                      Xác nhận LPN/SSCC
                     </button>
                   </form>
 
@@ -1282,13 +1289,13 @@ export function InboundDetailPage() {
                     <p className="text-muted-foreground text-sm">
                       LPN {confirmedInboundLpn.lpnCode}
                       {confirmedInboundLpn.ssccCode ? ` / ${confirmedInboundLpn.ssccCode}` : ''}
-                      {confirmedInboundLpn.isDuplicate ? ' duplicate reused' : ''}
+                      {confirmedInboundLpn.isDuplicate ? ' đã dùng lại' : ''}
                     </p>
                   )}
 
                   <form className="space-y-3 border-t pt-3" onSubmit={submitReleaseInboundToPutaway}>
                     <label className="grid gap-1 text-sm">
-                      Current location code
+                      Mã vị trí hiện tại
                       <Input
                         value={releaseCurrentLocationCode}
                         onChange={(event) => setReleaseCurrentLocationCode(event.target.value)}
@@ -1300,7 +1307,7 @@ export function InboundDetailPage() {
                         checked={releaseRequireLpn}
                         onChange={(event) => setReleaseRequireLpn(event.target.checked)}
                       />
-                      Require LPN
+                      Yêu cầu LPN
                     </label>
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -1308,10 +1315,10 @@ export function InboundDetailPage() {
                         checked={releaseAttemptLabelOverride}
                         onChange={(event) => setReleaseAttemptLabelOverride(event.target.checked)}
                       />
-                      Label override
+                      Ghi đè nhãn
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Release reason code
+                      Mã lý do phát hành
                       <Input
                         value={releaseReasonCode}
                         onChange={(event) => setReleaseReasonCode(event.target.value)}
@@ -1319,7 +1326,7 @@ export function InboundDetailPage() {
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Release evidence refs
+                      Tham chiếu bằng chứng phát hành
                       <Input
                         value={releaseEvidenceRefs}
                         onChange={(event) => setReleaseEvidenceRefs(event.target.value)}
@@ -1327,7 +1334,7 @@ export function InboundDetailPage() {
                       />
                     </label>
                     <label className="grid gap-1 text-sm">
-                      Release idempotency key
+                      Khóa idempotency phát hành
                       <Input
                         value={releaseIdempotencyKey}
                         onChange={(event) => setReleaseIdempotencyKey(event.target.value)}
@@ -1342,13 +1349,13 @@ export function InboundDetailPage() {
                       }
                     >
                       <PackageCheck className="size-4" />
-                      Release to putaway
+                      Phát hành sang cất hàng
                     </button>
                   </form>
 
                   {putawayRelease && (
                     <p className="text-muted-foreground text-sm">
-                      Released {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId} /{' '}
+                      Đã phát hành {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId} /{' '}
                       {putawayRelease.inventoryStatusCode}
                       {putawayRelease.currentLocationCode
                         ? ` / ${putawayRelease.currentLocationCode}`
@@ -1356,13 +1363,13 @@ export function InboundDetailPage() {
                     </p>
                   )}
                   {mutations.confirmInboundLpn.error ? (
-                    <p className="text-destructive text-sm">Unable to confirm LPN/SSCC.</p>
+                    <p className="text-destructive text-sm">Không thể xác nhận LPN/SSCC.</p>
                   ) : null}
                   {mutations.releaseInboundToPutaway.error ? (
                     <p className="text-destructive text-sm">
                       {mutations.releaseInboundToPutaway.error instanceof ApiError
                         ? mutations.releaseInboundToPutaway.error.message
-                        : 'Unable to release to putaway.'}
+                        : 'Không thể phát hành sang cất hàng.'}
                     </p>
                   ) : null}
                 </div>

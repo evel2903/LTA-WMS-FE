@@ -40,8 +40,8 @@ export function InventoryTable({ items, isLoading, onRowClick }: InventoryTableP
           <TableHead>Product</TableHead>
           <TableHead>Location</TableHead>
           <TableHead className="text-right">On hand</TableHead>
-          <TableHead className="text-right">Available</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Khả dụng</TableHead>
+          <TableHead>Trạng thái</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

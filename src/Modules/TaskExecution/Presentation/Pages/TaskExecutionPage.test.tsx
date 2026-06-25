@@ -148,7 +148,7 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
         result: input.rawValue.includes('wrong') ? 'Rejected' : 'Accepted',
         parsedValueJson:
           input.scanType === 'Item'
-            ? { gtin: '01234567890128', Quantity: 5, Lot: 'LOT-A' }
+            ? { gtin: '01234567890128', Quantity: 5, LotNumber: 'LOT-A' }
             : input.scanType === 'Quantity'
               ? {}
               : undefined,
@@ -253,8 +253,8 @@ describe('TaskExecution list/detail pages', () => {
     const taskLink = await screen.findByRole('link', { name: /MT-001/i });
     expect(taskLink.getAttribute('href')).toBe('/mobile/tasks/task-a');
     expect(screen.queryByRole('table')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Record scan' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Nhận tác vụ' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ghi nhận quét' })).toBeNull();
   });
 
   it('shows permission denied state on the root list and hides mutation buttons', async () => {
@@ -267,8 +267,8 @@ describe('TaskExecution list/detail pages', () => {
     repo.current = fake;
     renderListPage();
 
-    expect((await screen.findAllByText(/permission denied/i)).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
+    expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Nhận tác vụ' })).toBeNull();
   });
 
   it('claims and releases from the task detail route using the route id', async () => {
@@ -280,17 +280,17 @@ describe('TaskExecution list/detail pages', () => {
 
     await screen.findByText('MT-001');
     expect(fake.getById).toHaveBeenCalledWith('task-a');
-    await actor.type(screen.getByLabelText('Device code'), 'RF-01');
-    await actor.click(screen.getByRole('button', { name: 'Claim task' }));
+    await actor.type(screen.getByLabelText('Mã thiết bị'), 'RF-01');
+    await actor.click(screen.getByRole('button', { name: 'Nhận tác vụ' }));
 
     await waitFor(() => expect(fake.claim).toHaveBeenCalledWith('task-a', { deviceCode: 'RF-01' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty(
+      expect(screen.getByRole('button', { name: 'Nhả tác vụ' })).toHaveProperty(
         'disabled',
         false,
       ),
     );
-    await actor.click(screen.getByRole('button', { name: 'Release task' }));
+    await actor.click(screen.getByRole('button', { name: 'Nhả tác vụ' }));
     await waitFor(() => expect(fake.release).toHaveBeenCalledWith('task-a'));
   });
 
@@ -304,9 +304,9 @@ describe('TaskExecution list/detail pages', () => {
     renderDetailPage('/mobile/tasks/task-a/scan');
 
     await screen.findByText('MT-001');
-    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
-    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Item');
+    await actor.type(screen.getByLabelText('Giá trị quét'), '(01)01234567890128(10)LOT-A');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
 
     await waitFor(() =>
       expect(fake.recordScan).toHaveBeenCalledWith('task-a', {
@@ -318,7 +318,7 @@ describe('TaskExecution list/detail pages', () => {
         sessionId: undefined,
       }),
     );
-    expect(await screen.findByText(/Accepted scan/i)).toBeTruthy();
+    expect(await screen.findByText(/Lượt quét được chấp nhận/i)).toBeTruthy();
     expect(screen.getAllByText(/01234567890128/).length).toBeGreaterThan(0);
     expect(screen.getByText(/LOT-A/)).toBeTruthy();
   });
@@ -333,13 +333,13 @@ describe('TaskExecution list/detail pages', () => {
     renderDetailPage();
 
     await screen.findByText('MT-001');
-    await actor.type(screen.getByLabelText('Scan value'), 'typed-sku');
-    await actor.click(screen.getByLabelText('Manual entry'));
+    await actor.type(screen.getByLabelText('Giá trị quét'), 'typed-sku');
+    await actor.click(screen.getByLabelText('Nhập thủ công'));
 
-    expect(screen.getByRole('button', { name: 'Record scan' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Ghi nhận quét' })).toHaveProperty('disabled', true);
 
-    await actor.type(screen.getByLabelText('Reason code'), 'RC-V1-OVERRIDE');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await actor.type(screen.getByLabelText('Mã lý do'), 'RC-V1-OVERRIDE');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
 
     await waitFor(() =>
       expect(fake.recordScan).toHaveBeenCalledWith(
@@ -378,25 +378,25 @@ describe('TaskExecution list/detail pages', () => {
     repo.current = fake;
     renderDetailPage('/mobile/tasks/task-a/confirm');
 
-    await screen.findByText('Pick execution expectation');
-    expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty('disabled', true);
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+    expect(screen.getByRole('button', { name: 'Xác nhận lấy hàng' })).toHaveProperty('disabled', true);
 
-    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Location');
-    await actor.type(screen.getByLabelText('Scan value'), 'loc-source');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-    await screen.findByText(/Accepted scan/i);
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Location');
+    await actor.type(screen.getByLabelText('Giá trị quét'), 'loc-source');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
+    await screen.findByText(/Lượt quét được chấp nhận/i);
 
-    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
-    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A(30)5');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Item');
+    await actor.type(screen.getByLabelText('Giá trị quét'), '(01)01234567890128(10)LOT-A(30)5');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty(
+      expect(screen.getByRole('button', { name: 'Xác nhận lấy hàng' })).toHaveProperty(
         'disabled',
         false,
       ),
     );
-    await actor.click(screen.getByRole('button', { name: 'Confirm pick' }));
+    await actor.click(screen.getByRole('button', { name: 'Xác nhận lấy hàng' }));
 
     await waitFor(() =>
       expect(fake.confirmPickTask).toHaveBeenCalledWith(
@@ -408,7 +408,7 @@ describe('TaskExecution list/detail pages', () => {
         }),
       ),
     );
-    expect(await screen.findByText('Pick confirmation posted')).toBeTruthy();
+    expect(await screen.findByText('Đã ghi nhận xác nhận lấy hàng')).toBeTruthy();
   });
 
   it('reports pick exception and requests substitution from the detail route', async () => {
@@ -433,11 +433,11 @@ describe('TaskExecution list/detail pages', () => {
     repo.current = fake;
     renderDetailPage('/mobile/tasks/task-a/exception');
 
-    await screen.findByText('Pick exception');
-    await actor.selectOptions(screen.getByLabelText('Exception type'), 'Damaged');
-    await actor.type(screen.getByLabelText('Evidence reference'), 'scan:damaged');
-    await actor.type(screen.getByLabelText('Damaged quantity'), '1');
-    await actor.click(screen.getByRole('button', { name: 'Report exception' }));
+    await screen.findByText('Ngoại lệ lấy hàng');
+    await actor.selectOptions(screen.getByLabelText('Loại ngoại lệ'), 'Damaged');
+    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng'), 'scan:damaged');
+    await actor.type(screen.getByLabelText('Số lượng hư hỏng'), '1');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận ngoại lệ' }));
 
     await waitFor(() =>
       expect(fake.reportPickException).toHaveBeenCalledWith(
@@ -451,12 +451,12 @@ describe('TaskExecution list/detail pages', () => {
         }),
       ),
     );
-    expect(await screen.findByText(/Pick exception recorded/i)).toBeTruthy();
+    expect(await screen.findByText(/Đã ghi nhận ngoại lệ lấy hàng/i)).toBeTruthy();
 
-    await actor.type(screen.getByLabelText('Substitute SKU ID'), 'sku-sub');
-    await actor.type(screen.getByLabelText(/^Quantity$/), '2');
-    await actor.selectOptions(screen.getByLabelText('Policy decision'), 'Allow');
-    await actor.click(screen.getByRole('button', { name: 'Request substitution' }));
+    await actor.type(screen.getByLabelText('ID SKU thay thế'), 'sku-sub');
+    await actor.type(screen.getByLabelText(/^Số lượng$/), '2');
+    await actor.selectOptions(screen.getByLabelText('Quyết định chính sách'), 'Allow');
+    await actor.click(screen.getByRole('button', { name: 'Yêu cầu thay thế' }));
 
     await waitFor(() =>
       expect(fake.requestPickSubstitution).toHaveBeenCalledWith(
@@ -471,7 +471,7 @@ describe('TaskExecution list/detail pages', () => {
         }),
       ),
     );
-    expect(await screen.findByText(/Substitution context recorded/i)).toBeTruthy();
+    expect(await screen.findByText(/Ngữ cảnh thay thế đã được ghi nhận/i)).toBeTruthy();
   });
 
   it('disables pick confirmation when a later item scan is rejected', async () => {
@@ -496,27 +496,27 @@ describe('TaskExecution list/detail pages', () => {
     repo.current = fake;
     renderDetailPage('/mobile/tasks/task-a/confirm');
 
-    await screen.findByText('Pick execution expectation');
-    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Location');
-    await actor.type(screen.getByLabelText('Scan value'), 'loc-source');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-    await screen.findByText(/Accepted scan/i);
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Location');
+    await actor.type(screen.getByLabelText('Giá trị quét'), 'loc-source');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
+    await screen.findByText(/Lượt quét được chấp nhận/i);
 
-    await actor.selectOptions(screen.getByLabelText('Scan type'), 'Item');
-    await actor.type(screen.getByLabelText('Scan value'), '(01)01234567890128(10)LOT-A(30)5');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Item');
+    await actor.type(screen.getByLabelText('Giá trị quét'), '(01)01234567890128(10)LOT-A(30)5');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty(
+      expect(screen.getByRole('button', { name: 'Xác nhận lấy hàng' })).toHaveProperty(
         'disabled',
         false,
       ),
     );
 
-    await actor.type(screen.getByLabelText('Scan value'), 'wrong-item');
-    await actor.click(screen.getByRole('button', { name: 'Record scan' }));
-    await screen.findByText(/Rejected scan/i);
+    await actor.type(screen.getByLabelText('Giá trị quét'), 'wrong-item');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
+    await screen.findByText(/Lượt quét bị từ chối/i);
 
-    expect(screen.getByRole('button', { name: 'Confirm pick' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Xác nhận lấy hàng' })).toHaveProperty('disabled', true);
   });
 
   it('disables task actions when detail task state is terminal', async () => {
@@ -531,8 +531,8 @@ describe('TaskExecution list/detail pages', () => {
     renderDetailPage();
 
     await screen.findByText('MT-001');
-    expect(screen.getByRole('button', { name: 'Claim task' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Release task' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Nhận tác vụ' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Nhả tác vụ' })).toHaveProperty('disabled', true);
   });
 
   it('shows not found when the route id has no matching task', async () => {
@@ -540,7 +540,7 @@ describe('TaskExecution list/detail pages', () => {
     repo.current = fake;
     renderDetailPage('/mobile/tasks/missing-task');
 
-    expect(await screen.findByText(/not found/i)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Claim task' })).toBeNull();
+    expect(await screen.findByText(/Không tìm thấy tác vụ mobile được yêu cầu/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Nhận tác vụ' })).toBeNull();
   });
 });

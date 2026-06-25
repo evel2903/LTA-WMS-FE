@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
 import { GovernanceStateBanner } from '@shared/Components/Page/GovernanceStateBanner';
 import { Input } from '@shared/Components/Ui/Input';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useIntegrationMutations } from '@modules/Integration/Application/Commands/UseIntegrationMutations';
 import {
   useIntegrationReconciliationItems,
@@ -31,20 +32,20 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete reconciliation action.';
+  return 'Không thể hoàn tất thao tác đối soát.';
 }
 
 function StatusBadge({ status }: { status: ReconciliationRunStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function ItemRow({ item }: { item: ReconciliationItem }) {
   return (
     <div className="grid gap-3 rounded-md border p-3 text-sm lg:grid-cols-[180px_minmax(0,1fr)_160px]">
       <div className="space-y-1">
-        <div className="font-semibold">{item.mismatchType}</div>
-        <div className="text-muted-foreground text-xs">{item.severity}</div>
-        <div className="text-muted-foreground text-xs">{item.itemStatus}</div>
+        <div className="font-semibold">{vietnameseOperationalLabel(item.mismatchType)}</div>
+        <div className="text-muted-foreground text-xs">{vietnameseOperationalLabel(item.severity)}</div>
+        <div className="text-muted-foreground text-xs">{vietnameseOperationalLabel(item.itemStatus)}</div>
       </div>
       <div className="grid min-w-0 gap-2 md:grid-cols-2">
         <pre className="max-h-40 overflow-auto rounded-md border p-2 text-xs">
@@ -55,13 +56,13 @@ function ItemRow({ item }: { item: ReconciliationItem }) {
         </pre>
       </div>
       <div className="text-muted-foreground grid gap-1 text-xs">
-        <span>Source: {item.sourceType}</span>
-        <span className="break-words">Source ID: {item.sourceId ?? 'none'}</span>
-        <span className="break-words">Exception: {item.exceptionCaseId ?? 'none'}</span>
-        <span className="break-words">Outbox: {item.outboxMessageId ?? 'none'}</span>
+        <span>Nguồn: {item.sourceType}</span>
+        <span className="break-words">ID nguồn: {item.sourceId ?? 'không có'}</span>
+        <span className="break-words">Ngoại lệ: {item.exceptionCaseId ?? 'không có'}</span>
+        <span className="break-words">Outbox: {item.outboxMessageId ?? 'không có'}</span>
         {item.deadLetterMessageId ? (
           <Link className="underline" to={ROUTES.INTEGRATION.DEAD_LETTER_DETAIL(item.deadLetterMessageId)}>
-            Dead-letter detail
+            Chi tiết dead-letter
           </Link>
         ) : null}
       </div>
@@ -171,17 +172,17 @@ export function IntegrationReconciliationDetailPage() {
 
   return (
     <DetailPageShell
-      title={run?.businessReference ?? 'Integration reconciliation'}
-      subtitle={run ? `${run.warehouseId}${run.ownerId ? ` / ${run.ownerId}` : ' / no owner'}` : undefined}
+      title={run?.businessReference ?? 'Đối soát tích hợp'}
+      subtitle={run ? `${run.warehouseId}${run.ownerId ? ` / ${run.ownerId}` : ' / chưa có chủ hàng'}` : undefined}
       backTo={ROUTES.INTEGRATION.RECONCILIATION}
-      backLabel="Back to reconciliation"
+      backLabel="Quay lại đối soát"
       status={run ? <StatusBadge status={run.runStatus} /> : null}
       summary={
         run ? (
           <>
-            <span>Items {run.itemCount}</span>
-            <span>Mismatches {run.mismatchCount}</span>
-            <span>Exceptions {run.exceptionCount}</span>
+            <span>Dòng hàng {run.itemCount}</span>
+            <span>Sai lệch {run.mismatchCount}</span>
+            <span>Ngoại lệ {run.exceptionCount}</span>
           </>
         ) : null
       }
@@ -190,7 +191,7 @@ export function IntegrationReconciliationDetailPage() {
           <Button asChild size="sm" variant="outline">
             <Link to={ROUTES.INTEGRATION.RECONCILIATION_ACTION(run.id, 'resolve')}>
               <CheckCircle2 className="size-4" />
-              Resolve item
+              Xử lý dòng
             </Link>
           </Button>
         ) : null
@@ -198,21 +199,21 @@ export function IntegrationReconciliationDetailPage() {
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : runQuery.error || itemsQuery.error
-            ? 'Unable to load reconciliation'
+            ? 'Không thể tải đối soát'
             : state === 'readOnly'
-              ? 'Read-only reconciliation'
+              ? 'Đối soát chỉ đọc'
               : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for reconciliation detail.'
+          ? 'Bạn không có quyền xem chi tiết đối soát.'
           : runQuery.error || itemsQuery.error
-            ? errorMessage(runQuery.error ?? itemsQuery.error) ?? 'The reconciliation workspace could not be loaded.'
+            ? errorMessage(runQuery.error ?? itemsQuery.error) ?? 'Không thể tải không gian làm việc đối soát.'
             : state === 'readOnly'
-              ? 'No open reconciliation item is available for action.'
-              : 'The requested reconciliation run was not found.'
+              ? 'Không có dòng đối soát mở để thao tác.'
+              : 'Không tìm thấy lần đối soát được yêu cầu.'
       }
     >
       {run ? (
@@ -220,16 +221,16 @@ export function IntegrationReconciliationDetailPage() {
           <section className="space-y-4">
             <GovernanceStateBanner
               state={openItems.length > 0 ? 'warning' : 'readOnly'}
-              title={openItems.length > 0 ? 'Manual resolution requires audit evidence' : 'No open item'}
+              title={openItems.length > 0 ? 'Xử lý thủ công yêu cầu bằng chứng audit' : 'Không có dòng mở'}
               message={
                 openItems.length > 0
-                  ? 'Resolution updates reconciliation state only. Inventory or finance impact requires approval.'
-                  : 'This run remains available for read-only review.'
+                  ? 'Xử lý chỉ cập nhật trạng thái đối soát. Ảnh hưởng tồn kho hoặc tài chính cần phê duyệt.'
+                  : 'Lần chạy này vẫn khả dụng để xem lại ở chế độ chỉ đọc.'
               }
             />
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Source counts</CardTitle>
+                <CardTitle className="text-base">Số lượng nguồn</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm md:grid-cols-3">
                 {Object.entries(run.sourceCounts).map(([key, value]) => (
@@ -251,8 +252,8 @@ export function IntegrationReconciliationDetailPage() {
             {selectedAction === 'resolve' ? (
               <form onSubmit={handleSubmit}>
                 <ActionPanel
-                  title="Manual resolve"
-                  description="Resolve one reconciliation item with reason, evidence and idempotency."
+                  title="Xử lý thủ công"
+                  description="Xử lý một dòng đối soát với lý do, bằng chứng và idempotency."
                   state={
                     mutations.resolveReconciliationItem.isPending
                       ? 'pending'
@@ -266,19 +267,19 @@ export function IntegrationReconciliationDetailPage() {
                   governanceState={approvalBlocked ? 'blocked' : needsApproval ? 'approvalRequired' : 'warning'}
                   governanceMessage={
                     approvalBlocked
-                      ? 'Inventory or finance impact requires an ApprovalRequestId before submit.'
+                      ? 'Ảnh hưởng tồn kho hoặc tài chính cần ApprovalRequestId trước khi gửi.'
                       : needsApproval
-                        ? 'Approval reference will be captured in audit before state changes.'
-                        : 'This action only records reconciliation resolution state and audit.'
+                        ? 'Tham chiếu phê duyệt sẽ được ghi vào audit trước khi đổi trạng thái.'
+                        : 'Thao tác này chỉ ghi trạng thái xử lý đối soát và audit.'
                   }
                   footer={
                     <Button type="submit" disabled={!canResolve || mutations.resolveReconciliationItem.isPending}>
-                      Resolve item
+                      Xử lý dòng
                     </Button>
                   }
                 >
                   <label className="grid gap-1 text-sm">
-                    Item
+                    Hàng hóa
                     <select
                       className="h-9 rounded-md border bg-transparent px-3 text-sm"
                       value={itemId}
@@ -292,15 +293,15 @@ export function IntegrationReconciliationDetailPage() {
                     </select>
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason code
+                    Mã lý do
                     <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Reason note
+                    Ghi chú lý do
                     <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Evidence refs
+                    Tham chiếu bằng chứng
                     <textarea
                       className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                       value={evidenceRefs}
@@ -308,11 +309,11 @@ export function IntegrationReconciliationDetailPage() {
                     />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Idempotency key
+                    Khóa idempotency
                     <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
                   </label>
                   <label className="grid gap-1 text-sm">
-                    Resolution note
+                    Ghi chú xử lý
                     <textarea
                       className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                       value={resolutionNote}
@@ -326,7 +327,7 @@ export function IntegrationReconciliationDetailPage() {
                         checked={impactsInventory}
                         onChange={(event) => setImpactsInventory(event.target.checked)}
                       />
-                      Impacts inventory
+                      Ảnh hưởng tồn kho
                     </label>
                     <label className="flex items-center gap-2">
                       <input
@@ -334,12 +335,12 @@ export function IntegrationReconciliationDetailPage() {
                         checked={impactsFinance}
                         onChange={(event) => setImpactsFinance(event.target.checked)}
                       />
-                      Impacts finance
+                      Ảnh hưởng tài chính
                     </label>
                   </div>
                   {needsApproval ? (
                     <label className="grid gap-1 text-sm">
-                      Approval request
+                      Yêu cầu phê duyệt
                       <Input
                         value={approvalRequestId}
                         onChange={(event) => setApprovalRequestId(event.target.value)}
@@ -351,15 +352,15 @@ export function IntegrationReconciliationDetailPage() {
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Resolution audit</CardTitle>
+                  <CardTitle className="text-base">Audit xử lý</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-2 text-sm">
-                  <div>Reason code: {run.reasonCode}</div>
-                  <div>Reason note: {run.reasonNote ?? 'not captured'}</div>
-                  <div>Resolved at: {run.resolvedAt ?? 'not resolved'}</div>
-                  <div>Resolved by: {run.resolvedBy ?? 'not resolved'}</div>
+                  <div>Mã lý do: {run.reasonCode}</div>
+                  <div>Ghi chú lý do: {run.reasonNote ?? 'chưa ghi nhận'}</div>
+                  <div>Xử lý lúc: {run.resolvedAt ?? 'chưa xử lý'}</div>
+                  <div>Xử lý bởi: {run.resolvedBy ?? 'chưa xử lý'}</div>
                   <div className="break-words">
-                    Evidence refs: {run.evidenceRefs.length ? run.evidenceRefs.join(', ') : 'not captured'}
+                    Tham chiếu bằng chứng: {run.evidenceRefs.length ? run.evidenceRefs.join(', ') : 'chưa ghi nhận'}
                   </div>
                 </CardContent>
               </Card>

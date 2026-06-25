@@ -99,12 +99,12 @@ describe('CycleCount list/detail pages', () => {
   it('waits for a warehouse scope filter before loading cycle count works', () => {
     renderWithRouter(<CycleCountPage />);
 
-    expect(screen.getByText('Enter a warehouse to load cycle count works.')).toBeTruthy();
+    expect(screen.getByText('Nhập kho để tải công việc kiểm kê chu kỳ.')).toBeTruthy();
     expect(useCycleCountWorks).toHaveBeenCalledWith(
       { warehouseId: undefined, workStatus: undefined },
       { enabled: false },
     );
-    expect(screen.queryByRole('button', { name: /create lock/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Tạo khóa/i })).toBeNull();
   });
 
   it('renders cycle count work as a detail link on the root list', () => {
@@ -115,7 +115,7 @@ describe('CycleCount list/detail pages', () => {
     } as unknown as ReturnType<typeof useCycleCountWorks>);
 
     renderWithRouter(<CycleCountPage />);
-    fireEvent.change(screen.getByLabelText('Warehouse'), { target: { value: 'warehouse-1' } });
+    fireEvent.change(screen.getByLabelText('Kho'), { target: { value: 'warehouse-1' } });
 
     const link = screen.getByRole('link', { name: /CC-001/i });
     expect(link.getAttribute('href')).toBe('/cycle-count/work-1');
@@ -135,10 +135,10 @@ describe('CycleCount list/detail pages', () => {
       ['/cycle-count/new'],
     );
 
-    fireEvent.change(screen.getByLabelText('Source balance id'), { target: { value: 'balance-1' } });
-    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '4' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'cc-lock-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /create lock/i }));
+    fireEvent.change(screen.getByLabelText('ID số dư nguồn'), { target: { value: 'balance-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'cc-lock-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Tạo khóa/i }));
 
     expect(mutations.createWork.mutate).toHaveBeenCalledWith(
       {
@@ -167,13 +167,13 @@ describe('CycleCount list/detail pages', () => {
       ['/cycle-count/work-1'],
     );
 
-    expect(screen.queryByRole('button', { name: /create lock/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Tạo khóa/i })).toBeNull();
     expect(useCycleCountWork).toHaveBeenCalledWith('work-1');
-    fireEvent.change(screen.getByLabelText('Counted quantity'), { target: { value: '5' } });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'RF-001' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'cc-submit-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng kiểm đếm'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'RF-001' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'cc-submit-1' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /submit count/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Gửi kết quả kiểm kê/i }));
     expect(mutations.submitWork.mutate).toHaveBeenCalledWith(
       {
         id: 'work-1',
@@ -189,7 +189,7 @@ describe('CycleCount list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /recount/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Kiểm đếm lại/i }));
     expect(mutations.recountWork.mutate).toHaveBeenCalledWith(
       {
         id: 'work-1',
@@ -203,7 +203,7 @@ describe('CycleCount list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Điều chỉnh/i }));
     expect(mutations.postAdjustment.mutate).toHaveBeenCalledWith(
       {
         id: 'work-1',
@@ -218,7 +218,7 @@ describe('CycleCount list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /unlock/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Mở khóa/i }));
     expect(mutations.unlockWork.mutate).toHaveBeenCalledWith(
       {
         id: 'work-1',
@@ -251,13 +251,13 @@ describe('CycleCount list/detail pages', () => {
       ['/cycle-count/work-1'],
     );
 
-    fireEvent.change(screen.getByLabelText('Counted quantity'), { target: { value: '5' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'cc-terminal-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng kiểm đếm'), { target: { value: '5' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'cc-terminal-1' } });
 
-    expect(screen.getByRole('button', { name: /submit count/i })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: /recount/i })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: /adjust/i })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: /unlock/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Gửi kết quả kiểm kê/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Kiểm đếm lại/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Điều chỉnh/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Mở khóa/i })).toHaveProperty('disabled', true);
     expect(mutations.submitWork.mutate).not.toHaveBeenCalled();
   });
 });

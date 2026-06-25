@@ -7,6 +7,7 @@ import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useShippingStagingList } from '@modules/Shipping/Application/Queries/UseShipping';
 import { SHIPPING_STAGING_STATUSES } from '@modules/Shipping/Domain/Constants/ShippingConstants';
 import type {
@@ -17,13 +18,13 @@ import type {
 type StatusFilter = 'All' | ShipmentPackageStagingStatus;
 
 function StatusBadge({ status }: { status: ShipmentPackageStagingStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof Error) return error.message;
-  return 'Unable to load shipping staging records.';
+  return 'Không thể tải bản ghi staging giao hàng.';
 }
 
 function StagingRow({ staging }: { staging: ShipmentPackageStaging }) {
@@ -40,10 +41,10 @@ function StagingRow({ staging }: { staging: ShipmentPackageStaging }) {
         <StatusBadge status={staging.status} />
       </div>
       <div className="text-muted-foreground grid gap-1 text-xs">
-        <div>Lane: {staging.stagingLaneCode}</div>
-        <div>Shipment: {staging.shipmentReference ?? staging.outboundOrderId}</div>
-        <div>Dock: {staging.dockDoorCode ?? staging.dockDoorId ?? 'not assigned'}</div>
-        <div>Truck: {staging.truckReference ?? staging.vehicleNumber ?? 'not assigned'}</div>
+        <div>Làn: {staging.stagingLaneCode}</div>
+        <div>Lô giao hàng: {staging.shipmentReference ?? staging.outboundOrderId}</div>
+        <div>Cửa dock: {staging.dockDoorCode ?? staging.dockDoorId ?? 'chưa gán'}</div>
+        <div>Xe tải: {staging.truckReference ?? staging.vehicleNumber ?? 'chưa gán'}</div>
       </div>
     </Link>
   );
@@ -77,63 +78,63 @@ export function ShippingPage() {
 
   return (
     <ListPageShell
-      title="Shipping staging"
-      description="Scan staged packages and open detail pages for dock and truck milestones."
+      title="Staging giao hàng"
+      description="Quét kiện đã staging và mở trang chi tiết cho mốc cửa dock và xe tải."
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : query.error
-            ? 'Unable to load shipping staging'
+            ? 'Không thể tải staging giao hàng'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for shipment read.'
+          ? 'Bạn không có quyền xem staging giao hàng.'
           : query.error
-            ? (errorMessage(query.error) ?? 'Unable to load shipping staging records.')
-            : 'No shipping staging records match the filters.'
+            ? (errorMessage(query.error) ?? 'Không thể tải bản ghi staging giao hàng.')
+            : 'Không có bản ghi staging giao hàng nào khớp bộ lọc.'
       }
       toolbar={
         <Button asChild size="sm">
           <Link to={ROUTES.SHIPPING.NEW}>
             <PackageCheck className="size-4" aria-hidden="true" />
-            Stage package
+            Đưa kiện vào staging
           </Link>
         </Button>
       }
       filters={
         <div className="grid gap-3 sm:grid-cols-5">
           <label className="grid gap-1 text-sm">
-            Warehouse
+            Kho
             <Input value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Owner
+            Chủ hàng
             <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Package
+            Kiện hàng
             <Input value={packageId} onChange={(event) => setPackageId(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Outbound order
+            Đơn xuất kho
             <Input
               value={outboundOrderId}
               onChange={(event) => setOutboundOrderId(event.target.value)}
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Status
+            Trạng thái
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={status}
               onChange={(event) => setStatus(event.target.value as StatusFilter)}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {SHIPPING_STAGING_STATUSES.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {vietnameseOperationalLabel(item)}
                 </option>
               ))}
             </select>
@@ -144,7 +145,7 @@ export function ShippingPage() {
       {query.isLoading ? (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <RefreshCw className="size-4 animate-spin" />
-          Loading shipping staging
+          Đang tải staging giao hàng
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

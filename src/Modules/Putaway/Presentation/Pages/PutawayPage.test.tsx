@@ -284,16 +284,16 @@ describe('PutawayPage', () => {
     renderListPage();
 
     expect(await screen.findByText('PUT-001')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open detail' })).toHaveProperty(
+    expect(screen.getByRole('link', { name: 'Mở chi tiết' })).toHaveProperty(
       'href',
       expect.stringContaining('/putaway/putaway-1'),
     );
-    expect(screen.getByRole('link', { name: /Confirm scan/i })).toHaveProperty(
+    expect(screen.getByRole('link', { name: /Xác nhận quét/i })).toHaveProperty(
       'href',
       expect.stringContaining('/putaway/putaway-1/confirm'),
     );
-    expect(screen.queryByRole('button', { name: /Release putaway task/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Confirm putaway scan/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Phát hành tác vụ cất hàng/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Xác nhận quét cất hàng/i })).toBeNull();
     expect(fake.list).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, taskStatus: 'Released' }),
     );
@@ -307,10 +307,10 @@ describe('PutawayPage', () => {
     renderPage();
 
     expect(await screen.findByText('PUT-001')).toBeTruthy();
-    await actor.type(screen.getByLabelText('Inbound putaway release id'), 'release-2');
-    await actor.type(screen.getByLabelText('Source location code'), 'RCV-STG-02');
-    await actor.type(screen.getByLabelText('Idempotency key'), 'putaway-key-2');
-    await actor.click(screen.getByRole('button', { name: /Release putaway task/i }));
+    await actor.type(screen.getByLabelText('ID phát hành cất hàng inbound'), 'release-2');
+    await actor.type(screen.getByLabelText('Mã vị trí nguồn'), 'RCV-STG-02');
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'putaway-key-2');
+    await actor.click(screen.getByRole('button', { name: /Phát hành tác vụ cất hàng/i }));
 
     await waitFor(() =>
       expect(fake.release).toHaveBeenCalledWith({
@@ -328,7 +328,7 @@ describe('PutawayPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location-probe').textContent).toBe('/putaway/putaway-new'),
     );
-    expect(await screen.findByText(/PUT-001 released/i)).toBeTruthy();
+    expect(await screen.findByText(/PUT-001 đã phát hành/i)).toBeTruthy();
   });
 
   it('shows backend blocked reason from ApiError', async () => {
@@ -347,9 +347,9 @@ describe('PutawayPage', () => {
 
     renderPage();
 
-    await actor.type(screen.getByLabelText('Inbound putaway release id'), 'release-1');
-    await actor.type(screen.getByLabelText('Idempotency key'), 'putaway-key-1');
-    await actor.click(screen.getByRole('button', { name: /Release putaway task/i }));
+    await actor.type(screen.getByLabelText('ID phát hành cất hàng inbound'), 'release-1');
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'putaway-key-1');
+    await actor.click(screen.getByRole('button', { name: /Phát hành tác vụ cất hàng/i }));
 
     expect(await screen.findByText(/Target location is not eligible for putaway/i)).toBeTruthy();
   });
@@ -362,16 +362,16 @@ describe('PutawayPage', () => {
     renderPage();
 
     await screen.findByText('PUT-001');
-    await actor.click(screen.getByRole('button', { name: /Use for confirm/i }));
-    expect(screen.getByLabelText('Source scan')).toHaveProperty('value', '');
-    expect(screen.getByLabelText('Target scan')).toHaveProperty('value', '');
-    await actor.type(screen.getByLabelText('Source scan'), 'RCV-STG-01');
-    await actor.type(screen.getByLabelText('Target scan'), 'A-01');
-    await actor.type(screen.getByLabelText('LPN or SSCC scan'), 'LPN-001');
-    await actor.type(screen.getByLabelText('Confirmed qty'), '5');
-    await actor.clear(screen.getByLabelText('Confirm idempotency key'));
-    await actor.type(screen.getByLabelText('Confirm idempotency key'), 'confirm-key-1');
-    await actor.click(screen.getByRole('button', { name: /Confirm putaway scan/i }));
+    await actor.click(screen.getByRole('button', { name: /Dùng để xác nhận/i }));
+    expect(screen.getByLabelText('Quét nguồn')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Quét đích')).toHaveProperty('value', '');
+    await actor.type(screen.getByLabelText('Quét nguồn'), 'RCV-STG-01');
+    await actor.type(screen.getByLabelText('Quét đích'), 'A-01');
+    await actor.type(screen.getByLabelText('Quét LPN hoặc SSCC'), 'LPN-001');
+    await actor.type(screen.getByLabelText('Số lượng xác nhận'), '5');
+    await actor.clear(screen.getByLabelText('Khóa idempotency xác nhận'));
+    await actor.type(screen.getByLabelText('Khóa idempotency xác nhận'), 'confirm-key-1');
+    await actor.click(screen.getByRole('button', { name: /Xác nhận quét cất hàng/i }));
 
     await waitFor(() =>
       expect(fake.confirm).toHaveBeenCalledWith('putaway-1', {
@@ -387,8 +387,8 @@ describe('PutawayPage', () => {
         idempotencyKey: 'confirm-key-1',
       }),
     );
-    expect(await screen.findByText(/PUT-001 confirmed/i)).toBeTruthy();
-    expect(await screen.findByText(/Transaction: ITX-001/i)).toBeTruthy();
+    expect(await screen.findByText(/PUT-001 đã xác nhận/i)).toBeTruthy();
+    expect(await screen.findByText(/Giao dịch: ITX-001/i)).toBeTruthy();
   });
 
   it('keeps confirm disabled when quantity is not a positive number', async () => {
@@ -398,13 +398,13 @@ describe('PutawayPage', () => {
 
     renderPage();
 
-    await actor.type(screen.getByLabelText('Confirm task id'), 'putaway-1');
-    await actor.type(screen.getByLabelText('Source scan'), 'RCV-STG-01');
-    await actor.type(screen.getByLabelText('Target scan'), 'A-01');
-    await actor.type(screen.getByLabelText('Confirmed qty'), 'abc');
-    await actor.type(screen.getByLabelText('Confirm idempotency key'), 'confirm-key-1');
+    await actor.type(screen.getByLabelText('ID tác vụ xác nhận'), 'putaway-1');
+    await actor.type(screen.getByLabelText('Quét nguồn'), 'RCV-STG-01');
+    await actor.type(screen.getByLabelText('Quét đích'), 'A-01');
+    await actor.type(screen.getByLabelText('Số lượng xác nhận'), 'abc');
+    await actor.type(screen.getByLabelText('Khóa idempotency xác nhận'), 'confirm-key-1');
 
-    expect(screen.getByRole('button', { name: /Confirm putaway scan/i })).toHaveProperty(
+    expect(screen.getByRole('button', { name: /Xác nhận quét cất hàng/i })).toHaveProperty(
       'disabled',
       true,
     );
@@ -436,13 +436,13 @@ describe('PutawayPage', () => {
 
     renderPage();
 
-    await actor.type(screen.getByLabelText('Confirm task id'), 'putaway-1');
-    await actor.type(screen.getByLabelText('Source scan'), 'RCV-STG-01');
-    await actor.type(screen.getByLabelText('Target scan'), 'WRONG-LOC');
-    await actor.type(screen.getByLabelText('Confirm idempotency key'), 'confirm-key-1');
-    await actor.click(screen.getByRole('button', { name: /Confirm putaway scan/i }));
+    await actor.type(screen.getByLabelText('ID tác vụ xác nhận'), 'putaway-1');
+    await actor.type(screen.getByLabelText('Quét nguồn'), 'RCV-STG-01');
+    await actor.type(screen.getByLabelText('Quét đích'), 'WRONG-LOC');
+    await actor.type(screen.getByLabelText('Khóa idempotency xác nhận'), 'confirm-key-1');
+    await actor.click(screen.getByRole('button', { name: /Xác nhận quét cất hàng/i }));
 
     expect(await screen.findByText(/Putaway scan confirmation failed/i)).toBeTruthy();
-    expect(await screen.findByText(/TargetLocation expected A-01, got WRONG-LOC/i)).toBeTruthy();
+    expect(await screen.findByText(/TargetLocation mong đợi A-01, nhận WRONG-LOC/i)).toBeTruthy();
   });
 });

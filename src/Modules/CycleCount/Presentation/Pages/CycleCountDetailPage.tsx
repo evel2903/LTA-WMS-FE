@@ -8,6 +8,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useCycleCountMutations } from '@modules/CycleCount/Application/Commands/UseCycleCountMutations';
 import { useCycleCountWork } from '@modules/CycleCount/Application/Queries/UseCycleCountWorks';
 import type { CycleCountWorkStatus } from '@modules/CycleCount/Domain/Types/CycleCountWork';
@@ -31,11 +32,11 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete cycle count action.';
+  return 'Không thể hoàn tất thao tác kiểm kê chu kỳ.';
 }
 
 function StatusBadge({ status }: { status: CycleCountWorkStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'detail' }) {
@@ -183,34 +184,34 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
 
   return (
     <DetailPageShell
-      title={mode === 'new' ? 'New cycle count lock' : work?.countCode ?? 'Cycle count work'}
-      subtitle="Cycle count detail and governed action surface"
+      title={mode === 'new' ? 'Tạo khóa kiểm kê chu kỳ' : work?.countCode ?? 'Công việc kiểm kê chu kỳ'}
+      subtitle="Chi tiết kiểm kê chu kỳ và khu vực thao tác có kiểm soát"
       backTo={ROUTES.CYCLE_COUNT.ROOT}
-      backLabel="Back to cycle count"
+      backLabel="Quay lại kiểm kê chu kỳ"
       status={work ? <StatusBadge status={work.workStatus} /> : null}
       summary={
         work ? (
           <>
             <span>{work.skuCode ?? work.skuId}</span>
             <span>{work.locationCode ?? work.locationId}</span>
-            <span>Expected {work.expectedQuantity}</span>
+            <span>Dự kiến {work.expectedQuantity}</span>
           </>
         ) : null
       }
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : detailQuery.error
-            ? 'Unable to load cycle count detail'
+            ? 'Không thể tải chi tiết kiểm kê chu kỳ'
             : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for cycle count detail.'
+          ? 'Bạn không có quyền xem chi tiết kiểm kê chu kỳ.'
           : detailQuery.error
-            ? errorMessage(detailQuery.error) ?? 'The cycle count detail could not be loaded.'
-            : 'The requested cycle count work was not found.'
+            ? errorMessage(detailQuery.error) ?? 'Không thể tải chi tiết kiểm kê chu kỳ.'
+            : 'Không tìm thấy công việc kiểm kê chu kỳ được yêu cầu.'
       }
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -219,19 +220,19 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
             <form className="space-y-3 rounded-md border p-4" onSubmit={handleCreate}>
               <div className="flex items-center gap-2 font-semibold">
                 <LockKeyhole className="size-4" />
-                Lock count work
+                Khóa công việc kiểm kê
               </div>
               <label className="grid gap-1 text-sm">
-                Source balance id
+                ID số dư nguồn
                 <Input value={sourceBalanceId} onChange={(event) => setSourceBalanceId(event.target.value)} />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm">
-                  Quantity
+                  Số lượng
                   <Input value={quantity} onChange={(event) => setQuantity(event.target.value)} inputMode="decimal" />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Tolerance
+                  Dung sai
                   <Input
                     value={toleranceQuantity}
                     onChange={(event) => setToleranceQuantity(event.target.value)}
@@ -245,7 +246,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
                 disabled={!canCreate || mutations.createWork.isPending}
               >
                 <Send className="size-4" />
-                Create lock
+                Tạo khóa
               </button>
               {createError ? <p className="text-destructive text-sm">{createError}</p> : null}
             </form>
@@ -254,13 +255,13 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
           {work ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Work context</CardTitle>
+                <CardTitle className="text-base">Ngữ cảnh công việc</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <div>Balance: {work.sourceBalanceId}</div>
-                <div>Locked: {work.lockedBalanceId ?? 'not locked'}</div>
-                <div>Original status: {work.originalInventoryStatusCode}</div>
-                <div>Variance: {work.varianceQuantity ?? 'not submitted'}</div>
+                <div>Tồn: {work.sourceBalanceId}</div>
+                <div>Khóa: {work.lockedBalanceId ?? 'chưa khóa'}</div>
+                <div>Trạng thái gốc: {work.originalInventoryStatusCode}</div>
+                <div>Chênh lệch: {work.varianceQuantity ?? 'chưa gửi'}</div>
               </CardContent>
             </Card>
           ) : null}
@@ -269,10 +270,10 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
         <form className="space-y-3 rounded-md border p-4" onSubmit={handleSubmit}>
           <div className="flex items-center gap-2 font-semibold">
             <ClipboardCheck className="size-4" />
-            Submit and govern
+            Gửi và kiểm soát
           </div>
           <label className="grid gap-1 text-sm">
-            Counted quantity
+            Số lượng kiểm đếm
             <Input
               value={countedQuantity}
               onChange={(event) => setCountedQuantity(event.target.value)}
@@ -280,25 +281,25 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Approval request id
+            ID yêu cầu phê duyệt
             <Input value={approvalRequestId} onChange={(event) => setApprovalRequestId(event.target.value)} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="grid gap-1 text-sm">
-              Reason
+              Mã lý do
               <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
             </label>
             <label className="grid gap-1 text-sm">
-              Adjust reason
+              Lý do điều chỉnh
               <Input value={adjustReasonCode} onChange={(event) => setAdjustReasonCode(event.target.value)} />
             </label>
           </div>
           <label className="grid gap-1 text-sm">
-            Reason note
+            Ghi chú lý do
             <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
           </label>
           <label className="grid gap-1 text-sm">
-            Evidence refs
+            Tham chiếu bằng chứng
             <textarea
               className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
               value={evidenceRefs}
@@ -306,7 +307,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Idempotency key
+            Khóa idempotency
             <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
           </label>
           <button
@@ -315,7 +316,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
             disabled={!canSubmit || mutations.submitWork.isPending}
           >
             <ClipboardCheck className="size-4" />
-            Submit count
+            Gửi kết quả kiểm kê
           </button>
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -325,7 +326,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
               onClick={handleRecount}
             >
               <RotateCcw className="size-3.5" />
-              Recount
+              Kiểm đếm lại
             </button>
             <button
               type="button"
@@ -334,7 +335,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
               onClick={handleAdjustment}
             >
               <Send className="size-3.5" />
-              Adjust
+              Điều chỉnh
             </button>
             <button
               type="button"
@@ -343,7 +344,7 @@ export function CycleCountDetailPage({ mode = 'detail' }: { mode?: 'new' | 'deta
               onClick={handleUnlock}
             >
               <UnlockKeyhole className="size-3.5" />
-              Unlock
+              Mở khóa
             </button>
           </div>
           {[submitError, recountError, adjustError, unlockError].filter(Boolean).map((message) => (

@@ -106,12 +106,12 @@ describe('Replenishment list/detail pages', () => {
   it('waits for warehouse or owner scope before loading replenishment tasks', () => {
     renderWithRouter(<ReplenishmentPage />);
 
-    expect(screen.getByText('Enter warehouse or owner to load replenishment tasks.')).toBeTruthy();
+    expect(screen.getByText('Nhập kho hoặc chủ hàng để tải tác vụ bổ sung hàng.')).toBeTruthy();
     expect(useReplenishmentTasks).toHaveBeenCalledWith(
       { warehouseId: undefined, ownerId: undefined, taskStatus: undefined },
       { enabled: false },
     );
-    expect(screen.queryByRole('button', { name: /release task/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Phát hành tác vụ/i })).toBeNull();
   });
 
   it('renders replenishment tasks as detail links on the root list', () => {
@@ -122,7 +122,7 @@ describe('Replenishment list/detail pages', () => {
     } as unknown as ReturnType<typeof useReplenishmentTasks>);
 
     renderWithRouter(<ReplenishmentPage />);
-    fireEvent.change(screen.getByLabelText('Warehouse'), { target: { value: 'warehouse-1' } });
+    fireEvent.change(screen.getByLabelText('Kho'), { target: { value: 'warehouse-1' } });
 
     const link = screen.getByRole('link', { name: /RPL-001/i });
     expect(link.getAttribute('href')).toBe('/replenishment/task-1');
@@ -142,11 +142,11 @@ describe('Replenishment list/detail pages', () => {
       ['/replenishment/new'],
     );
 
-    fireEvent.change(screen.getByLabelText('Source balance id'), { target: { value: 'balance-source' } });
-    fireEvent.change(screen.getByLabelText('Target location id'), { target: { value: 'pick-face-1' } });
-    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '12' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'repl-release-1' } });
-    fireEvent.click(screen.getByRole('button', { name: /release task/i }));
+    fireEvent.change(screen.getByLabelText('ID số dư nguồn'), { target: { value: 'balance-source' } });
+    fireEvent.change(screen.getByLabelText('ID vị trí đích'), { target: { value: 'pick-face-1' } });
+    fireEvent.change(screen.getByLabelText('Số lượng'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'repl-release-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /Phát hành tác vụ/i }));
 
     expect(mutations.releaseTask.mutate).toHaveBeenCalledWith(
       {
@@ -177,14 +177,14 @@ describe('Replenishment list/detail pages', () => {
       ['/replenishment/task-1'],
     );
 
-    expect(screen.queryByRole('button', { name: /release task/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Phát hành tác vụ/i })).toBeNull();
     expect(useReplenishmentTask).toHaveBeenCalledWith('task-1');
-    fireEvent.change(screen.getByLabelText('Movement reason'), { target: { value: 'RC-V1-ADJUSTMENT' } });
-    fireEvent.change(screen.getByLabelText('Cancel reason'), { target: { value: 'RC-V1-REPLENISHMENT' } });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'RF-001' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'repl-confirm-1' } });
+    fireEvent.change(screen.getByLabelText('Lý do dịch chuyển'), { target: { value: 'RC-V1-ADJUSTMENT' } });
+    fireEvent.change(screen.getByLabelText('Lý do hủy'), { target: { value: 'RC-V1-REPLENISHMENT' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'RF-001' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'repl-confirm-1' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận/i }));
     expect(mutations.confirmTask.mutate).toHaveBeenCalledWith(
       {
         id: 'task-1',
@@ -198,7 +198,7 @@ describe('Replenishment list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Hủy/i }));
     expect(mutations.cancelTask.mutate).toHaveBeenCalledWith(
       {
         id: 'task-1',
@@ -212,10 +212,10 @@ describe('Replenishment list/detail pages', () => {
       expect.any(Object),
     );
 
-    fireEvent.change(screen.getByLabelText('Business reference'), { target: { value: 'ITX-001' } });
-    fireEvent.change(screen.getByLabelText('Error message'), { target: { value: 'ERP mismatch' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu nghiệp vụ'), { target: { value: 'ITX-001' } });
+    fireEvent.change(screen.getByLabelText('Thông báo lỗi'), { target: { value: 'ERP mismatch' } });
     fireEvent.change(screen.getByLabelText('Payload JSON'), { target: { value: '{"ExpectedQty":12}' } });
-    fireEvent.click(screen.getByRole('button', { name: /record failure/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Ghi nhận lỗi/i }));
 
     expect(mutations.recordReconciliationFailure.mutate).toHaveBeenCalledWith(
       {
@@ -247,14 +247,14 @@ describe('Replenishment list/detail pages', () => {
       ['/replenishment/task-1'],
     );
 
-    fireEvent.change(screen.getByLabelText('Business reference'), { target: { value: 'ITX-001' } });
-    fireEvent.change(screen.getByLabelText('Error message'), { target: { value: 'ERP mismatch' } });
-    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'RF-001' } });
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'recon-fail-1' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu nghiệp vụ'), { target: { value: 'ITX-001' } });
+    fireEvent.change(screen.getByLabelText('Thông báo lỗi'), { target: { value: 'ERP mismatch' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng'), { target: { value: 'RF-001' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'recon-fail-1' } });
     fireEvent.change(screen.getByLabelText('Payload JSON'), { target: { value: '{bad-json' } });
-    fireEvent.click(screen.getByRole('button', { name: /record failure/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Ghi nhận lỗi/i }));
 
-    expect(screen.getByText('Payload must be valid JSON.')).toBeTruthy();
+    expect(screen.getByText('Payload phải là JSON hợp lệ.')).toBeTruthy();
     expect(mutations.recordReconciliationFailure.mutate).not.toHaveBeenCalled();
   });
 
@@ -276,10 +276,10 @@ describe('Replenishment list/detail pages', () => {
       ['/replenishment/task-1'],
     );
 
-    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'repl-terminal-1' } });
+    fireEvent.change(screen.getByLabelText('Khóa idempotency'), { target: { value: 'repl-terminal-1' } });
 
-    expect(screen.getByRole('button', { name: /confirm/i })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: /cancel/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Xác nhận/i })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: /Hủy/i })).toHaveProperty('disabled', true);
     expect(mutations.confirmTask.mutate).not.toHaveBeenCalled();
     expect(mutations.cancelTask.mutate).not.toHaveBeenCalled();
   });

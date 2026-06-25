@@ -8,6 +8,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { usePutawayTasks } from '@modules/Putaway/Application/Queries/UsePutawayTasks';
 import { PUTAWAY_TASK_STATUSES } from '@modules/Putaway/Domain/Constants/PutawayConstants';
 import type { PutawayTask, PutawayTaskStatus } from '@modules/Putaway/Domain/Types/PutawayTask';
@@ -25,37 +26,37 @@ function TaskCard({ task }: { task: PutawayTask }) {
           </p>
         </div>
         <span className="shrink-0 rounded-md border px-2 py-1 text-xs font-medium">
-          {task.taskStatus}
+          {vietnameseOperationalLabel(task.taskStatus)}
         </span>
       </div>
 
       <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-medium text-foreground">Source</dt>
-          <dd>{task.sourceLocationCode ?? 'not set'}</dd>
+          <dt className="font-medium text-foreground">Nguồn</dt>
+          <dd>{task.sourceLocationCode ?? 'chưa thiết lập'}</dd>
         </div>
         <div>
-          <dt className="font-medium text-foreground">Target</dt>
+          <dt className="font-medium text-foreground">Đích</dt>
           <dd>{task.targetLocationCode}</dd>
         </div>
         <div>
           <dt className="font-medium text-foreground">LPN</dt>
-          <dd>{task.lpnCode ?? 'not set'}</dd>
+          <dd>{task.lpnCode ?? 'chưa thiết lập'}</dd>
         </div>
         <div>
-          <dt className="font-medium text-foreground">Mobile task</dt>
-          <dd>{task.mobileTaskId ?? 'not created'}</dd>
+          <dt className="font-medium text-foreground">Tác vụ mobile</dt>
+          <dd>{task.mobileTaskId ?? 'chưa tạo'}</dd>
         </div>
       </dl>
 
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm">
-          <Link to={ROUTES.PUTAWAY.DETAIL(task.id)}>Open detail</Link>
+          <Link to={ROUTES.PUTAWAY.DETAIL(task.id)}>Mở chi tiết</Link>
         </Button>
         <Button asChild variant="secondary" size="sm">
           <Link to={ROUTES.PUTAWAY.ACTION(task.id, 'confirm')}>
             <ScanLine className="size-4" aria-hidden="true" />
-            Confirm scan
+            Xác nhận quét
           </Link>
         </Button>
       </div>
@@ -86,17 +87,17 @@ export function PutawayPage() {
 
   return (
     <ListPageShell
-      title="Putaway tasks"
-      description="Filter and select putaway tasks. Release, scan confirmation and blocked-state handling run on detail/action pages."
+      title="Tác vụ cất hàng"
+      description="Lọc và chọn tác vụ cất hàng. Phát hành, xác nhận quét và xử lý trạng thái bị chặn thực hiện ở trang chi tiết/thao tác."
       toolbar={
-        <Button variant="secondary" size="icon" onClick={() => void query.refetch()} aria-label="Refresh putaway list">
+        <Button variant="secondary" size="icon" onClick={() => void query.refetch()} aria-label="Làm mới danh sách cất hàng">
           <RefreshCw className="size-4" aria-hidden="true" />
         </Button>
       }
       filters={
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm">
-            Warehouse filter
+            Lọc kho
             <Input
               value={warehouseFilter}
               onChange={(event) => setWarehouseFilter(event.target.value)}
@@ -104,16 +105,16 @@ export function PutawayPage() {
             />
           </label>
           <label className="grid gap-1 text-sm">
-            Task status filter
+            Lọc trạng thái tác vụ
             <select
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}
             >
-              <option value="All">All</option>
+              <option value="All">Tất cả</option>
               {PUTAWAY_TASK_STATUSES.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {vietnameseOperationalLabel(status)}
                 </option>
               ))}
             </select>
@@ -123,11 +124,11 @@ export function PutawayPage() {
       state={state}
       stateTitle={
         state === 'forbidden'
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : state === 'error'
-            ? 'Unable to load putaway tasks'
+            ? 'Không thể tải tác vụ cất hàng'
             : state === 'empty'
-              ? 'No putaway tasks'
+              ? 'Chưa có tác vụ cất hàng'
               : undefined
       }
       stateMessage={
@@ -136,9 +137,9 @@ export function PutawayPage() {
           : state === 'error'
             ? query.error instanceof Error
               ? query.error.message
-              : 'Unable to load putaway tasks.'
+              : 'Không thể tải tác vụ cất hàng.'
             : state === 'empty'
-              ? 'No putaway tasks match the current filters.'
+              ? 'Không có tác vụ cất hàng khớp bộ lọc hiện tại.'
               : undefined
       }
     >

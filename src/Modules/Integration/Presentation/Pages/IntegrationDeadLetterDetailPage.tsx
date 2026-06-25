@@ -9,6 +9,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
 import { Input } from '@shared/Components/Ui/Input';
+import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useIntegrationMutations } from '@modules/Integration/Application/Commands/UseIntegrationMutations';
 import { useIntegrationDeadLetter } from '@modules/Integration/Application/Queries/UseIntegrationDeadLetters';
 import { DEAD_LETTER_ACTIONABLE_STATUSES } from '@modules/Integration/Domain/Constants/IntegrationConstants';
@@ -29,11 +30,11 @@ function errorMessage(error: unknown): string | null {
   if (!error) return null;
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return 'Unable to complete integration action.';
+  return 'Không thể hoàn tất thao tác tích hợp.';
 }
 
 function StatusBadge({ status }: { status: OutboxMessageStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
+  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(status)}</span>;
 }
 
 export function IntegrationDeadLetterDetailPage() {
@@ -93,7 +94,7 @@ export function IntegrationDeadLetterDetailPage() {
         manualFixPayload = JSON.parse(manualPayloadText) as Record<string, unknown>;
         setPayloadError('');
       } catch {
-        setPayloadError('Manual fix payload must be valid JSON.');
+        setPayloadError('Payload sửa thủ công phải là JSON hợp lệ.');
         return null;
       }
     }
@@ -124,10 +125,10 @@ export function IntegrationDeadLetterDetailPage() {
 
   return (
     <DetailPageShell
-      title={message?.businessReference ?? 'Integration dead-letter'}
-      subtitle={message?.messageId ?? 'Dead-letter detail and governed action surface'}
+      title={message?.businessReference ?? 'Dead-letter tích hợp'}
+      subtitle={message?.messageId ?? 'Chi tiết dead-letter và khu vực thao tác có kiểm soát'}
       backTo={ROUTES.INTEGRATION.ROOT}
-      backLabel="Back to integration"
+      backLabel="Quay lại tích hợp"
       status={message ? <StatusBadge status={message.status} /> : null}
       summary={
         message ? (
@@ -144,25 +145,25 @@ export function IntegrationDeadLetterDetailPage() {
             <Button asChild size="sm" variant="outline">
               <Link to={ROUTES.INTEGRATION.DEAD_LETTER_ACTION(message.id, 'retry')}>
                 <RotateCcw className="size-4" />
-                Retry
+                Thử lại
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link to={ROUTES.INTEGRATION.DEAD_LETTER_ACTION(message.id, 'manual-fix')}>
                 <Wrench className="size-4" />
-                Manual fix
+                Sửa thủ công
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link to={ROUTES.INTEGRATION.DEAD_LETTER_ACTION(message.id, 'ack')}>
                 <CheckCircle2 className="size-4" />
-                Ack
+                Xác nhận
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline">
               <Link to={ROUTES.INTEGRATION.DEAD_LETTER_ACTION(message.id, 'ignore')}>
                 <XCircle className="size-4" />
-                Ignore
+                Bỏ qua
               </Link>
             </Button>
           </>
@@ -171,21 +172,21 @@ export function IntegrationDeadLetterDetailPage() {
       state={state}
       stateTitle={
         apiError?.isForbidden
-          ? 'Permission denied'
+          ? 'Từ chối quyền truy cập'
           : detailQuery.error
-            ? 'Unable to load dead-letter'
+            ? 'Không thể tải dead-letter'
             : state === 'readOnly'
-              ? 'Read-only dead-letter'
+              ? 'Dead-letter chỉ đọc'
               : undefined
       }
       stateMessage={
         apiError?.isForbidden
-          ? 'Permission denied for integration dead-letter detail.'
+          ? 'Bạn không có quyền xem chi tiết thư chết tích hợp.'
           : detailQuery.error
-            ? errorMessage(detailQuery.error) ?? 'The integration dead-letter could not be loaded.'
+            ? errorMessage(detailQuery.error) ?? 'Không thể tải chi tiết thư chết tích hợp.'
             : state === 'readOnly'
-              ? 'Actions are disabled because this integration message is no longer in DeadLetter status.'
-              : 'The requested integration dead-letter was not found.'
+              ? 'Thao tác bị tắt vì thông điệp tích hợp này không còn ở trạng thái DeadLetter.'
+              : 'Không tìm thấy dead-letter tích hợp được yêu cầu.'
       }
     >
       {message ? (
@@ -193,16 +194,16 @@ export function IntegrationDeadLetterDetailPage() {
           <section className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Message context</CardTitle>
+                <CardTitle className="text-base">Ngữ cảnh thông điệp</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <div>Event type: {message.eventType}</div>
-                <div>Source: {message.sourceSystem}</div>
-                <div>Target: {message.targetSystem}</div>
-                <div>Attempt: {message.attemptCount}/{message.maxAttempts}</div>
-                <div>Failure: {message.failureCategory ?? 'not classified'}</div>
-                <div className="break-words">Last error: {message.lastError ?? message.deadLetterReason ?? 'none'}</div>
-                <div>Next retry: {message.nextRetryAt ?? 'not scheduled'}</div>
+                <div>Loại sự kiện: {message.eventType}</div>
+                <div>Nguồn: {message.sourceSystem}</div>
+                <div>Đích: {message.targetSystem}</div>
+                <div>Lần thử: {message.attemptCount}/{message.maxAttempts}</div>
+                <div>Lỗi: {message.failureCategory ?? 'chưa phân loại'}</div>
+                <div className="break-words">Lỗi cuối: {message.lastError ?? message.deadLetterReason ?? 'không có'}</div>
+                <div>Lần thử kế tiếp: {message.nextRetryAt ?? 'chưa lên lịch'}</div>
               </CardContent>
             </Card>
             <Card>
@@ -222,18 +223,18 @@ export function IntegrationDeadLetterDetailPage() {
               <form className="space-y-3 rounded-md border p-4" onSubmit={handleSubmit}>
                 <div className="flex items-center gap-2 font-semibold">
                   <ShieldAlert className="size-4" />
-                  {selectedAction ?? 'Select action'}
+                  {selectedAction ?? 'Chọn thao tác'}
                 </div>
                 <label className="grid gap-1 text-sm">
-                  Reason code
+                  Mã lý do
                   <Input value={reasonCode} onChange={(event) => setReasonCode(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Reason note
+                  Ghi chú lý do
                   <Input value={reasonNote} onChange={(event) => setReasonNote(event.target.value)} />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Evidence refs
+                  Tham chiếu bằng chứng
                   <textarea
                     className="min-h-20 rounded-md border bg-transparent px-3 py-2 text-sm"
                     value={evidenceRefs}
@@ -241,12 +242,12 @@ export function IntegrationDeadLetterDetailPage() {
                   />
                 </label>
                 <label className="grid gap-1 text-sm">
-                  Idempotency key
+                  Khóa idempotency
                   <Input value={idempotencyKey} onChange={(event) => setIdempotencyKey(event.target.value)} />
                 </label>
                 {selectedAction === 'manual-fix' ? (
                   <label className="grid gap-1 text-sm">
-                    Manual fix payload JSON
+                    Payload JSON sửa thủ công
                     <textarea
                       className="min-h-24 rounded-md border bg-transparent px-3 py-2 text-sm"
                       value={manualPayloadText}
@@ -260,23 +261,23 @@ export function IntegrationDeadLetterDetailPage() {
                 {payloadError ? <p className="text-destructive text-sm">{payloadError}</p> : null}
                 {mutationError ? <p className="text-destructive text-sm">{mutationError}</p> : null}
                 <Button type="submit" className="w-full" disabled={!selectedAction || !canAct}>
-                  Apply action
+                  Áp dụng thao tác
                 </Button>
               </form>
             ) : null}
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Resolution audit</CardTitle>
+                <CardTitle className="text-base">Audit xử lý</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <div>Resolution action: {message.resolutionAction ?? 'not resolved'}</div>
-                <div>Resolved at: {message.resolvedAt ?? 'not resolved'}</div>
-                <div>Resolved by: {message.resolvedBy ?? 'not resolved'}</div>
-                <div>Reason code: {message.reasonCode ?? 'not captured'}</div>
-                <div>Reason note: {message.reasonNote ?? 'not captured'}</div>
+                <div>Thao tác xử lý: {message.resolutionAction ?? 'chưa xử lý'}</div>
+                <div>Xử lý lúc: {message.resolvedAt ?? 'chưa xử lý'}</div>
+                <div>Xử lý bởi: {message.resolvedBy ?? 'chưa xử lý'}</div>
+                <div>Mã lý do: {message.reasonCode ?? 'chưa ghi nhận'}</div>
+                <div>Ghi chú lý do: {message.reasonNote ?? 'chưa ghi nhận'}</div>
                 <div className="break-words">
-                  Evidence refs: {message.evidenceRefs.length ? message.evidenceRefs.join(', ') : 'not captured'}
+                  Tham chiếu bằng chứng: {message.evidenceRefs.length ? message.evidenceRefs.join(', ') : 'chưa ghi nhận'}
                 </div>
               </CardContent>
             </Card>
