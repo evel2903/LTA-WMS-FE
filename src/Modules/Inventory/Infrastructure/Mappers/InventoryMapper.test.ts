@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { InventoryMapper } from '@modules/Inventory/Infrastructure/Mappers/InventoryMapper';
-import type { InventoryControlResultDto } from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
+import { availableQuantity } from '@modules/Inventory/Domain/Entities/InventoryItem';
+import type {
+  InventoryControlResultDto,
+  InventoryItemDto,
+} from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
 
 const controlDto: InventoryControlResultDto = {
   InventoryTransaction: {
@@ -92,6 +96,27 @@ const controlDto: InventoryControlResultDto = {
 };
 
 describe('InventoryMapper inventory control', () => {
+  it('maps inventory quantity fields used by availability display without changing the domain formula', () => {
+    const dto: InventoryItemDto = {
+      id: 'inventory-1',
+      sku: 'SKU-001',
+      product_name: 'Nước ngọt lon 330ml',
+      warehouse_id: 'warehouse-1',
+      location_code: 'A-01-01',
+      quantity_on_hand: 120,
+      quantity_reserved: 35,
+      reorder_point: 20,
+      unit_of_measure: 'EA',
+      updated_at: '2026-06-25T00:00:00.000Z',
+    };
+
+    const entity = InventoryMapper.toEntity(dto);
+
+    expect(entity.quantityOnHand).toBe(120);
+    expect(entity.quantityReserved).toBe(35);
+    expect(availableQuantity(entity)).toBe(85);
+  });
+
   it('maps status/movement control result from BE PascalCase DTO', () => {
     const result = InventoryMapper.toControlResult(controlDto);
 

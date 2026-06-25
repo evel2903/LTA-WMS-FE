@@ -13,7 +13,10 @@ vi.mock('@shared/Services/Http/ApiClient', () => ({
 }));
 
 import { InventoryRepository } from '@modules/Inventory/Infrastructure/Repositories/InventoryRepository';
-import type { InventoryControlResultDto } from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
+import type {
+  InventoryControlResultDto,
+  InventoryListResponseDto,
+} from '@modules/Inventory/Infrastructure/Dtos/InventoryDtos';
 
 const controlDto: InventoryControlResultDto = {
   InventoryTransaction: {
@@ -118,6 +121,38 @@ function httpMock(): { client: HttpClient; post: ReturnType<typeof vi.fn> } {
 }
 
 describe('InventoryRepository inventory control', () => {
+  it('normalizes inventory list page size with default 50 and max 100', async () => {
+    const listDto: InventoryListResponseDto = {
+      items: [],
+      page: 1,
+      page_size: 50,
+      total_items: 0,
+      total_pages: 0,
+    };
+    const get = vi.fn(() => Promise.resolve(listDto));
+    const repo = new InventoryRepository({
+      get,
+      post: vi.fn(),
+      put: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+    } as unknown as HttpClient);
+
+    await repo.list({ page: 0, pageSize: 0 });
+    await repo.list({ page: 2, pageSize: 500.8, status: 'LOW_STOCK' });
+
+    const firstCall = get.mock.calls[0] as unknown as [string, { params: Record<string, unknown> }];
+    const secondCall = get.mock.calls[1] as unknown as [string, { params: Record<string, unknown> }];
+
+    expect(firstCall[0]).toBe('/inventory');
+    expect(firstCall[1].params.page).toBe(1);
+    expect(firstCall[1].params.page_size).toBe(50);
+    expect(secondCall[0]).toBe('/inventory');
+    expect(secondCall[1].params.page).toBe(2);
+    expect(secondCall[1].params.page_size).toBe(100);
+    expect(secondCall[1].params.status).toBe('LOW_STOCK');
+  });
+
   it('posts status change to inventory-control endpoint', async () => {
     const http = httpMock();
     const repo = new InventoryRepository(http.client);

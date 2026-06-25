@@ -5,6 +5,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { PageSpinner } from '@shared/Components/Feedback/Spinner';
+import { ApiError } from '@shared/Services/Http/ApiError';
 import {
   availableQuantity,
   stockStatus,
@@ -15,9 +16,27 @@ import { AdjustQuantityForm } from '@modules/Inventory/Presentation/Forms/Adjust
 
 export function InventoryDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
-  const { data: item, isLoading } = useInventoryItem(id);
+  const { data: item, error, isError, isLoading } = useInventoryItem(id);
+  const isContractGap = error instanceof ApiError && error.code === 'NOT_FOUND';
 
   if (isLoading) return <PageSpinner />;
+  if (isError) {
+    return (
+      <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm">
+        <div className="font-medium">
+          {isContractGap
+            ? 'Chưa xác nhận được hợp đồng API khi chạy cho chi tiết tồn kho.'
+            : 'Không tải được chi tiết tồn kho.'}
+        </div>
+        <p className="text-muted-foreground mt-1">
+          {isContractGap
+            ? 'BE chưa xác nhận controller chi tiết tương ứng cho màn tồn kho cũ. Không hiển thị dữ liệu như năng lực chạy thực tế cho tới khi mô hình đọc được khóa.'
+            : 'Vui lòng kiểm tra quyền truy cập, phiên đăng nhập hoặc trạng thái máy chủ rồi thử lại.'}
+        </p>
+        {error instanceof Error && <p className="text-muted-foreground mt-1 text-xs">{error.message}</p>}
+      </div>
+    );
+  }
   if (!item) return <p className="text-muted-foreground">Không tìm thấy tồn kho.</p>;
 
   return (
@@ -42,6 +61,10 @@ export function InventoryDetailPage() {
             <Field label="Đã giữ chỗ" value={String(item.quantityReserved)} />
             <Field label="Khả dụng" value={String(availableQuantity(item))} />
             <Field label="Đơn vị" value={item.unitOfMeasure} />
+            <div className="text-muted-foreground col-span-2 rounded-md border p-3 text-xs">
+              Khả dụng = max(0, Tồn hiện có - Đã phân bổ/giữ chỗ - Đang giữ). Trường
+              đang giữ riêng chưa có hợp đồng API khi chạy trong dữ liệu FE hiện tại.
+            </div>
           </CardContent>
         </Card>
 
