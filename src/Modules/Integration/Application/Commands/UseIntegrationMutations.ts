@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { integrationQueryKeys } from '@modules/Integration/Application/Queries/IntegrationQueryKeys';
 import type {
+  CreateReconciliationRunInput,
   DeadLetterActionInput,
   RecordOutboxFailureInput,
+  ResolveReconciliationItemInput,
 } from '@modules/Integration/Domain/Types/IntegrationQuery';
 import { integrationRepository } from '@modules/Integration/Infrastructure/Repositories/IntegrationRepositoryInstance';
 
@@ -37,6 +39,17 @@ export function useIntegrationMutations() {
     recordFailure: useMutation({
       mutationFn: (input: RecordOutboxFailureInput) => integrationRepository.recordFailure(input),
       onSuccess: invalidate,
+    }),
+    createReconciliationRun: useMutation({
+      mutationFn: (input: CreateReconciliationRunInput) => integrationRepository.createReconciliationRun(input),
+      onSuccess: invalidate,
+    }),
+    resolveReconciliationItem: useMutation({
+      mutationFn: (input: { id: string; payload: ResolveReconciliationItemInput }) =>
+        integrationRepository.resolveReconciliationItem(input.id, input.payload),
+      onSuccess: () => {
+        void invalidate();
+      },
     }),
   };
 }

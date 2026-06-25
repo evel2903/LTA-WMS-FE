@@ -5,14 +5,26 @@ import {
   INTEGRATION_DEFAULT_PAGE_SIZE,
   INTEGRATION_MAX_PAGE_SIZE,
 } from '@modules/Integration/Domain/Constants/IntegrationConstants';
-import type { OutboxMessage } from '@modules/Integration/Domain/Types/Integration';
+import type { OutboxMessage, ReconciliationItem, ReconciliationRun } from '@modules/Integration/Domain/Types/Integration';
 import type {
+  CreateReconciliationRunInput,
   DeadLetterActionInput,
   IntegrationListFilter,
+  ReconciliationItemFilter,
+  ReconciliationRunFilter,
   RecordOutboxFailureInput,
+  ResolveReconciliationItemInput,
 } from '@modules/Integration/Domain/Types/IntegrationQuery';
 import { INTEGRATION_ENDPOINTS } from '@modules/Integration/Infrastructure/Api/IntegrationEndpoints';
-import type { OutboxMessageDto, PagedOutboxMessageDto } from '@modules/Integration/Infrastructure/Dtos/IntegrationDtos';
+import type {
+  OutboxMessageDto,
+  PagedOutboxMessageDto,
+  PagedReconciliationItemDto,
+  PagedReconciliationRunDto,
+  ReconciliationItemDto,
+  ReconciliationRunCreatedDto,
+  ReconciliationRunDto,
+} from '@modules/Integration/Infrastructure/Dtos/IntegrationDtos';
 import { IntegrationMapper } from '@modules/Integration/Infrastructure/Mappers/IntegrationMapper';
 
 function pageSize(value?: number): number {
@@ -74,6 +86,73 @@ export class IntegrationRepository implements IIntegrationRepository {
       IntegrationMapper.toFailureRequest(input),
     );
     return IntegrationMapper.toOutboxMessage(dto);
+  }
+
+  async listReconciliationRuns(filter: ReconciliationRunFilter = {}): Promise<PaginatedResponse<ReconciliationRun>> {
+    const dto = await this.http.get<PagedReconciliationRunDto>(INTEGRATION_ENDPOINTS.RECONCILIATION_RUNS, {
+      params: removeUndefined({
+        Page: filter.page ?? 1,
+        PageSize: pageSize(filter.pageSize),
+        BusinessReference: filter.businessReference,
+        WarehouseId: filter.warehouseId,
+        OwnerId: filter.ownerId,
+        RunStatus: filter.runStatus,
+        CreatedFrom: filter.createdFrom,
+        CreatedTo: filter.createdTo,
+        UpdatedFrom: filter.updatedFrom,
+        UpdatedTo: filter.updatedTo,
+      }),
+    });
+    return IntegrationMapper.toReconciliationRunPage(dto);
+  }
+
+  async getReconciliationRun(id: string): Promise<ReconciliationRun> {
+    const dto = await this.http.get<ReconciliationRunDto>(INTEGRATION_ENDPOINTS.RECONCILIATION_RUN_BY_ID(id));
+    return IntegrationMapper.toReconciliationRun(dto);
+  }
+
+  async listReconciliationItems(
+    runId: string,
+    filter: ReconciliationItemFilter = {},
+  ): Promise<PaginatedResponse<ReconciliationItem>> {
+    const dto = await this.http.get<PagedReconciliationItemDto>(INTEGRATION_ENDPOINTS.RECONCILIATION_RUN_ITEMS(runId), {
+      params: removeUndefined({
+        Page: filter.page ?? 1,
+        PageSize: pageSize(filter.pageSize),
+        BusinessReference: filter.businessReference,
+        WarehouseId: filter.warehouseId,
+        OwnerId: filter.ownerId,
+        ItemStatus: filter.itemStatus,
+        Severity: filter.severity,
+        MismatchType: filter.mismatchType,
+        CreatedFrom: filter.createdFrom,
+        CreatedTo: filter.createdTo,
+        UpdatedFrom: filter.updatedFrom,
+        UpdatedTo: filter.updatedTo,
+      }),
+    });
+    return IntegrationMapper.toReconciliationItemPage(dto);
+  }
+
+  async createReconciliationRun(
+    input: CreateReconciliationRunInput,
+  ): Promise<{ run: ReconciliationRun; items: ReconciliationItem[] }> {
+    const dto = await this.http.post<ReconciliationRunCreatedDto>(
+      INTEGRATION_ENDPOINTS.RECONCILIATION_RUNS,
+      IntegrationMapper.toCreateReconciliationRunRequest(input),
+    );
+    return IntegrationMapper.toReconciliationRunCreated(dto);
+  }
+
+  async resolveReconciliationItem(
+    id: string,
+    input: ResolveReconciliationItemInput,
+  ): Promise<ReconciliationItem> {
+    const dto = await this.http.post<ReconciliationItemDto>(
+      INTEGRATION_ENDPOINTS.RECONCILIATION_ITEM_RESOLVE(id),
+      IntegrationMapper.toResolveReconciliationItemRequest(input),
+    );
+    return IntegrationMapper.toReconciliationItem(dto);
   }
 
   private async postAction(url: string, input: DeadLetterActionInput): Promise<OutboxMessage> {

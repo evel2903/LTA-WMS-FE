@@ -8,9 +8,16 @@ import {
   useIntegrationDeadLetter,
   useIntegrationDeadLetters,
 } from '@modules/Integration/Application/Queries/UseIntegrationDeadLetters';
-import type { OutboxMessage } from '@modules/Integration/Domain/Types/Integration';
+import {
+  useIntegrationReconciliationItems,
+  useIntegrationReconciliationRun,
+  useIntegrationReconciliationRuns,
+} from '@modules/Integration/Application/Queries/UseIntegrationReconciliation';
+import type { OutboxMessage, ReconciliationItem, ReconciliationRun } from '@modules/Integration/Domain/Types/Integration';
 import { IntegrationDeadLetterDetailPage } from '@modules/Integration/Presentation/Pages/IntegrationDeadLetterDetailPage';
 import { IntegrationPage } from '@modules/Integration/Presentation/Pages/IntegrationPage';
+import { IntegrationReconciliationDetailPage } from '@modules/Integration/Presentation/Pages/IntegrationReconciliationDetailPage';
+import { IntegrationReconciliationPage } from '@modules/Integration/Presentation/Pages/IntegrationReconciliationPage';
 
 vi.mock('@modules/Integration/Application/Commands/UseIntegrationMutations', () => ({
   useIntegrationMutations: vi.fn(),
@@ -19,6 +26,12 @@ vi.mock('@modules/Integration/Application/Commands/UseIntegrationMutations', () 
 vi.mock('@modules/Integration/Application/Queries/UseIntegrationDeadLetters', () => ({
   useIntegrationDeadLetter: vi.fn(),
   useIntegrationDeadLetters: vi.fn(),
+}));
+
+vi.mock('@modules/Integration/Application/Queries/UseIntegrationReconciliation', () => ({
+  useIntegrationReconciliationItems: vi.fn(),
+  useIntegrationReconciliationRun: vi.fn(),
+  useIntegrationReconciliationRuns: vi.fn(),
 }));
 
 function makeMessage(overrides: Partial<OutboxMessage> = {}): OutboxMessage {
@@ -61,6 +74,61 @@ function makeMessage(overrides: Partial<OutboxMessage> = {}): OutboxMessage {
   };
 }
 
+function makeRun(overrides: Partial<ReconciliationRun> = {}): ReconciliationRun {
+  return {
+    id: 'run-1',
+    businessReference: 'SHIP-001',
+    warehouseId: 'WT-01',
+    ownerId: 'OWNER-A',
+    runStatus: 'CompletedWithMismatch',
+    sourceCounts: { OutboxMessages: 1, QuantityMismatches: 1 },
+    itemCount: 1,
+    mismatchCount: 1,
+    exceptionCount: 1,
+    idempotencyKey: 'recon-1',
+    reasonCode: 'RC-V1-DEAD-LETTER-FIX',
+    reasonCodeId: 'reason-1',
+    reasonNote: 'Manual reconciliation',
+    evidenceRefs: ['ticket:RECON-1'],
+    resolvedAt: null,
+    resolvedBy: null,
+    createdAt: '2026-06-25T00:00:00.000Z',
+    createdBy: 'user-1',
+    updatedAt: '2026-06-25T00:05:00.000Z',
+    isDuplicate: false,
+    ...overrides,
+  };
+}
+
+function makeItem(overrides: Partial<ReconciliationItem> = {}): ReconciliationItem {
+  return {
+    id: 'item-1',
+    runId: 'run-1',
+    itemStatus: 'Open',
+    severity: 'High',
+    mismatchType: 'QuantityMismatch',
+    sourceType: 'GoodsIssuePosted',
+    sourceId: 'msg-1',
+    expectedSummary: { Quantity: 10 },
+    actualSummary: { Quantity: 8 },
+    exceptionCaseId: 'exception-1',
+    outboxMessageId: 'outbox-1',
+    deadLetterMessageId: 'outbox-1',
+    resolutionNote: null,
+    approvalRequestId: null,
+    reasonCode: null,
+    reasonCodeId: null,
+    reasonNote: null,
+    evidenceRefs: [],
+    resolvedAt: null,
+    resolvedBy: null,
+    createdAt: '2026-06-25T00:00:00.000Z',
+    updatedAt: '2026-06-25T00:05:00.000Z',
+    isDuplicate: false,
+    ...overrides,
+  };
+}
+
 function mutationState(overrides: Record<string, unknown> = {}) {
   return {
     retryDeadLetter: { mutate: vi.fn(), isPending: false, error: null },
@@ -68,6 +136,8 @@ function mutationState(overrides: Record<string, unknown> = {}) {
     acknowledgeDeadLetter: { mutate: vi.fn(), isPending: false, error: null },
     ignoreDeadLetter: { mutate: vi.fn(), isPending: false, error: null },
     recordFailure: { mutate: vi.fn(), isPending: false, error: null },
+    createReconciliationRun: { mutate: vi.fn(), isPending: false, error: null },
+    resolveReconciliationItem: { mutate: vi.fn(), isPending: false, error: null },
     ...overrides,
   };
 }
@@ -93,6 +163,21 @@ describe('Integration list/detail pages', () => {
       isLoading: false,
       error: null,
     } as unknown as ReturnType<typeof useIntegrationDeadLetter>);
+    vi.mocked(useIntegrationReconciliationRuns).mockReturnValue({
+      data: { items: [makeRun()], page: 1, pageSize: 50, totalItems: 1, totalPages: 1 },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useIntegrationReconciliationRuns>);
+    vi.mocked(useIntegrationReconciliationRun).mockReturnValue({
+      data: makeRun(),
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useIntegrationReconciliationRun>);
+    vi.mocked(useIntegrationReconciliationItems).mockReturnValue({
+      data: { items: [makeItem()], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useIntegrationReconciliationItems>);
     vi.mocked(useIntegrationMutations).mockReturnValue(
       mutationState() as unknown as ReturnType<typeof useIntegrationMutations>,
     );
@@ -203,5 +288,89 @@ describe('Integration list/detail pages', () => {
     expect(screen.getByText(/ticket:ACK-1/i)).toBeTruthy();
     expect(screen.queryByRole('link', { name: /Retry/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /Apply action/i })).toBeNull();
+  });
+
+  it('renders reconciliation list as links and keeps resolve form off the list page', () => {
+    renderWithRouter(<IntegrationReconciliationPage />, ['/integration/reconciliation']);
+
+    expect(screen.getByRole('link', { name: /SHIP-001/i }).getAttribute('href')).toBe(
+      '/integration/reconciliation/run-1',
+    );
+    expect(screen.queryByRole('button', { name: /Resolve item/i })).toBeNull();
+    expect(useIntegrationReconciliationRuns).toHaveBeenCalledWith({
+      businessReference: undefined,
+      warehouseId: undefined,
+      ownerId: undefined,
+      runStatus: undefined,
+      updatedFrom: undefined,
+      updatedTo: undefined,
+    });
+  });
+
+  it('submits reconciliation resolve from the detail action route with reason, evidence and idempotency', () => {
+    const mutations = mutationState({
+      resolveReconciliationItem: { mutate: vi.fn(), isPending: false, error: null },
+    });
+    vi.mocked(useIntegrationMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useIntegrationMutations>,
+    );
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/integration/reconciliation/:id/:action" element={<IntegrationReconciliationDetailPage />} />
+      </Routes>,
+      ['/integration/reconciliation/run-1/resolve'],
+    );
+
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:RECON-1' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'resolve-1' } });
+    fireEvent.change(screen.getByLabelText('Resolution note'), {
+      target: { value: 'External correction confirmed' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Resolve item$/i }));
+
+    expect(mutations.resolveReconciliationItem.mutate).toHaveBeenCalledWith(
+      {
+        id: 'item-1',
+        payload: {
+          reasonCode: 'RC-V1-DEAD-LETTER-FIX',
+          reasonNote: undefined,
+          evidenceRefs: ['ticket:RECON-1'],
+          idempotencyKey: 'resolve-1',
+          resolutionNote: 'External correction confirmed',
+          approvalRequestId: undefined,
+          impactsInventory: false,
+          impactsFinance: false,
+        },
+      },
+      expect.any(Object),
+    );
+  });
+
+  it('shows blocked state and prevents reconciliation impact submit without approval', () => {
+    const mutations = mutationState({
+      resolveReconciliationItem: { mutate: vi.fn(), isPending: false, error: null },
+    });
+    vi.mocked(useIntegrationMutations).mockReturnValue(
+      mutations as unknown as ReturnType<typeof useIntegrationMutations>,
+    );
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/integration/reconciliation/:id/:action" element={<IntegrationReconciliationDetailPage />} />
+      </Routes>,
+      ['/integration/reconciliation/run-1/resolve'],
+    );
+
+    fireEvent.change(screen.getByLabelText('Evidence refs'), { target: { value: 'ticket:RECON-1' } });
+    fireEvent.change(screen.getByLabelText('Idempotency key'), { target: { value: 'resolve-1' } });
+    fireEvent.change(screen.getByLabelText('Resolution note'), {
+      target: { value: 'Would affect inventory' },
+    });
+    fireEvent.click(screen.getByLabelText('Impacts inventory'));
+    fireEvent.click(screen.getByRole('button', { name: /^Resolve item$/i }));
+
+    expect(screen.getByText('Blocked by workflow control')).toBeTruthy();
+    expect(mutations.resolveReconciliationItem.mutate).not.toHaveBeenCalled();
   });
 });

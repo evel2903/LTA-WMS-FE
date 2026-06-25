@@ -113,6 +113,9 @@ export const ROUTES = {
     ROOT: '/integration',
     DEAD_LETTER_DETAIL: (id = ':id') => `/integration/dead-letters/${id}`,
     DEAD_LETTER_ACTION: (id = ':id', action = ':action') => `/integration/dead-letters/${id}/${action}`,
+    RECONCILIATION: '/integration/reconciliation',
+    RECONCILIATION_DETAIL: (id = ':id') => `/integration/reconciliation/${id}`,
+    RECONCILIATION_ACTION: (id = ':id', action = ':action') => `/integration/reconciliation/${id}/${action}`,
   },
   MOBILE: {
     TASKS: '/mobile/tasks',
