@@ -1,9 +1,13 @@
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { EntityTree } from '@modules/MasterData/Presentation/Components/EntityTree';
 import { SiteLocationDetailPanel } from '@modules/MasterData/Presentation/Components/SiteLocationDetailPanel';
+import { WarehouseMapPanel } from '@modules/MasterData/Presentation/Components/WarehouseMapPanel';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
 import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
 import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
@@ -141,6 +145,8 @@ const tree: SiteLocationTree[] = [
   },
 ];
 
+afterEach(cleanup);
+
 describe('Site & Location Tree components', () => {
   it('renders hierarchical tree nodes and active status badges', () => {
     const html = renderToStaticMarkup(
@@ -152,6 +158,244 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('ZONE-A - Ambient Zone');
     expect(html).toContain('A-01-01 - Aisle 01 Rack 01');
     expect(html).toContain('aria-selected="true"');
+  });
+
+  it('renders warehouse map legend, partial overlay notice, and location drilldown', () => {
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel
+        nodes={tree}
+        selectedNode={tree[0]?.children[0] ?? null}
+        onSelect={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Bản đồ kho và vị trí');
+    expect(html).toContain('Chú giải heatmap tồn kho');
+    expect(html).toContain('Tồn kho cao');
+    expect(html).toContain('Chưa có lớp dữ liệu tồn kho theo vị trí');
+    expect(html).toContain('ZONE-A - Ambient Zone');
+    expect(html).toContain('A-01-01 - Aisle 01 Rack 01');
+    expect(html).toContain('Drilldown khu');
+  });
+
+  it('calls onSelect with the selected zone and location from the map', () => {
+    const onSelect = vi.fn();
+    render(<WarehouseMapPanel nodes={tree} selectedNode={tree[0]?.children[0] ?? null} onSelect={onSelect} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /ZONE-A - Ambient Zone/i }));
+    expect(onSelect).toHaveBeenLastCalledWith(tree[0]?.children[0]?.children[0]);
+
+    fireEvent.click(screen.getByRole('button', { name: /A-01-01 - Aisle 01 Rack 01/i }));
+    expect(onSelect).toHaveBeenLastCalledWith(tree[0]?.children[0]?.children[0]?.children[0]);
+  });
+
+  it('renders separate location status buckets without using inventory hold wording', () => {
+    const locationStatuses = ['Active', 'Inactive', 'Blocked', 'Maintenance'] as const;
+    const statusLocations: SiteLocationTree[] = locationStatuses.map(
+      (status, index): SiteLocationTree => ({
+        id: `status-loc-${status}`,
+        type: 'location',
+        label: `STATUS-${index + 1} - ${status}`,
+        status,
+        entity: {
+          id: `status-loc-${status}`,
+          warehouseId: 'wh-1',
+          zoneId: 'zone-1',
+          parentLocationId: null,
+          locationCode: `STATUS-${index + 1}`,
+          locationName: `${status} location`,
+          locationType: 'Bin',
+          locationProfileId: 'profile-1',
+          locationStatus: status,
+          capacityQty: 10,
+          capacityVolume: null,
+          capacityWeight: null,
+          palletSlot: null,
+          temperatureClass: 'Ambient',
+          dgCompatibilityGroup: null,
+          bondedFlag: false,
+          ownerRestriction: null,
+          mixSkuPolicy: 'SingleSku',
+          mixLotPolicy: null,
+          mixOwnerPolicy: null,
+          pickSequence: index + 1,
+          putawaySequence: index + 1,
+          sourceSystem: null,
+          referenceId: null,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          createdBy: null,
+          updatedBy: null,
+        },
+        children: [],
+      }),
+    );
+    const baseSite = tree[0];
+    const baseWarehouse = baseSite?.children[0];
+    const baseZone = baseWarehouse?.children[0];
+    if (!baseSite || !baseWarehouse || !baseZone) throw new Error('Missing base location tree fixture');
+
+    const statusTree: SiteLocationTree[] = [
+      {
+        ...baseSite,
+        children: [
+          {
+            ...baseWarehouse,
+            children: [
+              {
+                ...baseZone,
+                children: statusLocations,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel nodes={statusTree} selectedNode={tree[0]?.children[0] ?? null} onSelect={() => undefined} />,
+    );
+
+    expect(html).toContain('Hoạt động');
+    expect(html).toContain('Không hoạt động');
+    expect(html).toContain('Bị khóa');
+    expect(html).toContain('Bảo trì');
+    expect(html).not.toContain('Giữ/chặn');
+  });
+
+  it('uses the selected site warehouse instead of falling back to the first warehouse', () => {
+    const multiSiteTree: SiteLocationTree[] = [
+      ...tree,
+      {
+        id: 'site-2',
+        type: 'site',
+        label: 'SITE-02 - Second Site',
+        status: 'Active',
+        entity: {
+          id: 'site-2',
+          siteCode: 'SITE-02',
+          siteName: 'Second Site',
+          status: 'Active',
+          sourceSystem: null,
+          referenceId: null,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          createdBy: null,
+          updatedBy: null,
+        },
+        children: [
+          {
+            id: 'wh-2',
+            type: 'warehouse',
+            label: 'WH-02 - Cold Warehouse',
+            status: 'Active',
+            entity: {
+              id: 'wh-2',
+              siteId: 'site-2',
+              warehouseCode: 'WH-02',
+              warehouseName: 'Cold Warehouse',
+              warehouseTypeCode: 'WT-05',
+              status: 'Active',
+              timezone: 'Asia/Bangkok',
+              sourceSystem: null,
+              referenceId: null,
+              createdAt: profile.createdAt,
+              updatedAt: profile.updatedAt,
+              createdBy: null,
+              updatedBy: null,
+            },
+            children: [],
+          },
+        ],
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel
+        nodes={multiSiteTree}
+        selectedNode={multiSiteTree[1] ?? null}
+        onSelect={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('WH-02 - Cold Warehouse');
+    expect(html).not.toContain('WH-01 - Tier 1 Warehouse');
+    expect(html).toContain('Kho này chưa có khu vực');
+    expect(html).not.toContain('Khu này chưa có vị trí con để drilldown');
+  });
+
+  it('keeps the selected location visible when it is outside the first preview page', () => {
+    const locations = Array.from({ length: 13 }, (_, index): SiteLocationTree => {
+      const sequence = String(index + 1).padStart(2, '0');
+
+      return {
+        id: `loc-${sequence}`,
+        type: 'location',
+        label: `A-01-${sequence} - Rack ${sequence}`,
+        status: 'Active',
+        entity: {
+          id: `loc-${sequence}`,
+          warehouseId: 'wh-1',
+          zoneId: 'zone-1',
+          parentLocationId: null,
+          locationCode: `A-01-${sequence}`,
+          locationName: `Rack ${sequence}`,
+          locationType: 'Bin',
+          locationProfileId: 'profile-1',
+          locationStatus: 'Active',
+          capacityQty: 100,
+          capacityVolume: null,
+          capacityWeight: null,
+          palletSlot: null,
+          temperatureClass: 'Ambient',
+          dgCompatibilityGroup: null,
+          bondedFlag: false,
+          ownerRestriction: null,
+          mixSkuPolicy: 'SingleSku',
+          mixLotPolicy: null,
+          mixOwnerPolicy: null,
+          pickSequence: index + 1,
+          putawaySequence: index + 1,
+          sourceSystem: null,
+          referenceId: null,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          createdBy: null,
+          updatedBy: null,
+        },
+        children: [],
+      };
+    });
+    const selectedLocation = locations[12] ?? null;
+    const baseSite = tree[0];
+    const baseWarehouse = baseSite?.children[0];
+    const baseZone = baseWarehouse?.children[0];
+    if (!baseSite || !baseWarehouse || !baseZone) throw new Error('Missing base location tree fixture');
+
+    const denseTree: SiteLocationTree[] = [
+      {
+        ...baseSite,
+        children: [
+          {
+            ...baseWarehouse,
+            children: [
+              {
+                ...baseZone,
+                children: locations,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel nodes={denseTree} selectedNode={selectedLocation} onSelect={() => undefined} />,
+    );
+
+    expect(html).toContain('12/13 hiển thị');
+    expect(html).toContain('A-01-13 - Rack 13');
+    expect(html).not.toContain('Giữ/chặn');
   });
 
   it('renders location detail with profile constraints and read-only state', () => {
