@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import { PackageCheck } from 'lucide-react';
 
@@ -66,6 +66,15 @@ function getLpnHelper({
   return 'Sẵn sàng xác nhận LPN/SSCC.';
 }
 
+function TechnicalDetails({ children, testId }: { children: ReactNode; testId: string }) {
+  return (
+    <details className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={testId}>
+      <summary className="cursor-pointer font-medium">Chi tiết kỹ thuật</summary>
+      <div className="mt-3 space-y-3">{children}</div>
+    </details>
+  );
+}
+
 function getReleaseHelper({
   confirmedInboundLpn,
   confirmedReceiptLine,
@@ -86,7 +95,8 @@ function getReleaseHelper({
   if (!receivingSession) return 'Cần phiên tiếp nhận trước khi phát hành cất hàng.';
   if (!confirmedReceiptLine) return 'Cần xác nhận dòng tiếp nhận trước khi phát hành cất hàng.';
   if (!putawayReady) return 'Cần trạng thái READY_FOR_PUTAWAY trước khi phát hành cất hàng.';
-  if (releaseRequireLpn && !confirmedInboundLpn) return 'Cần xác nhận LPN vì cấu hình đang yêu cầu LPN.';
+  if (releaseRequireLpn && !confirmedInboundLpn)
+    return 'Cần xác nhận LPN vì cấu hình đang yêu cầu LPN.';
   if (isPending) return 'Đang phát hành sang cất hàng.';
   if (!releaseIdempotencyKey.trim()) return 'Cần khóa idempotency phát hành.';
   if (!releaseRequireLpn && !confirmedInboundLpn) {
@@ -170,15 +180,17 @@ export function InboundReleasePutawayPanel({
               onChange={(event) => onSsccCodeChange(event.target.value)}
             />
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-idempotency-key">
-            Khóa idempotency LPN
-            <Input
-              id="inbound-lpn-idempotency-key"
-              name="lpnIdempotencyKey"
-              value={lpnIdempotencyKey}
-              onChange={(event) => onLpnIdempotencyKeyChange(event.target.value)}
-            />
-          </label>
+          <TechnicalDetails testId="inbound-lpn-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-idempotency-key">
+              Khóa idempotency LPN
+              <Input
+                id="inbound-lpn-idempotency-key"
+                name="lpnIdempotencyKey"
+                value={lpnIdempotencyKey}
+                onChange={(event) => onLpnIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
           <p className="break-words text-sm text-muted-foreground" data-testid="inbound-lpn-helper">
             {lpnHelper}
           </p>
@@ -253,16 +265,21 @@ export function InboundReleasePutawayPanel({
               placeholder="photo://label/override-1"
             />
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-release-idempotency-key">
-            Khóa idempotency phát hành
-            <Input
-              id="inbound-release-idempotency-key"
-              name="releaseIdempotencyKey"
-              value={releaseIdempotencyKey}
-              onChange={(event) => onReleaseIdempotencyKeyChange(event.target.value)}
-            />
-          </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-release-helper">
+          <TechnicalDetails testId="inbound-release-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-idempotency-key">
+              Khóa idempotency phát hành
+              <Input
+                id="inbound-release-idempotency-key"
+                name="releaseIdempotencyKey"
+                value={releaseIdempotencyKey}
+                onChange={(event) => onReleaseIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-helper"
+          >
             {releaseHelper}
           </p>
           <button
@@ -277,15 +294,17 @@ export function InboundReleasePutawayPanel({
 
         {putawayRelease && (
           <p className="break-words text-sm text-muted-foreground">
-            Đã phát hành {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId} /{' '}
-            {putawayRelease.inventoryStatusCode}
+            Đã phát hành {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId}{' '}
+            / {putawayRelease.inventoryStatusCode}
             {putawayRelease.currentLocationCode ? ` / ${putawayRelease.currentLocationCode}` : ''}
           </p>
         )}
         {hasConfirmInboundLpnError ? (
           <p className="text-sm text-destructive">Không thể xác nhận LPN/SSCC.</p>
         ) : null}
-        {releaseErrorMessage ? <p className="text-sm text-destructive">{releaseErrorMessage}</p> : null}
+        {releaseErrorMessage ? (
+          <p className="text-sm text-destructive">{releaseErrorMessage}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

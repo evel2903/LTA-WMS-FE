@@ -696,6 +696,18 @@ async function expectReadinessAllowed() {
   expect(screen.queryByTestId('inbound-readiness-panel')).toBeNull();
 }
 
+async function openTechnicalDetails(actor: ReturnType<typeof userEvent.setup>, testId: string) {
+  const details = screen.getByTestId(testId);
+  if (!details.hasAttribute('open')) {
+    const summary = details.querySelector('summary');
+    if (!summary) {
+      throw new Error(`Missing technical details summary for ${testId}`);
+    }
+    await actor.click(summary);
+  }
+  return details;
+}
+
 function renderPage(entry = '/inbound/inbound-plan-1') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -850,6 +862,9 @@ describe('InboundPage', () => {
     expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy();
     await expectReadinessAllowed();
     expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-receipt-technical-details').hasAttribute('open')).toBe(
+      false,
+    );
     expect(screen.getAllByText('Tiếp nhận hàng').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByTestId('inbound-current-line').textContent).toContain('SKU-A');
     expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '12');
@@ -1208,12 +1223,14 @@ describe('InboundPage', () => {
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
     await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
     await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
 
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
@@ -1257,6 +1274,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
     await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
@@ -1269,6 +1287,7 @@ describe('InboundPage', () => {
       screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
       'photo://dock/over-qty-1',
     );
+    await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-1');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
@@ -1300,6 +1319,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1307,6 +1327,7 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
@@ -1337,6 +1358,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1344,6 +1366,7 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
@@ -1354,6 +1377,7 @@ describe('InboundPage', () => {
     expect(releaseButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã LPN'), 'LPN-0001');
     await actor.type(screen.getByLabelText('Mã SSCC'), '003456789012345678');
+    await openTechnicalDetails(actor, 'inbound-lpn-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency LPN'));
     await actor.type(screen.getByLabelText('Khóa idempotency LPN'), 'lpn-1');
     await actor.click(screen.getByRole('button', { name: 'Xác nhận LPN/SSCC' }));
@@ -1361,6 +1385,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/LPN LPN-0001 \/ 003456789012345678/i)).toBeTruthy();
     await actor.clear(screen.getByLabelText('Mã vị trí hiện tại'));
     await actor.type(screen.getByLabelText('Mã vị trí hiện tại'), 'RCV-01');
+    await openTechnicalDetails(actor, 'inbound-release-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
     await actor.type(screen.getByLabelText('Khóa idempotency phát hành'), 'release-1');
     await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));
@@ -1406,6 +1431,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1413,6 +1439,7 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
@@ -1420,6 +1447,7 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
 
     await actor.click(screen.getByLabelText('Yêu cầu LPN'));
+    await openTechnicalDetails(actor, 'inbound-release-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
     await actor.type(screen.getByLabelText('Khóa idempotency phát hành'), 'release-blocked');
     const releaseButton = screen.getByRole('button', { name: 'Phát hành sang cất hàng' });
@@ -1444,6 +1472,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1452,6 +1481,7 @@ describe('InboundPage', () => {
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
     await actor.click(screen.getByLabelText('Bắt buộc QC'));
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-required');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
@@ -1470,6 +1500,7 @@ describe('InboundPage', () => {
       target: { value: 'RC-V1-DISCREPANCY' },
     });
     fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '4' } });
+    await openTechnicalDetails(actor, 'inbound-qc-result-technical-details');
     fireEvent.change(screen.getByLabelText('Khóa idempotency kết quả QC'), {
       target: { value: 'qc-result-split' },
     });
@@ -1516,6 +1547,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
     await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1571,6 +1603,7 @@ describe('InboundPage', () => {
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     await actor.type(screen.getByLabelText('Quét mã hàng'), 'wrong-sku-barcode');
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-wrong-sku');
     fireEvent.submit(
@@ -1619,6 +1652,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
     await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1656,6 +1690,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
     await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1668,6 +1703,7 @@ describe('InboundPage', () => {
       screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
       'photo://dock/over-qty-1',
     );
+    await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-error');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));

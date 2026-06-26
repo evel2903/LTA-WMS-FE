@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import { ClipboardCheck } from 'lucide-react';
 
@@ -82,10 +82,21 @@ function getEvaluateQcHelper({
 }
 
 function hasEvidenceRef(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean).length > 0;
+  return (
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean).length > 0
+  );
+}
+
+function TechnicalDetails({ children, testId }: { children: ReactNode; testId: string }) {
+  return (
+    <details className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={testId}>
+      <summary className="cursor-pointer font-medium">Chi tiết kỹ thuật</summary>
+      <div className="mt-3 space-y-3">{children}</div>
+    </details>
+  );
 }
 
 function getRecordQcHelper({
@@ -203,46 +214,51 @@ export function InboundQcPanel({
             />
             Bắt buộc QC
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-code">
-            Mã lý do kích hoạt QC
-            <Input
-              id="inbound-qc-task-reason-code"
-              name="qcTaskReasonCode"
-              value={qcTaskReasonCode}
-              onChange={(event) => onQcTaskReasonCodeChange(event.target.value)}
-              placeholder="RC-V1-DISCREPANCY"
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-note">
-            Ghi chú lý do kích hoạt QC
-            <Input
-              id="inbound-qc-task-reason-note"
-              name="qcTaskReasonNote"
-              value={qcTaskReasonNote}
-              onChange={(event) => onQcTaskReasonNoteChange(event.target.value)}
-              placeholder="Hồ sơ hoặc sai lệch yêu cầu QC"
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-evidence-refs">
-            Tham chiếu bằng chứng kích hoạt QC
-            <Input
-              id="inbound-qc-task-evidence-refs"
-              name="qcTaskEvidenceRefs"
-              value={qcTaskEvidenceRefs}
-              onChange={(event) => onQcTaskEvidenceRefsChange(event.target.value)}
-              placeholder="photo://dock/qc-trigger-1"
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-idempotency-key">
-            Khóa idempotency tác vụ QC
-            <Input
-              id="inbound-qc-task-idempotency-key"
-              name="qcTaskIdempotencyKey"
-              value={qcTaskIdempotencyKey}
-              onChange={(event) => onQcTaskIdempotencyKeyChange(event.target.value)}
-            />
-          </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-qc-task-helper">
+          <TechnicalDetails testId="inbound-qc-task-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-code">
+              Mã lý do kích hoạt QC
+              <Input
+                id="inbound-qc-task-reason-code"
+                name="qcTaskReasonCode"
+                value={qcTaskReasonCode}
+                onChange={(event) => onQcTaskReasonCodeChange(event.target.value)}
+                placeholder="RC-V1-DISCREPANCY"
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-note">
+              Ghi chú lý do kích hoạt QC
+              <Input
+                id="inbound-qc-task-reason-note"
+                name="qcTaskReasonNote"
+                value={qcTaskReasonNote}
+                onChange={(event) => onQcTaskReasonNoteChange(event.target.value)}
+                placeholder="Hồ sơ hoặc sai lệch yêu cầu QC"
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-evidence-refs">
+              Tham chiếu bằng chứng kích hoạt QC
+              <Input
+                id="inbound-qc-task-evidence-refs"
+                name="qcTaskEvidenceRefs"
+                value={qcTaskEvidenceRefs}
+                onChange={(event) => onQcTaskEvidenceRefsChange(event.target.value)}
+                placeholder="photo://dock/qc-trigger-1"
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-idempotency-key">
+              Khóa idempotency tác vụ QC
+              <Input
+                id="inbound-qc-task-idempotency-key"
+                name="qcTaskIdempotencyKey"
+                value={qcTaskIdempotencyKey}
+                onChange={(event) => onQcTaskIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-qc-task-helper"
+          >
             {evaluateHelper}
           </p>
           <button
@@ -287,7 +303,9 @@ export function InboundQcPanel({
                 id="inbound-qc-disposition-code"
                 name="qcDispositionCode"
                 value={qcDispositionCode}
-                onChange={(event) => onQcDispositionCodeChange(event.target.value as QcDispositionCode)}
+                onChange={(event) =>
+                  onQcDispositionCodeChange(event.target.value as QcDispositionCode)
+                }
                 className="rounded-md border bg-background px-3 py-2 text-sm"
                 disabled={qcResultDisabled}
               >
@@ -370,17 +388,22 @@ export function InboundQcPanel({
               disabled={qcResultDisabled}
             />
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-idempotency-key">
-            Khóa idempotency kết quả QC
-            <Input
-              id="inbound-qc-result-idempotency-key"
-              name="qcResultIdempotencyKey"
-              value={qcResultIdempotencyKey}
-              onChange={(event) => onQcResultIdempotencyKeyChange(event.target.value)}
-              disabled={qcResultDisabled}
-            />
-          </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-qc-result-helper">
+          <TechnicalDetails testId="inbound-qc-result-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-idempotency-key">
+              Khóa idempotency kết quả QC
+              <Input
+                id="inbound-qc-result-idempotency-key"
+                name="qcResultIdempotencyKey"
+                value={qcResultIdempotencyKey}
+                onChange={(event) => onQcResultIdempotencyKeyChange(event.target.value)}
+                disabled={qcResultDisabled}
+              />
+            </label>
+          </TechnicalDetails>
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-qc-result-helper"
+          >
             {recordHelper}
           </p>
           <button

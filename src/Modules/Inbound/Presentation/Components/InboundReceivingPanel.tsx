@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import { AlertTriangle, PlayCircle, ScanLine } from 'lucide-react';
 
@@ -121,6 +121,15 @@ function hasEvidenceRef(value: string) {
   );
 }
 
+function TechnicalDetails({ children, testId }: { children: ReactNode; testId: string }) {
+  return (
+    <details className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={testId}>
+      <summary className="cursor-pointer font-medium">Chi tiết kỹ thuật</summary>
+      <div className="mt-3 space-y-3">{children}</div>
+    </details>
+  );
+}
+
 function formatQuantity(value: number) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 }
@@ -226,24 +235,26 @@ export function InboundReceivingPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <form className="space-y-3" onSubmit={onSubmitStartReceiving}>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-session-key">
-            Khóa phiên tiếp nhận
-            <Input
-              id="inbound-receiving-session-key"
-              name="receivingSessionKey"
-              value={receivingSessionKey}
-              onChange={(event) => onReceivingSessionKeyChange(event.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-device-code">
-            Mã thiết bị
-            <Input
-              id="inbound-receiving-device-code"
-              name="receivingDeviceCode"
-              value={receivingDeviceCode}
-              onChange={(event) => onReceivingDeviceCodeChange(event.target.value)}
-            />
-          </label>
+          <TechnicalDetails testId="inbound-receiving-session-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-session-key">
+              Khóa phiên tiếp nhận
+              <Input
+                id="inbound-receiving-session-key"
+                name="receivingSessionKey"
+                value={receivingSessionKey}
+                onChange={(event) => onReceivingSessionKeyChange(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-device-code">
+              Mã thiết bị
+              <Input
+                id="inbound-receiving-device-code"
+                name="receivingDeviceCode"
+                value={receivingDeviceCode}
+                onChange={(event) => onReceivingDeviceCodeChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
           <p
             className="break-words text-sm text-muted-foreground"
             data-testid="inbound-receiving-start-helper"
@@ -335,15 +346,17 @@ export function InboundReceivingPanel({
               placeholder="RC-V1-MANUAL-SCAN"
             />
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-idempotency-key">
-            Khóa idempotency
-            <Input
-              id="inbound-receipt-idempotency-key"
-              name="receiptIdempotencyKey"
-              value={receiptIdempotencyKey}
-              onChange={(event) => onReceiptIdempotencyKeyChange(event.target.value)}
-            />
-          </label>
+          <TechnicalDetails testId="inbound-receipt-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-idempotency-key">
+              Khóa idempotency
+              <Input
+                id="inbound-receipt-idempotency-key"
+                name="receiptIdempotencyKey"
+                value={receiptIdempotencyKey}
+                onChange={(event) => onReceiptIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
           <p
             className="break-words text-sm text-muted-foreground"
             data-testid="inbound-receipt-line-helper"
@@ -433,16 +446,18 @@ export function InboundReceivingPanel({
               disabled={discrepancyDisabled}
             />
           </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-idempotency-key">
-            Khóa idempotency sai lệch
-            <Input
-              id="inbound-discrepancy-idempotency-key"
-              name="discrepancyIdempotencyKey"
-              value={discrepancyIdempotencyKey}
-              onChange={(event) => onDiscrepancyIdempotencyKeyChange(event.target.value)}
-              disabled={discrepancyDisabled}
-            />
-          </label>
+          <TechnicalDetails testId="inbound-discrepancy-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-idempotency-key">
+              Khóa idempotency sai lệch
+              <Input
+                id="inbound-discrepancy-idempotency-key"
+                name="discrepancyIdempotencyKey"
+                value={discrepancyIdempotencyKey}
+                onChange={(event) => onDiscrepancyIdempotencyKeyChange(event.target.value)}
+                disabled={discrepancyDisabled}
+              />
+            </label>
+          </TechnicalDetails>
           <p
             className="break-words text-sm text-muted-foreground"
             data-testid="inbound-discrepancy-helper"
