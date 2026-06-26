@@ -19,6 +19,13 @@ import { cn } from '@shared/Utils/Cn';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useInboundPlan, useReceivingReadiness } from '@modules/Inbound/Application/Queries/UseInboundPlans';
+import { InboundWorkflowStepper } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepper';
+import {
+  mapInboundActionToWorkflowStep,
+  type InboundWorkflowStep,
+  type InboundWorkflowStepKey,
+  type InboundWorkflowStepState,
+} from '@modules/Inbound/Presentation/Components/InboundWorkflowStepperModel';
 import {
   INBOUND_DISCREPANCY_TYPES,
   QC_DISPOSITION_CODES,
@@ -53,6 +60,18 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 const INBOUND_ALLOWED_ACTIONS = new Set(['receiving', 'gate-in', 'qc', 'lpn', 'release']);
+
+function resolveWorkflowStepState(
+  stepKey: InboundWorkflowStepKey,
+  activeStep: InboundWorkflowStepKey,
+  done: boolean,
+  blocked = false,
+): InboundWorkflowStepState {
+  if (stepKey === activeStep) return 'active';
+  if (done) return 'done';
+  if (blocked) return 'blocked';
+  return 'waiting';
+}
 
 export function InboundDetailPage() {
   const { id: routePlanId, action: routeAction } = useParams<{ id: string; action: string }>();
@@ -273,6 +292,71 @@ export function InboundDetailPage() {
       releaseIdempotencyKey.trim() &&
       (releaseRequireLpn ? confirmedInboundLpn : true),
   );
+  const routeWorkflowStep = mapInboundActionToWorkflowStep(routeAction);
+  const gateInDone = Boolean(
+    selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
+  );
+  const readinessDone = Boolean(readiness?.allowed || readiness?.overrideAccepted);
+  const receivingDone = Boolean(confirmedReceiptLine);
+  const qcDone = Boolean(recordedQcResult || (evaluatedQcTask && !evaluatedQcTask.required));
+  const releaseDone = Boolean(putawayRelease);
+  const inferredWorkflowStep: InboundWorkflowStepKey = releaseDone
+    ? 'release'
+    : recordedQcResult || putawayReady || confirmedInboundLpn
+      ? 'release'
+      : evaluatedQcTask || confirmedReceiptLine
+        ? 'qc'
+        : receivingSession || readinessDone
+          ? 'receiving'
+          : gateInDone
+            ? 'readiness'
+            : selected
+              ? 'gate-in'
+              : 'plan';
+  const activeWorkflowStep = routeWorkflowStep ?? inferredWorkflowStep;
+  const workflowSteps: InboundWorkflowStep[] = [
+    {
+      key: 'plan',
+      label: 'Kế hoạch',
+      description: selected ? 'Kế hoạch nhập kho đã được tải.' : 'Đang chờ dữ liệu kế hoạch.',
+      state: resolveWorkflowStepState('plan', activeWorkflowStep, Boolean(selected)),
+    },
+    {
+      key: 'gate-in',
+      label: 'Vào cổng',
+      description: gateInDone ? 'Đã ghi nhận vào cổng.' : 'Cần ghi nhận xe/hàng vào cổng.',
+      state: resolveWorkflowStepState('gate-in', activeWorkflowStep, gateInDone, !selected),
+    },
+    {
+      key: 'readiness',
+      label: 'Kiểm tra sẵn sàng / override',
+      description:
+        readiness?.allowed || readiness?.overrideAccepted
+          ? 'Điều kiện tiếp nhận đã sẵn sàng.'
+          : 'Xem kết quả kiểm tra sẵn sàng ở phần vận hành bên dưới.',
+      state: resolveWorkflowStepState('readiness', activeWorkflowStep, readinessDone, !gateInDone),
+    },
+    {
+      key: 'receiving',
+      label: 'Tiếp nhận',
+      description: receivingDone
+        ? 'Đã xác nhận ít nhất một dòng tiếp nhận trong phiên hiện tại.'
+        : 'Bắt đầu phiên và xác nhận dòng tiếp nhận.',
+      state: resolveWorkflowStepState('receiving', activeWorkflowStep, receivingDone, !readinessDone),
+    },
+    {
+      key: 'qc',
+      label: 'QC',
+      description: qcDone ? 'QC đã có kết quả hoặc được bỏ qua.' : 'Đánh giá QC sau khi có dòng tiếp nhận.',
+      state: resolveWorkflowStepState('qc', activeWorkflowStep, qcDone, !receivingDone),
+    },
+    {
+      key: 'release',
+      label: 'Release cất hàng',
+      description: releaseDone ? 'Đã phát hành sang cất hàng.' : 'Xác nhận LPN/SSCC và phát hành sang cất hàng.',
+      state: resolveWorkflowStepState('release', activeWorkflowStep, releaseDone, !putawayReady),
+    },
+  ];
 
   useEffect(() => {
     if (routePlanId && selectedId !== routePlanId) {
@@ -620,8 +704,8 @@ export function InboundDetailPage() {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <section className="space-y-4">
+    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="min-w-0 space-y-4">
         {selected && (
           <Card>
             <CardHeader>
@@ -642,6 +726,7 @@ export function InboundDetailPage() {
                 <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
                 <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
               </div>
+              <InboundWorkflowStepper steps={workflowSteps} />
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
@@ -702,7 +787,7 @@ export function InboundDetailPage() {
         )}
       </section>
 
-      <aside className="space-y-4">
+      <aside className="min-w-0 space-y-4">
         {isCreateRoute && (
           <Card>
             <CardHeader>

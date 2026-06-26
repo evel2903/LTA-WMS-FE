@@ -484,6 +484,33 @@ describe('InboundPage', () => {
     });
   });
 
+  it('renders detail workflow stepper and marks deep-link actions active', async () => {
+    const actionCases = [
+      ['/inbound/inbound-plan-1/gate-in', 'gate-in'],
+      ['/inbound/inbound-plan-1/receiving', 'receiving'],
+      ['/inbound/inbound-plan-1/qc', 'qc'],
+      ['/inbound/inbound-plan-1/lpn', 'release'],
+      ['/inbound/inbound-plan-1/release', 'release'],
+    ] as const;
+
+    for (const [entry, stepKey] of actionCases) {
+      const fake = new FakeRepository([makePlan()]);
+      repo.current = fake;
+      const view = renderPage(entry);
+
+      expect(await screen.findByRole('navigation', { name: 'Luồng xử lý nhập kho' })).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-plan')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-gate-in')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-readiness')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-receiving')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-qc')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-release')).toBeTruthy();
+      expect(within(screen.getByTestId(`inbound-workflow-step-${stepKey}`)).getByText('Đang xử lý')).toBeTruthy();
+
+      view.unmount();
+    }
+  });
+
   it('creates source document from the create-only page without operational actions', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
