@@ -247,7 +247,7 @@ export function InboundQcPanel({
           </p>
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canEvaluateQcTask || isEvaluateQcTaskPending}
           >
             <ClipboardCheck className="size-4" />
@@ -385,7 +385,7 @@ export function InboundQcPanel({
           </p>
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canRecordQcResult || isRecordQcResultPending}
           >
             <ClipboardCheck className="size-4" />

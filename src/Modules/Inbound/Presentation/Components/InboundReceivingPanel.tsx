@@ -243,7 +243,7 @@ export function InboundReceivingPanel({
           </p>
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canStartReceiving || isStartReceivingPending}
           >
             <PlayCircle className="size-4" />
@@ -318,7 +318,7 @@ export function InboundReceivingPanel({
           </p>
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canConfirmReceiptLine || isConfirmReceiptLinePending}
           >
             <ScanLine className="size-4" />
@@ -410,7 +410,7 @@ export function InboundReceivingPanel({
           </p>
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canCaptureDiscrepancy || isCaptureDiscrepancyPending}
           >
             <AlertTriangle className="size-4" />

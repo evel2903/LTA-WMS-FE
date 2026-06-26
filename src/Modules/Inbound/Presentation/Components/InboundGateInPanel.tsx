@@ -58,7 +58,7 @@ export function InboundGateInPanel({
           </p>
           <button
             type="submit"
-            className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isDisabled}
           >
             Ghi nhận vào cổng
