@@ -134,8 +134,106 @@ function setLookupRepositories() {
         ]),
       ),
     ),
-    listUoms: vi.fn(() => Promise.resolve(page([]))),
-    listSkus: vi.fn(() => Promise.resolve(page([]))),
+    listUoms: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'uom-1',
+            uomCode: 'EA',
+            uomName: 'Lon',
+            uomType: 'Each',
+            decimalPrecision: 0,
+            status: 'Active',
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+          {
+            id: 'uom-2',
+            uomCode: 'CASE',
+            uomName: 'Thùng',
+            uomType: 'Case',
+            decimalPrecision: 0,
+            status: 'Active',
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
+    listSkus: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'sku-1',
+            skuCode: 'SKU-A',
+            skuName: 'Coca-Cola lon 330ml',
+            defaultOwnerId: 'owner-1',
+            itemClass: 'BEVERAGE',
+            itemStatus: 'Active',
+            baseUomId: 'uom-1',
+            inventoryUomId: 'uom-1',
+            lotControlled: true,
+            expiryControlled: true,
+            serialControlled: false,
+            ownerControlled: true,
+            lpnControlled: true,
+            temperatureControlled: false,
+            dgControlled: false,
+            customsControlled: false,
+            qcRequired: true,
+            bondedFlag: false,
+            temperatureClass: null,
+            dgClass: null,
+            shelfLifeDays: 365,
+            minRemainingShelfLifeDays: 30,
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+          {
+            id: 'sku-2',
+            skuCode: 'SKU-B',
+            skuName: 'Coca-Cola thùng 24 lon',
+            defaultOwnerId: 'owner-1',
+            itemClass: 'BEVERAGE',
+            itemStatus: 'Active',
+            baseUomId: 'uom-2',
+            inventoryUomId: 'uom-2',
+            lotControlled: true,
+            expiryControlled: true,
+            serialControlled: false,
+            ownerControlled: true,
+            lpnControlled: true,
+            temperatureControlled: false,
+            dgControlled: false,
+            customsControlled: false,
+            qcRequired: true,
+            bondedFlag: false,
+            temperatureClass: null,
+            dgClass: null,
+            shelfLifeDays: 365,
+            minRemainingShelfLifeDays: 30,
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
   };
   masterDataRepo.current = {
     listWarehouses: vi.fn(() =>
@@ -798,8 +896,10 @@ describe('InboundPage', () => {
     await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
     await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
     await actor.type(screen.getByLabelText('Thời gian đến dự kiến'), '2026-06-22T08:00');
-    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
-    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    expect(screen.queryByLabelText('ID SKU')).toBeNull();
+    expect(screen.queryByLabelText('ID đơn vị tính')).toBeNull();
+    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
+    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
     await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
     const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
@@ -842,8 +942,8 @@ describe('InboundPage', () => {
     await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
     await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
     await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
-    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
-    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
+    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
     const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
     await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
     await actor.click(createButton);
@@ -866,19 +966,19 @@ describe('InboundPage', () => {
     await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
     await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
     await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
-    await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
-    await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
+    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
+    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
     await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
     await actor.type(screen.getByLabelText('Tham chiếu dòng ngoài'), '10');
 
     await actor.click(screen.getByRole('button', { name: 'Thêm dòng' }));
-    const skuInputs = screen.getAllByLabelText('ID SKU');
-    const uomInputs = screen.getAllByLabelText('ID đơn vị tính');
+    const skuInputs = screen.getAllByLabelText('SKU');
+    const uomInputs = screen.getAllByLabelText('Đơn vị tính');
     const qtyInputs = screen.getAllByLabelText('Số lượng dự kiến');
     const refInputs = screen.getAllByLabelText('Tham chiếu dòng ngoài');
-    await actor.type(skuInputs[1], 'sku-2');
-    await actor.type(uomInputs[1], 'uom-2');
+    await actor.selectOptions(skuInputs[1], 'sku-2');
+    await actor.selectOptions(uomInputs[1], 'uom-2');
     await actor.clear(qtyInputs[1]);
     await actor.type(qtyInputs[1], '8');
     await actor.type(refInputs[1], '20');
@@ -898,6 +998,77 @@ describe('InboundPage', () => {
         }),
       ),
     );
+  });
+
+  it('imports expected lines from a valid CSV preview and submits mapped IDs', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    setLookupRepositories();
+    renderPage('/inbound/new');
+
+    await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
+    await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-CSV-10001');
+    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
+    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
+
+    const importInput = await screen.findByLabelText('Import CSV dòng hàng dự kiến');
+    await waitFor(() => expect(importInput).toHaveProperty('disabled', false));
+    await actor.upload(
+      importInput,
+      new File(
+        ['skuCode,uomCode,expectedQuantity,externalLineReference\nSKU-A,EA,12,10\nSKU-B,CASE,8,20'],
+        'expected-lines.csv',
+        { type: 'text/csv' },
+      ),
+    );
+
+    expect(await screen.findByText('Preview hợp lệ')).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Áp dụng import' }));
+    expect(screen.getByText('20')).toBeTruthy();
+
+    const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
+    await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
+    await actor.click(createButton);
+
+    await waitFor(() =>
+      expect(fake.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceDocumentNumber: 'ASN-CSV-10001',
+          lines: [
+            expect.objectContaining({ lineNumber: 1, skuId: 'sku-1', uomId: 'uom-1', expectedQuantity: 12 }),
+            expect.objectContaining({ lineNumber: 2, skuId: 'sku-2', uomId: 'uom-2', expectedQuantity: 8 }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('blocks CSV import apply when expected line preview has validation errors', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake;
+    setLookupRepositories();
+    renderPage('/inbound/new');
+
+    const importInput = await screen.findByLabelText('Import CSV dòng hàng dự kiến');
+    await waitFor(() => expect(importInput).toHaveProperty('disabled', false));
+    await actor.upload(
+      importInput,
+      new File(
+        ['skuCode,uomCode,expectedQuantity,externalLineReference\nUNKNOWN,EA,0,10\nSKU-A,EA,5,10'],
+        'expected-lines-invalid.csv',
+        { type: 'text/csv' },
+      ),
+    );
+
+    expect(await screen.findByText('Có lỗi cần sửa trước khi áp dụng')).toBeTruthy();
+    expect(screen.getByText(/SKU UNKNOWN không tồn tại hoặc không active/i)).toBeTruthy();
+    expect(screen.getByText(/expectedQuantity phải lớn hơn 0/i)).toBeTruthy();
+    expect(screen.getByText(/externalLineReference 10 bị trùng trong file/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Áp dụng import' })).toHaveProperty('disabled', true);
   });
 
   it('allows readiness override only with reason code input', async () => {

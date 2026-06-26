@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 
@@ -8,7 +8,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
-import { useActiveOwners } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { useActiveOwners, useActiveUoms, useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 import { useWarehouseProfiles } from '@modules/WarehouseProfile/Application/Queries/UseWarehouseProfiles';
@@ -41,6 +41,23 @@ interface LookupSelectProps {
   onChange: (value: string) => void;
 }
 
+interface LineImportRow {
+  rowNumber: number;
+  skuCode: string;
+  uomCode: string;
+  expectedQuantity: string;
+  externalLineReference: string;
+  skuId?: string;
+  uomId?: string;
+  errors: string[];
+}
+
+interface LineImportPreview {
+  fileName: string;
+  rows: LineImportRow[];
+  error: string | null;
+}
+
 let nextDraftLineId = 0;
 
 const initialLine = (): DraftLine => ({
@@ -53,6 +70,133 @@ const initialLine = (): DraftLine => ({
 
 const selectClassName =
   'h-9 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
+const lineImportRequiredHeaders = ['skuCode', 'uomCode', 'expectedQuantity'] as const;
+
+function normalizeImportCode(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (character === '"') {
+      if (inQuotes && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (character === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += character;
+    }
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function buildLineImportPreview(
+  fileName: string,
+  text: string,
+  skuByCode: Map<string, LookupOption>,
+  uomByCode: Map<string, LookupOption>,
+): LineImportPreview {
+  const lines = text
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0);
+
+  if (lines.length < 2) {
+    return { fileName, rows: [], error: 'CSV cần có header và ít nhất một dòng hàng.' };
+  }
+
+  const headers = parseCsvLine(lines[0]).map((header) => header.trim());
+  const headerIndex = new Map(headers.map((header, index) => [header, index]));
+  const missingHeaders = lineImportRequiredHeaders.filter((header) => !headerIndex.has(header));
+
+  if (missingHeaders.length > 0) {
+    return { fileName, rows: [], error: `CSV thiếu cột bắt buộc: ${missingHeaders.join(', ')}.` };
+  }
+
+  const seenExternalReferences = new Set<string>();
+  const rows = lines.slice(1).map((line, index) => {
+    const values = parseCsvLine(line);
+    const skuCode = values[headerIndex.get('skuCode') as number]?.trim() ?? '';
+    const uomCode = values[headerIndex.get('uomCode') as number]?.trim() ?? '';
+    const expectedQuantity = values[headerIndex.get('expectedQuantity') as number]?.trim() ?? '';
+    const externalLineReferenceIndex = headerIndex.get('externalLineReference');
+    const externalLineReference =
+      externalLineReferenceIndex === undefined ? '' : (values[externalLineReferenceIndex]?.trim() ?? '');
+    const skuOption = skuByCode.get(normalizeImportCode(skuCode));
+    const uomOption = uomByCode.get(normalizeImportCode(uomCode));
+    const quantity = Number(expectedQuantity);
+    const errors: string[] = [];
+
+    if (!skuCode) {
+      errors.push('Thiếu skuCode.');
+    } else if (!skuOption) {
+      errors.push(`SKU ${skuCode} không tồn tại hoặc không active.`);
+    }
+
+    if (!uomCode) {
+      errors.push('Thiếu uomCode.');
+    } else if (!uomOption) {
+      errors.push(`Đơn vị tính ${uomCode} không tồn tại hoặc không active.`);
+    }
+
+    if (!expectedQuantity || !Number.isFinite(quantity) || quantity <= 0) {
+      errors.push('expectedQuantity phải lớn hơn 0.');
+    }
+
+    if (externalLineReference) {
+      const referenceKey = normalizeImportCode(externalLineReference);
+      if (seenExternalReferences.has(referenceKey)) {
+        errors.push(`externalLineReference ${externalLineReference} bị trùng trong file.`);
+      }
+      seenExternalReferences.add(referenceKey);
+    }
+
+    return {
+      rowNumber: index + 2,
+      skuCode,
+      uomCode,
+      expectedQuantity,
+      externalLineReference,
+      skuId: skuOption?.value,
+      uomId: uomOption?.value,
+      errors,
+    };
+  });
+
+  return { fileName, rows, error: null };
+}
+
+function previewHasErrors(preview: LineImportPreview | null) {
+  return Boolean(preview?.error || preview?.rows.some((row) => row.errors.length > 0));
+}
+
+function readTextFile(file: File) {
+  if (typeof file.text === 'function') {
+    return file.text();
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      resolve(typeof result === 'string' ? result : '');
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Không đọc được file CSV.'));
+    reader.readAsText(file, 'UTF-8');
+  });
+}
 
 function LookupSelect({
   id,
@@ -114,6 +258,8 @@ export function InboundCreatePage() {
   const ownerQuery = useActiveOwners();
   const warehouseQuery = useActiveWarehouses();
   const warehouseProfileQuery = useWarehouseProfiles({ status: 'ACTIVE', pageSize: 100 });
+  const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
+  const uomQuery = useActiveUoms();
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -123,6 +269,7 @@ export function InboundCreatePage() {
   const [warehouseProfileId, setWarehouseProfileId] = useState('');
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('');
   const [lineDrafts, setLineDrafts] = useState<DraftLine[]>(() => [initialLine()]);
+  const [lineImportPreview, setLineImportPreview] = useState<LineImportPreview | null>(null);
 
   const canCreate = Boolean(
     sourceSystem.trim() &&
@@ -170,6 +317,46 @@ export function InboundCreatePage() {
       })),
     [warehouseProfileQuery.data?.items],
   );
+  const skuOptions = useMemo(
+    () =>
+      (skuQuery.data?.items ?? []).map((sku) => ({
+        value: sku.id,
+        label: `${sku.skuCode} - ${sku.skuName}`,
+      })),
+    [skuQuery.data?.items],
+  );
+  const uomOptions = useMemo(
+    () =>
+      (uomQuery.data?.items ?? []).map((uom) => ({
+        value: uom.id,
+        label: `${uom.uomCode} - ${uom.uomName}`,
+      })),
+    [uomQuery.data?.items],
+  );
+  const skuByCode = useMemo(() => {
+    return new Map(
+      (skuQuery.data?.items ?? []).map((sku) => [
+        normalizeImportCode(sku.skuCode),
+        { value: sku.id, label: `${sku.skuCode} - ${sku.skuName}` },
+      ]),
+    );
+  }, [skuQuery.data?.items]);
+  const uomByCode = useMemo(() => {
+    return new Map(
+      (uomQuery.data?.items ?? []).map((uom) => [
+        normalizeImportCode(uom.uomCode),
+        { value: uom.id, label: `${uom.uomCode} - ${uom.uomName}` },
+      ]),
+    );
+  }, [uomQuery.data?.items]);
+  const canImportLines =
+    !skuQuery.isLoading &&
+    !uomQuery.isLoading &&
+    !skuQuery.isError &&
+    !uomQuery.isError &&
+    skuOptions.length > 0 &&
+    uomOptions.length > 0;
+  const lineImportHasErrors = previewHasErrors(lineImportPreview);
 
   function updateLine(id: number, patch: Partial<DraftLine>) {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -177,6 +364,35 @@ export function InboundCreatePage() {
 
   function removeLine(id: number) {
     setLineDrafts((lines) => (lines.length === 1 ? lines : lines.filter((line) => line.id !== id)));
+  }
+
+  async function handleLineImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await readTextFile(file);
+      setLineImportPreview(buildLineImportPreview(file.name, text, skuByCode, uomByCode));
+    } catch {
+      setLineImportPreview({ fileName: file.name, rows: [], error: 'Không đọc được file CSV.' });
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  function applyLineImport() {
+    if (!lineImportPreview || lineImportHasErrors || lineImportPreview.rows.length === 0) return;
+
+    setLineDrafts(
+      lineImportPreview.rows.map((row) => ({
+        id: (nextDraftLineId += 1),
+        skuId: row.skuId ?? '',
+        uomId: row.uomId ?? '',
+        expectedQuantity: row.expectedQuantity,
+        externalLineReference: row.externalLineReference,
+      })),
+    );
+    setLineImportPreview(null);
   }
 
   function submitCreate(event: FormEvent<HTMLFormElement>) {
@@ -346,28 +562,109 @@ export function InboundCreatePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="space-y-3 rounded-md border border-dashed p-3">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                <label className="grid gap-1 text-sm" htmlFor="inbound-lines-csv-import">
+                  Import CSV dòng hàng dự kiến
+                  <Input
+                    id="inbound-lines-csv-import"
+                    name="lineImportCsv"
+                    type="file"
+                    accept=".csv,text/csv"
+                    disabled={!canImportLines}
+                    onChange={handleLineImportFile}
+                  />
+                </label>
+                <Button
+                  id="inbound-lines-apply-import"
+                  name="applyLineImport"
+                  type="button"
+                  variant="secondary"
+                  disabled={!lineImportPreview || lineImportHasErrors || lineImportPreview.rows.length === 0}
+                  onClick={applyLineImport}
+                >
+                  Áp dụng import
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                CSV UTF-8 dùng header `skuCode,uomCode,expectedQuantity,externalLineReference`. Import sẽ thay thế
+                danh sách dòng hiện tại sau khi preview sạch lỗi.
+              </p>
+              {!canImportLines ? (
+                <p className="text-muted-foreground text-xs">
+                  Cần tải xong danh sách SKU và đơn vị tính active trước khi import.
+                </p>
+              ) : null}
+              {lineImportPreview ? (
+                <div className="space-y-2 rounded-md bg-muted/30 p-3 text-sm" data-testid="inbound-line-import-preview">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-medium">Preview file {lineImportPreview.fileName}</p>
+                    <p className={lineImportHasErrors ? 'text-destructive' : 'text-emerald-700'}>
+                      {lineImportHasErrors ? 'Có lỗi cần sửa trước khi áp dụng' : 'Preview hợp lệ'}
+                    </p>
+                  </div>
+                  {lineImportPreview.error ? <p className="text-destructive">{lineImportPreview.error}</p> : null}
+                  {lineImportPreview.rows.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[720px] text-left text-xs">
+                        <thead className="text-muted-foreground">
+                          <tr>
+                            <th className="py-2 pr-3">Dòng</th>
+                            <th className="py-2 pr-3">SKU</th>
+                            <th className="py-2 pr-3">Đơn vị tính</th>
+                            <th className="py-2 pr-3">Số lượng</th>
+                            <th className="py-2 pr-3">Tham chiếu</th>
+                            <th className="py-2 pr-3">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lineImportPreview.rows.map((row) => (
+                            <tr key={row.rowNumber} className="border-t">
+                              <td className="py-2 pr-3">{row.rowNumber}</td>
+                              <td className="py-2 pr-3">{row.skuCode}</td>
+                              <td className="py-2 pr-3">{row.uomCode}</td>
+                              <td className="py-2 pr-3">{row.expectedQuantity}</td>
+                              <td className="py-2 pr-3">{row.externalLineReference || '-'}</td>
+                              <td className={row.errors.length > 0 ? 'py-2 pr-3 text-destructive' : 'py-2 pr-3'}>
+                                {row.errors.length > 0 ? row.errors.join(' ') : 'Hợp lệ'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             {lineDrafts.map((line, index) => (
               <div key={line.id} className="grid gap-3 rounded-md border p-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]">
-                <label className="grid gap-1 text-sm" htmlFor={`inbound-line-${line.id}-sku-id`}>
-                  ID SKU
-                  <Input
-                    id={`inbound-line-${line.id}-sku-id`}
-                    name={`lines[${index}].skuId`}
-                    value={line.skuId}
-                    onChange={(event) => updateLine(line.id, { skuId: event.target.value })}
-                    placeholder="sku-1"
-                  />
-                </label>
-                <label className="grid gap-1 text-sm" htmlFor={`inbound-line-${line.id}-uom-id`}>
-                  ID đơn vị tính
-                  <Input
-                    id={`inbound-line-${line.id}-uom-id`}
-                    name={`lines[${index}].uomId`}
-                    value={line.uomId}
-                    onChange={(event) => updateLine(line.id, { uomId: event.target.value })}
-                    placeholder="uom-1"
-                  />
-                </label>
+                <LookupSelect
+                  id={`inbound-line-${line.id}-sku-id`}
+                  name={`lines[${index}].skuId`}
+                  label="SKU"
+                  value={line.skuId}
+                  placeholder="Chọn SKU"
+                  options={skuOptions}
+                  isLoading={skuQuery.isLoading}
+                  isError={skuQuery.isError}
+                  emptyMessage="Chưa có SKU active để chọn."
+                  errorMessage="Không tải được danh sách SKU."
+                  onChange={(value) => updateLine(line.id, { skuId: value })}
+                />
+                <LookupSelect
+                  id={`inbound-line-${line.id}-uom-id`}
+                  name={`lines[${index}].uomId`}
+                  label="Đơn vị tính"
+                  value={line.uomId}
+                  placeholder="Chọn đơn vị tính"
+                  options={uomOptions}
+                  isLoading={uomQuery.isLoading}
+                  isError={uomQuery.isError}
+                  emptyMessage="Chưa có đơn vị tính active để chọn."
+                  errorMessage="Không tải được danh sách đơn vị tính."
+                  onChange={(value) => updateLine(line.id, { uomId: value })}
+                />
                 <label className="grid gap-1 text-sm" htmlFor={`inbound-line-${line.id}-expected-quantity`}>
                   Số lượng dự kiến
                   <Input
