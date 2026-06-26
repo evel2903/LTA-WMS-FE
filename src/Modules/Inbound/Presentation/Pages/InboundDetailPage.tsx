@@ -253,6 +253,19 @@ function NextActionShell({ children, title }: { children: ReactNode; title: stri
   );
 }
 
+function InboundBlockedActionHelper({ message }: { message: string }) {
+  return (
+    <Card data-testid="inbound-action-blocked">
+      <CardHeader>
+        <CardTitle className="text-base">Thao tác chưa sẵn sàng</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{message}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function InboundDetailPage() {
   const { id: routePlanId, action: routeAction } = useParams<{ id: string; action: string }>();
   const navigate = useNavigate();
@@ -519,6 +532,34 @@ export function InboundDetailPage() {
               ? 'gate-in'
               : 'gate-in';
   const activeWorkflowStep = routeWorkflowStep ?? inferredWorkflowStep;
+  const blockedActionMessage =
+    activeWorkflowStep === 'qc'
+      ? !receivingSession
+        ? 'Cần bắt đầu phiên tiếp nhận trước khi QC.'
+        : !confirmedReceiptLine
+          ? 'Cần xác nhận dòng tiếp nhận trước khi QC.'
+          : needsDiscrepancyRouting
+            ? 'Dòng tiếp nhận đang có sai lệch, cần chuyển xử lý sai lệch trước khi QC.'
+            : null
+      : activeWorkflowStep === 'lpn'
+        ? !receivingSession
+          ? 'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/Pallet.'
+          : !confirmedReceiptLine
+            ? 'Cần xác nhận dòng tiếp nhận trước khi xác nhận LPN/Pallet.'
+            : !putawayReady
+              ? 'Cần QC đưa dòng về READY_FOR_PUTAWAY trước khi xác nhận LPN/Pallet.'
+              : null
+        : activeWorkflowStep === 'release'
+          ? !receivingSession
+            ? 'Cần bắt đầu phiên tiếp nhận trước khi release.'
+            : !confirmedReceiptLine
+              ? 'Cần xác nhận dòng tiếp nhận trước khi release.'
+              : !putawayReady
+                ? 'Cần trạng thái READY_FOR_PUTAWAY trước khi release.'
+                : releaseRequireLpn && !confirmedInboundLpn
+                  ? 'Cần xác nhận LPN/Pallet trước khi release vì cấu hình đang yêu cầu LPN.'
+                  : null
+          : null;
   const workflowSteps: InboundWorkflowStep[] = [
     {
       key: 'gate-in',
@@ -1192,6 +1233,8 @@ export function InboundDetailPage() {
           )}
 
           <NextActionShell title={nextActionTitle}>
+            {blockedActionMessage && <InboundBlockedActionHelper message={blockedActionMessage} />}
+
             {activeWorkflowStep === 'gate-in' && (
               <InboundGateInPanel
                 gateReference={gateReference}
@@ -1262,7 +1305,7 @@ export function InboundDetailPage() {
               />
             )}
 
-            {activeWorkflowStep === 'qc' && (
+            {activeWorkflowStep === 'qc' && !blockedActionMessage && (
               <InboundQcPanel
                 canEvaluateQcTask={canEvaluateQcTask}
                 canRecordQcResult={canRecordQcResult}
@@ -1309,47 +1352,48 @@ export function InboundDetailPage() {
               />
             )}
 
-            {(activeWorkflowStep === 'lpn' || activeWorkflowStep === 'release') && (
-              <InboundReleasePutawayPanel
-                canConfirmInboundLpn={canConfirmInboundLpn}
-                canReleaseInboundToPutaway={canReleaseInboundToPutaway}
-                confirmedInboundLpn={confirmedInboundLpn}
-                confirmedReceiptLine={confirmedReceiptLine}
-                hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
-                isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
-                isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
-                lpnCode={lpnCode}
-                lpnIdempotencyKey={lpnIdempotencyKey}
-                onLpnCodeChange={setLpnCode}
-                onLpnIdempotencyKeyChange={setLpnIdempotencyKey}
-                onReleaseAttemptLabelOverrideChange={setReleaseAttemptLabelOverride}
-                onReleaseCurrentLocationCodeChange={setReleaseCurrentLocationCode}
-                onReleaseEvidenceRefsChange={setReleaseEvidenceRefs}
-                onReleaseIdempotencyKeyChange={setReleaseIdempotencyKey}
-                onReleaseReasonCodeChange={setReleaseReasonCode}
-                onReleaseRequireLpnChange={setReleaseRequireLpn}
-                onSsccCodeChange={setSsccCode}
-                onSubmitInboundLpn={submitInboundLpn}
-                onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
-                putawayReady={putawayReady}
-                putawayRelease={putawayRelease}
-                receivingSession={receivingSession ?? null}
-                releaseAttemptLabelOverride={releaseAttemptLabelOverride}
-                releaseCurrentLocationCode={releaseCurrentLocationCode}
-                releaseErrorMessage={
-                  mutations.releaseInboundToPutaway.error instanceof ApiError
-                    ? mutations.releaseInboundToPutaway.error.message
-                    : mutations.releaseInboundToPutaway.error
-                      ? 'Không thể phát hành sang cất hàng.'
-                      : null
-                }
-                releaseEvidenceRefs={releaseEvidenceRefs}
-                releaseIdempotencyKey={releaseIdempotencyKey}
-                releaseReasonCode={releaseReasonCode}
-                releaseRequireLpn={releaseRequireLpn}
-                ssccCode={ssccCode}
-              />
-            )}
+            {(activeWorkflowStep === 'lpn' || activeWorkflowStep === 'release') &&
+              !blockedActionMessage && (
+                <InboundReleasePutawayPanel
+                  canConfirmInboundLpn={canConfirmInboundLpn}
+                  canReleaseInboundToPutaway={canReleaseInboundToPutaway}
+                  confirmedInboundLpn={confirmedInboundLpn}
+                  confirmedReceiptLine={confirmedReceiptLine}
+                  hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
+                  isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
+                  isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
+                  lpnCode={lpnCode}
+                  lpnIdempotencyKey={lpnIdempotencyKey}
+                  onLpnCodeChange={setLpnCode}
+                  onLpnIdempotencyKeyChange={setLpnIdempotencyKey}
+                  onReleaseAttemptLabelOverrideChange={setReleaseAttemptLabelOverride}
+                  onReleaseCurrentLocationCodeChange={setReleaseCurrentLocationCode}
+                  onReleaseEvidenceRefsChange={setReleaseEvidenceRefs}
+                  onReleaseIdempotencyKeyChange={setReleaseIdempotencyKey}
+                  onReleaseReasonCodeChange={setReleaseReasonCode}
+                  onReleaseRequireLpnChange={setReleaseRequireLpn}
+                  onSsccCodeChange={setSsccCode}
+                  onSubmitInboundLpn={submitInboundLpn}
+                  onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
+                  putawayReady={putawayReady}
+                  putawayRelease={putawayRelease}
+                  receivingSession={receivingSession ?? null}
+                  releaseAttemptLabelOverride={releaseAttemptLabelOverride}
+                  releaseCurrentLocationCode={releaseCurrentLocationCode}
+                  releaseErrorMessage={
+                    mutations.releaseInboundToPutaway.error instanceof ApiError
+                      ? mutations.releaseInboundToPutaway.error.message
+                      : mutations.releaseInboundToPutaway.error
+                        ? 'Không thể phát hành sang cất hàng.'
+                        : null
+                  }
+                  releaseEvidenceRefs={releaseEvidenceRefs}
+                  releaseIdempotencyKey={releaseIdempotencyKey}
+                  releaseReasonCode={releaseReasonCode}
+                  releaseRequireLpn={releaseRequireLpn}
+                  ssccCode={ssccCode}
+                />
+              )}
           </NextActionShell>
 
           {selected && (

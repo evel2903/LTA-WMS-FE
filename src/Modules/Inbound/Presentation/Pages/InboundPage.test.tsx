@@ -865,6 +865,47 @@ describe('InboundPage', () => {
     );
   });
 
+  it('blocks QC deep-link until a receipt line is confirmed', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/qc');
+
+    const blockedAction = await screen.findByTestId('inbound-action-blocked');
+
+    expect(blockedAction.textContent).toContain('Cần bắt đầu phiên tiếp nhận trước khi QC');
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
+  });
+
+  it('blocks LPN deep-link until the line is ready for putaway', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/lpn');
+
+    const blockedAction = await screen.findByTestId('inbound-action-blocked');
+
+    expect(blockedAction.textContent).toContain(
+      'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/Pallet',
+    );
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
+  });
+
+  it('blocks release deep-link until putaway readiness and LPN requirement are satisfied', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/release');
+
+    const blockedAction = await screen.findByTestId('inbound-action-blocked');
+
+    expect(blockedAction.textContent).toContain('Cần bắt đầu phiên tiếp nhận trước khi release');
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
+  });
+
   it('resets actual quantity to expected quantity when operator selects another line', async () => {
     const actor = userEvent.setup();
     const basePlan = makePlan();
@@ -1262,9 +1303,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
@@ -1301,9 +1340,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
@@ -1372,9 +1409,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
@@ -1412,9 +1447,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
@@ -1465,7 +1498,9 @@ describe('InboundPage', () => {
       evidenceRefs: ['photo://qc/damaged-4'],
     });
     await waitFor(() => expect(fake.recordQcResult).toHaveBeenCalledTimes(1));
-    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
+    const blockedAction = await screen.findByTestId('inbound-action-blocked');
+    expect(blockedAction.textContent).toContain('READY_FOR_PUTAWAY');
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
   });
 
   it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {
@@ -1484,9 +1519,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
@@ -1541,9 +1574,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-wrong-sku');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Sai SKU/i)).toBeTruthy();
@@ -1591,9 +1622,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByText(/Điều phối sai lệch/i)).toBeTruthy();
@@ -1630,9 +1659,7 @@ describe('InboundPage', () => {
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
-      screen
-        .getByRole('button', { name: 'Xác nhận nhận hàng' })
-        .closest('form') as HTMLFormElement,
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
