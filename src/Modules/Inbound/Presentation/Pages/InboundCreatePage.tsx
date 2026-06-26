@@ -8,6 +8,10 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
+import { useActiveOwners } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
+import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
+import { useWarehouseProfiles } from '@modules/WarehouseProfile/Application/Queries/UseWarehouseProfiles';
 
 interface DraftLine {
   id: number;
@@ -15,6 +19,26 @@ interface DraftLine {
   uomId: string;
   expectedQuantity: string;
   externalLineReference: string;
+}
+
+interface LookupOption {
+  value: string;
+  label: string;
+}
+
+interface LookupSelectProps {
+  id: string;
+  name: string;
+  label: string;
+  value: string;
+  placeholder: string;
+  options: LookupOption[];
+  isLoading: boolean;
+  isError: boolean;
+  emptyMessage: string;
+  errorMessage: string;
+  optional?: boolean;
+  onChange: (value: string) => void;
 }
 
 let nextDraftLineId = 0;
@@ -27,9 +51,69 @@ const initialLine = (): DraftLine => ({
   externalLineReference: '',
 });
 
+const selectClassName =
+  'h-9 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
+
+function LookupSelect({
+  id,
+  name,
+  label,
+  value,
+  placeholder,
+  options,
+  isLoading,
+  isError,
+  emptyMessage,
+  errorMessage,
+  optional = false,
+  onChange,
+}: LookupSelectProps) {
+  const hasOptions = options.length > 0;
+  const disabled = isLoading || isError || (!optional && !hasOptions) || (optional && !hasOptions);
+  const helperId = `${id}-helper`;
+  const helperText = isLoading
+    ? 'Đang tải danh sách...'
+    : isError
+      ? errorMessage
+      : !hasOptions
+        ? emptyMessage
+        : null;
+
+  return (
+    <label className="grid gap-1 text-sm" htmlFor={id}>
+      {label}
+      <select
+        id={id}
+        name={name}
+        className={selectClassName}
+        value={value}
+        disabled={disabled}
+        aria-describedby={helperText ? helperId : undefined}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">{isLoading ? 'Đang tải...' : placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {helperText ? (
+        <span id={helperId} className="text-muted-foreground text-xs">
+          {helperText}
+        </span>
+      ) : null}
+    </label>
+  );
+}
+
 export function InboundCreatePage() {
   const navigate = useNavigate();
   const mutations = useInboundMutations();
+  const supplierQuery = usePartners({ partnerType: 'Supplier', status: 'Active', pageSize: 100 });
+  const ownerQuery = useActiveOwners();
+  const warehouseQuery = useActiveWarehouses();
+  const warehouseProfileQuery = useWarehouseProfiles({ status: 'ACTIVE', pageSize: 100 });
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -53,6 +137,38 @@ export function InboundCreatePage() {
   const totalExpectedQuantity = useMemo(
     () => lineDrafts.reduce((sum, line) => sum + (Number(line.expectedQuantity) || 0), 0),
     [lineDrafts],
+  );
+  const supplierOptions = useMemo(
+    () =>
+      (supplierQuery.data?.items ?? []).map((supplier) => ({
+        value: supplier.id,
+        label: `${supplier.partnerCode} - ${supplier.partnerName}`,
+      })),
+    [supplierQuery.data?.items],
+  );
+  const ownerOptions = useMemo(
+    () =>
+      (ownerQuery.data?.items ?? []).map((owner) => ({
+        value: owner.id,
+        label: `${owner.ownerCode} - ${owner.ownerName}`,
+      })),
+    [ownerQuery.data?.items],
+  );
+  const warehouseOptions = useMemo(
+    () =>
+      (warehouseQuery.data?.items ?? []).map((warehouse) => ({
+        value: warehouse.id,
+        label: `${warehouse.warehouseCode} - ${warehouse.warehouseName}`,
+      })),
+    [warehouseQuery.data?.items],
+  );
+  const warehouseProfileOptions = useMemo(
+    () =>
+      (warehouseProfileQuery.data?.items ?? []).map((profile) => ({
+        value: profile.id,
+        label: `${profile.profileCode} - ${profile.profileName}`,
+      })),
+    [warehouseProfileQuery.data?.items],
   );
 
   function updateLine(id: number, patch: Partial<DraftLine>) {
@@ -157,46 +273,59 @@ export function InboundCreatePage() {
             <CardTitle>Đối tượng và kho</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-supplier-id">
-              ID nhà cung cấp
-              <Input
-                id="inbound-supplier-id"
-                name="supplierId"
-                value={supplierId}
-                onChange={(event) => setSupplierId(event.target.value)}
-                placeholder="supplier-1"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-owner-id">
-              ID chủ hàng
-              <Input
-                id="inbound-owner-id"
-                name="ownerId"
-                value={ownerId}
-                onChange={(event) => setOwnerId(event.target.value)}
-                placeholder="owner-1"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-warehouse-id">
-              ID kho
-              <Input
-                id="inbound-warehouse-id"
-                name="warehouseId"
-                value={warehouseId}
-                onChange={(event) => setWarehouseId(event.target.value)}
-                placeholder="warehouse-1"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-warehouse-profile-id">
-              ID hồ sơ kho
-              <Input
-                id="inbound-warehouse-profile-id"
-                name="warehouseProfileId"
-                value={warehouseProfileId}
-                onChange={(event) => setWarehouseProfileId(event.target.value)}
-                placeholder="profile-1"
-              />
-            </label>
+            <LookupSelect
+              id="inbound-supplier-id"
+              name="supplierId"
+              label="Nhà cung cấp"
+              value={supplierId}
+              placeholder="Chọn nhà cung cấp"
+              options={supplierOptions}
+              isLoading={supplierQuery.isLoading}
+              isError={supplierQuery.isError}
+              emptyMessage="Chưa có nhà cung cấp active để chọn."
+              errorMessage="Không tải được danh sách nhà cung cấp."
+              onChange={setSupplierId}
+            />
+            <LookupSelect
+              id="inbound-owner-id"
+              name="ownerId"
+              label="Chủ hàng"
+              value={ownerId}
+              placeholder="Chọn chủ hàng"
+              options={ownerOptions}
+              isLoading={ownerQuery.isLoading}
+              isError={ownerQuery.isError}
+              emptyMessage="Chưa có chủ hàng active để chọn."
+              errorMessage="Không tải được danh sách chủ hàng."
+              onChange={setOwnerId}
+            />
+            <LookupSelect
+              id="inbound-warehouse-id"
+              name="warehouseId"
+              label="Kho"
+              value={warehouseId}
+              placeholder="Chọn kho"
+              options={warehouseOptions}
+              isLoading={warehouseQuery.isLoading}
+              isError={warehouseQuery.isError}
+              emptyMessage="Chưa có kho active để chọn."
+              errorMessage="Không tải được danh sách kho."
+              onChange={setWarehouseId}
+            />
+            <LookupSelect
+              id="inbound-warehouse-profile-id"
+              name="warehouseProfileId"
+              label="Hồ sơ kho"
+              value={warehouseProfileId}
+              placeholder="Không chọn hồ sơ kho"
+              options={warehouseProfileOptions}
+              isLoading={warehouseProfileQuery.isLoading}
+              isError={warehouseProfileQuery.isError}
+              emptyMessage="Chưa có hồ sơ kho active để chọn."
+              errorMessage="Không tải được danh sách hồ sơ kho."
+              optional
+              onChange={setWarehouseProfileId}
+            />
           </CardContent>
         </Card>
 
