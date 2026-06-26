@@ -110,7 +110,7 @@ const NAV_ENTRIES: NavEntry[] = [
 
 const leafLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    'flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
     isActive
       ? 'bg-sidebar-accent text-sidebar-accent-foreground'
       : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
@@ -126,7 +126,7 @@ function NavGroupItem({ group, defaultOpen }: { group: NavGroup; defaultOpen: bo
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+          'flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
           'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
         )}
       >

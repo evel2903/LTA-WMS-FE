@@ -764,7 +764,7 @@ export function InboundDetailPage() {
                           <button
                             type="button"
                             className={cn(
-                              'rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
+                              'min-h-10 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
                               selectedLine?.id === line.id && 'border-primary bg-primary/5',
                             )}
                             onClick={() => {
@@ -887,7 +887,7 @@ export function InboundDetailPage() {
                       {lineDrafts.length > 1 && (
                         <button
                           type="button"
-                          className="rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted sm:col-span-4"
+                          className="min-h-10 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted sm:col-span-4"
                           onClick={() =>
                             setLineDrafts((lines) => lines.filter((draft) => draft.id !== line.id))
                           }
@@ -899,7 +899,7 @@ export function InboundDetailPage() {
                   ))}
                   <button
                     type="button"
-                    className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+                    className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
                     onClick={() => setLineDrafts((lines) => [...lines, initialLine()])}
                   >
                     Thêm dòng
@@ -907,7 +907,7 @@ export function InboundDetailPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!canCreate || mutations.createInboundPlan.isPending}
                 >
                   Tạo kế hoạch nhập kho
