@@ -100,16 +100,16 @@ function getReceiptLineHelper({
 }) {
   if (!receivingSession) return 'Cần bắt đầu phiên tiếp nhận trước khi xác nhận dòng.';
   if (!selectedLine) return 'Chưa có dòng nhập kho để xác nhận.';
-  if (isPending) return 'Đang xác nhận dòng tiếp nhận.';
-  if (Number(receiptActualQuantity) <= 0) return 'Số lượng thực tế phải lớn hơn 0.';
+  if (isPending) return 'Đang xác nhận nhận hàng.';
+  if (Number(receiptActualQuantity) <= 0) return 'Số lượng thực nhận phải lớn hơn 0.';
   if (receiptManualConfirm && !receiptReasonCode.trim()) {
     return 'Xác nhận thủ công cần mã lý do tiếp nhận.';
   }
   if (!receiptManualConfirm && !receiptRawScan.trim()) {
-    return 'Cần giá trị quét thô hoặc bật xác nhận thủ công kèm mã lý do.';
+    return 'Cần quét mã hàng hoặc bật xác nhận thủ công kèm mã lý do.';
   }
   if (!receiptIdempotencyKey.trim()) return 'Cần khóa idempotency để xác nhận dòng.';
-  return 'Sẵn sàng xác nhận dòng tiếp nhận.';
+  return 'Sẵn sàng xác nhận nhận hàng.';
 }
 
 function hasEvidenceRef(value: string) {
@@ -119,6 +119,10 @@ function hasEvidenceRef(value: string) {
       .map((item) => item.trim())
       .filter(Boolean).length > 0
   );
+}
+
+function formatQuantity(value: number) {
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 }
 
 function getDiscrepancyHelper({
@@ -218,7 +222,7 @@ export function InboundReceivingPanel({
   return (
     <Card data-testid="inbound-receiving-panel">
       <CardHeader>
-        <CardTitle className="text-base">Quét tiếp nhận</CardTitle>
+        <CardTitle className="text-base">Tiếp nhận hàng</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <form className="space-y-3" onSubmit={onSubmitStartReceiving}>
@@ -263,14 +267,30 @@ export function InboundReceivingPanel({
         </form>
 
         <form className="space-y-3" onSubmit={onSubmitReceiptLine}>
-          <div className="break-words text-sm text-muted-foreground">
-            Dòng đã chọn:{' '}
-            {selectedLine
-              ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
-              : 'Không có'}
+          <div
+            className="rounded-md border bg-muted/40 p-3 text-sm"
+            data-testid="inbound-current-line"
+          >
+            <p className="text-xs font-medium text-muted-foreground">Dòng hàng đang nhận</p>
+            {selectedLine ? (
+              <div className="mt-1 space-y-1">
+                <p className="font-medium text-foreground">
+                  Dòng {selectedLine.lineNumber} - {selectedLine.skuCode ?? selectedLine.skuId}
+                </p>
+                <p className="text-muted-foreground">
+                  Dự kiến: {formatQuantity(selectedLine.expectedQuantity)}{' '}
+                  {selectedLine.uomCode ?? ''}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Tham chiếu: {selectedLine.externalLineReference ?? 'không có'}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-1 text-muted-foreground">Chưa có dòng hàng để nhận.</p>
+            )}
           </div>
           <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-actual-quantity">
-            Số lượng thực tế
+            Số lượng thực nhận
             <Input
               id="inbound-receipt-actual-quantity"
               name="receiptActualQuantity"
@@ -282,7 +302,7 @@ export function InboundReceivingPanel({
             />
           </label>
           <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-raw-scan">
-            Giá trị quét thô
+            Quét mã hàng
             <Input
               id="inbound-receipt-raw-scan"
               name="receiptRawScan"
@@ -336,7 +356,7 @@ export function InboundReceivingPanel({
             disabled={!canConfirmReceiptLine || isConfirmReceiptLinePending}
           >
             <ScanLine className="size-4" />
-            Xác nhận dòng tiếp nhận
+            Xác nhận nhận hàng
           </button>
           {receiptLineResult && (
             <p className="break-words text-sm text-muted-foreground">

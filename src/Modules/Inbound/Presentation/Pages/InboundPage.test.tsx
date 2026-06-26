@@ -850,6 +850,11 @@ describe('InboundPage', () => {
     expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy();
     await expectReadinessAllowed();
     expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(screen.getAllByText('Tiếp nhận hàng').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByTestId('inbound-current-line').textContent).toContain('SKU-A');
+    expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '12');
+    expect(screen.getByLabelText('Quét mã hàng')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Xác nhận nhận hàng' })).toBeTruthy();
     expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
     expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
     expect(screen.getByTestId('inbound-receiving-start-helper').textContent).toContain(
@@ -858,6 +863,38 @@ describe('InboundPage', () => {
     expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
       'Cần bắt đầu phiên tiếp nhận',
     );
+  });
+
+  it('resets actual quantity to expected quantity when operator selects another line', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    await expectReadinessAllowed();
+    expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '12');
+
+    await actor.click(screen.getByRole('button', { name: /Dòng 2 - SKU-B/i }));
+
+    expect(screen.getByTestId('inbound-current-line').textContent).toContain('SKU-B');
+    expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '24');
   });
 
   it('blocks receipt confirmation until raw scan or manual reason is provided', async () => {
@@ -872,9 +909,9 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
     expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
-      'Cần giá trị quét thô',
+      'Cần quét mã hàng',
     );
     expect(confirmButton).toHaveProperty('disabled', true);
 
@@ -896,7 +933,7 @@ describe('InboundPage', () => {
     expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Bắt đầu tiếp nhận' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Xác nhận dòng tiếp nhận' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Xác nhận nhận hàng' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Đánh giá QC' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Phát hành sang cất hàng' })).toBeNull();
 
@@ -1135,10 +1172,10 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
 
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
-    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
@@ -1176,12 +1213,12 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
-    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
-    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
@@ -1221,12 +1258,12 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1260,12 +1297,12 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1331,12 +1368,12 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1371,12 +1408,12 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1441,14 +1478,14 @@ describe('InboundPage', () => {
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
-    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
-    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1500,12 +1537,12 @@ describe('InboundPage', () => {
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), 'wrong-sku-barcode');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), 'wrong-sku-barcode');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-wrong-sku');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1548,14 +1585,14 @@ describe('InboundPage', () => {
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
-    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
-    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 
@@ -1587,14 +1624,14 @@ describe('InboundPage', () => {
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
-    await actor.clear(screen.getByLabelText('Số lượng thực tế'));
-    await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
       screen
-        .getByRole('button', { name: 'Xác nhận dòng tiếp nhận' })
+        .getByRole('button', { name: 'Xác nhận nhận hàng' })
         .closest('form') as HTMLFormElement,
     );
 

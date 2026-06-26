@@ -141,7 +141,10 @@ function InboundLineQueue({
   return (
     <Card data-testid="inbound-line-queue">
       <CardHeader>
-        <CardTitle className="text-base">Dòng còn lại</CardTitle>
+        <CardTitle className="text-base">Dòng hàng còn lại</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Chọn dòng để hệ thống tự điền số lượng dự kiến vào phần tiếp nhận.
+        </p>
       </CardHeader>
       <CardContent className="space-y-2">
         {lines.map((line) => {
@@ -155,6 +158,7 @@ function InboundLineQueue({
                 isSelected && 'border-primary bg-primary/5',
               )}
               onClick={() => onSelect(line)}
+              aria-pressed={isSelected}
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate font-medium">
