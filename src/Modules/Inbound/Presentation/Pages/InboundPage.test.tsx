@@ -16,6 +16,7 @@ import type {
   QcResult,
   QcTask,
   ReceiptLine,
+  ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 import type {
@@ -44,6 +45,8 @@ import { InboundCreatePage } from '@modules/Inbound/Presentation/Pages/InboundCr
 import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
 
 vi.setConfig({ testTimeout: 15_000 });
+
+const DEFAULT_RAW_SCAN = '01012345678901281726010110LOT-A';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -95,7 +98,7 @@ function makePlan(overrides: Partial<InboundPlan> = {}): InboundPlan {
 
 class FakeRepository implements Partial<IInboundRepository> {
   public items: InboundPlan[];
-  public readiness = {
+  public readiness: ReceivingReadiness = {
     allowed: false,
     blocked: true,
     decision: 'Blocked',
@@ -103,7 +106,7 @@ class FakeRepository implements Partial<IInboundRepository> {
     gateInRecorded: false,
     overrideAccepted: false,
     reason: 'Cần ghi nhận vào cổng trước khi tiếp nhận.',
-  } as const;
+  };
 
   constructor(initial: InboundPlan[] = []) {
     this.items = initial;
@@ -422,6 +425,26 @@ class FakeRepository implements Partial<IInboundRepository> {
   );
 }
 
+function allowReceiving(fake: FakeRepository) {
+  fake.readiness = {
+    ...fake.readiness,
+    allowed: true,
+    blocked: false,
+    decision: 'Allowed',
+    gateInRecorded: true,
+    overrideAccepted: false,
+    reason: 'Điều kiện tiếp nhận đã sẵn sàng.',
+  };
+}
+
+async function expectReadinessAllowed() {
+  await waitFor(() =>
+    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
+      'Điều kiện tiếp nhận đã sẵn sàng',
+    ),
+  );
+}
+
 function renderPage(entry = '/inbound/inbound-plan-1') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -539,6 +562,66 @@ describe('InboundPage', () => {
     ).toHaveProperty('disabled', true);
   });
 
+  it('renders receiving, QC and release panels with blocked helper reasons', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    const receivingStep = await screen.findByTestId('inbound-workflow-step-receiving');
+
+    expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy();
+    expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-qc-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-release-putaway-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-receiving-start-helper').textContent).toContain(
+      'Cần hoàn tất kiểm tra sẵn sàng',
+    );
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'Cần bắt đầu phiên tiếp nhận',
+    );
+    expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
+      'Cần phiên tiếp nhận',
+    );
+    expect(screen.getByTestId('inbound-qc-task-helper').textContent).toContain(
+      'Cần phiên tiếp nhận',
+    );
+    expect(screen.getByTestId('inbound-qc-result-helper').textContent).toContain(
+      'Cần đánh giá QC',
+    );
+    expect(screen.getByTestId('inbound-lpn-helper').textContent).toContain(
+      'Cần phiên tiếp nhận',
+    );
+    expect(screen.getByTestId('inbound-release-helper').textContent).toContain(
+      'Cần phiên tiếp nhận',
+    );
+  });
+
+  it('blocks receipt confirmation until raw scan or manual reason is provided', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'Cần giá trị quét thô',
+    );
+    expect(confirmButton).toHaveProperty('disabled', true);
+
+    await actor.click(screen.getByLabelText('Xác nhận thủ công'));
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'Xác nhận thủ công cần mã lý do',
+    );
+    await actor.type(screen.getByLabelText('Mã lý do tiếp nhận'), 'RC-V1-MANUAL-SCAN');
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+  });
+
   it('creates source document from the create-only page without operational actions', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
@@ -549,6 +632,8 @@ describe('InboundPage', () => {
     expect(screen.queryByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Bắt đầu tiếp nhận' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Xác nhận dòng tiếp nhận' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Đánh giá QC' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Phát hành sang cất hàng' })).toBeNull();
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
@@ -680,16 +765,18 @@ describe('InboundPage', () => {
   it('starts receiving and confirms a scan receipt line through repository commands', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
     await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
 
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
-    await actor.type(screen.getByLabelText('Giá trị quét thô'), '01012345678901281726010110LOT-A');
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
@@ -710,7 +797,7 @@ describe('InboundPage', () => {
       actualQuantity: 12,
       idempotencyKey: 'receipt-line-1',
       scanEvidence: {
-        rawValue: '01012345678901281726010110LOT-A',
+        rawValue: DEFAULT_RAW_SCAN,
         resolvedSkuId: 'sku-1',
         resolvedUomId: 'uom-1',
       },
@@ -721,15 +808,18 @@ describe('InboundPage', () => {
   it('routes a confirmed discrepancy line with reason, evidence and idempotency', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
     await actor.clear(screen.getByLabelText('Số lượng thực tế'));
     await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     const confirmButton = screen.getByRole('button', { name: 'Xác nhận dòng tiếp nhận' });
@@ -761,13 +851,16 @@ describe('InboundPage', () => {
   it('evaluates QC skipped after a confirmed receipt line', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -796,13 +889,16 @@ describe('InboundPage', () => {
   it('confirms LPN/SSCC and releases READY_FOR_PUTAWAY line to putaway', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -854,6 +950,7 @@ describe('InboundPage', () => {
   it('shows backend release block reason inline', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     fake.releaseInboundToPutaway.mockRejectedValueOnce(
       new ApiError({
         status: 400,
@@ -865,9 +962,11 @@ describe('InboundPage', () => {
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -897,13 +996,16 @@ describe('InboundPage', () => {
   it('records required QC result with split quarantine disposition and evidence', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
 
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -929,14 +1031,19 @@ describe('InboundPage', () => {
     fireEvent.change(screen.getByLabelText('Mã lý do kết quả QC'), {
       target: { value: 'RC-V1-DISCREPANCY' },
     });
-    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng kết quả QC'), {
-      target: { value: 'photo://qc/damaged-4' },
-    });
+    fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '4' } });
     fireEvent.change(screen.getByLabelText('Khóa idempotency kết quả QC'), {
       target: { value: 'qc-result-split' },
     });
-    expect(recordButton).toHaveProperty('disabled', true);
-    fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng kết quả QC'), {
+      target: { value: ',,' },
+    });
+    expect(screen.getByTestId('inbound-qc-result-helper').textContent).toContain(
+      'Kết quả QC này cần tham chiếu bằng chứng',
+    );
+    fireEvent.change(screen.getByLabelText('Tham chiếu bằng chứng kết quả QC'), {
+      target: { value: 'photo://qc/damaged-4' },
+    });
     await waitFor(() => expect(recordButton).toHaveProperty('disabled', false));
     fireEvent.submit(recordButton.closest('form') as HTMLFormElement);
 
@@ -958,13 +1065,16 @@ describe('InboundPage', () => {
   it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     await actor.clear(screen.getByLabelText('Số lượng thực tế'));
     await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -978,6 +1088,9 @@ describe('InboundPage', () => {
     expect(routeButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), ',,');
+    expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
+      'Nhập tham chiếu bằng chứng sai lệch',
+    );
     expect(routeButton).toHaveProperty('disabled', true);
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
@@ -985,6 +1098,7 @@ describe('InboundPage', () => {
   it('defaults discrepancy type from the confirmed receipt-line signal', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     fake.confirmReceiptLine.mockResolvedValueOnce({
       id: 'receipt-line-1',
       receiptId: 'receipt-1',
@@ -1015,6 +1129,7 @@ describe('InboundPage', () => {
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     await actor.type(screen.getByLabelText('Giá trị quét thô'), 'wrong-sku-barcode');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
@@ -1029,7 +1144,7 @@ describe('InboundPage', () => {
     expect(screen.getByLabelText('Loại sai lệch')).toHaveProperty('value', 'WrongSku');
   }, 15_000);
 
-  it('hides stale discrepancy routing when a different source line is selected', async () => {
+  it('keeps stale discrepancy routing visible but blocked when a different source line is selected', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([
       makePlan({
@@ -1057,13 +1172,16 @@ describe('InboundPage', () => {
         ],
       }),
     ]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     await actor.clear(screen.getByLabelText('Số lượng thực tế'));
     await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
@@ -1074,12 +1192,20 @@ describe('InboundPage', () => {
 
     expect(await screen.findByText(/Điều phối sai lệch/i)).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Chọn dòng 2' }));
-    await waitFor(() => expect(screen.queryByText(/Điều phối sai lệch/i)).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
+        'Cần xác nhận dòng tiếp nhận',
+      ),
+    );
+    expect(screen.queryByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' })).toHaveProperty('disabled', true);
+    expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
   it('shows an inline discrepancy route error when backend rejects capture', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     fake.captureDiscrepancy.mockRejectedValueOnce(
       new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Evidence is required' }),
     );
@@ -1087,9 +1213,11 @@ describe('InboundPage', () => {
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
     await actor.clear(screen.getByLabelText('Số lượng thực tế'));
     await actor.type(screen.getByLabelText('Số lượng thực tế'), '14');
+    await actor.type(screen.getByLabelText('Giá trị quét thô'), DEFAULT_RAW_SCAN);
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
     await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
     fireEvent.submit(
