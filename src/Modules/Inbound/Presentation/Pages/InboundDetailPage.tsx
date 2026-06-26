@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import {
-  AlertTriangle,
-  ClipboardCheck,
-  PackageCheck,
-  PlayCircle,
-  RefreshCw,
-  ScanLine,
-} from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -19,7 +12,10 @@ import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOpera
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useInboundPlan, useReceivingReadiness } from '@modules/Inbound/Application/Queries/UseInboundPlans';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
+import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
+import { InboundReceivingPanel } from '@modules/Inbound/Presentation/Components/InboundReceivingPanel';
+import { InboundReleasePutawayPanel } from '@modules/Inbound/Presentation/Components/InboundReleasePutawayPanel';
 import { InboundWorkflowStepper } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepper';
 import {
   mapInboundActionToWorkflowStep,
@@ -27,11 +23,6 @@ import {
   type InboundWorkflowStepKey,
   type InboundWorkflowStepState,
 } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepperModel';
-import {
-  INBOUND_DISCREPANCY_TYPES,
-  QC_DISPOSITION_CODES,
-  QC_RESULT_STATUSES,
-} from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
   InboundDiscrepancyType,
   QcDispositionCode,
@@ -180,6 +171,16 @@ export function InboundDetailPage() {
     mutations.recordQcResult.data && evaluatedQcTask?.id === mutations.recordQcResult.data.qcTaskId
       ? mutations.recordQcResult.data
       : null;
+  const capturedDiscrepancy =
+    mutations.captureDiscrepancy.data &&
+    mutations.captureDiscrepancy.data.receiptLineId === confirmedReceiptLine?.id
+      ? mutations.captureDiscrepancy.data
+      : null;
+  const captureDiscrepancyErrorMatchesSelectedLine = Boolean(
+    confirmedReceiptLine &&
+      mutations.captureDiscrepancy.error &&
+      mutations.captureDiscrepancy.variables?.input.receiptLineId === confirmedReceiptLine.id,
+  );
   const confirmedInboundLpn =
     mutations.confirmInboundLpn.data &&
     mutations.confirmInboundLpn.data.receiptLineId === confirmedReceiptLine?.id
@@ -226,13 +227,15 @@ export function InboundDetailPage() {
       !mutations.validateReadiness.isPending &&
       readinessReasonCode.trim(),
   );
-  const canStartReceiving = Boolean(selected && receivingSessionKey.trim());
+  const canStartReceiving = Boolean(
+    selected && readinessDone && !readinessBusy && receivingSessionKey.trim(),
+  );
   const canConfirmReceiptLine = Boolean(
     receivingSession &&
     selectedLine &&
     Number(receiptActualQuantity) > 0 &&
     receiptIdempotencyKey.trim() &&
-    (receiptManualConfirm ? receiptReasonCode.trim() : true),
+    (receiptManualConfirm ? receiptReasonCode.trim() : receiptRawScan.trim()),
   );
   const discrepancyEvidenceRefList = useMemo(
     () =>
@@ -279,7 +282,7 @@ export function InboundDetailPage() {
   const qcInspectedQty = Number(qcInspectedQuantity);
   const qcAcceptedQty = Number(qcAcceptedQuantity);
   const qcRejectedQty = Number(qcRejectedQuantity);
-  const qcQuantityBalanced = qcAcceptedQty + qcRejectedQty === qcInspectedQty;
+  const qcQuantityBalanced = Math.abs(qcAcceptedQty + qcRejectedQty - qcInspectedQty) < 0.000001;
   const qcNeedsReasonEvidence =
     qcResultStatus !== 'Passed' || qcDispositionCode !== 'Release' || qcRejectedQty > 0;
   const canRecordQcResult = Boolean(
@@ -943,498 +946,134 @@ export function InboundDetailPage() {
           reasonCode={readinessReasonCode}
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Quét tiếp nhận</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form className="space-y-3" onSubmit={submitStartReceiving}>
-              <label className="grid gap-1 text-sm">
-                Khóa phiên tiếp nhận
-                <Input
-                  value={receivingSessionKey}
-                  onChange={(event) => setReceivingSessionKey(event.target.value)}
-                />
-              </label>
-              <label className="grid gap-1 text-sm">
-                Mã thiết bị
-                <Input
-                  value={receivingDeviceCode}
-                  onChange={(event) => setReceivingDeviceCode(event.target.value)}
-                />
-              </label>
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canStartReceiving || mutations.startReceivingSession.isPending}
-              >
-                <PlayCircle className="size-4" />
-                Bắt đầu tiếp nhận
-              </button>
-              {receivingSession && (
-                <p className="text-muted-foreground text-sm">
-                  Phiếu tiếp nhận {receivingSession.receiptNumber}
-                  {receivingSession.isDuplicate ? ' đã dùng lại' : ' đã sẵn sàng'}.
-                </p>
-              )}
-            </form>
+        <InboundReceivingPanel
+          canCaptureDiscrepancy={canCaptureDiscrepancy}
+          canConfirmReceiptLine={canConfirmReceiptLine}
+          canStartReceiving={canStartReceiving}
+          confirmedReceiptLine={confirmedReceiptLine}
+          discrepancyEvidenceRefs={discrepancyEvidenceRefs}
+          discrepancyIdempotencyKey={discrepancyIdempotencyKey}
+          discrepancyReasonCode={discrepancyReasonCode}
+          discrepancyReasonNote={discrepancyReasonNote}
+          discrepancyResult={capturedDiscrepancy}
+          discrepancyType={discrepancyType}
+          hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
+          hasPlan={Boolean(selected)}
+          isCaptureDiscrepancyPending={mutations.captureDiscrepancy.isPending}
+          isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
+          isStartReceivingPending={mutations.startReceivingSession.isPending}
+          onDiscrepancyEvidenceRefsChange={setDiscrepancyEvidenceRefs}
+          onDiscrepancyIdempotencyKeyChange={setDiscrepancyIdempotencyKey}
+          onDiscrepancyReasonCodeChange={setDiscrepancyReasonCode}
+          onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
+          onDiscrepancyTypeChange={setDiscrepancyType}
+          onReceiptActualQuantityChange={setReceiptActualQuantity}
+          onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
+          onReceiptManualConfirmChange={setReceiptManualConfirm}
+          onReceiptRawScanChange={setReceiptRawScan}
+          onReceiptReasonCodeChange={setReceiptReasonCode}
+          onReceivingDeviceCodeChange={setReceivingDeviceCode}
+          onReceivingSessionKeyChange={setReceivingSessionKey}
+          onSubmitDiscrepancy={submitDiscrepancy}
+          onSubmitReceiptLine={submitReceiptLine}
+          onSubmitStartReceiving={submitStartReceiving}
+          receiptActualQuantity={receiptActualQuantity}
+          receiptIdempotencyKey={receiptIdempotencyKey}
+          receiptLineResult={confirmedReceiptLine}
+          receiptManualConfirm={receiptManualConfirm}
+          receiptRawScan={receiptRawScan}
+          receiptReasonCode={receiptReasonCode}
+          readinessDone={readinessDone}
+          receivingDeviceCode={receivingDeviceCode}
+          receivingSession={receivingSession ?? null}
+          receivingSessionKey={receivingSessionKey}
+          selectedLine={selectedLine}
+        />
 
-            <form className="space-y-3" onSubmit={submitReceiptLine}>
-              <div className="text-muted-foreground text-sm">
-                Dòng đã chọn:{' '}
-                {selectedLine
-                  ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
-                  : 'Không có'}
-              </div>
-              <label className="grid gap-1 text-sm">
-                Số lượng thực tế
-                <Input
-                  type="number"
-                  min="0.0001"
-                  value={receiptActualQuantity}
-                  onChange={(event) => setReceiptActualQuantity(event.target.value)}
-                />
-              </label>
-              <label className="grid gap-1 text-sm">
-                Giá trị quét thô
-                <Input
-                  value={receiptRawScan}
-                  onChange={(event) => setReceiptRawScan(event.target.value)}
-                  disabled={receiptManualConfirm}
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={receiptManualConfirm}
-                  onChange={(event) => setReceiptManualConfirm(event.target.checked)}
-                />
-                Xác nhận thủ công
-              </label>
-              <label className="grid gap-1 text-sm">
-                Mã lý do tiếp nhận
-                <Input
-                  value={receiptReasonCode}
-                  onChange={(event) => setReceiptReasonCode(event.target.value)}
-                  disabled={!receiptManualConfirm}
-                  placeholder="RC-V1-MANUAL-SCAN"
-                />
-              </label>
-              <label className="grid gap-1 text-sm">
-                Khóa idempotency
-                <Input
-                  value={receiptIdempotencyKey}
-                  onChange={(event) => setReceiptIdempotencyKey(event.target.value)}
-                />
-              </label>
-              <button
-                type="submit"
-                className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canConfirmReceiptLine || mutations.confirmReceiptLine.isPending}
-              >
-                <ScanLine className="size-4" />
-                Xác nhận dòng tiếp nhận
-              </button>
-              {mutations.confirmReceiptLine.data && (
-                <p className="text-muted-foreground text-sm">
-                  Dòng {mutations.confirmReceiptLine.data.lineNumber}{' '}
-                  {vietnameseOperationalLabel(mutations.confirmReceiptLine.data.status)}
-                  {mutations.confirmReceiptLine.data.isDuplicate ? ' đã dùng lại' : ''}
-                  {mutations.confirmReceiptLine.data.discrepancySignals.length
-                    ? ` - ${mutations.confirmReceiptLine.data.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}`
-                    : ''}
-                </p>
-              )}
-            </form>
+        <InboundQcPanel
+          canEvaluateQcTask={canEvaluateQcTask}
+          canRecordQcResult={canRecordQcResult}
+          confirmedReceiptLine={confirmedReceiptLine}
+          evaluatedQcTask={evaluatedQcTask}
+          hasEvaluateQcTaskError={Boolean(mutations.evaluateQcTask.error)}
+          hasRecordQcResultError={Boolean(mutations.recordQcResult.error)}
+          isEvaluateQcTaskPending={mutations.evaluateQcTask.isPending}
+          isRecordQcResultPending={mutations.recordQcResult.isPending}
+          onQcAcceptedQuantityChange={setQcAcceptedQuantity}
+          onQcDispositionCodeChange={setQcDispositionCode}
+          onQcForceRequiredChange={setQcForceRequired}
+          onQcInspectedQuantityChange={setQcInspectedQuantity}
+          onQcRejectedQuantityChange={setQcRejectedQuantity}
+          onQcResultEvidenceRefsChange={setQcResultEvidenceRefs}
+          onQcResultIdempotencyKeyChange={setQcResultIdempotencyKey}
+          onQcResultReasonCodeChange={setQcResultReasonCode}
+          onQcResultReasonNoteChange={setQcResultReasonNote}
+          onQcResultStatusChange={setQcResultStatus}
+          onQcTaskEvidenceRefsChange={setQcTaskEvidenceRefs}
+          onQcTaskIdempotencyKeyChange={setQcTaskIdempotencyKey}
+          onQcTaskReasonCodeChange={setQcTaskReasonCode}
+          onQcTaskReasonNoteChange={setQcTaskReasonNote}
+          onSubmitEvaluateQcTask={submitEvaluateQcTask}
+          onSubmitQcResult={submitQcResult}
+          qcAcceptedQuantity={qcAcceptedQuantity}
+          qcDispositionCode={qcDispositionCode}
+          qcForceRequired={qcForceRequired}
+          qcInspectedQuantity={qcInspectedQuantity}
+          qcNeedsReasonEvidence={qcNeedsReasonEvidence}
+          qcQuantityBalanced={qcQuantityBalanced}
+          qcRejectedQuantity={qcRejectedQuantity}
+          qcResult={recordedQcResult}
+          qcResultEvidenceRefs={qcResultEvidenceRefs}
+          qcResultIdempotencyKey={qcResultIdempotencyKey}
+          qcResultReasonCode={qcResultReasonCode}
+          qcResultReasonNote={qcResultReasonNote}
+          qcResultStatus={qcResultStatus}
+          qcTaskEvidenceRefs={qcTaskEvidenceRefs}
+          qcTaskIdempotencyKey={qcTaskIdempotencyKey}
+          qcTaskReasonCode={qcTaskReasonCode}
+          qcTaskReasonNote={qcTaskReasonNote}
+          receivingSession={receivingSession ?? null}
+        />
 
-            {confirmedReceiptLine && (
-              <>
-                <form className="space-y-3 rounded-md border p-3" onSubmit={submitDiscrepancy}>
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <AlertTriangle className="size-4" />
-                    Điều phối sai lệch
-                  </div>
-                  {confirmedReceiptLine.discrepancySignals.length > 0 && (
-                    <div className="text-muted-foreground text-xs">
-                      Tín hiệu:{' '}
-                      {confirmedReceiptLine.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
-                    </div>
-                  )}
-                  <label className="grid gap-1 text-sm">
-                    Loại sai lệch
-                    <select
-                      value={discrepancyType}
-                      onChange={(event) =>
-                        setDiscrepancyType(event.target.value as InboundDiscrepancyType)
-                      }
-                      className="rounded-md border bg-background px-3 py-2 text-sm"
-                    >
-                      {INBOUND_DISCREPANCY_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {vietnameseOperationalLabel(type)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    Mã lý do sai lệch
-                    <Input
-                      value={discrepancyReasonCode}
-                      onChange={(event) => setDiscrepancyReasonCode(event.target.value)}
-                      placeholder="RC-V1-DISCREPANCY"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    Ghi chú lý do sai lệch
-                    <Input
-                      value={discrepancyReasonNote}
-                      onChange={(event) => setDiscrepancyReasonNote(event.target.value)}
-                      placeholder="Số lượng lệch so với ASN"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    Tham chiếu bằng chứng sai lệch
-                    <Input
-                      value={discrepancyEvidenceRefs}
-                      onChange={(event) => setDiscrepancyEvidenceRefs(event.target.value)}
-                      placeholder="photo://dock/over-qty-1"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm">
-                    Khóa idempotency sai lệch
-                    <Input
-                      value={discrepancyIdempotencyKey}
-                      onChange={(event) => setDiscrepancyIdempotencyKey(event.target.value)}
-                    />
-                  </label>
-                  <button
-                    type="submit"
-                    className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={!canCaptureDiscrepancy || mutations.captureDiscrepancy.isPending}
-                  >
-                    <AlertTriangle className="size-4" />
-                    Chuyển xử lý sai lệch
-                  </button>
-                  {mutations.captureDiscrepancy.data && (
-                    <p className="text-muted-foreground text-sm">
-                      Sai lệch {vietnameseOperationalLabel(mutations.captureDiscrepancy.data.status)} / Ngoại lệ{' '}
-                      {mutations.captureDiscrepancy.data.exceptionCaseId}
-                      {mutations.captureDiscrepancy.data.status === 'PendingApproval'
-                        ? ' / cần phê duyệt'
-                        : ''}
-                    </p>
-                  )}
-                  {mutations.captureDiscrepancy.error ? (
-                    <p className="text-destructive text-sm">Không thể chuyển xử lý sai lệch.</p>
-                  ) : null}
-                </form>
-
-                <div className="space-y-3 rounded-md border p-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <ClipboardCheck className="size-4" />
-                    Tác vụ QC và kết quả
-                  </div>
-                  <form className="space-y-3" onSubmit={submitEvaluateQcTask}>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={qcForceRequired}
-                        onChange={(event) => setQcForceRequired(event.target.checked)}
-                      />
-                      Bắt buộc QC
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Mã lý do kích hoạt QC
-                      <Input
-                        value={qcTaskReasonCode}
-                        onChange={(event) => setQcTaskReasonCode(event.target.value)}
-                        placeholder="RC-V1-DISCREPANCY"
-                      />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Ghi chú lý do kích hoạt QC
-                      <Input
-                        value={qcTaskReasonNote}
-                        onChange={(event) => setQcTaskReasonNote(event.target.value)}
-                        placeholder="Hồ sơ hoặc sai lệch yêu cầu QC"
-                      />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Tham chiếu bằng chứng kích hoạt QC
-                      <Input
-                        value={qcTaskEvidenceRefs}
-                        onChange={(event) => setQcTaskEvidenceRefs(event.target.value)}
-                        placeholder="photo://dock/qc-trigger-1"
-                      />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Khóa idempotency tác vụ QC
-                      <Input
-                        value={qcTaskIdempotencyKey}
-                        onChange={(event) => setQcTaskIdempotencyKey(event.target.value)}
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!canEvaluateQcTask || mutations.evaluateQcTask.isPending}
-                    >
-                      <ClipboardCheck className="size-4" />
-                      Đánh giá QC
-                    </button>
-                  </form>
-
-                  {evaluatedQcTask && (
-                    <div className="text-muted-foreground text-sm">
-                      QC {evaluatedQcTask.taskStatus} / {evaluatedQcTask.inventoryStatusCode} /{' '}
-                      {evaluatedQcTask.required ? evaluatedQcTask.triggerReason : 'Đã bỏ qua'}
-                    </div>
-                  )}
-
-                  {evaluatedQcTask?.required && (
-                    <form className="space-y-3 border-t pt-3" onSubmit={submitQcResult}>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="grid gap-1 text-sm">
-                          Trạng thái kết quả QC
-                          <select
-                            value={qcResultStatus}
-                            onChange={(event) =>
-                              setQcResultStatus(event.target.value as QcResultStatus)
-                            }
-                            className="rounded-md border bg-background px-3 py-2 text-sm"
-                          >
-                            {QC_RESULT_STATUSES.map((status) => (
-                              <option key={status} value={status}>
-                                {vietnameseOperationalLabel(status)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="grid gap-1 text-sm">
-                          Hướng xử lý QC
-                          <select
-                            value={qcDispositionCode}
-                            onChange={(event) =>
-                              setQcDispositionCode(event.target.value as QcDispositionCode)
-                            }
-                            className="rounded-md border bg-background px-3 py-2 text-sm"
-                          >
-                            {QC_DISPOSITION_CODES.map((code) => (
-                              <option key={code} value={code}>
-                                {vietnameseOperationalLabel(code)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <label className="grid gap-1 text-sm">
-                          Số lượng đã kiểm
-                          <Input
-                            type="number"
-                            min="0.0001"
-                            value={qcInspectedQuantity}
-                            onChange={(event) => setQcInspectedQuantity(event.target.value)}
-                          />
-                        </label>
-                        <label className="grid gap-1 text-sm">
-                          Số lượng đạt
-                          <Input
-                            type="number"
-                            min="0"
-                            value={qcAcceptedQuantity}
-                            onChange={(event) => setQcAcceptedQuantity(event.target.value)}
-                          />
-                        </label>
-                        <label className="grid gap-1 text-sm">
-                          Số lượng loại
-                          <Input
-                            type="number"
-                            min="0"
-                            value={qcRejectedQuantity}
-                            onChange={(event) => setQcRejectedQuantity(event.target.value)}
-                          />
-                        </label>
-                      </div>
-                      <label className="grid gap-1 text-sm">
-                        Mã lý do kết quả QC
-                        <Input
-                          value={qcResultReasonCode}
-                          onChange={(event) => setQcResultReasonCode(event.target.value)}
-                          placeholder="RC-V1-DISCREPANCY"
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Ghi chú lý do kết quả QC
-                        <Input
-                          value={qcResultReasonNote}
-                          onChange={(event) => setQcResultReasonNote(event.target.value)}
-                          placeholder="Đơn vị bị loại do hư hỏng"
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Tham chiếu bằng chứng kết quả QC
-                        <Input
-                          value={qcResultEvidenceRefs}
-                          onChange={(event) => setQcResultEvidenceRefs(event.target.value)}
-                          placeholder="photo://qc/damaged-2"
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Khóa idempotency kết quả QC
-                        <Input
-                          value={qcResultIdempotencyKey}
-                          onChange={(event) => setQcResultIdempotencyKey(event.target.value)}
-                        />
-                      </label>
-                      <button
-                        type="submit"
-                        className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={!canRecordQcResult || mutations.recordQcResult.isPending}
-                      >
-                        <ClipboardCheck className="size-4" />
-                        Ghi nhận kết quả QC
-                      </button>
-                    </form>
-                  )}
-
-                  {recordedQcResult && (
-                    <p className="text-muted-foreground text-sm">
-                      Kết quả QC {recordedQcResult.resultStatus} / mục tiêu{' '}
-                      {recordedQcResult.targetInventoryStatusCode}
-                    </p>
-                  )}
-                  {mutations.evaluateQcTask.error ? (
-                    <p className="text-destructive text-sm">Không thể đánh giá QC.</p>
-                  ) : null}
-                  {mutations.recordQcResult.error ? (
-                    <p className="text-destructive text-sm">Không thể ghi nhận kết quả QC.</p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-3 rounded-md border p-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <PackageCheck className="size-4" />
-                    LPN/SSCC và phát hành cất hàng
-                  </div>
-                  <form className="space-y-3" onSubmit={submitInboundLpn}>
-                    <label className="grid gap-1 text-sm">
-                      Mã LPN
-                      <Input value={lpnCode} onChange={(event) => setLpnCode(event.target.value)} />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Mã SSCC
-                      <Input value={ssccCode} onChange={(event) => setSsccCode(event.target.value)} />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Khóa idempotency LPN
-                      <Input
-                        value={lpnIdempotencyKey}
-                        onChange={(event) => setLpnIdempotencyKey(event.target.value)}
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!canConfirmInboundLpn || mutations.confirmInboundLpn.isPending}
-                    >
-                      <PackageCheck className="size-4" />
-                      Xác nhận LPN/SSCC
-                    </button>
-                  </form>
-
-                  {confirmedInboundLpn && (
-                    <p className="text-muted-foreground text-sm">
-                      LPN {confirmedInboundLpn.lpnCode}
-                      {confirmedInboundLpn.ssccCode ? ` / ${confirmedInboundLpn.ssccCode}` : ''}
-                      {confirmedInboundLpn.isDuplicate ? ' đã dùng lại' : ''}
-                    </p>
-                  )}
-
-                  <form className="space-y-3 border-t pt-3" onSubmit={submitReleaseInboundToPutaway}>
-                    <label className="grid gap-1 text-sm">
-                      Mã vị trí hiện tại
-                      <Input
-                        value={releaseCurrentLocationCode}
-                        onChange={(event) => setReleaseCurrentLocationCode(event.target.value)}
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={releaseRequireLpn}
-                        onChange={(event) => setReleaseRequireLpn(event.target.checked)}
-                      />
-                      Yêu cầu LPN
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={releaseAttemptLabelOverride}
-                        onChange={(event) => setReleaseAttemptLabelOverride(event.target.checked)}
-                      />
-                      Ghi đè nhãn
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Mã lý do phát hành
-                      <Input
-                        value={releaseReasonCode}
-                        onChange={(event) => setReleaseReasonCode(event.target.value)}
-                        placeholder="RC-V1-LABEL-OVERRIDE"
-                      />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Tham chiếu bằng chứng phát hành
-                      <Input
-                        value={releaseEvidenceRefs}
-                        onChange={(event) => setReleaseEvidenceRefs(event.target.value)}
-                        placeholder="photo://label/override-1"
-                      />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                      Khóa idempotency phát hành
-                      <Input
-                        value={releaseIdempotencyKey}
-                        onChange={(event) => setReleaseIdempotencyKey(event.target.value)}
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={
-                        !canReleaseInboundToPutaway ||
-                        mutations.releaseInboundToPutaway.isPending
-                      }
-                    >
-                      <PackageCheck className="size-4" />
-                      Phát hành sang cất hàng
-                    </button>
-                  </form>
-
-                  {putawayRelease && (
-                    <p className="text-muted-foreground text-sm">
-                      Đã phát hành {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId} /{' '}
-                      {putawayRelease.inventoryStatusCode}
-                      {putawayRelease.currentLocationCode
-                        ? ` / ${putawayRelease.currentLocationCode}`
-                        : ''}
-                    </p>
-                  )}
-                  {mutations.confirmInboundLpn.error ? (
-                    <p className="text-destructive text-sm">Không thể xác nhận LPN/SSCC.</p>
-                  ) : null}
-                  {mutations.releaseInboundToPutaway.error ? (
-                    <p className="text-destructive text-sm">
-                      {mutations.releaseInboundToPutaway.error instanceof ApiError
-                        ? mutations.releaseInboundToPutaway.error.message
-                        : 'Không thể phát hành sang cất hàng.'}
-                    </p>
-                  ) : null}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <InboundReleasePutawayPanel
+          canConfirmInboundLpn={canConfirmInboundLpn}
+          canReleaseInboundToPutaway={canReleaseInboundToPutaway}
+          confirmedInboundLpn={confirmedInboundLpn}
+          confirmedReceiptLine={confirmedReceiptLine}
+          hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
+          isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
+          isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
+          lpnCode={lpnCode}
+          lpnIdempotencyKey={lpnIdempotencyKey}
+          onLpnCodeChange={setLpnCode}
+          onLpnIdempotencyKeyChange={setLpnIdempotencyKey}
+          onReleaseAttemptLabelOverrideChange={setReleaseAttemptLabelOverride}
+          onReleaseCurrentLocationCodeChange={setReleaseCurrentLocationCode}
+          onReleaseEvidenceRefsChange={setReleaseEvidenceRefs}
+          onReleaseIdempotencyKeyChange={setReleaseIdempotencyKey}
+          onReleaseReasonCodeChange={setReleaseReasonCode}
+          onReleaseRequireLpnChange={setReleaseRequireLpn}
+          onSsccCodeChange={setSsccCode}
+          onSubmitInboundLpn={submitInboundLpn}
+          onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
+          putawayReady={putawayReady}
+          putawayRelease={putawayRelease}
+          receivingSession={receivingSession ?? null}
+          releaseAttemptLabelOverride={releaseAttemptLabelOverride}
+          releaseCurrentLocationCode={releaseCurrentLocationCode}
+          releaseErrorMessage={
+            mutations.releaseInboundToPutaway.error instanceof ApiError
+              ? mutations.releaseInboundToPutaway.error.message
+              : mutations.releaseInboundToPutaway.error
+                ? 'Không thể phát hành sang cất hàng.'
+                : null
+          }
+          releaseEvidenceRefs={releaseEvidenceRefs}
+          releaseIdempotencyKey={releaseIdempotencyKey}
+          releaseReasonCode={releaseReasonCode}
+          releaseRequireLpn={releaseRequireLpn}
+          ssccCode={ssccCode}
+        />
       </aside>
     </div>
   );
