@@ -113,10 +113,12 @@ function getReceiptLineHelper({
 }
 
 function hasEvidenceRef(value: string) {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean).length > 0;
+  return (
+    value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean).length > 0
+  );
 }
 
 function getDiscrepancyHelper({
@@ -238,7 +240,10 @@ export function InboundReceivingPanel({
               onChange={(event) => onReceivingDeviceCodeChange(event.target.value)}
             />
           </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-receiving-start-helper">
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-receiving-start-helper"
+          >
             {startHelper}
           </p>
           <button
@@ -260,7 +265,9 @@ export function InboundReceivingPanel({
         <form className="space-y-3" onSubmit={onSubmitReceiptLine}>
           <div className="break-words text-sm text-muted-foreground">
             Dòng đã chọn:{' '}
-            {selectedLine ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}` : 'Không có'}
+            {selectedLine
+              ? `${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
+              : 'Không có'}
           </div>
           <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-actual-quantity">
             Số lượng thực tế
@@ -269,6 +276,7 @@ export function InboundReceivingPanel({
               name="receiptActualQuantity"
               type="number"
               min="0.0001"
+              step="0.0001"
               value={receiptActualQuantity}
               onChange={(event) => onReceiptActualQuantityChange(event.target.value)}
             />
@@ -283,7 +291,10 @@ export function InboundReceivingPanel({
               disabled={receiptManualConfirm}
             />
           </label>
-          <label className="flex items-center gap-2 text-sm" htmlFor="inbound-receipt-manual-confirm">
+          <label
+            className="flex items-center gap-2 text-sm"
+            htmlFor="inbound-receipt-manual-confirm"
+          >
             <input
               id="inbound-receipt-manual-confirm"
               name="receiptManualConfirm"
@@ -313,7 +324,10 @@ export function InboundReceivingPanel({
               onChange={(event) => onReceiptIdempotencyKeyChange(event.target.value)}
             />
           </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-receipt-line-helper">
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-receipt-line-helper"
+          >
             {receiptLineHelper}
           </p>
           <button
@@ -326,7 +340,8 @@ export function InboundReceivingPanel({
           </button>
           {receiptLineResult && (
             <p className="break-words text-sm text-muted-foreground">
-              Dòng {receiptLineResult.lineNumber} {vietnameseOperationalLabel(receiptLineResult.status)}
+              Dòng {receiptLineResult.lineNumber}{' '}
+              {vietnameseOperationalLabel(receiptLineResult.status)}
               {receiptLineResult.isDuplicate ? ' đã dùng lại' : ''}
               {receiptLineResult.discrepancySignals.length
                 ? ` - ${receiptLineResult.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}`
@@ -342,7 +357,8 @@ export function InboundReceivingPanel({
           </div>
           {confirmedReceiptLine?.discrepancySignals.length ? (
             <div className="break-words text-xs text-muted-foreground">
-              Tín hiệu: {confirmedReceiptLine.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
+              Tín hiệu:{' '}
+              {confirmedReceiptLine.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
             </div>
           ) : null}
           <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-type">
@@ -351,7 +367,9 @@ export function InboundReceivingPanel({
               id="inbound-discrepancy-type"
               name="discrepancyType"
               value={discrepancyType}
-              onChange={(event) => onDiscrepancyTypeChange(event.target.value as InboundDiscrepancyType)}
+              onChange={(event) =>
+                onDiscrepancyTypeChange(event.target.value as InboundDiscrepancyType)
+              }
               className="rounded-md border bg-background px-3 py-2 text-sm"
               disabled={discrepancyDisabled}
             >
@@ -405,7 +423,10 @@ export function InboundReceivingPanel({
               disabled={discrepancyDisabled}
             />
           </label>
-          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-discrepancy-helper">
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-discrepancy-helper"
+          >
             {discrepancyHelper}
           </p>
           <button

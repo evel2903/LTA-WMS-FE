@@ -40,7 +40,9 @@ vi.mock('@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance'
   },
 }));
 
-const partnerRepo = vi.hoisted(() => ({ current: null as unknown as { list: ReturnType<typeof vi.fn> } }));
+const partnerRepo = vi.hoisted(() => ({
+  current: null as unknown as { list: ReturnType<typeof vi.fn> },
+}));
 vi.mock('@modules/PartnerMaster/Infrastructure/Repositories/PartnerRepositoryInstance', () => ({
   get partnerRepository() {
     return partnerRepo.current;
@@ -72,11 +74,14 @@ vi.mock('@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryIns
 const warehouseProfileRepo = vi.hoisted(() => ({
   current: null as unknown as { listProfiles: ReturnType<typeof vi.fn> },
 }));
-vi.mock('@modules/WarehouseProfile/Infrastructure/Repositories/WarehouseProfileRepositoryInstance', () => ({
-  get warehouseProfileRepository() {
-    return warehouseProfileRepo.current;
-  },
-}));
+vi.mock(
+  '@modules/WarehouseProfile/Infrastructure/Repositories/WarehouseProfileRepositoryInstance',
+  () => ({
+    get warehouseProfileRepository() {
+      return warehouseProfileRepo.current;
+    },
+  }),
+);
 
 import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
 import { InboundCreatePage } from '@modules/Inbound/Presentation/Pages/InboundCreatePage';
@@ -687,11 +692,8 @@ function allowReceiving(fake: FakeRepository) {
 }
 
 async function expectReadinessAllowed() {
-  await waitFor(() =>
-    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
-      'Điều kiện tiếp nhận đã sẵn sàng',
-    ),
-  );
+  await waitFor(() => expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy());
+  expect(screen.queryByTestId('inbound-readiness-panel')).toBeNull();
 }
 
 function renderPage(entry = '/inbound/inbound-plan-1') {
@@ -750,7 +752,9 @@ describe('InboundPage', () => {
     expect(screen.getByText(/Dự kiến đến: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
     expect(screen.getByText(/Dấu vết CoreFlow: core-flow-1/i)).toBeTruthy();
     expect(screen.getByText('10')).toBeTruthy();
-    expect(await screen.findByText(/Cần ghi nhận vào cổng trước khi tiếp nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-operator-header')).toBeTruthy();
+    expect(screen.getByTestId('inbound-next-action-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-gate-in-panel')).toBeTruthy();
     expect(fake.validateReadiness).toHaveBeenCalledWith('inbound-plan-1', {
       attemptOverride: false,
     });
@@ -761,7 +765,7 @@ describe('InboundPage', () => {
       ['/inbound/inbound-plan-1/gate-in', 'gate-in'],
       ['/inbound/inbound-plan-1/receiving', 'receiving'],
       ['/inbound/inbound-plan-1/qc', 'qc'],
-      ['/inbound/inbound-plan-1/lpn', 'release'],
+      ['/inbound/inbound-plan-1/lpn', 'lpn'],
       ['/inbound/inbound-plan-1/release', 'release'],
     ] as const;
 
@@ -771,13 +775,19 @@ describe('InboundPage', () => {
       const view = renderPage(entry);
 
       expect(await screen.findByRole('navigation', { name: 'Luồng xử lý nhập kho' })).toBeTruthy();
-      expect(screen.getByTestId('inbound-workflow-step-plan')).toBeTruthy();
+      expect(screen.queryByTestId('inbound-workflow-step-plan')).toBeNull();
       expect(screen.getByTestId('inbound-workflow-step-gate-in')).toBeTruthy();
-      expect(screen.getByTestId('inbound-workflow-step-readiness')).toBeTruthy();
+      expect(screen.queryByTestId('inbound-workflow-step-readiness')).toBeNull();
       expect(screen.getByTestId('inbound-workflow-step-receiving')).toBeTruthy();
       expect(screen.getByTestId('inbound-workflow-step-qc')).toBeTruthy();
+      expect(screen.getByTestId('inbound-workflow-step-lpn')).toBeTruthy();
       expect(screen.getByTestId('inbound-workflow-step-release')).toBeTruthy();
-      expect(within(screen.getByTestId(`inbound-workflow-step-${stepKey}`)).getByText('Đang xử lý')).toBeTruthy();
+      expect(
+        within(screen.getByTestId(`inbound-workflow-step-${stepKey}`)).getByText(
+          /Đang xử lý|Bị chặn/,
+        ),
+      ).toBeTruthy();
+      expect(screen.getAllByTestId('inbound-next-action-panel')).toHaveLength(1);
 
       view.unmount();
     }
@@ -790,7 +800,6 @@ describe('InboundPage', () => {
 
     const gateInStep = await screen.findByTestId('inbound-workflow-step-gate-in');
     const gateInPanel = screen.getByTestId('inbound-gate-in-panel');
-    const readinessPanel = screen.getByTestId('inbound-readiness-panel');
 
     expect(within(gateInStep).getByText('Đang xử lý')).toBeTruthy();
     expect(within(gateInPanel).getByRole('button', { name: 'Ghi nhận vào cổng' })).toHaveProperty(
@@ -800,6 +809,21 @@ describe('InboundPage', () => {
     expect(screen.getByTestId('inbound-gate-in-helper').textContent).toContain(
       'Nhập tham chiếu cổng',
     );
+    expect(screen.queryByTestId('inbound-readiness-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-receiving-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
+  });
+
+  it('renders readiness as the blocked receiving action', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    const receivingStep = await screen.findByTestId('inbound-workflow-step-receiving');
+    const readinessPanel = screen.getByTestId('inbound-readiness-panel');
+
+    expect(within(receivingStep).getByText('Bị chặn')).toBeTruthy();
     expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
       'Cần ghi nhận vào cổng',
     );
@@ -809,39 +833,30 @@ describe('InboundPage', () => {
     expect(
       within(readinessPanel).getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }),
     ).toHaveProperty('disabled', true);
+    expect(screen.queryByTestId('inbound-gate-in-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-receiving-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
   });
 
-  it('renders receiving, QC and release panels with blocked helper reasons', async () => {
+  it('renders one receiving action panel when readiness is allowed', async () => {
     const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
     repo.current = fake;
     renderPage('/inbound/inbound-plan-1/receiving');
 
     const receivingStep = await screen.findByTestId('inbound-workflow-step-receiving');
 
     expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy();
+    await expectReadinessAllowed();
     expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy();
-    expect(screen.getByTestId('inbound-qc-panel')).toBeTruthy();
-    expect(screen.getByTestId('inbound-release-putaway-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
     expect(screen.getByTestId('inbound-receiving-start-helper').textContent).toContain(
-      'Cần hoàn tất kiểm tra sẵn sàng',
+      'Sẵn sàng bắt đầu phiên tiếp nhận',
     );
     expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
       'Cần bắt đầu phiên tiếp nhận',
-    );
-    expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
-      'Cần phiên tiếp nhận',
-    );
-    expect(screen.getByTestId('inbound-qc-task-helper').textContent).toContain(
-      'Cần phiên tiếp nhận',
-    );
-    expect(screen.getByTestId('inbound-qc-result-helper').textContent).toContain(
-      'Cần đánh giá QC',
-    );
-    expect(screen.getByTestId('inbound-lpn-helper').textContent).toContain(
-      'Cần phiên tiếp nhận',
-    );
-    expect(screen.getByTestId('inbound-release-helper').textContent).toContain(
-      'Cần phiên tiếp nhận',
     );
   });
 
@@ -1038,8 +1053,18 @@ describe('InboundPage', () => {
         expect.objectContaining({
           sourceDocumentNumber: 'ASN-CSV-10001',
           lines: [
-            expect.objectContaining({ lineNumber: 1, skuId: 'sku-1', uomId: 'uom-1', expectedQuantity: 12 }),
-            expect.objectContaining({ lineNumber: 2, skuId: 'sku-2', uomId: 'uom-2', expectedQuantity: 8 }),
+            expect.objectContaining({
+              lineNumber: 1,
+              skuId: 'sku-1',
+              uomId: 'uom-1',
+              expectedQuantity: 12,
+            }),
+            expect.objectContaining({
+              lineNumber: 2,
+              skuId: 'sku-2',
+              uomId: 'uom-2',
+              expectedQuantity: 8,
+            }),
           ],
         }),
       ),
@@ -1075,7 +1100,7 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
     repo.current = fake;
-    renderPage();
+    renderPage('/inbound/inbound-plan-1/receiving');
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     expect(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' })).toHaveProperty(
@@ -1092,7 +1117,8 @@ describe('InboundPage', () => {
         reasonCode: 'RC-V1-HANDOFF',
       }),
     );
-    expect(await screen.findByText(/Ghi đè đã được chấp nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-readiness-panel')).toBeNull();
   });
 
   it('starts receiving and confirms a scan receipt line through repository commands', async () => {
@@ -1135,7 +1161,7 @@ describe('InboundPage', () => {
         resolvedUomId: 'uom-1',
       },
     });
-    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
   }, 15_000);
 
   it('routes a confirmed discrepancy line with reason, evidence and idempotency', async () => {
@@ -1161,7 +1187,10 @@ describe('InboundPage', () => {
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), 'photo://dock/over-qty-1');
+    await actor.type(
+      screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
+      'photo://dock/over-qty-1',
+    );
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-1');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
@@ -1176,9 +1205,8 @@ describe('InboundPage', () => {
       evidenceRefs: ['photo://dock/over-qty-1'],
       idempotencyKey: 'discrepancy-1',
     });
-    expect(
-      await screen.findByText(/Sai lệch Chờ phê duyệt \/ Ngoại lệ exception-1/i),
-    ).toBeTruthy();
+    await waitFor(() => expect(fake.captureDiscrepancy).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
   });
 
   it('evaluates QC skipped after a confirmed receipt line', async () => {
@@ -1202,7 +1230,7 @@ describe('InboundPage', () => {
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
@@ -1216,7 +1244,8 @@ describe('InboundPage', () => {
       reasonNote: null,
       evidenceRefs: [],
     });
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
+    await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
   });
 
   it('confirms LPN/SSCC and releases READY_FOR_PUTAWAY line to putaway', async () => {
@@ -1240,11 +1269,12 @@ describe('InboundPage', () => {
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
+    await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
 
     const releaseButton = screen.getByRole('button', { name: 'Phát hành sang cất hàng' });
     expect(releaseButton).toHaveProperty('disabled', true);
@@ -1277,7 +1307,9 @@ describe('InboundPage', () => {
       evidenceRefs: [],
       idempotencyKey: 'release-1',
     });
-    expect(await screen.findByText(/Đã phát hành 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i)).toBeTruthy();
+    expect(
+      await screen.findByText(/Đã phát hành 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i),
+    ).toBeTruthy();
   }, 15_000);
 
   it('shows backend release block reason inline', async () => {
@@ -1308,11 +1340,12 @@ describe('InboundPage', () => {
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-skipped');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
-    expect(await screen.findByText(/QC NotRequired \/ READY_FOR_PUTAWAY \/ Đã bỏ qua/i)).toBeTruthy();
+    await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
 
     await actor.click(screen.getByLabelText('Yêu cầu LPN'));
     await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
@@ -1347,14 +1380,16 @@ describe('InboundPage', () => {
         .closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Dòng 1 Đã nhận/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
     await actor.click(screen.getByLabelText('Bắt buộc QC'));
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
     await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-required');
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
     expect(await screen.findByText(/QC PendingQc \/ PENDING_QC \/ Forced/i)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Trạng thái kết quả QC'), { target: { value: 'Failed' } });
+    fireEvent.change(screen.getByLabelText('Trạng thái kết quả QC'), {
+      target: { value: 'Failed' },
+    });
     fireEvent.change(screen.getByLabelText('Hướng xử lý QC'), { target: { value: 'Quarantine' } });
     fireEvent.change(screen.getByLabelText('Số lượng đạt'), { target: { value: '8' } });
     fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '3' } });
@@ -1392,7 +1427,8 @@ describe('InboundPage', () => {
       reasonNote: null,
       evidenceRefs: ['photo://qc/damaged-4'],
     });
-    expect(await screen.findByText(/Kết quả QC Failed \/ mục tiêu QUARANTINE/i)).toBeTruthy();
+    await waitFor(() => expect(fake.recordQcResult).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
   });
 
   it('keeps discrepancy route disabled until a real evidence ref is provided', async () => {
@@ -1531,7 +1567,10 @@ describe('InboundPage', () => {
       ),
     );
     expect(screen.queryByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
@@ -1561,7 +1600,10 @@ describe('InboundPage', () => {
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), 'photo://dock/over-qty-1');
+    await actor.type(
+      screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
+      'photo://dock/over-qty-1',
+    );
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-error');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
@@ -1573,24 +1615,14 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
     repo.current = fake;
-    renderPage();
+    renderPage('/inbound/inbound-plan-1/receiving');
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
     await actor.type(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
-    expect(await screen.findByText(/Ghi đè đã được chấp nhận/i)).toBeTruthy();
-
-    const gateForm = screen
-      .getByRole('button', { name: 'Ghi nhận vào cổng' })
-      .closest('form') as HTMLFormElement;
-    await actor.type(within(gateForm).getByLabelText('Tham chiếu cổng'), 'GATE-A-001');
-    await actor.click(within(gateForm).getByRole('button', { name: 'Ghi nhận vào cổng' }));
-
-    await waitFor(() => expect(screen.queryByText(/Ghi đè đã được chấp nhận/i)).toBeNull());
-    expect(fake.recordGateIn).toHaveBeenCalledWith(
-      'inbound-plan-1',
-      expect.objectContaining({ gateReference: 'GATE-A-001' }),
-    );
+    expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
+    expect(fake.recordGateIn).not.toHaveBeenCalled();
   });
 
   it('shows permission denied read-only state when detail read is forbidden', async () => {

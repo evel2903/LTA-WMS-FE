@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
@@ -10,7 +10,10 @@ import { Input } from '@shared/Components/Ui/Input';
 import { cn } from '@shared/Utils/Cn';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
-import { useInboundPlan, useReceivingReadiness } from '@modules/Inbound/Application/Queries/UseInboundPlans';
+import {
+  useInboundPlan,
+  useReceivingReadiness,
+} from '@modules/Inbound/Application/Queries/UseInboundPlans';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
@@ -25,8 +28,15 @@ import {
 } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepperModel';
 import type {
   InboundDiscrepancyType,
+  InboundLpn,
+  InboundPlan,
+  InboundPlanLine,
+  InboundPutawayRelease,
   QcDispositionCode,
   QcResultStatus,
+  ReceiptLine,
+  ReceivingReadiness,
+  ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface DraftLine {
@@ -48,7 +58,11 @@ const initialLine = (): DraftLine => ({
 });
 
 function StatusBadge({ value }: { value: string }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{vietnameseOperationalLabel(value)}</span>;
+  return (
+    <span className="rounded-md border px-2 py-1 text-xs font-medium">
+      {vietnameseOperationalLabel(value)}
+    </span>
+  );
 }
 
 const INBOUND_ALLOWED_ACTIONS = new Set(['receiving', 'gate-in', 'qc', 'lpn', 'release']);
@@ -59,10 +73,180 @@ function resolveWorkflowStepState(
   done: boolean,
   blocked = false,
 ): InboundWorkflowStepState {
-  if (stepKey === activeStep) return 'active';
   if (done) return 'done';
   if (blocked) return 'blocked';
+  if (stepKey === activeStep) return 'active';
   return 'waiting';
+}
+
+function formatQuantity(value: number) {
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return 'Chưa ghi nhận';
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-md border bg-background px-3 py-2">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-semibold text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
+  return (
+    <Card data-testid="inbound-operator-header">
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <CardTitle className="text-lg">Nhập kho {plan.businessReference}</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ASN {plan.sourceDocumentNumber || plan.businessReference}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge value={plan.status} />
+            <StatusBadge value={plan.gateInStatus} />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <dl className="grid gap-2 md:grid-cols-4">
+          <DetailMetric label="ASN" value={plan.sourceDocumentNumber || plan.businessReference} />
+          <DetailMetric label="Nhà cung cấp" value={plan.supplierCode ?? 'Chưa có mã'} />
+          <DetailMetric label="Kho" value={plan.warehouseCode ?? 'Chưa có mã'} />
+          <DetailMetric label="Trạng thái" value={vietnameseOperationalLabel(plan.status)} />
+        </dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InboundLineQueue({
+  lines,
+  onSelect,
+  selectedLineId,
+}: {
+  lines: InboundPlanLine[];
+  onSelect: (line: InboundPlanLine) => void;
+  selectedLineId: string | null;
+}) {
+  return (
+    <Card data-testid="inbound-line-queue">
+      <CardHeader>
+        <CardTitle className="text-base">Dòng còn lại</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {lines.map((line) => {
+          const isSelected = line.id === selectedLineId;
+          return (
+            <button
+              key={line.id}
+              type="button"
+              className={cn(
+                'min-h-11 w-full rounded-md border px-3 py-2 text-left text-sm transition hover:bg-muted',
+                isSelected && 'border-primary bg-primary/5',
+              )}
+              onClick={() => onSelect(line)}
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate font-medium">
+                  Dòng {line.lineNumber} - {line.skuCode ?? line.skuId}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {formatQuantity(line.expectedQuantity)} {line.uomCode ?? ''}
+                </span>
+              </span>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">
+                Tham chiếu: {line.externalLineReference ?? 'không có'}
+              </span>
+            </button>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InboundRecentActivity({ items }: { items: string[] }) {
+  return (
+    <Card data-testid="inbound-recent-activity">
+      <CardHeader>
+        <CardTitle className="text-base">Lịch sử thao tác gần nhất</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {items.length ? (
+          <ol className="space-y-2 text-sm">
+            {items.map((item) => (
+              <li key={item} className="rounded-md border bg-background px-3 py-2">
+                {item}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-muted-foreground">Chưa có thao tác trong phiên hiện tại.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InboundTechnicalDetails({
+  confirmedInboundLpn,
+  plan,
+  putawayRelease,
+  readiness,
+  receiptLine,
+  receivingSession,
+}: {
+  confirmedInboundLpn: InboundLpn | null;
+  plan: InboundPlan;
+  putawayRelease: InboundPutawayRelease | null;
+  readiness: ReceivingReadiness | null;
+  receiptLine: ReceiptLine | null;
+  receivingSession: ReceivingSession | null;
+}) {
+  return (
+    <details
+      className="rounded-md border bg-card p-3 text-sm"
+      data-testid="inbound-technical-details"
+    >
+      <summary className="cursor-pointer font-medium">Chi tiết kỹ thuật</summary>
+      <dl className="mt-3 grid gap-2 text-muted-foreground">
+        <DetailMetric label="Plan ID" value={plan.id} />
+        <DetailMetric label="CoreFlow" value={plan.coreFlowInstanceId ?? 'Chưa liên kết'} />
+        <DetailMetric label="Readiness" value={readiness?.decision ?? 'Chưa kiểm tra'} />
+        <DetailMetric
+          label="Phiếu tiếp nhận"
+          value={receivingSession?.receiptNumber ?? 'Chưa có'}
+        />
+        <DetailMetric label="Receipt line" value={receiptLine?.id ?? 'Chưa có'} />
+        <DetailMetric label="LPN" value={confirmedInboundLpn?.lpnCode ?? 'Chưa có'} />
+        <DetailMetric label="Release" value={putawayRelease?.id ?? 'Chưa có'} />
+      </dl>
+    </details>
+  );
+}
+
+function NextActionShell({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <section data-testid="inbound-next-action-panel" className="min-w-0 space-y-3">
+      <div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="text-sm text-muted-foreground">
+          Hệ thống chỉ hiển thị hành động cần xử lý ngay ở bước hiện tại.
+        </p>
+      </div>
+      {children}
+    </section>
+  );
 }
 
 export function InboundDetailPage() {
@@ -122,9 +306,7 @@ export function InboundDetailPage() {
   const [releaseAttemptLabelOverride, setReleaseAttemptLabelOverride] = useState(false);
   const [releaseReasonCode, setReleaseReasonCode] = useState('');
   const [releaseEvidenceRefs, setReleaseEvidenceRefs] = useState('');
-  const [releaseIdempotencyKey, setReleaseIdempotencyKey] = useState(
-    () => `release-${Date.now()}`,
-  );
+  const [releaseIdempotencyKey, setReleaseIdempotencyKey] = useState(() => `release-${Date.now()}`);
 
   const detailQuery = useInboundPlan(routePlanId ?? null);
   const mutations = useInboundMutations();
@@ -178,8 +360,8 @@ export function InboundDetailPage() {
       : null;
   const captureDiscrepancyErrorMatchesSelectedLine = Boolean(
     confirmedReceiptLine &&
-      mutations.captureDiscrepancy.error &&
-      mutations.captureDiscrepancy.variables?.input.receiptLineId === confirmedReceiptLine.id,
+    mutations.captureDiscrepancy.error &&
+    mutations.captureDiscrepancy.variables?.input.receiptLineId === confirmedReceiptLine.id,
   );
   const confirmedInboundLpn =
     mutations.confirmInboundLpn.data &&
@@ -201,7 +383,9 @@ export function InboundDetailPage() {
   const apiError = detailQuery.error instanceof ApiError ? detailQuery.error : null;
   const denied = Boolean(apiError?.isForbidden);
   const detailError =
-    detailQuery.error instanceof Error ? detailQuery.error.message : 'Không thể tải kế hoạch nhập kho.';
+    detailQuery.error instanceof Error
+      ? detailQuery.error.message
+      : 'Không thể tải kế hoạch nhập kho.';
   const gateInDone = Boolean(
     selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
   );
@@ -222,10 +406,10 @@ export function InboundDetailPage() {
   );
   const canOverride = Boolean(
     selected &&
-      !readinessDone &&
-      !readinessBusy &&
-      !mutations.validateReadiness.isPending &&
-      readinessReasonCode.trim(),
+    !readinessDone &&
+    !readinessBusy &&
+    !mutations.validateReadiness.isPending &&
+    readinessReasonCode.trim(),
   );
   const canStartReceiving = Boolean(
     selected && readinessDone && !readinessBusy && receivingSessionKey.trim(),
@@ -304,36 +488,34 @@ export function InboundDetailPage() {
   );
   const canReleaseInboundToPutaway = Boolean(
     receivingSession &&
-      confirmedReceiptLine &&
-      putawayReady &&
-      releaseIdempotencyKey.trim() &&
-      (releaseRequireLpn ? confirmedInboundLpn : true),
+    confirmedReceiptLine &&
+    putawayReady &&
+    releaseIdempotencyKey.trim() &&
+    (releaseRequireLpn ? confirmedInboundLpn : true),
   );
   const routeWorkflowStep = mapInboundActionToWorkflowStep(routeAction);
   const receivingDone = Boolean(confirmedReceiptLine);
+  const needsDiscrepancyRouting = Boolean(
+    confirmedReceiptLine?.discrepancySignals.length && !capturedDiscrepancy,
+  );
   const qcDone = Boolean(recordedQcResult || (evaluatedQcTask && !evaluatedQcTask.required));
+  const lpnDone = Boolean(confirmedInboundLpn);
   const releaseDone = Boolean(putawayRelease);
   const inferredWorkflowStep: InboundWorkflowStepKey = releaseDone
     ? 'release'
-    : recordedQcResult || putawayReady || confirmedInboundLpn
+    : confirmedInboundLpn
       ? 'release'
-      : evaluatedQcTask || confirmedReceiptLine
-        ? 'qc'
-        : receivingSession || readinessDone
-          ? 'receiving'
-          : gateInDone
-            ? 'readiness'
+      : recordedQcResult || putawayReady
+        ? 'lpn'
+        : evaluatedQcTask || (confirmedReceiptLine && !needsDiscrepancyRouting)
+          ? 'qc'
+          : receivingSession || readinessDone || gateInDone
+            ? 'receiving'
             : selected
               ? 'gate-in'
-              : 'plan';
+              : 'gate-in';
   const activeWorkflowStep = routeWorkflowStep ?? inferredWorkflowStep;
   const workflowSteps: InboundWorkflowStep[] = [
-    {
-      key: 'plan',
-      label: 'Kế hoạch',
-      description: selected ? 'Kế hoạch nhập kho đã được tải.' : 'Đang chờ dữ liệu kế hoạch.',
-      state: resolveWorkflowStepState('plan', activeWorkflowStep, Boolean(selected)),
-    },
     {
       key: 'gate-in',
       label: 'Vào cổng',
@@ -341,33 +523,48 @@ export function InboundDetailPage() {
       state: resolveWorkflowStepState('gate-in', activeWorkflowStep, gateInDone, !selected),
     },
     {
-      key: 'readiness',
-      label: 'Kiểm tra sẵn sàng / override',
-      description:
-        readiness?.allowed || readiness?.overrideAccepted
-          ? 'Điều kiện tiếp nhận đã sẵn sàng.'
-          : 'Xem kết quả kiểm tra sẵn sàng ở phần vận hành bên dưới.',
-      state: resolveWorkflowStepState('readiness', activeWorkflowStep, readinessDone, !gateInDone),
-    },
-    {
       key: 'receiving',
       label: 'Tiếp nhận',
-      description: receivingDone
-        ? 'Đã xác nhận ít nhất một dòng tiếp nhận trong phiên hiện tại.'
-        : 'Bắt đầu phiên và xác nhận dòng tiếp nhận.',
-      state: resolveWorkflowStepState('receiving', activeWorkflowStep, receivingDone, !readinessDone),
+      description: !gateInDone
+        ? 'Cần vào cổng trước khi tiếp nhận.'
+        : readinessDone
+          ? receivingDone
+            ? needsDiscrepancyRouting
+              ? 'Dòng tiếp nhận có sai lệch, cần điều phối trước khi QC.'
+              : 'Đã xác nhận ít nhất một dòng tiếp nhận.'
+            : 'Sẵn sàng quét và xác nhận dòng hàng.'
+          : 'Đang bị chặn bởi kiểm tra sẵn sàng.',
+      state: resolveWorkflowStepState(
+        'receiving',
+        activeWorkflowStep,
+        receivingDone && !needsDiscrepancyRouting,
+        !readinessDone,
+      ),
     },
     {
       key: 'qc',
       label: 'QC',
-      description: qcDone ? 'QC đã có kết quả hoặc được bỏ qua.' : 'Đánh giá QC sau khi có dòng tiếp nhận.',
+      description: qcDone
+        ? 'QC đã có kết quả hoặc được bỏ qua.'
+        : 'Đánh giá QC sau khi có dòng tiếp nhận.',
       state: resolveWorkflowStepState('qc', activeWorkflowStep, qcDone, !receivingDone),
     },
     {
+      key: 'lpn',
+      label: 'LPN/Pallet',
+      description: lpnDone ? 'Đã xác nhận LPN/Pallet.' : 'Xác nhận LPN/Pallet sau QC.',
+      state: resolveWorkflowStepState('lpn', activeWorkflowStep, lpnDone, !putawayReady),
+    },
+    {
       key: 'release',
-      label: 'Release cất hàng',
-      description: releaseDone ? 'Đã phát hành sang cất hàng.' : 'Xác nhận LPN/SSCC và phát hành sang cất hàng.',
-      state: resolveWorkflowStepState('release', activeWorkflowStep, releaseDone, !putawayReady),
+      label: 'Release',
+      description: releaseDone ? 'Đã phát hành sang cất hàng.' : 'Release sang công việc cất hàng.',
+      state: resolveWorkflowStepState(
+        'release',
+        activeWorkflowStep,
+        releaseDone,
+        !confirmedInboundLpn,
+      ),
     },
   ];
 
@@ -697,6 +894,62 @@ export function InboundDetailPage() {
     );
   }
 
+  const nextActionTitle =
+    activeWorkflowStep === 'gate-in'
+      ? 'Vào cổng'
+      : activeWorkflowStep === 'receiving'
+        ? readinessDone
+          ? 'Tiếp nhận hàng'
+          : 'Tiếp nhận đang bị chặn'
+        : activeWorkflowStep === 'qc'
+          ? 'QC'
+          : activeWorkflowStep === 'lpn'
+            ? 'LPN/Pallet'
+            : 'Release';
+
+  const recentActivityItems = useMemo(() => {
+    const items: string[] = [];
+    if (gateInDone) {
+      items.push(`Vào cổng: ${formatDateTime(selected?.gateInAt)}`);
+    }
+    if (receivingSession) {
+      items.push(`Phiên tiếp nhận: ${receivingSession.receiptNumber}`);
+    }
+    if (confirmedReceiptLine) {
+      items.push(
+        `Nhận dòng ${confirmedReceiptLine.lineNumber}: ${formatQuantity(
+          confirmedReceiptLine.actualQuantity,
+        )} ${confirmedReceiptLine.uomCode ?? ''}`,
+      );
+    }
+    if (evaluatedQcTask) {
+      items.push(
+        evaluatedQcTask.required
+          ? `QC: cần kiểm tra, trạng thái ${vietnameseOperationalLabel(evaluatedQcTask.taskStatus)}`
+          : 'QC: được bỏ qua theo rule hiện tại',
+      );
+    }
+    if (recordedQcResult) {
+      items.push(`Kết quả QC: ${vietnameseOperationalLabel(recordedQcResult.resultStatus)}`);
+    }
+    if (confirmedInboundLpn) {
+      items.push(`LPN/Pallet: ${confirmedInboundLpn.lpnCode}`);
+    }
+    if (putawayRelease) {
+      items.push(`Release: ${formatDateTime(putawayRelease.releasedAt)}`);
+    }
+    return items;
+  }, [
+    confirmedInboundLpn,
+    confirmedReceiptLine,
+    evaluatedQcTask,
+    gateInDone,
+    putawayRelease,
+    receivingSession,
+    recordedQcResult,
+    selected?.gateInAt,
+  ]);
+
   if (routeAction && routePlanId && !INBOUND_ALLOWED_ACTIONS.has(routeAction)) {
     return <Navigate to={ROUTES.INBOUND.DETAIL(routePlanId)} replace />;
   }
@@ -717,364 +970,407 @@ export function InboundDetailPage() {
   }
 
   return (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <section className="min-w-0 space-y-4">
-        {selected && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Chi tiết chứng từ nhập kho</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge value={selected.status} />
-                <StatusBadge value={selected.gateInStatus} />
-                <span className="text-muted-foreground text-sm">{selected.businessReference}</span>
-                {selected.isDuplicate ? (
+    <div className="space-y-4">
+      {selected && <InboundOperatorHeader plan={selected} />}
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="min-w-0 space-y-4">
+          {selected && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Kế hoạch và dòng hàng</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge value={selected.status} />
+                  <StatusBadge value={selected.gateInStatus} />
                   <span className="text-muted-foreground text-sm">
-                    Đã dùng lại kế hoạch nhập kho hiện có.
+                    {selected.businessReference}
                   </span>
-                ) : null}
-              </div>
-              <div className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
-                <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
-                <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
-              </div>
-              <InboundWorkflowStepper steps={workflowSteps} />
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-sm">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-2">Dòng</th>
-                      <th className="py-2">SKU</th>
-                      <th className="py-2">UOM</th>
-                      <th className="py-2 text-right">Dự kiến</th>
-                      <th className="py-2 text-right">Tham chiếu ngoài</th>
-                      <th className="py-2 text-right">Tiếp nhận</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.lines.map((line) => (
-                      <tr key={line.id} className="border-b last:border-0">
-                        <td className="py-2">{line.lineNumber}</td>
-                        <td className="py-2">{line.skuCode ?? line.skuId}</td>
-                        <td className="py-2">{line.uomCode ?? line.uomId}</td>
-                        <td className="py-2 text-right">{line.expectedQuantity}</td>
-                        <td className="py-2 text-right">{line.externalLineReference ?? '-'}</td>
-                        <td className="py-2 text-right">
+                  {selected.isDuplicate ? (
+                    <span className="text-muted-foreground text-sm">
+                      Đã dùng lại kế hoạch nhập kho hiện có.
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
+                  <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
+                  <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
+                </div>
+                <InboundWorkflowStepper steps={workflowSteps} />
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="py-2">Dòng</th>
+                        <th className="py-2">SKU</th>
+                        <th className="py-2">UOM</th>
+                        <th className="py-2 text-right">Dự kiến</th>
+                        <th className="py-2 text-right">Tham chiếu ngoài</th>
+                        <th className="py-2 text-right">Tiếp nhận</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.lines.map((line) => (
+                        <tr key={line.id} className="border-b last:border-0">
+                          <td className="py-2">{line.lineNumber}</td>
+                          <td className="py-2">{line.skuCode ?? line.skuId}</td>
+                          <td className="py-2">{line.uomCode ?? line.uomId}</td>
+                          <td className="py-2 text-right">{line.expectedQuantity}</td>
+                          <td className="py-2 text-right">{line.externalLineReference ?? '-'}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              type="button"
+                              className={cn(
+                                'min-h-10 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
+                                selectedLine?.id === line.id && 'border-primary bg-primary/5',
+                              )}
+                              onClick={() => {
+                                setSelectedLineId(line.id);
+                                setReceiptActualQuantity(String(line.expectedQuantity));
+                              }}
+                            >
+                              Chọn dòng {line.lineNumber}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+
+        <aside className="min-w-0 space-y-4">
+          {isCreateRoute && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Tạo chứng từ nguồn</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-3" onSubmit={submitCreate}>
+                  <label className="grid gap-1 text-sm">
+                    Hệ thống nguồn
+                    <Input
+                      value={sourceSystem}
+                      onChange={(event) => setSourceSystem(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Loại chứng từ nguồn
+                    <Input
+                      value={sourceDocumentType}
+                      onChange={(event) => setSourceDocumentType(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Số chứng từ nguồn
+                    <Input
+                      value={sourceDocumentNumber}
+                      onChange={(event) => setSourceDocumentNumber(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    ID nhà cung cấp
+                    <Input
+                      value={supplierId}
+                      onChange={(event) => setSupplierId(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    ID chủ hàng
+                    <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    ID kho
+                    <Input
+                      value={warehouseId}
+                      onChange={(event) => setWarehouseId(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    ID hồ sơ kho
+                    <Input
+                      value={warehouseProfileId}
+                      onChange={(event) => setWarehouseProfileId(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1 text-sm">
+                    Thời gian đến dự kiến
+                    <Input
+                      type="datetime-local"
+                      value={expectedArrivalAt}
+                      onChange={(event) => setExpectedArrivalAt(event.target.value)}
+                    />
+                  </label>
+                  <div className="space-y-3">
+                    {lineDrafts.map((line, index) => (
+                      <div key={line.id} className="grid gap-3 border-t pt-3 sm:grid-cols-4">
+                        <label className="grid gap-1 text-sm">
+                          ID SKU
+                          <Input
+                            value={line.skuId}
+                            onChange={(event) => updateLine(line.id, { skuId: event.target.value })}
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          ID đơn vị tính
+                          <Input
+                            value={line.uomId}
+                            onChange={(event) => updateLine(line.id, { uomId: event.target.value })}
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          Số lượng dự kiến
+                          <Input
+                            type="number"
+                            min="1"
+                            value={line.expectedQuantity}
+                            onChange={(event) =>
+                              updateLine(line.id, { expectedQuantity: event.target.value })
+                            }
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm">
+                          Tham chiếu dòng ngoài
+                          <Input
+                            value={line.externalLineReference}
+                            onChange={(event) =>
+                              updateLine(line.id, { externalLineReference: event.target.value })
+                            }
+                          />
+                        </label>
+                        {lineDrafts.length > 1 && (
                           <button
                             type="button"
-                            className={cn(
-                              'min-h-10 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
-                              selectedLine?.id === line.id && 'border-primary bg-primary/5',
-                            )}
-                            onClick={() => {
-                              setSelectedLineId(line.id);
-                              setReceiptActualQuantity(String(line.expectedQuantity));
-                            }}
+                            className="min-h-10 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted sm:col-span-4"
+                            onClick={() =>
+                              setLineDrafts((lines) =>
+                                lines.filter((draft) => draft.id !== line.id),
+                              )
+                            }
                           >
-                            Chọn dòng {line.lineNumber}
+                            Xóa dòng {index + 1}
                           </button>
-                        </td>
-                      </tr>
+                        )}
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </section>
-
-      <aside className="min-w-0 space-y-4">
-        {isCreateRoute && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Tạo chứng từ nguồn</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-3" onSubmit={submitCreate}>
-                <label className="grid gap-1 text-sm">
-                  Hệ thống nguồn
-                  <Input
-                    value={sourceSystem}
-                    onChange={(event) => setSourceSystem(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Loại chứng từ nguồn
-                  <Input
-                    value={sourceDocumentType}
-                    onChange={(event) => setSourceDocumentType(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Số chứng từ nguồn
-                  <Input
-                    value={sourceDocumentNumber}
-                    onChange={(event) => setSourceDocumentNumber(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  ID nhà cung cấp
-                  <Input
-                    value={supplierId}
-                    onChange={(event) => setSupplierId(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  ID chủ hàng
-                  <Input value={ownerId} onChange={(event) => setOwnerId(event.target.value)} />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  ID kho
-                  <Input
-                    value={warehouseId}
-                    onChange={(event) => setWarehouseId(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  ID hồ sơ kho
-                  <Input
-                    value={warehouseProfileId}
-                    onChange={(event) => setWarehouseProfileId(event.target.value)}
-                  />
-                </label>
-                <label className="grid gap-1 text-sm">
-                  Thời gian đến dự kiến
-                  <Input
-                    type="datetime-local"
-                    value={expectedArrivalAt}
-                    onChange={(event) => setExpectedArrivalAt(event.target.value)}
-                  />
-                </label>
-                <div className="space-y-3">
-                  {lineDrafts.map((line, index) => (
-                    <div key={line.id} className="grid gap-3 border-t pt-3 sm:grid-cols-4">
-                      <label className="grid gap-1 text-sm">
-                        ID SKU
-                        <Input
-                          value={line.skuId}
-                          onChange={(event) => updateLine(line.id, { skuId: event.target.value })}
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        ID đơn vị tính
-                        <Input
-                          value={line.uomId}
-                          onChange={(event) => updateLine(line.id, { uomId: event.target.value })}
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Số lượng dự kiến
-                        <Input
-                          type="number"
-                          min="1"
-                          value={line.expectedQuantity}
-                          onChange={(event) =>
-                            updateLine(line.id, { expectedQuantity: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm">
-                        Tham chiếu dòng ngoài
-                        <Input
-                          value={line.externalLineReference}
-                          onChange={(event) =>
-                            updateLine(line.id, { externalLineReference: event.target.value })
-                          }
-                        />
-                      </label>
-                      {lineDrafts.length > 1 && (
-                        <button
-                          type="button"
-                          className="min-h-10 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted sm:col-span-4"
-                          onClick={() =>
-                            setLineDrafts((lines) => lines.filter((draft) => draft.id !== line.id))
-                          }
-                        >
-                          Xóa dòng {index + 1}
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    <button
+                      type="button"
+                      className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+                      onClick={() => setLineDrafts((lines) => [...lines, initialLine()])}
+                    >
+                      Thêm dòng
+                    </button>
+                  </div>
                   <button
-                    type="button"
-                    className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
-                    onClick={() => setLineDrafts((lines) => [...lines, initialLine()])}
+                    type="submit"
+                    className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!canCreate || mutations.createInboundPlan.isPending}
                   >
-                    Thêm dòng
+                    Tạo kế hoạch nhập kho
                   </button>
-                </div>
-                <button
-                  type="submit"
-                  className="min-h-10 w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!canCreate || mutations.createInboundPlan.isPending}
-                >
-                  Tạo kế hoạch nhập kho
-                </button>
-                {mutations.createInboundPlan.isPending && (
-                  <p className="text-muted-foreground flex items-center gap-2 text-sm">
-                    <RefreshCw className="size-4 animate-spin" />
-                    Đang tạo chứng từ nguồn
-                  </p>
-                )}
-                {mutations.createInboundPlan.data?.isDuplicate && (
-                  <p className="text-muted-foreground text-sm">Đã dùng lại kế hoạch nhập kho hiện có.</p>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        )}
+                  {mutations.createInboundPlan.isPending && (
+                    <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                      <RefreshCw className="size-4 animate-spin" />
+                      Đang tạo chứng từ nguồn
+                    </p>
+                  )}
+                  {mutations.createInboundPlan.data?.isDuplicate && (
+                    <p className="text-muted-foreground text-sm">
+                      Đã dùng lại kế hoạch nhập kho hiện có.
+                    </p>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
-        <InboundGateInPanel
-          gateReference={gateReference}
-          hasPlan={Boolean(selected)}
-          isGateInDone={gateInDone}
-          isPending={mutations.recordGateIn.isPending}
-          onGateReferenceChange={setGateReference}
-          onSubmit={submitGateIn}
-        />
+          <NextActionShell title={nextActionTitle}>
+            {activeWorkflowStep === 'gate-in' && (
+              <InboundGateInPanel
+                gateReference={gateReference}
+                hasPlan={Boolean(selected)}
+                isGateInDone={gateInDone}
+                isPending={mutations.recordGateIn.isPending}
+                onGateReferenceChange={setGateReference}
+                onSubmit={submitGateIn}
+              />
+            )}
 
-        <InboundReadinessPanel
-          gateInDone={gateInDone}
-          hasPlan={Boolean(selected)}
-          isPending={mutations.validateReadiness.isPending}
-          isReadinessLoading={readinessBusy}
-          onReasonCodeChange={setReadinessReasonCode}
-          onSubmit={submitOverride}
-          readiness={readiness}
-          reasonCode={readinessReasonCode}
-        />
+            {activeWorkflowStep === 'receiving' && !readinessDone && (
+              <InboundReadinessPanel
+                gateInDone={gateInDone}
+                hasPlan={Boolean(selected)}
+                isPending={mutations.validateReadiness.isPending}
+                isReadinessLoading={readinessBusy}
+                onReasonCodeChange={setReadinessReasonCode}
+                onSubmit={submitOverride}
+                readiness={readiness}
+                reasonCode={readinessReasonCode}
+              />
+            )}
 
-        <InboundReceivingPanel
-          canCaptureDiscrepancy={canCaptureDiscrepancy}
-          canConfirmReceiptLine={canConfirmReceiptLine}
-          canStartReceiving={canStartReceiving}
-          confirmedReceiptLine={confirmedReceiptLine}
-          discrepancyEvidenceRefs={discrepancyEvidenceRefs}
-          discrepancyIdempotencyKey={discrepancyIdempotencyKey}
-          discrepancyReasonCode={discrepancyReasonCode}
-          discrepancyReasonNote={discrepancyReasonNote}
-          discrepancyResult={capturedDiscrepancy}
-          discrepancyType={discrepancyType}
-          hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
-          hasPlan={Boolean(selected)}
-          isCaptureDiscrepancyPending={mutations.captureDiscrepancy.isPending}
-          isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
-          isStartReceivingPending={mutations.startReceivingSession.isPending}
-          onDiscrepancyEvidenceRefsChange={setDiscrepancyEvidenceRefs}
-          onDiscrepancyIdempotencyKeyChange={setDiscrepancyIdempotencyKey}
-          onDiscrepancyReasonCodeChange={setDiscrepancyReasonCode}
-          onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
-          onDiscrepancyTypeChange={setDiscrepancyType}
-          onReceiptActualQuantityChange={setReceiptActualQuantity}
-          onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
-          onReceiptManualConfirmChange={setReceiptManualConfirm}
-          onReceiptRawScanChange={setReceiptRawScan}
-          onReceiptReasonCodeChange={setReceiptReasonCode}
-          onReceivingDeviceCodeChange={setReceivingDeviceCode}
-          onReceivingSessionKeyChange={setReceivingSessionKey}
-          onSubmitDiscrepancy={submitDiscrepancy}
-          onSubmitReceiptLine={submitReceiptLine}
-          onSubmitStartReceiving={submitStartReceiving}
-          receiptActualQuantity={receiptActualQuantity}
-          receiptIdempotencyKey={receiptIdempotencyKey}
-          receiptLineResult={confirmedReceiptLine}
-          receiptManualConfirm={receiptManualConfirm}
-          receiptRawScan={receiptRawScan}
-          receiptReasonCode={receiptReasonCode}
-          readinessDone={readinessDone}
-          receivingDeviceCode={receivingDeviceCode}
-          receivingSession={receivingSession ?? null}
-          receivingSessionKey={receivingSessionKey}
-          selectedLine={selectedLine}
-        />
+            {activeWorkflowStep === 'receiving' && readinessDone && (
+              <InboundReceivingPanel
+                canCaptureDiscrepancy={canCaptureDiscrepancy}
+                canConfirmReceiptLine={canConfirmReceiptLine}
+                canStartReceiving={canStartReceiving}
+                confirmedReceiptLine={confirmedReceiptLine}
+                discrepancyEvidenceRefs={discrepancyEvidenceRefs}
+                discrepancyIdempotencyKey={discrepancyIdempotencyKey}
+                discrepancyReasonCode={discrepancyReasonCode}
+                discrepancyReasonNote={discrepancyReasonNote}
+                discrepancyResult={capturedDiscrepancy}
+                discrepancyType={discrepancyType}
+                hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
+                hasPlan={Boolean(selected)}
+                isCaptureDiscrepancyPending={mutations.captureDiscrepancy.isPending}
+                isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
+                isStartReceivingPending={mutations.startReceivingSession.isPending}
+                onDiscrepancyEvidenceRefsChange={setDiscrepancyEvidenceRefs}
+                onDiscrepancyIdempotencyKeyChange={setDiscrepancyIdempotencyKey}
+                onDiscrepancyReasonCodeChange={setDiscrepancyReasonCode}
+                onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
+                onDiscrepancyTypeChange={setDiscrepancyType}
+                onReceiptActualQuantityChange={setReceiptActualQuantity}
+                onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
+                onReceiptManualConfirmChange={setReceiptManualConfirm}
+                onReceiptRawScanChange={setReceiptRawScan}
+                onReceiptReasonCodeChange={setReceiptReasonCode}
+                onReceivingDeviceCodeChange={setReceivingDeviceCode}
+                onReceivingSessionKeyChange={setReceivingSessionKey}
+                onSubmitDiscrepancy={submitDiscrepancy}
+                onSubmitReceiptLine={submitReceiptLine}
+                onSubmitStartReceiving={submitStartReceiving}
+                receiptActualQuantity={receiptActualQuantity}
+                receiptIdempotencyKey={receiptIdempotencyKey}
+                receiptLineResult={confirmedReceiptLine}
+                receiptManualConfirm={receiptManualConfirm}
+                receiptRawScan={receiptRawScan}
+                receiptReasonCode={receiptReasonCode}
+                readinessDone={readinessDone}
+                receivingDeviceCode={receivingDeviceCode}
+                receivingSession={receivingSession ?? null}
+                receivingSessionKey={receivingSessionKey}
+                selectedLine={selectedLine}
+              />
+            )}
 
-        <InboundQcPanel
-          canEvaluateQcTask={canEvaluateQcTask}
-          canRecordQcResult={canRecordQcResult}
-          confirmedReceiptLine={confirmedReceiptLine}
-          evaluatedQcTask={evaluatedQcTask}
-          hasEvaluateQcTaskError={Boolean(mutations.evaluateQcTask.error)}
-          hasRecordQcResultError={Boolean(mutations.recordQcResult.error)}
-          isEvaluateQcTaskPending={mutations.evaluateQcTask.isPending}
-          isRecordQcResultPending={mutations.recordQcResult.isPending}
-          onQcAcceptedQuantityChange={setQcAcceptedQuantity}
-          onQcDispositionCodeChange={setQcDispositionCode}
-          onQcForceRequiredChange={setQcForceRequired}
-          onQcInspectedQuantityChange={setQcInspectedQuantity}
-          onQcRejectedQuantityChange={setQcRejectedQuantity}
-          onQcResultEvidenceRefsChange={setQcResultEvidenceRefs}
-          onQcResultIdempotencyKeyChange={setQcResultIdempotencyKey}
-          onQcResultReasonCodeChange={setQcResultReasonCode}
-          onQcResultReasonNoteChange={setQcResultReasonNote}
-          onQcResultStatusChange={setQcResultStatus}
-          onQcTaskEvidenceRefsChange={setQcTaskEvidenceRefs}
-          onQcTaskIdempotencyKeyChange={setQcTaskIdempotencyKey}
-          onQcTaskReasonCodeChange={setQcTaskReasonCode}
-          onQcTaskReasonNoteChange={setQcTaskReasonNote}
-          onSubmitEvaluateQcTask={submitEvaluateQcTask}
-          onSubmitQcResult={submitQcResult}
-          qcAcceptedQuantity={qcAcceptedQuantity}
-          qcDispositionCode={qcDispositionCode}
-          qcForceRequired={qcForceRequired}
-          qcInspectedQuantity={qcInspectedQuantity}
-          qcNeedsReasonEvidence={qcNeedsReasonEvidence}
-          qcQuantityBalanced={qcQuantityBalanced}
-          qcRejectedQuantity={qcRejectedQuantity}
-          qcResult={recordedQcResult}
-          qcResultEvidenceRefs={qcResultEvidenceRefs}
-          qcResultIdempotencyKey={qcResultIdempotencyKey}
-          qcResultReasonCode={qcResultReasonCode}
-          qcResultReasonNote={qcResultReasonNote}
-          qcResultStatus={qcResultStatus}
-          qcTaskEvidenceRefs={qcTaskEvidenceRefs}
-          qcTaskIdempotencyKey={qcTaskIdempotencyKey}
-          qcTaskReasonCode={qcTaskReasonCode}
-          qcTaskReasonNote={qcTaskReasonNote}
-          receivingSession={receivingSession ?? null}
-        />
+            {activeWorkflowStep === 'qc' && (
+              <InboundQcPanel
+                canEvaluateQcTask={canEvaluateQcTask}
+                canRecordQcResult={canRecordQcResult}
+                confirmedReceiptLine={confirmedReceiptLine}
+                evaluatedQcTask={evaluatedQcTask}
+                hasEvaluateQcTaskError={Boolean(mutations.evaluateQcTask.error)}
+                hasRecordQcResultError={Boolean(mutations.recordQcResult.error)}
+                isEvaluateQcTaskPending={mutations.evaluateQcTask.isPending}
+                isRecordQcResultPending={mutations.recordQcResult.isPending}
+                onQcAcceptedQuantityChange={setQcAcceptedQuantity}
+                onQcDispositionCodeChange={setQcDispositionCode}
+                onQcForceRequiredChange={setQcForceRequired}
+                onQcInspectedQuantityChange={setQcInspectedQuantity}
+                onQcRejectedQuantityChange={setQcRejectedQuantity}
+                onQcResultEvidenceRefsChange={setQcResultEvidenceRefs}
+                onQcResultIdempotencyKeyChange={setQcResultIdempotencyKey}
+                onQcResultReasonCodeChange={setQcResultReasonCode}
+                onQcResultReasonNoteChange={setQcResultReasonNote}
+                onQcResultStatusChange={setQcResultStatus}
+                onQcTaskEvidenceRefsChange={setQcTaskEvidenceRefs}
+                onQcTaskIdempotencyKeyChange={setQcTaskIdempotencyKey}
+                onQcTaskReasonCodeChange={setQcTaskReasonCode}
+                onQcTaskReasonNoteChange={setQcTaskReasonNote}
+                onSubmitEvaluateQcTask={submitEvaluateQcTask}
+                onSubmitQcResult={submitQcResult}
+                qcAcceptedQuantity={qcAcceptedQuantity}
+                qcDispositionCode={qcDispositionCode}
+                qcForceRequired={qcForceRequired}
+                qcInspectedQuantity={qcInspectedQuantity}
+                qcNeedsReasonEvidence={qcNeedsReasonEvidence}
+                qcQuantityBalanced={qcQuantityBalanced}
+                qcRejectedQuantity={qcRejectedQuantity}
+                qcResult={recordedQcResult}
+                qcResultEvidenceRefs={qcResultEvidenceRefs}
+                qcResultIdempotencyKey={qcResultIdempotencyKey}
+                qcResultReasonCode={qcResultReasonCode}
+                qcResultReasonNote={qcResultReasonNote}
+                qcResultStatus={qcResultStatus}
+                qcTaskEvidenceRefs={qcTaskEvidenceRefs}
+                qcTaskIdempotencyKey={qcTaskIdempotencyKey}
+                qcTaskReasonCode={qcTaskReasonCode}
+                qcTaskReasonNote={qcTaskReasonNote}
+                receivingSession={receivingSession ?? null}
+              />
+            )}
 
-        <InboundReleasePutawayPanel
-          canConfirmInboundLpn={canConfirmInboundLpn}
-          canReleaseInboundToPutaway={canReleaseInboundToPutaway}
-          confirmedInboundLpn={confirmedInboundLpn}
-          confirmedReceiptLine={confirmedReceiptLine}
-          hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
-          isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
-          isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
-          lpnCode={lpnCode}
-          lpnIdempotencyKey={lpnIdempotencyKey}
-          onLpnCodeChange={setLpnCode}
-          onLpnIdempotencyKeyChange={setLpnIdempotencyKey}
-          onReleaseAttemptLabelOverrideChange={setReleaseAttemptLabelOverride}
-          onReleaseCurrentLocationCodeChange={setReleaseCurrentLocationCode}
-          onReleaseEvidenceRefsChange={setReleaseEvidenceRefs}
-          onReleaseIdempotencyKeyChange={setReleaseIdempotencyKey}
-          onReleaseReasonCodeChange={setReleaseReasonCode}
-          onReleaseRequireLpnChange={setReleaseRequireLpn}
-          onSsccCodeChange={setSsccCode}
-          onSubmitInboundLpn={submitInboundLpn}
-          onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
-          putawayReady={putawayReady}
-          putawayRelease={putawayRelease}
-          receivingSession={receivingSession ?? null}
-          releaseAttemptLabelOverride={releaseAttemptLabelOverride}
-          releaseCurrentLocationCode={releaseCurrentLocationCode}
-          releaseErrorMessage={
-            mutations.releaseInboundToPutaway.error instanceof ApiError
-              ? mutations.releaseInboundToPutaway.error.message
-              : mutations.releaseInboundToPutaway.error
-                ? 'Không thể phát hành sang cất hàng.'
-                : null
-          }
-          releaseEvidenceRefs={releaseEvidenceRefs}
-          releaseIdempotencyKey={releaseIdempotencyKey}
-          releaseReasonCode={releaseReasonCode}
-          releaseRequireLpn={releaseRequireLpn}
-          ssccCode={ssccCode}
-        />
-      </aside>
+            {(activeWorkflowStep === 'lpn' || activeWorkflowStep === 'release') && (
+              <InboundReleasePutawayPanel
+                canConfirmInboundLpn={canConfirmInboundLpn}
+                canReleaseInboundToPutaway={canReleaseInboundToPutaway}
+                confirmedInboundLpn={confirmedInboundLpn}
+                confirmedReceiptLine={confirmedReceiptLine}
+                hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
+                isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
+                isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
+                lpnCode={lpnCode}
+                lpnIdempotencyKey={lpnIdempotencyKey}
+                onLpnCodeChange={setLpnCode}
+                onLpnIdempotencyKeyChange={setLpnIdempotencyKey}
+                onReleaseAttemptLabelOverrideChange={setReleaseAttemptLabelOverride}
+                onReleaseCurrentLocationCodeChange={setReleaseCurrentLocationCode}
+                onReleaseEvidenceRefsChange={setReleaseEvidenceRefs}
+                onReleaseIdempotencyKeyChange={setReleaseIdempotencyKey}
+                onReleaseReasonCodeChange={setReleaseReasonCode}
+                onReleaseRequireLpnChange={setReleaseRequireLpn}
+                onSsccCodeChange={setSsccCode}
+                onSubmitInboundLpn={submitInboundLpn}
+                onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
+                putawayReady={putawayReady}
+                putawayRelease={putawayRelease}
+                receivingSession={receivingSession ?? null}
+                releaseAttemptLabelOverride={releaseAttemptLabelOverride}
+                releaseCurrentLocationCode={releaseCurrentLocationCode}
+                releaseErrorMessage={
+                  mutations.releaseInboundToPutaway.error instanceof ApiError
+                    ? mutations.releaseInboundToPutaway.error.message
+                    : mutations.releaseInboundToPutaway.error
+                      ? 'Không thể phát hành sang cất hàng.'
+                      : null
+                }
+                releaseEvidenceRefs={releaseEvidenceRefs}
+                releaseIdempotencyKey={releaseIdempotencyKey}
+                releaseReasonCode={releaseReasonCode}
+                releaseRequireLpn={releaseRequireLpn}
+                ssccCode={ssccCode}
+              />
+            )}
+          </NextActionShell>
+
+          {selected && (
+            <>
+              <InboundLineQueue
+                lines={selected.lines}
+                selectedLineId={selectedLine?.id ?? null}
+                onSelect={(line) => {
+                  setSelectedLineId(line.id);
+                  setReceiptActualQuantity(String(line.expectedQuantity));
+                }}
+              />
+              <InboundRecentActivity items={recentActivityItems} />
+              <InboundTechnicalDetails
+                confirmedInboundLpn={confirmedInboundLpn}
+                plan={selected}
+                putawayRelease={putawayRelease}
+                readiness={readiness}
+                receiptLine={confirmedReceiptLine}
+                receivingSession={receivingSession ?? null}
+              />
+            </>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

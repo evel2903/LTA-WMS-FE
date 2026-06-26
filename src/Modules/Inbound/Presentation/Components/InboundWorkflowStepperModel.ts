@@ -4,6 +4,7 @@ export type InboundWorkflowStepKey =
   | 'readiness'
   | 'receiving'
   | 'qc'
+  | 'lpn'
   | 'release';
 
 export type InboundWorkflowStepState = 'done' | 'active' | 'waiting' | 'blocked';
@@ -15,7 +16,9 @@ export interface InboundWorkflowStep {
   state: InboundWorkflowStepState;
 }
 
-export function mapInboundActionToWorkflowStep(action: string | undefined): InboundWorkflowStepKey | null {
+export function mapInboundActionToWorkflowStep(
+  action: string | undefined,
+): InboundWorkflowStepKey | null {
   switch (action) {
     case 'gate-in':
       return 'gate-in';
@@ -24,6 +27,7 @@ export function mapInboundActionToWorkflowStep(action: string | undefined): Inbo
     case 'qc':
       return 'qc';
     case 'lpn':
+      return 'lpn';
     case 'release':
       return 'release';
     default:
