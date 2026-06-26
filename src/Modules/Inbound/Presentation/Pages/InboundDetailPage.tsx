@@ -141,7 +141,7 @@ function InboundLineQueue({
   return (
     <Card data-testid="inbound-line-queue">
       <CardHeader>
-        <CardTitle className="text-base">Dòng hàng còn lại</CardTitle>
+        <CardTitle className="text-base">Danh sách dòng còn lại</CardTitle>
         <p className="text-sm text-muted-foreground">
           Chọn dòng để hệ thống tự điền số lượng dự kiến vào phần tiếp nhận.
         </p>
@@ -1042,7 +1042,7 @@ export function InboundDetailPage() {
                   <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
                 </div>
                 <InboundWorkflowStepper steps={workflowSteps} />
-                <div className="overflow-x-auto">
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full min-w-[640px] text-sm">
                     <thead>
                       <tr className="border-b text-left">
