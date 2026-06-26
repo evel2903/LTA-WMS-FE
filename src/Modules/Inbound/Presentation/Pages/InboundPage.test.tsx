@@ -40,6 +40,7 @@ vi.mock('@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance'
 }));
 
 import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
+import { InboundCreatePage } from '@modules/Inbound/Presentation/Pages/InboundCreatePage';
 import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
 
 vi.setConfig({ testTimeout: 15_000 });
@@ -430,7 +431,7 @@ function renderPage(entry = '/inbound/inbound-plan-1') {
       <MemoryRouter initialEntries={[entry]}>
         <LocationProbe />
         <Routes>
-          <Route path="/inbound/new" element={<InboundDetailPage />} />
+          <Route path="/inbound/new" element={<InboundCreatePage />} />
           <Route path="/inbound/:id" element={<InboundDetailPage />} />
           <Route path="/inbound/:id/:action" element={<InboundDetailPage />} />
         </Routes>
@@ -483,11 +484,16 @@ describe('InboundPage', () => {
     });
   });
 
-  it('creates source document and records gate-in through repository commands', async () => {
+  it('creates source document from the create-only page without operational actions', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
     renderPage('/inbound/new');
+
+    expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Bắt đầu tiếp nhận' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Xác nhận dòng tiếp nhận' })).toBeNull();
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
@@ -500,7 +506,9 @@ describe('InboundPage', () => {
     await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
     await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
-    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
+    const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
+    await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
+    await actor.click(createButton);
 
     await waitFor(() =>
       expect(fake.create).toHaveBeenCalledWith(
@@ -516,19 +524,7 @@ describe('InboundPage', () => {
     );
     const createInput = fake.create.mock.calls[0][0];
     expect(createInput.expectedArrivalAt).toMatch(/^2026-06-22T/);
-
-    const gateForm = screen
-      .getByRole('button', { name: 'Ghi nhận vào cổng' })
-      .closest('form') as HTMLFormElement;
-    await actor.type(within(gateForm).getByLabelText('Tham chiếu cổng'), 'GATE-A-001');
-    await actor.click(within(gateForm).getByRole('button', { name: 'Ghi nhận vào cổng' }));
-
-    await waitFor(() =>
-      expect(fake.recordGateIn).toHaveBeenCalledWith(
-        'inbound-plan-1',
-        expect.objectContaining({ gateReference: 'GATE-A-001' }),
-      ),
-    );
+    expect(fake.recordGateIn).not.toHaveBeenCalled();
   });
 
   it('shows duplicate/idempotent source trace when backend returns duplicate flag', async () => {
@@ -547,7 +543,9 @@ describe('InboundPage', () => {
     await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
     await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
     await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
-    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
+    const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
+    await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
+    await actor.click(createButton);
 
     expect(await screen.findByText(/Đã dùng lại kế hoạch nhập kho hiện có/i)).toBeTruthy();
   });
@@ -582,7 +580,9 @@ describe('InboundPage', () => {
     await actor.clear(qtyInputs[1]);
     await actor.type(qtyInputs[1], '8');
     await actor.type(refInputs[1], '20');
-    await actor.click(screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' }));
+    const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
+    await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
+    await actor.click(createButton);
 
     await waitFor(() =>
       expect(fake.create).toHaveBeenCalledWith(

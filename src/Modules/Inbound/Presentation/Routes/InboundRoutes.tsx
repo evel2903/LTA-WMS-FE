@@ -15,9 +15,15 @@ const InboundDetailPage = lazy(() =>
   })),
 );
 
+const InboundCreatePage = lazy(() =>
+  import('@modules/Inbound/Presentation/Pages/InboundCreatePage').then((module) => ({
+    default: module.InboundCreatePage,
+  })),
+);
+
 export const inboundRoutes: RouteObject[] = [
   { path: ROUTES.INBOUND.ROOT, element: <InboundPage /> },
-  { path: ROUTES.INBOUND.NEW, element: <InboundDetailPage /> },
+  { path: ROUTES.INBOUND.NEW, element: <InboundCreatePage /> },
   { path: ROUTES.INBOUND.DETAIL(), element: <InboundDetailPage /> },
   { path: ROUTES.INBOUND.ACTION(), element: <InboundDetailPage /> },
 ];
