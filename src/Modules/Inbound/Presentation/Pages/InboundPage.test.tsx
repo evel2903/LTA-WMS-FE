@@ -511,6 +511,34 @@ describe('InboundPage', () => {
     }
   });
 
+  it('renders gate-in and readiness panels with visible disabled helpers', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/gate-in');
+
+    const gateInStep = await screen.findByTestId('inbound-workflow-step-gate-in');
+    const gateInPanel = screen.getByTestId('inbound-gate-in-panel');
+    const readinessPanel = screen.getByTestId('inbound-readiness-panel');
+
+    expect(within(gateInStep).getByText('Đang xử lý')).toBeTruthy();
+    expect(within(gateInPanel).getByRole('button', { name: 'Ghi nhận vào cổng' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByTestId('inbound-gate-in-helper').textContent).toContain(
+      'Nhập tham chiếu cổng',
+    );
+    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
+      'Cần ghi nhận vào cổng',
+    );
+    expect(screen.getByTestId('inbound-readiness-helper').textContent).toContain(
+      'Vào cổng chưa được ghi nhận',
+    );
+    expect(
+      within(readinessPanel).getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }),
+    ).toHaveProperty('disabled', true);
+  });
+
   it('creates source document from the create-only page without operational actions', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();

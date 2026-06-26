@@ -3,7 +3,6 @@ import type { FormEvent } from 'react';
 import {
   AlertTriangle,
   ClipboardCheck,
-  Loader2,
   PackageCheck,
   PlayCircle,
   RefreshCw,
@@ -19,6 +18,8 @@ import { cn } from '@shared/Utils/Cn';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useInboundPlan, useReceivingReadiness } from '@modules/Inbound/Application/Queries/UseInboundPlans';
+import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
+import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
 import { InboundWorkflowStepper } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepper';
 import {
   mapInboundActionToWorkflowStep,
@@ -200,6 +201,11 @@ export function InboundDetailPage() {
   const denied = Boolean(apiError?.isForbidden);
   const detailError =
     detailQuery.error instanceof Error ? detailQuery.error.message : 'Không thể tải kế hoạch nhập kho.';
+  const gateInDone = Boolean(
+    selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
+  );
+  const readinessDone = Boolean(readiness?.allowed || readiness?.overrideAccepted);
+  const readinessBusy = readinessQuery.isLoading || readinessQuery.isFetching;
   const canCreate = Boolean(
     sourceSystem.trim() &&
     sourceDocumentNumber.trim() &&
@@ -210,8 +216,16 @@ export function InboundDetailPage() {
       (line) => line.skuId.trim() && line.uomId.trim() && Number(line.expectedQuantity) > 0,
     ),
   );
-  const canGateIn = Boolean(selected && gateReference.trim());
-  const canOverride = Boolean(selected && readinessReasonCode.trim());
+  const canGateIn = Boolean(
+    selected && !gateInDone && !mutations.recordGateIn.isPending && gateReference.trim(),
+  );
+  const canOverride = Boolean(
+    selected &&
+      !readinessDone &&
+      !readinessBusy &&
+      !mutations.validateReadiness.isPending &&
+      readinessReasonCode.trim(),
+  );
   const canStartReceiving = Boolean(selected && receivingSessionKey.trim());
   const canConfirmReceiptLine = Boolean(
     receivingSession &&
@@ -293,10 +307,6 @@ export function InboundDetailPage() {
       (releaseRequireLpn ? confirmedInboundLpn : true),
   );
   const routeWorkflowStep = mapInboundActionToWorkflowStep(routeAction);
-  const gateInDone = Boolean(
-    selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
-  );
-  const readinessDone = Boolean(readiness?.allowed || readiness?.overrideAccepted);
   const receivingDone = Boolean(confirmedReceiptLine);
   const qcDone = Boolean(recordedQcResult || (evaluatedQcTask && !evaluatedQcTask.required));
   const releaseDone = Boolean(putawayRelease);
@@ -463,7 +473,7 @@ export function InboundDetailPage() {
 
   function submitGateIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || !canGateIn) return;
+    if (!selected || !canGateIn || mutations.recordGateIn.isPending) return;
     mutations.recordGateIn.mutate(
       {
         id: selected.id,
@@ -485,7 +495,7 @@ export function InboundDetailPage() {
 
   function submitOverride(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selected || !canOverride) return;
+    if (!selected || !canOverride || mutations.validateReadiness.isPending) return;
     mutations.validateReadiness.mutate(
       {
         id: selected.id,
@@ -767,21 +777,6 @@ export function InboundDetailPage() {
                   </tbody>
                 </table>
               </div>
-              {readinessQuery.isLoading ? (
-                <p className="text-muted-foreground flex items-center gap-2 text-sm">
-                  <Loader2 className="size-4 animate-spin" />
-                  Đang kiểm tra sẵn sàng
-                </p>
-              ) : readiness ? (
-                <p
-                  className={cn(
-                    'text-sm',
-                    readiness.allowed ? 'text-emerald-700' : 'text-muted-foreground',
-                  )}
-                >
-                  {readiness.overrideAccepted ? 'Ghi đè đã được chấp nhận' : readiness.reason}
-                </p>
-              ) : null}
             </CardContent>
           </Card>
         )}
@@ -928,47 +923,25 @@ export function InboundDetailPage() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Vào cổng và kiểm tra sẵn sàng</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form className="space-y-3" onSubmit={submitGateIn}>
-              <label className="grid gap-1 text-sm">
-                Tham chiếu cổng
-                <Input
-                  value={gateReference}
-                  onChange={(event) => setGateReference(event.target.value)}
-                />
-              </label>
-              <button
-                type="submit"
-                className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canGateIn || mutations.recordGateIn.isPending}
-              >
-                Ghi nhận vào cổng
-              </button>
-            </form>
+        <InboundGateInPanel
+          gateReference={gateReference}
+          hasPlan={Boolean(selected)}
+          isGateInDone={gateInDone}
+          isPending={mutations.recordGateIn.isPending}
+          onGateReferenceChange={setGateReference}
+          onSubmit={submitGateIn}
+        />
 
-            <form className="space-y-3" onSubmit={submitOverride}>
-              <label className="grid gap-1 text-sm">
-                Mã lý do sẵn sàng
-                <Input
-                  value={readinessReasonCode}
-                  onChange={(event) => setReadinessReasonCode(event.target.value)}
-                  placeholder="RC-V1-HANDOFF"
-                />
-              </label>
-              <button
-                type="submit"
-                className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={!canOverride || mutations.validateReadiness.isPending}
-              >
-                Ghi đè kiểm tra sẵn sàng
-              </button>
-            </form>
-          </CardContent>
-        </Card>
+        <InboundReadinessPanel
+          gateInDone={gateInDone}
+          hasPlan={Boolean(selected)}
+          isPending={mutations.validateReadiness.isPending}
+          isReadinessLoading={readinessBusy}
+          onReasonCodeChange={setReadinessReasonCode}
+          onSubmit={submitOverride}
+          readiness={readiness}
+          reasonCode={readinessReasonCode}
+        />
 
         <Card>
           <CardHeader>
