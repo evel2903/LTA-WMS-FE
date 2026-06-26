@@ -40,6 +40,44 @@ vi.mock('@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance'
   },
 }));
 
+const partnerRepo = vi.hoisted(() => ({ current: null as unknown as { list: ReturnType<typeof vi.fn> } }));
+vi.mock('@modules/PartnerMaster/Infrastructure/Repositories/PartnerRepositoryInstance', () => ({
+  get partnerRepository() {
+    return partnerRepo.current;
+  },
+}));
+
+const catalogRepo = vi.hoisted(() => ({
+  current: null as unknown as {
+    listOwners: ReturnType<typeof vi.fn>;
+    listUoms: ReturnType<typeof vi.fn>;
+    listSkus: ReturnType<typeof vi.fn>;
+  },
+}));
+vi.mock('@modules/MasterData/Infrastructure/Repositories/CatalogRepositoryInstance', () => ({
+  get catalogRepository() {
+    return catalogRepo.current;
+  },
+}));
+
+const masterDataRepo = vi.hoisted(() => ({
+  current: null as unknown as { listWarehouses: ReturnType<typeof vi.fn> },
+}));
+vi.mock('@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryInstance', () => ({
+  get masterDataRepository() {
+    return masterDataRepo.current;
+  },
+}));
+
+const warehouseProfileRepo = vi.hoisted(() => ({
+  current: null as unknown as { listProfiles: ReturnType<typeof vi.fn> },
+}));
+vi.mock('@modules/WarehouseProfile/Infrastructure/Repositories/WarehouseProfileRepositoryInstance', () => ({
+  get warehouseProfileRepository() {
+    return warehouseProfileRepo.current;
+  },
+}));
+
 import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
 import { InboundCreatePage } from '@modules/Inbound/Presentation/Pages/InboundCreatePage';
 import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
@@ -50,6 +88,119 @@ const DEFAULT_RAW_SCAN = '01012345678901281726010110LOT-A';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
+}
+
+function setLookupRepositories() {
+  partnerRepo.current = {
+    list: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'supplier-1',
+            partnerCode: 'SUP-A',
+            partnerName: 'Nhà cung cấp A',
+            partnerType: 'Supplier',
+            status: 'Active',
+            sourceSystem: 'ERP',
+            externalReference: 'SUP-A',
+            referenceText: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
+  };
+  catalogRepo.current = {
+    listOwners: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'owner-1',
+            ownerCode: 'OWN-A',
+            ownerName: 'Chủ hàng A',
+            status: 'Active',
+            billingPolicy: {},
+            visibilityScope: {},
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
+    listUoms: vi.fn(() => Promise.resolve(page([]))),
+    listSkus: vi.fn(() => Promise.resolve(page([]))),
+  };
+  masterDataRepo.current = {
+    listWarehouses: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'warehouse-1',
+            siteId: 'site-1',
+            warehouseCode: 'WT-01',
+            warehouseName: 'Kho HCM',
+            warehouseTypeCode: 'AMBIENT',
+            status: 'Active',
+            timezone: 'Asia/Ho_Chi_Minh',
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
+  };
+  warehouseProfileRepo.current = {
+    listProfiles: vi.fn(() =>
+      Promise.resolve(
+        page([
+          {
+            id: 'profile-1',
+            profileCode: 'PROFILE-A',
+            profileName: 'Hồ sơ kho A',
+            warehouseTypeCode: 'AMBIENT',
+            version: 1,
+            status: 'ACTIVE',
+            scopeKey: 'profile-a',
+            effectiveFrom: '2026-06-22T08:00:00.000Z',
+            effectiveTo: null,
+            warehouseId: 'warehouse-1',
+            zoneId: null,
+            locationType: null,
+            ownerId: null,
+            skuId: null,
+            itemClass: null,
+            orderType: null,
+            customerId: null,
+            supplierId: null,
+            capabilityFlags: {},
+            strategyPolicy: {},
+            thresholdPolicy: {},
+            approvalPolicy: {},
+            labelDevicePolicy: {},
+            integrationPolicy: {},
+            auditPolicy: {},
+            sourceSystem: null,
+            referenceId: null,
+            createdAt: '2026-06-22T08:00:00.000Z',
+            updatedAt: '2026-06-22T08:00:00.000Z',
+            createdBy: null,
+            updatedBy: null,
+          },
+        ]),
+      ),
+    ),
+  };
 }
 
 function makePlan(overrides: Partial<InboundPlan> = {}): InboundPlan {
@@ -626,6 +777,7 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
+    setLookupRepositories();
     renderPage('/inbound/new');
 
     expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
@@ -637,10 +789,14 @@ describe('InboundPage', () => {
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
-    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
-    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
-    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    expect(screen.queryByLabelText('ID nhà cung cấp')).toBeNull();
+    expect(screen.queryByLabelText('ID chủ hàng')).toBeNull();
+    expect(screen.queryByLabelText('ID kho')).toBeNull();
+    expect(screen.queryByLabelText('ID hồ sơ kho')).toBeNull();
+    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
+    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
     await actor.type(screen.getByLabelText('Thời gian đến dự kiến'), '2026-06-22T08:00');
     await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
     await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
@@ -655,6 +811,10 @@ describe('InboundPage', () => {
         expect.objectContaining({
           sourceSystem: 'ERP',
           sourceDocumentNumber: 'ASN-10001',
+          supplierId: 'supplier-1',
+          ownerId: 'owner-1',
+          warehouseId: 'warehouse-1',
+          warehouseProfileId: 'profile-1',
           lines: [expect.objectContaining({ skuId: 'sku-1', expectedQuantity: 12 })],
         }),
       ),
@@ -673,14 +833,15 @@ describe('InboundPage', () => {
     const fake = new FakeRepository([existing]);
     fake.create.mockResolvedValueOnce(existing);
     repo.current = fake;
+    setLookupRepositories();
     renderPage('/inbound/new');
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
-    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
-    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
-    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
+    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
     await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
     await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
     const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
@@ -694,16 +855,17 @@ describe('InboundPage', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake;
+    setLookupRepositories();
     renderPage('/inbound/new');
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.clear(screen.getByLabelText('Loại chứng từ nguồn'));
     await actor.type(screen.getByLabelText('Loại chứng từ nguồn'), 'PO');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'PO-10001');
-    await actor.type(screen.getByLabelText('ID nhà cung cấp'), 'supplier-1');
-    await actor.type(screen.getByLabelText('ID chủ hàng'), 'owner-1');
-    await actor.type(screen.getByLabelText('ID kho'), 'warehouse-1');
-    await actor.type(screen.getByLabelText('ID hồ sơ kho'), 'profile-1');
+    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
+    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
     await actor.type(screen.getByLabelText('ID SKU'), 'sku-1');
     await actor.type(screen.getByLabelText('ID đơn vị tính'), 'uom-1');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
