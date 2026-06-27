@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
@@ -14,6 +14,7 @@ import {
   useInboundPlan,
   useReceivingReadiness,
 } from '@modules/Inbound/Application/Queries/UseInboundPlans';
+import { InboundDiscrepancySheet } from '@modules/Inbound/Presentation/Components/InboundDiscrepancySheet';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
@@ -65,7 +66,14 @@ function StatusBadge({ value }: { value: string }) {
   );
 }
 
-const INBOUND_ALLOWED_ACTIONS = new Set(['receiving', 'gate-in', 'qc', 'lpn', 'release']);
+const INBOUND_ALLOWED_ACTIONS = new Set([
+  'receiving',
+  'gate-in',
+  'qc',
+  'lpn',
+  'release',
+  'discrepancy',
+]);
 
 function resolveWorkflowStepState(
   stepKey: InboundWorkflowStepKey,
@@ -132,10 +140,12 @@ function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
 function InboundLineQueue({
   lines,
   onSelect,
+  registerLineButton,
   selectedLineId,
 }: {
   lines: InboundPlanLine[];
   onSelect: (line: InboundPlanLine) => void;
+  registerLineButton: (lineId: string, element: HTMLButtonElement | null) => void;
   selectedLineId: string | null;
 }) {
   return (
@@ -159,6 +169,8 @@ function InboundLineQueue({
               )}
               onClick={() => onSelect(line)}
               aria-pressed={isSelected}
+              data-testid={`inbound-line-queue-button-${line.id}`}
+              ref={(element) => registerLineButton(line.id, element)}
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate font-medium">
@@ -267,10 +279,16 @@ function InboundBlockedActionHelper({ message }: { message: string }) {
 }
 
 export function InboundDetailPage() {
-  const { id: routePlanId, action: routeAction } = useParams<{ id: string; action: string }>();
+  const {
+    id: routePlanId,
+    action: routeActionParam,
+    lineId: routeDiscrepancyLineId,
+  } = useParams<{ id: string; action?: string; lineId?: string }>();
+  const routeAction = routeDiscrepancyLineId ? 'discrepancy' : routeActionParam;
   const navigate = useNavigate();
   const isCreateRoute = !routePlanId;
   const [selectedId, setSelectedId] = useState<string | null>(routePlanId ?? null);
+  const lineButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -284,6 +302,7 @@ export function InboundDetailPage() {
   const [readinessReasonCode, setReadinessReasonCode] = useState('');
   const [readinessOverridePlanId, setReadinessOverridePlanId] = useState<string | null>(null);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [pendingLineFocusId, setPendingLineFocusId] = useState<string | null>(null);
   const [receivingSessionKey, setReceivingSessionKey] = useState('dock-1');
   const [receivingDeviceCode, setReceivingDeviceCode] = useState('rf-web');
   const [receiptActualQuantity, setReceiptActualQuantity] = useState('1');
@@ -518,6 +537,16 @@ export function InboundDetailPage() {
   const qcDone = Boolean(recordedQcResult || (evaluatedQcTask && !evaluatedQcTask.required));
   const lpnDone = Boolean(confirmedInboundLpn);
   const releaseDone = Boolean(putawayRelease);
+  const isDiscrepancyRoute = Boolean(routeDiscrepancyLineId);
+  const discrepancyRouteBlockedMessage = isDiscrepancyRoute
+    ? !selectedLine
+      ? 'Không tìm thấy dòng nhập kho trong chứng từ hiện tại.'
+      : !receivingSession
+        ? 'Cần bắt đầu phiên tiếp nhận trước khi báo sai lệch.'
+        : !confirmedReceiptLine
+          ? 'Cần xác nhận dòng tiếp nhận trước khi báo sai lệch.'
+          : null
+    : null;
   const inferredWorkflowStep: InboundWorkflowStepKey = releaseDone
     ? 'release'
     : confirmedInboundLpn
@@ -533,7 +562,8 @@ export function InboundDetailPage() {
               : 'gate-in';
   const activeWorkflowStep = routeWorkflowStep ?? inferredWorkflowStep;
   const blockedActionMessage =
-    activeWorkflowStep === 'qc'
+    discrepancyRouteBlockedMessage ??
+    (activeWorkflowStep === 'qc'
       ? !receivingSession
         ? 'Cần bắt đầu phiên tiếp nhận trước khi QC.'
         : !confirmedReceiptLine
@@ -557,9 +587,9 @@ export function InboundDetailPage() {
               : !putawayReady
                 ? 'Cần trạng thái READY_FOR_PUTAWAY trước khi release.'
                 : releaseRequireLpn && !confirmedInboundLpn
-                  ? 'Cần xác nhận LPN/Pallet trước khi release vì cấu hình đang yêu cầu LPN.'
-                  : null
-          : null;
+                ? 'Cần xác nhận LPN/Pallet trước khi release vì cấu hình đang yêu cầu LPN.'
+                : null
+          : null);
   const workflowSteps: InboundWorkflowStep[] = [
     {
       key: 'gate-in',
@@ -618,6 +648,22 @@ export function InboundDetailPage() {
       setSelectedId(routePlanId);
     }
   }, [routePlanId, selectedId]);
+
+  useEffect(() => {
+    if (!pendingLineFocusId || isDiscrepancyRoute) return;
+    lineButtonRefs.current[pendingLineFocusId]?.focus();
+    setPendingLineFocusId(null);
+  }, [isDiscrepancyRoute, pendingLineFocusId]);
+
+  useEffect(() => {
+    if (
+      routeDiscrepancyLineId &&
+      selected?.lines.some((line) => line.id === routeDiscrepancyLineId) &&
+      selectedLineId !== routeDiscrepancyLineId
+    ) {
+      setSelectedLineId(routeDiscrepancyLineId);
+    }
+  }, [routeDiscrepancyLineId, selected?.lines, selectedLineId]);
 
   useEffect(() => {
     setGateReference('');
@@ -834,6 +880,29 @@ export function InboundDetailPage() {
     );
   }
 
+  function openDiscrepancyOverlay() {
+    if (!selected || !selectedLine) return;
+    const signalType = confirmedReceiptLine?.discrepancySignals[0];
+    if (signalType) {
+      setDiscrepancyType(signalType);
+    }
+    setDiscrepancyIdempotencyKey(
+      `discrepancy-${confirmedReceiptLine?.id ?? selectedLine.id}-${Date.now()}`,
+    );
+    void navigate(ROUTES.INBOUND.DISCREPANCY(selected.id, selectedLine.id));
+  }
+
+  function navigateToReceivingAndFocusSelectedLine() {
+    if (!selected) return;
+    const selectedLineFocusId = selectedLine?.id;
+    setPendingLineFocusId(selectedLineFocusId ?? null);
+    void navigate(ROUTES.INBOUND.ACTION(selected.id, 'receiving'));
+  }
+
+  function closeDiscrepancyOverlay() {
+    navigateToReceivingAndFocusSelectedLine();
+  }
+
   function submitDiscrepancy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!receivingSession || !confirmedReceiptLine || !canCaptureDiscrepancy) return;
@@ -854,6 +923,7 @@ export function InboundDetailPage() {
           setDiscrepancyReasonNote('');
           setDiscrepancyEvidenceRefs('');
           setDiscrepancyIdempotencyKey(`discrepancy-${confirmedReceiptLine.id}-${Date.now()}`);
+          navigateToReceivingAndFocusSelectedLine();
         },
       },
     );
@@ -1246,7 +1316,7 @@ export function InboundDetailPage() {
               />
             )}
 
-            {activeWorkflowStep === 'receiving' && !readinessDone && (
+            {activeWorkflowStep === 'receiving' && !readinessDone && !discrepancyRouteBlockedMessage && (
               <InboundReadinessPanel
                 gateInDone={gateInDone}
                 hasPlan={Boolean(selected)}
@@ -1259,28 +1329,17 @@ export function InboundDetailPage() {
               />
             )}
 
-            {activeWorkflowStep === 'receiving' && readinessDone && (
+            {activeWorkflowStep === 'receiving' && readinessDone && !discrepancyRouteBlockedMessage && (
               <InboundReceivingPanel
-                canCaptureDiscrepancy={canCaptureDiscrepancy}
                 canConfirmReceiptLine={canConfirmReceiptLine}
                 canStartReceiving={canStartReceiving}
                 confirmedReceiptLine={confirmedReceiptLine}
-                discrepancyEvidenceRefs={discrepancyEvidenceRefs}
-                discrepancyIdempotencyKey={discrepancyIdempotencyKey}
-                discrepancyReasonCode={discrepancyReasonCode}
-                discrepancyReasonNote={discrepancyReasonNote}
                 discrepancyResult={capturedDiscrepancy}
-                discrepancyType={discrepancyType}
                 hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
                 hasPlan={Boolean(selected)}
-                isCaptureDiscrepancyPending={mutations.captureDiscrepancy.isPending}
                 isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
                 isStartReceivingPending={mutations.startReceivingSession.isPending}
-                onDiscrepancyEvidenceRefsChange={setDiscrepancyEvidenceRefs}
-                onDiscrepancyIdempotencyKeyChange={setDiscrepancyIdempotencyKey}
-                onDiscrepancyReasonCodeChange={setDiscrepancyReasonCode}
-                onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
-                onDiscrepancyTypeChange={setDiscrepancyType}
+                onOpenDiscrepancy={openDiscrepancyOverlay}
                 onReceiptActualQuantityChange={setReceiptActualQuantity}
                 onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
                 onReceiptManualConfirmChange={setReceiptManualConfirm}
@@ -1288,7 +1347,6 @@ export function InboundDetailPage() {
                 onReceiptReasonCodeChange={setReceiptReasonCode}
                 onReceivingDeviceCodeChange={setReceivingDeviceCode}
                 onReceivingSessionKeyChange={setReceivingSessionKey}
-                onSubmitDiscrepancy={submitDiscrepancy}
                 onSubmitReceiptLine={submitReceiptLine}
                 onSubmitStartReceiving={submitStartReceiving}
                 receiptActualQuantity={receiptActualQuantity}
@@ -1401,6 +1459,9 @@ export function InboundDetailPage() {
               <InboundLineQueue
                 lines={selected.lines}
                 selectedLineId={selectedLine?.id ?? null}
+                registerLineButton={(lineId, element) => {
+                  lineButtonRefs.current[lineId] = element;
+                }}
                 onSelect={(line) => {
                   setSelectedLineId(line.id);
                   setReceiptActualQuantity(String(line.expectedQuantity));
@@ -1419,6 +1480,29 @@ export function InboundDetailPage() {
           )}
         </aside>
       </div>
+      {selected && (
+        <InboundDiscrepancySheet
+          canCaptureDiscrepancy={canCaptureDiscrepancy}
+          confirmedReceiptLine={confirmedReceiptLine}
+          discrepancyEvidenceRefs={discrepancyEvidenceRefs}
+          discrepancyIdempotencyKey={discrepancyIdempotencyKey}
+          discrepancyReasonCode={discrepancyReasonCode}
+          discrepancyReasonNote={discrepancyReasonNote}
+          discrepancyResult={capturedDiscrepancy}
+          discrepancyType={discrepancyType}
+          hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
+          isCaptureDiscrepancyPending={mutations.captureDiscrepancy.isPending}
+          onClose={closeDiscrepancyOverlay}
+          onDiscrepancyEvidenceRefsChange={setDiscrepancyEvidenceRefs}
+          onDiscrepancyIdempotencyKeyChange={setDiscrepancyIdempotencyKey}
+          onDiscrepancyReasonCodeChange={setDiscrepancyReasonCode}
+          onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
+          onDiscrepancyTypeChange={setDiscrepancyType}
+          onSubmit={submitDiscrepancy}
+          open={isDiscrepancyRoute && !discrepancyRouteBlockedMessage}
+          selectedLine={selectedLine}
+        />
+      )}
     </div>
   );
 }

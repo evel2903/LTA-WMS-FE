@@ -78,6 +78,7 @@ export const ROUTES = {
     NEW: '/inbound/new',
     DETAIL: (id = ':id') => `/inbound/${id}`,
     ACTION: (id = ':id', action = ':action') => `/inbound/${id}/${action}`,
+    DISCREPANCY: (id = ':id', lineId = ':lineId') => `/inbound/${id}/discrepancy/${lineId}`,
   },
   PUTAWAY: {
     ROOT: '/putaway',

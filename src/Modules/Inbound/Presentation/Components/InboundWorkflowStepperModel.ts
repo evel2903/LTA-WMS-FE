@@ -24,6 +24,8 @@ export function mapInboundActionToWorkflowStep(
       return 'gate-in';
     case 'receiving':
       return 'receiving';
+    case 'discrepancy':
+      return 'receiving';
     case 'qc':
       return 'qc';
     case 'lpn':

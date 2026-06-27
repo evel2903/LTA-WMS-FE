@@ -5,36 +5,23 @@ import { AlertTriangle, PlayCircle, ScanLine } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
-import { INBOUND_DISCREPANCY_TYPES } from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
   InboundDiscrepancy,
-  InboundDiscrepancyType,
   InboundPlanLine,
   ReceiptLine,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface InboundReceivingPanelProps {
-  canCaptureDiscrepancy: boolean;
   canConfirmReceiptLine: boolean;
   canStartReceiving: boolean;
   confirmedReceiptLine: ReceiptLine | null;
-  discrepancyEvidenceRefs: string;
-  discrepancyIdempotencyKey: string;
-  discrepancyReasonCode: string;
-  discrepancyReasonNote: string;
   discrepancyResult: InboundDiscrepancy | null;
-  discrepancyType: InboundDiscrepancyType;
   hasCaptureDiscrepancyError: boolean;
   hasPlan: boolean;
-  isCaptureDiscrepancyPending: boolean;
   isConfirmReceiptLinePending: boolean;
   isStartReceivingPending: boolean;
-  onDiscrepancyEvidenceRefsChange: (value: string) => void;
-  onDiscrepancyIdempotencyKeyChange: (value: string) => void;
-  onDiscrepancyReasonCodeChange: (value: string) => void;
-  onDiscrepancyReasonNoteChange: (value: string) => void;
-  onDiscrepancyTypeChange: (value: InboundDiscrepancyType) => void;
+  onOpenDiscrepancy: () => void;
   onReceiptActualQuantityChange: (value: string) => void;
   onReceiptIdempotencyKeyChange: (value: string) => void;
   onReceiptManualConfirmChange: (value: boolean) => void;
@@ -42,7 +29,6 @@ interface InboundReceivingPanelProps {
   onReceiptReasonCodeChange: (value: string) => void;
   onReceivingDeviceCodeChange: (value: string) => void;
   onReceivingSessionKeyChange: (value: string) => void;
-  onSubmitDiscrepancy: (event: FormEvent<HTMLFormElement>) => void;
   onSubmitReceiptLine: (event: FormEvent<HTMLFormElement>) => void;
   onSubmitStartReceiving: (event: FormEvent<HTMLFormElement>) => void;
   receiptActualQuantity: string;
@@ -112,15 +98,6 @@ function getReceiptLineHelper({
   return 'Sẵn sàng xác nhận nhận hàng.';
 }
 
-function hasEvidenceRef(value: string) {
-  return (
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean).length > 0
-  );
-}
-
 function TechnicalDetails({ children, testId }: { children: ReactNode; testId: string }) {
   return (
     <details className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={testId}>
@@ -134,51 +111,16 @@ function formatQuantity(value: number) {
   return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(value);
 }
 
-function getDiscrepancyHelper({
-  confirmedReceiptLine,
-  discrepancyEvidenceRefs,
-  discrepancyIdempotencyKey,
-  discrepancyReasonCode,
-  isPending,
-  receivingSession,
-}: {
-  confirmedReceiptLine: ReceiptLine | null;
-  discrepancyEvidenceRefs: string;
-  discrepancyIdempotencyKey: string;
-  discrepancyReasonCode: string;
-  isPending: boolean;
-  receivingSession: ReceivingSession | null;
-}) {
-  if (!receivingSession) return 'Cần phiên tiếp nhận trước khi điều phối sai lệch.';
-  if (!confirmedReceiptLine) return 'Cần xác nhận dòng tiếp nhận trước khi điều phối sai lệch.';
-  if (isPending) return 'Đang chuyển xử lý sai lệch.';
-  if (!discrepancyReasonCode.trim()) return 'Nhập mã lý do sai lệch.';
-  if (!hasEvidenceRef(discrepancyEvidenceRefs)) return 'Nhập tham chiếu bằng chứng sai lệch.';
-  if (!discrepancyIdempotencyKey.trim()) return 'Cần khóa idempotency sai lệch.';
-  return 'Sẵn sàng chuyển xử lý sai lệch.';
-}
-
 export function InboundReceivingPanel({
-  canCaptureDiscrepancy,
   canConfirmReceiptLine,
   canStartReceiving,
   confirmedReceiptLine,
-  discrepancyEvidenceRefs,
-  discrepancyIdempotencyKey,
-  discrepancyReasonCode,
-  discrepancyReasonNote,
   discrepancyResult,
-  discrepancyType,
   hasCaptureDiscrepancyError,
   hasPlan,
-  isCaptureDiscrepancyPending,
   isConfirmReceiptLinePending,
   isStartReceivingPending,
-  onDiscrepancyEvidenceRefsChange,
-  onDiscrepancyIdempotencyKeyChange,
-  onDiscrepancyReasonCodeChange,
-  onDiscrepancyReasonNoteChange,
-  onDiscrepancyTypeChange,
+  onOpenDiscrepancy,
   onReceiptActualQuantityChange,
   onReceiptIdempotencyKeyChange,
   onReceiptManualConfirmChange,
@@ -186,7 +128,6 @@ export function InboundReceivingPanel({
   onReceiptReasonCodeChange,
   onReceivingDeviceCodeChange,
   onReceivingSessionKeyChange,
-  onSubmitDiscrepancy,
   onSubmitReceiptLine,
   onSubmitStartReceiving,
   receiptActualQuantity,
@@ -218,15 +159,7 @@ export function InboundReceivingPanel({
     receivingSession,
     selectedLine,
   });
-  const discrepancyHelper = getDiscrepancyHelper({
-    confirmedReceiptLine,
-    discrepancyEvidenceRefs,
-    discrepancyIdempotencyKey,
-    discrepancyReasonCode,
-    isPending: isCaptureDiscrepancyPending,
-    receivingSession,
-  });
-  const discrepancyDisabled = !confirmedReceiptLine;
+  const discrepancySignals = confirmedReceiptLine?.discrepancySignals ?? [];
 
   return (
     <Card data-testid="inbound-receiving-panel">
@@ -383,94 +316,35 @@ export function InboundReceivingPanel({
           )}
         </form>
 
-        <form className="space-y-3 rounded-md border p-3" onSubmit={onSubmitDiscrepancy}>
+        <div
+          className="space-y-3 rounded-md border p-3"
+          data-testid="inbound-discrepancy-entry"
+        >
           <div className="flex items-center gap-2 text-sm font-medium">
             <AlertTriangle className="size-4" />
-            Điều phối sai lệch
+            Báo sai lệch
           </div>
-          {confirmedReceiptLine?.discrepancySignals.length ? (
+          {discrepancySignals.length ? (
             <div className="break-words text-xs text-muted-foreground">
-              Tín hiệu:{' '}
-              {confirmedReceiptLine.discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
+              Tín hiệu: {discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
             </div>
           ) : null}
-          <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-type">
-            Loại sai lệch
-            <select
-              id="inbound-discrepancy-type"
-              name="discrepancyType"
-              value={discrepancyType}
-              onChange={(event) =>
-                onDiscrepancyTypeChange(event.target.value as InboundDiscrepancyType)
-              }
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-              disabled={discrepancyDisabled}
-            >
-              {INBOUND_DISCREPANCY_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {vietnameseOperationalLabel(type)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-reason-code">
-            Mã lý do sai lệch
-            <Input
-              id="inbound-discrepancy-reason-code"
-              name="discrepancyReasonCode"
-              value={discrepancyReasonCode}
-              onChange={(event) => onDiscrepancyReasonCodeChange(event.target.value)}
-              placeholder="RC-V1-DISCREPANCY"
-              disabled={discrepancyDisabled}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-reason-note">
-            Ghi chú lý do sai lệch
-            <Input
-              id="inbound-discrepancy-reason-note"
-              name="discrepancyReasonNote"
-              value={discrepancyReasonNote}
-              onChange={(event) => onDiscrepancyReasonNoteChange(event.target.value)}
-              placeholder="Số lượng lệch so với ASN"
-              disabled={discrepancyDisabled}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-evidence-refs">
-            Tham chiếu bằng chứng sai lệch
-            <Input
-              id="inbound-discrepancy-evidence-refs"
-              name="discrepancyEvidenceRefs"
-              value={discrepancyEvidenceRefs}
-              onChange={(event) => onDiscrepancyEvidenceRefsChange(event.target.value)}
-              placeholder="photo://dock/over-qty-1"
-              disabled={discrepancyDisabled}
-            />
-          </label>
-          <TechnicalDetails testId="inbound-discrepancy-technical-details">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-idempotency-key">
-              Khóa idempotency sai lệch
-              <Input
-                id="inbound-discrepancy-idempotency-key"
-                name="discrepancyIdempotencyKey"
-                value={discrepancyIdempotencyKey}
-                onChange={(event) => onDiscrepancyIdempotencyKeyChange(event.target.value)}
-                disabled={discrepancyDisabled}
-              />
-            </label>
-          </TechnicalDetails>
           <p
             className="break-words text-sm text-muted-foreground"
             data-testid="inbound-discrepancy-helper"
           >
-            {discrepancyHelper}
+            {confirmedReceiptLine
+              ? 'Mở biểu mẫu sai lệch khi dòng đã nhận cần điều phối ngoại lệ.'
+              : 'Cần xác nhận dòng tiếp nhận trước khi báo sai lệch.'}
           </p>
           <button
-            type="submit"
+            type="button"
             className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canCaptureDiscrepancy || isCaptureDiscrepancyPending}
+            disabled={!confirmedReceiptLine}
+            onClick={onOpenDiscrepancy}
           >
             <AlertTriangle className="size-4" />
-            Chuyển xử lý sai lệch
+            Báo sai lệch
           </button>
           {discrepancyResult && (
             <p className="break-words text-sm text-muted-foreground">
@@ -482,7 +356,7 @@ export function InboundReceivingPanel({
           {hasCaptureDiscrepancyError ? (
             <p className="text-sm text-destructive">Không thể chuyển xử lý sai lệch.</p>
           ) : null}
-        </form>
+        </div>
       </CardContent>
     </Card>
   );

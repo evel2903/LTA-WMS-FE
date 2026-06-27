@@ -719,6 +719,7 @@ function renderPage(entry = '/inbound/inbound-plan-1') {
         <Routes>
           <Route path="/inbound/new" element={<InboundCreatePage />} />
           <Route path="/inbound/:id" element={<InboundDetailPage />} />
+          <Route path="/inbound/:id/discrepancy/:lineId" element={<InboundDetailPage />} />
           <Route path="/inbound/:id/:action" element={<InboundDetailPage />} />
         </Routes>
       </MemoryRouter>
@@ -776,6 +777,7 @@ describe('InboundPage', () => {
     const actionCases = [
       ['/inbound/inbound-plan-1/gate-in', 'gate-in'],
       ['/inbound/inbound-plan-1/receiving', 'receiving'],
+      ['/inbound/inbound-plan-1/discrepancy/line-1', 'receiving'],
       ['/inbound/inbound-plan-1/qc', 'qc'],
       ['/inbound/inbound-plan-1/lpn', 'lpn'],
       ['/inbound/inbound-plan-1/release', 'release'],
@@ -1282,9 +1284,14 @@ describe('InboundPage', () => {
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
+    expect(screen.getByTestId('location-probe').textContent).toBe(
+      '/inbound/inbound-plan-1/discrepancy/line-1',
+    );
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(
-      screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
+      screen.getByLabelText('Bằng chứng (mã tham chiếu)'),
       'photo://dock/over-qty-1',
     );
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
@@ -1303,7 +1310,18 @@ describe('InboundPage', () => {
       idempotencyKey: 'discrepancy-1',
     });
     await waitFor(() => expect(fake.captureDiscrepancy).toHaveBeenCalledTimes(1));
-    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('location-probe').textContent).toBe(
+        '/inbound/inbound-plan-1/receiving',
+      ),
+    );
+    expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
+    expect(
+      await screen.findByText(/Sai lệch Chờ phê duyệt \/ Ngoại lệ exception-1 \/ cần phê duyệt/i),
+    ).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-line-queue-button-line-1')).toBe(document.activeElement),
+    );
   });
 
   it('evaluates QC skipped after a confirmed receipt line', async () => {
@@ -1555,11 +1573,13 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
     const routeButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     expect(routeButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Tham chiếu bằng chứng sai lệch'), ',,');
-    expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
+    await actor.type(screen.getByLabelText('Bằng chứng (mã tham chiếu)'), ',,');
+    expect(within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent).toContain(
       'Nhập tham chiếu bằng chứng sai lệch',
     );
     expect(routeButton).toHaveProperty('disabled', true);
@@ -1611,6 +1631,8 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Sai SKU/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     expect(screen.getByLabelText('Loại sai lệch')).toHaveProperty('value', 'WrongSku');
   }, 15_000);
 
@@ -1659,7 +1681,7 @@ describe('InboundPage', () => {
       screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByText(/Điều phối sai lệch/i)).toBeTruthy();
+    expect(await screen.findByTestId('inbound-discrepancy-entry')).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Chọn dòng 2' }));
     await waitFor(() =>
       expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
@@ -1667,7 +1689,7 @@ describe('InboundPage', () => {
       ),
     );
     expect(screen.queryByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' })).toHaveProperty(
+    expect(screen.getByRole('button', { name: 'Báo sai lệch' })).toHaveProperty(
       'disabled',
       true,
     );
@@ -1698,9 +1720,11 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(
-      screen.getByLabelText('Tham chiếu bằng chứng sai lệch'),
+      screen.getByLabelText('Bằng chứng (mã tham chiếu)'),
       'photo://dock/over-qty-1',
     );
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
@@ -1708,7 +1732,8 @@ describe('InboundPage', () => {
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-error');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
 
-    expect(await screen.findByText(/Không thể chuyển xử lý sai lệch/i)).toBeTruthy();
+    const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
+    expect(await within(discrepancyDialog).findByText(/Không thể chuyển xử lý sai lệch/i)).toBeTruthy();
   });
 
   it('clears stale readiness override after gate-in is recorded', async () => {
