@@ -187,11 +187,14 @@ function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
 function InboundWorkflowProgressBand({
   caption,
   completedSummaryStepKey,
+  lineCue,
   onStepSelect,
   steps,
 }: {
   caption: string;
   completedSummaryStepKey: InboundWorkflowStepKey | null;
+  /** Per-line cue `Bước hiện tại — Dòng: {X}` shown above the read-only ribbon. */
+  lineCue: string;
   onStepSelect: (step: InboundWorkflowStep) => void;
   steps: InboundWorkflowStep[];
 }) {
@@ -199,16 +202,32 @@ function InboundWorkflowProgressBand({
     <Card data-testid="inbound-workflow-progress">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Tiến độ dòng đang chọn</CardTitle>
-        <p className="text-sm text-muted-foreground" data-testid="inbound-workflow-progress-caption">
+        <p
+          className="break-words text-sm text-muted-foreground"
+          data-testid="inbound-workflow-progress-caption"
+        >
           {caption}
+        </p>
+        <p
+          className="break-words text-sm font-medium text-foreground"
+          data-testid="inbound-current-step-line-cue"
+        >
+          {lineCue}
+        </p>
+        <p className="break-words text-xs text-muted-foreground" data-testid="inbound-progress-note">
+          Tiến độ hiển thị theo dòng đang chọn.
         </p>
       </CardHeader>
       <CardContent>
-        <InboundWorkflowStepper
-          steps={steps}
-          selectedStepKey={completedSummaryStepKey}
-          onStepSelect={onStepSelect}
-        />
+        {/* Ribbon scrolls horizontally inside its own container so a wide step row
+            never forces the whole page to scroll horizontally on mobile. */}
+        <div className="overflow-x-auto" data-testid="inbound-workflow-progress-scroller">
+          <InboundWorkflowStepper
+            steps={steps}
+            selectedStepKey={completedSummaryStepKey}
+            onStepSelect={onStepSelect}
+          />
+        </div>
       </CardContent>
     </Card>
   );
@@ -285,7 +304,6 @@ export function InboundDetailPage() {
   const isCreateRoute = !routePlanId;
   const [selectedId, setSelectedId] = useState<string | null>(routePlanId ?? null);
   const actionPanelRef = useRef<HTMLElement | null>(null);
-  const lineButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [completedSummaryStepKey, setCompletedSummaryStepKey] =
     useState<InboundWorkflowStepKey | null>(null);
   const [sourceSystem, setSourceSystem] = useState('');
@@ -672,6 +690,13 @@ export function InboundDetailPage() {
         selectedLine.skuCode ?? selectedLine.skuId
       }`
     : 'Chưa chọn dòng nào để theo dõi tiến độ.';
+  // Per-line execution cue (AC7): names the active step AND the focused line so
+  // the operator never confuses lifecycle (document) with per-line execution.
+  const focusedLineStepCue = selectedLine
+    ? `Bước hiện tại — Dòng: ${selectedLine.lineNumber} — ${
+        selectedLine.skuCode ?? selectedLine.skuId
+      }`
+    : 'Bước hiện tại — Dòng: chưa chọn';
   const focusedLineStage = deriveFocusedLineStage({
     gateInDone,
     receivingDone,
@@ -787,7 +812,11 @@ export function InboundDetailPage() {
 
   useEffect(() => {
     if (!pendingLineFocusId || isDiscrepancyRoute) return;
-    lineButtonRefs.current[pendingLineFocusId]?.focus();
+    // Route post-line-action focus to the always-visible focused-line console
+    // (not the rail line button, which is `display:none` while the rail is
+    // collapsed on mobile, making `.focus()` a silent no-op that drops focus to
+    // <body>). This keeps focus on a visible surface on BOTH desktop and mobile.
+    actionPanelRef.current?.focus();
     setPendingLineFocusId(null);
   }, [isDiscrepancyRoute, pendingLineFocusId]);
 
@@ -1302,6 +1331,7 @@ export function InboundDetailPage() {
           <InboundWorkflowProgressBand
             caption={focusedLineRibbonCaption}
             completedSummaryStepKey={completedSummaryStepKey}
+            lineCue={focusedLineStepCue}
             steps={workflowSteps}
             onStepSelect={selectWorkflowStep}
           />
@@ -1454,19 +1484,24 @@ export function InboundDetailPage() {
 
       {selected && (
         <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <InboundLineRail
-            focusedLineStage={focusedLineStage}
-            lines={selected.lines}
-            selectedLineId={selectedLine?.id ?? null}
-            registerLineButton={(lineId, element) => {
-              lineButtonRefs.current[lineId] = element;
-            }}
-            onSelect={(line) => {
-              setSelectedLineId(line.id);
-              setReceiptActualQuantity(String(line.expectedQuantity));
-            }}
-          />
+          {/* Mobile (below xl): rail is rendered SECOND (collapsible `Dòng khác`
+              below the pinned console) via order-2; desktop keeps it as the
+              always-visible LEFT column via xl:order-1. The console mirrors this
+              with order-1 / xl:order-2 so the desktop `[rail | console]` grid is
+              preserved while mobile pins the action form to the top. */}
+          <div className="order-2 min-w-0 xl:order-1" data-testid="inbound-line-rail-slot">
+            <InboundLineRail
+              focusedLineStage={focusedLineStage}
+              lines={selected.lines}
+              selectedLineId={selectedLine?.id ?? null}
+              onSelect={(line) => {
+                setSelectedLineId(line.id);
+                setReceiptActualQuantity(String(line.expectedQuantity));
+              }}
+            />
+          </div>
 
+          <div className="order-1 min-w-0 xl:order-2" data-testid="inbound-line-console-slot">
           <InboundLineConsole
             panelRef={actionPanelRef}
             title={consoleTitle}
@@ -1634,6 +1669,7 @@ export function InboundDetailPage() {
               </>
             )}
           </InboundLineConsole>
+          </div>
         </div>
       )}
 

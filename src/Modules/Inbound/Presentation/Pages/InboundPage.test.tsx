@@ -853,7 +853,10 @@ describe('InboundPage', () => {
       'Chưa bắt đầu',
     );
 
-    // Selecting a line moves focus through the single setSelectedLineId mechanism.
+    // Selecting a line drives the single setSelectedLineId mechanism. On desktop
+    // the rail is always visible, so keyboard focus stays naturally on the clicked
+    // rail line button (no focus-steal to the console); only a mobile collapse
+    // moves focus, and then to the rail's own toggle.
     await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
     expect(screen.getByTestId('inbound-line-rail-button-line-2').getAttribute('aria-current')).toBe(
       'true',
@@ -972,9 +975,10 @@ describe('InboundPage', () => {
     renderPage('/inbound/inbound-plan-1/receiving');
 
     const header = await screen.findByTestId('inbound-operator-header');
+    // Lifecycle badge keeps the `Chứng từ:` prefix; never a bare `Đã đóng`.
     expect(within(header).getByText('Chứng từ: Đã đóng')).toBeTruthy();
     expect(within(header).queryByText('Đã đóng')).toBeNull();
-    // Document band no longer carries the step metric / "Bước hiện tại - Dòng" cue card.
+    // The per-line cue lives in the ribbon band, NOT in the document header.
     expect(within(header).queryByText(/Bước hiện tại/i)).toBeNull();
     expect(within(header).queryByTestId('inbound-current-step-line-cue')).toBeNull();
     expect(screen.getByTestId('inbound-workflow-progress-caption').textContent).toContain(
@@ -988,16 +992,20 @@ describe('InboundPage', () => {
     expect(within(header).getByTestId('inbound-operator-header-details')).toBeTruthy();
 
     await expectReadinessAllowed();
+    // Closed lifecycle alone must NOT gate execution.
     const startReceivingButton = screen.getByRole<HTMLButtonElement>('button', {
       name: 'Bắt đầu tiếp nhận',
     });
     expect(startReceivingButton.disabled).toBe(false);
 
-    const workflowOrder = [
+    // Page-level DOM source order: band → ribbon → action grid → document info →
+    // recent activity → technical details. The console-vs-rail vertical order is a
+    // responsive concern asserted via order classes below (jsdom cannot measure it).
+    const pageOrder = [
       'inbound-operator-header',
       'inbound-workflow-progress',
-      'inbound-line-rail',
       'inbound-line-console',
+      'inbound-line-rail',
       'inbound-document-info',
       'inbound-recent-activity',
       'inbound-technical-details',
@@ -1006,9 +1014,98 @@ describe('InboundPage', () => {
         (element) => element.getAttribute('data-testid') === testId,
       ),
     );
+    expect(pageOrder.every((position) => position >= 0)).toBe(true);
 
-    expect(workflowOrder.every((position) => position >= 0)).toBe(true);
-    expect(workflowOrder).toEqual([...workflowOrder].sort((left, right) => left - right));
+    // Mobile (below xl): console pinned ABOVE the rail. Desktop (xl): rail LEFT,
+    // console RIGHT. Encoded with Tailwind order utilities on the two grid slots.
+    const consoleSlot = screen.getByTestId('inbound-line-console-slot');
+    const railSlot = screen.getByTestId('inbound-line-rail-slot');
+    expect(consoleSlot.className).toContain('order-1');
+    expect(consoleSlot.className).toContain('xl:order-2');
+    expect(railSlot.className).toContain('order-2');
+    expect(railSlot.className).toContain('xl:order-1');
+  });
+
+  it('shows the per-line execution cue and progress note in the ribbon band', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    const cue = await screen.findByTestId('inbound-current-step-line-cue');
+    expect(cue.textContent).toContain('Bước hiện tại — Dòng:');
+    expect(cue.textContent).toContain('SKU-A');
+    expect(screen.getByTestId('inbound-progress-note').textContent).toContain(
+      'Tiến độ hiển thị theo dòng đang chọn.',
+    );
+
+    // The cue follows the focused line through the single selection mechanism.
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    expect(screen.getByTestId('inbound-current-step-line-cue').textContent).toContain('SKU-B');
+  });
+
+  it('keeps line selection reachable on mobile via the collapsible Dòng khác section', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    // The collapsible `Dòng khác ({count})` control exists with the line count and
+    // is collapsed by default (the list is mobile-hidden until expanded).
+    const toggle = await screen.findByTestId('inbound-line-rail-toggle');
+    expect(toggle.textContent).toContain('Dòng khác (2)');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    const list = screen.getByTestId('inbound-line-rail-list');
+    expect(list.className).toContain('hidden');
+    expect(list.className).toContain('xl:block');
+
+    // Expanding reveals the rows; selecting a line re-collapses so the console
+    // returns to the top of the action area.
+    await actor.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByTestId('inbound-line-rail-list').className).not.toContain('hidden');
+
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    expect(screen.getByTestId('inbound-line-rail-button-line-2').getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(screen.getByTestId('inbound-line-rail-toggle').getAttribute('aria-expanded')).toBe(
+      'false',
+    );
   });
 
   it('locks the task card and discrepancy overlay when the inbound document is Cancelled', async () => {
@@ -1523,11 +1620,13 @@ describe('InboundPage', () => {
       ),
     );
     // Post-submit the single canonical overlay closes back to /receiving; the
-    // receiving panel renders and focus returns to the focused line in the rail.
+    // receiving panel renders and focus returns to the always-visible focused-line
+    // console (a visible surface on both desktop and mobile — the rail line button
+    // is `display:none` while the rail is collapsed on mobile).
     expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
     expect(screen.queryByTestId('inbound-discrepancy-overlay')).toBeNull();
     await waitFor(() =>
-      expect(screen.getByTestId('inbound-line-rail-button-line-1')).toBe(document.activeElement),
+      expect(screen.getByTestId('inbound-line-console')).toBe(document.activeElement),
     );
   });
 
