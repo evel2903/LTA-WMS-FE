@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, ReactNode, Ref } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -70,6 +70,17 @@ function StatusBadge({ value }: { value: string }) {
   );
 }
 
+function LifecycleStatusBadge({ value }: { value: string }) {
+  return (
+    <span
+      className="rounded-md border bg-background px-2 py-1 text-xs font-medium"
+      data-testid="inbound-lifecycle-badge"
+    >
+      Chứng từ: {vietnameseOperationalLabel(value)}
+    </span>
+  );
+}
+
 const INBOUND_ALLOWED_ACTIONS = new Set([
   'receiving',
   'gate-in',
@@ -112,30 +123,108 @@ function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
+function InboundOperatorHeader({
+  activeStepLabel,
+  plan,
+  selectedLine,
+}: {
+  activeStepLabel: string;
+  plan: InboundPlan;
+  selectedLine: InboundPlanLine | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const selectedLineLabel = selectedLine
+    ? `Dòng ${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
+    : 'Chưa chọn dòng';
+
   return (
     <Card data-testid="inbound-operator-header">
-      <CardHeader className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <CardHeader className="space-y-3 pb-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <CardTitle className="text-lg">Nhập kho {plan.businessReference}</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Nhập kho {plan.businessReference}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               ASN {plan.sourceDocumentNumber || plan.businessReference}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge value={plan.status} />
-            <StatusBadge value={plan.gateInStatus} />
-          </div>
+          <button
+            type="button"
+            className="min-h-10 shrink-0 rounded-md border px-2 text-sm font-medium hover:bg-muted"
+            aria-expanded={expanded}
+            aria-controls="inbound-operator-header-details"
+            data-testid="inbound-operator-header-toggle"
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {expanded ? (
+              <ChevronUp className="size-4" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="size-4" aria-hidden="true" />
+            )}
+            <span className="sr-only">
+              {expanded ? 'Thu gọn header nhập kho' : 'Mở rộng header nhập kho'}
+            </span>
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <LifecycleStatusBadge value={plan.status} />
+          <span className="rounded-md border bg-background px-2 py-1 text-xs font-medium">
+            Cổng: {vietnameseOperationalLabel(plan.gateInStatus)}
+          </span>
         </div>
       </CardHeader>
-      <CardContent>
-        <dl className="grid gap-2 md:grid-cols-4">
+      <CardContent className="space-y-3">
+        <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <DetailMetric label="ASN" value={plan.sourceDocumentNumber || plan.businessReference} />
           <DetailMetric label="Nhà cung cấp" value={plan.supplierCode ?? 'Chưa có mã'} />
           <DetailMetric label="Kho" value={plan.warehouseCode ?? 'Chưa có mã'} />
-          <DetailMetric label="Trạng thái" value={vietnameseOperationalLabel(plan.status)} />
+          <DetailMetric label="Bước hiện tại" value={activeStepLabel} />
         </dl>
+        <div
+          className="rounded-md border bg-background px-3 py-2 text-sm"
+          data-testid="inbound-current-step-line-cue"
+        >
+          <p className="font-medium">Bước hiện tại - Dòng: {selectedLineLabel}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tiến độ hiển thị theo dòng đang chọn.
+          </p>
+        </div>
+        {expanded && (
+          <dl
+            id="inbound-operator-header-details"
+            className="grid gap-2 md:grid-cols-4"
+            data-testid="inbound-operator-header-details"
+          >
+            <DetailMetric label="Trạng thái chứng từ" value={vietnameseOperationalLabel(plan.status)} />
+            <DetailMetric label="Trạng thái cổng" value={vietnameseOperationalLabel(plan.gateInStatus)} />
+            <DetailMetric label="Dự kiến đến" value={plan.expectedArrivalAt ?? 'Chưa thiết lập'} />
+            <DetailMetric label="CoreFlow" value={plan.coreFlowInstanceId ?? 'Chưa liên kết'} />
+          </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function InboundWorkflowProgressBand({
+  completedSummaryStepKey,
+  onStepSelect,
+  steps,
+}: {
+  completedSummaryStepKey: InboundWorkflowStepKey | null;
+  onStepSelect: (step: InboundWorkflowStep) => void;
+  steps: InboundWorkflowStep[];
+}) {
+  return (
+    <Card data-testid="inbound-workflow-progress">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Tiến độ thao tác</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <InboundWorkflowStepper
+          steps={steps}
+          selectedStepKey={completedSummaryStepKey}
+          onStepSelect={onStepSelect}
+        />
       </CardContent>
     </Card>
   );
@@ -443,6 +532,7 @@ export function InboundDetailPage() {
     detailQuery.error instanceof Error
       ? detailQuery.error.message
       : 'Không thể tải kế hoạch nhập kho.';
+  const isCancelledTerminal = selected?.status === 'Cancelled';
   const gateInDone = Boolean(
     selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
   );
@@ -459,19 +549,25 @@ export function InboundDetailPage() {
     ),
   );
   const canGateIn = Boolean(
-    selected && !gateInDone && !mutations.recordGateIn.isPending && gateReference.trim(),
+    selected &&
+      !isCancelledTerminal &&
+      !gateInDone &&
+      !mutations.recordGateIn.isPending &&
+      gateReference.trim(),
   );
   const canOverride = Boolean(
     selected &&
-    !readinessDone &&
-    !readinessBusy &&
-    !mutations.validateReadiness.isPending &&
-    readinessReasonCode.trim(),
+      !isCancelledTerminal &&
+      !readinessDone &&
+      !readinessBusy &&
+      !mutations.validateReadiness.isPending &&
+      readinessReasonCode.trim(),
   );
   const canStartReceiving = Boolean(
-    selected && readinessDone && !readinessBusy && receivingSessionKey.trim(),
+    selected && !isCancelledTerminal && readinessDone && !readinessBusy && receivingSessionKey.trim(),
   );
   const canConfirmReceiptLine = Boolean(
+    !isCancelledTerminal &&
     receivingSession &&
     selectedLine &&
     Number(receiptActualQuantity) > 0 &&
@@ -511,6 +607,7 @@ export function InboundDetailPage() {
     [releaseEvidenceRefs],
   );
   const canCaptureDiscrepancy = Boolean(
+    !isCancelledTerminal &&
     receivingSession &&
     confirmedReceiptLine &&
     discrepancyReasonCode.trim() &&
@@ -518,7 +615,7 @@ export function InboundDetailPage() {
     discrepancyIdempotencyKey.trim(),
   );
   const canEvaluateQcTask = Boolean(
-    receivingSession && confirmedReceiptLine && qcTaskIdempotencyKey.trim(),
+    !isCancelledTerminal && receivingSession && confirmedReceiptLine && qcTaskIdempotencyKey.trim(),
   );
   const qcInspectedQty = Number(qcInspectedQuantity);
   const qcAcceptedQty = Number(qcAcceptedQuantity);
@@ -527,6 +624,7 @@ export function InboundDetailPage() {
   const qcNeedsReasonEvidence =
     qcResultStatus !== 'Passed' || qcDispositionCode !== 'Release' || qcRejectedQty > 0;
   const canRecordQcResult = Boolean(
+    !isCancelledTerminal &&
     evaluatedQcTask?.required &&
     qcResultIdempotencyKey.trim() &&
     qcInspectedQty > 0 &&
@@ -541,9 +639,14 @@ export function InboundDetailPage() {
     evaluatedQcTask?.targetInventoryStatusCode === 'READY_FOR_PUTAWAY' ||
     recordedQcResult?.targetInventoryStatusCode === 'READY_FOR_PUTAWAY';
   const canConfirmInboundLpn = Boolean(
-    receivingSession && confirmedReceiptLine && lpnCode.trim() && lpnIdempotencyKey.trim(),
+    !isCancelledTerminal &&
+      receivingSession &&
+      confirmedReceiptLine &&
+      lpnCode.trim() &&
+      lpnIdempotencyKey.trim(),
   );
   const canReleaseInboundToPutaway = Boolean(
+    !isCancelledTerminal &&
     receivingSession &&
     confirmedReceiptLine &&
     putawayReady &&
@@ -582,6 +685,9 @@ export function InboundDetailPage() {
               ? 'gate-in'
               : 'gate-in';
   const activeWorkflowStep = routeWorkflowStep ?? inferredWorkflowStep;
+  const terminalActionMessage = isCancelledTerminal
+    ? 'Chứng từ đã hủy. Không thể tiếp tục thao tác nhập kho.'
+    : null;
   const blockedActionMessage =
     discrepancyRouteBlockedMessage ??
     (activeWorkflowStep === 'qc'
@@ -664,6 +770,8 @@ export function InboundDetailPage() {
     },
   ];
   const completedSummaryStep = workflowSteps.find((step) => step.key === completedSummaryStepKey);
+  const activeWorkflowStepLabel =
+    workflowSteps.find((step) => step.key === activeWorkflowStep)?.label ?? 'Chưa xác định';
   const selectedLineLabel = selectedLine
     ? `Dòng ${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
     : undefined;
@@ -1010,7 +1118,7 @@ export function InboundDetailPage() {
   }
 
   function openDiscrepancyOverlay() {
-    if (!selected || !selectedLine) return;
+    if (!selected || !selectedLine || isCancelledTerminal) return;
     const signalType = confirmedReceiptLine?.discrepancySignals[0];
     if (signalType) {
       setDiscrepancyType(signalType);
@@ -1038,6 +1146,12 @@ export function InboundDetailPage() {
   }
 
   function selectWorkflowStep(step: InboundWorkflowStep) {
+    if (terminalActionMessage) {
+      setCompletedSummaryStepKey(null);
+      setStepperSelectionMessage(terminalActionMessage);
+      window.setTimeout(() => actionPanelRef.current?.focus(), 0);
+      return;
+    }
     if (step.state === 'done') {
       setCompletedSummaryStepKey(step.key);
       setStepperSelectionMessage(null);
@@ -1239,9 +1353,22 @@ export function InboundDetailPage() {
 
   return (
     <div className="space-y-4">
-      {selected && <InboundOperatorHeader plan={selected} />}
+      {selected && (
+        <>
+          <InboundOperatorHeader
+            activeStepLabel={activeWorkflowStepLabel}
+            plan={selected}
+            selectedLine={selectedLine}
+          />
+          <InboundWorkflowProgressBand
+            completedSummaryStepKey={completedSummaryStepKey}
+            steps={workflowSteps}
+            onStepSelect={selectWorkflowStep}
+          />
+        </>
+      )}
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="min-w-0 space-y-4">
+        <section className="hidden min-w-0 space-y-4 md:block">
           {selected && (
             <Card>
               <CardHeader>
@@ -1249,7 +1376,7 @@ export function InboundDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge value={selected.status} />
+                  <LifecycleStatusBadge value={selected.status} />
                   <StatusBadge value={selected.gateInStatus} />
                   <span className="text-muted-foreground text-sm">
                     {selected.businessReference}
@@ -1264,11 +1391,6 @@ export function InboundDetailPage() {
                   <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
                   <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
                 </div>
-                <InboundWorkflowStepper
-                  steps={workflowSteps}
-                  selectedStepKey={completedSummaryStepKey}
-                  onStepSelect={selectWorkflowStep}
-                />
                 <div className="hidden overflow-x-auto md:block">
                   <table className="w-full min-w-[640px] text-sm">
                     <thead>
@@ -1461,9 +1583,17 @@ export function InboundDetailPage() {
 
           <NextActionShell
             panelRef={actionPanelRef}
-            title={completedStepSummary ? `Tóm tắt ${completedStepSummary.stepLabel}` : nextActionTitle}
+            title={
+              terminalActionMessage
+                ? 'Chứng từ đã kết thúc'
+                : completedStepSummary
+                  ? `Tóm tắt ${completedStepSummary.stepLabel}`
+                  : nextActionTitle
+            }
           >
-            {completedStepSummary ? (
+            {terminalActionMessage ? (
+              <InboundBlockedActionHelper message={terminalActionMessage} />
+            ) : completedStepSummary ? (
               <InboundCompletedStepSummary
                 summary={completedStepSummary}
                 onClose={closeCompletedStepSummary}
@@ -1673,7 +1803,7 @@ export function InboundDetailPage() {
           onDiscrepancyReasonNoteChange={setDiscrepancyReasonNote}
           onDiscrepancyTypeChange={setDiscrepancyType}
           onSubmit={submitDiscrepancy}
-          open={isDiscrepancyRoute && !discrepancyRouteBlockedMessage}
+          open={isDiscrepancyRoute && !discrepancyRouteBlockedMessage && !isCancelledTerminal}
           selectedLine={selectedLine}
         />
       )}

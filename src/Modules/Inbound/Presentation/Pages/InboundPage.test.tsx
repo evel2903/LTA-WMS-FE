@@ -882,6 +882,77 @@ describe('InboundPage', () => {
     );
   });
 
+  it('orders the operator workflow for mobile and keeps Closed lifecycle from gating execution', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makePlan({
+        status: 'Closed',
+        gateInStatus: 'Recorded',
+        gateInAt: '2026-06-22T09:00:00.000Z',
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    const header = await screen.findByTestId('inbound-operator-header');
+    expect(within(header).getByText('Chứng từ: Đã đóng')).toBeTruthy();
+    expect(within(header).queryByText('Đã đóng')).toBeNull();
+    expect(within(header).getByText('Bước hiện tại - Dòng: Dòng 1 - SKU-A')).toBeTruthy();
+    expect(within(header).getByText('Tiến độ hiển thị theo dòng đang chọn.')).toBeTruthy();
+
+    const toggle = within(header).getByTestId('inbound-operator-header-toggle');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await actor.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(within(header).getByTestId('inbound-operator-header-details')).toBeTruthy();
+
+    await expectReadinessAllowed();
+    const startReceivingButton = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Bắt đầu tiếp nhận',
+    });
+    expect(startReceivingButton.disabled).toBe(false);
+
+    const workflowOrder = [
+      'inbound-operator-header',
+      'inbound-workflow-progress',
+      'inbound-next-action-panel',
+      'inbound-line-queue',
+      'inbound-recent-activity',
+      'inbound-technical-details',
+    ].map((testId) =>
+      Array.from(document.body.querySelectorAll('[data-testid]')).findIndex(
+        (element) => element.getAttribute('data-testid') === testId,
+      ),
+    );
+
+    expect(workflowOrder.every((position) => position >= 0)).toBe(true);
+    expect(workflowOrder).toEqual([...workflowOrder].sort((left, right) => left - right));
+  });
+
+  it('locks the task card and discrepancy overlay when the inbound document is Cancelled', async () => {
+    const fake = new FakeRepository([
+      makePlan({
+        status: 'Cancelled',
+        gateInStatus: 'Recorded',
+        gateInAt: '2026-06-22T09:00:00.000Z',
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+
+    renderPage('/inbound/inbound-plan-1/discrepancy/line-1');
+
+    expect(
+      await screen.findByText('Chứng từ đã hủy. Không thể tiếp tục thao tác nhập kho.'),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('inbound-discrepancy-overlay')).toBeNull();
+    expect(screen.queryByTestId('inbound-receiving-panel')).toBeNull();
+    expect(fake.startReceivingSession).not.toHaveBeenCalled();
+    expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
+  });
+
   it('blocks QC deep-link until a receipt line is confirmed', async () => {
     const fake = new FakeRepository([makePlan()]);
     allowReceiving(fake);
