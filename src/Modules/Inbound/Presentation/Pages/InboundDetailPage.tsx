@@ -1132,6 +1132,10 @@ export function InboundDetailPage() {
   function submitEvaluateQcTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!receivingSession || !confirmedReceiptLine || !canEvaluateQcTask) return;
+    // Re-evaluating QC can flip `required`; clear any prior recorded QC result so a
+    // fresh evaluation never rides on stale `recordedQcResult` data (no-op on the
+    // first-evaluate path where recordQcResult has no data yet).
+    mutations.recordQcResult.reset();
     mutations.evaluateQcTask.mutate(
       {
         receiptId: receivingSession.receiptId,

@@ -236,6 +236,14 @@ export function InboundReleasePutawayPanel({
               />
               Yêu cầu LPN
             </label>
+            {!releaseRequireLpn && (
+              <p
+                className="break-words text-sm text-muted-foreground"
+                data-testid="inbound-release-require-lpn-warning"
+              >
+                Kho có thể vẫn yêu cầu LPN dù tắt tùy chọn này.
+              </p>
+            )}
             <label
               className="flex items-center gap-2 text-sm"
               htmlFor="inbound-release-attempt-label-override"

@@ -195,6 +195,13 @@ export function InboundQcPanel({
     qcResultIdempotencyKey,
     qcResultReasonCode,
   });
+  // Two-step QC stays intact. When the evaluated task reports QC is NOT required
+  // we HIDE the record sub-form entirely (instead of rendering it disabled) and
+  // surface a clean read-only `QC: Không yêu cầu` state that unblocks the LPN
+  // step. The form still renders before evaluation (disabled, with helper) so the
+  // operator can see the second step is coming.
+  const qcNotRequired = Boolean(evaluatedQcTask && !evaluatedQcTask.required);
+  const showRecordForm = !qcNotRequired;
   const qcResultDisabled = !evaluatedQcTask?.required;
 
   return (
@@ -289,143 +296,145 @@ export function InboundQcPanel({
           </div>
         ) : null}
 
-        <form className="space-y-3 border-t pt-3" onSubmit={onSubmitQcResult}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-status">
-              Trạng thái kết quả QC
-              <select
-                id="inbound-qc-result-status"
-                name="qcResultStatus"
-                value={qcResultStatus}
-                onChange={(event) => onQcResultStatusChange(event.target.value as QcResultStatus)}
-                className="rounded-md border bg-background px-3 py-2 text-sm"
-                disabled={qcResultDisabled}
-              >
-                {QC_RESULT_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {vietnameseOperationalLabel(status)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-disposition-code">
-              Hướng xử lý QC
-              <select
-                id="inbound-qc-disposition-code"
-                name="qcDispositionCode"
-                value={qcDispositionCode}
-                onChange={(event) =>
-                  onQcDispositionCodeChange(event.target.value as QcDispositionCode)
-                }
-                className="rounded-md border bg-background px-3 py-2 text-sm"
-                disabled={qcResultDisabled}
-              >
-                {QC_DISPOSITION_CODES.map((code) => (
-                  <option key={code} value={code}>
-                    {vietnameseOperationalLabel(code)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-inspected-quantity">
-              Số lượng đã kiểm
+        {showRecordForm ? (
+          <form className="space-y-3 border-t pt-3" onSubmit={onSubmitQcResult}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-status">
+                Trạng thái kết quả QC
+                <select
+                  id="inbound-qc-result-status"
+                  name="qcResultStatus"
+                  value={qcResultStatus}
+                  onChange={(event) => onQcResultStatusChange(event.target.value as QcResultStatus)}
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                  disabled={qcResultDisabled}
+                >
+                  {QC_RESULT_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {vietnameseOperationalLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-disposition-code">
+                Hướng xử lý QC
+                <select
+                  id="inbound-qc-disposition-code"
+                  name="qcDispositionCode"
+                  value={qcDispositionCode}
+                  onChange={(event) =>
+                    onQcDispositionCodeChange(event.target.value as QcDispositionCode)
+                  }
+                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                  disabled={qcResultDisabled}
+                >
+                  {QC_DISPOSITION_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {vietnameseOperationalLabel(code)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-inspected-quantity">
+                Số lượng đã kiểm
+                <Input
+                  id="inbound-qc-inspected-quantity"
+                  name="qcInspectedQuantity"
+                  type="number"
+                  min="0.0001"
+                  value={qcInspectedQuantity}
+                  onChange={(event) => onQcInspectedQuantityChange(event.target.value)}
+                  disabled={qcResultDisabled}
+                />
+              </label>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-accepted-quantity">
+                Số lượng đạt
+                <Input
+                  id="inbound-qc-accepted-quantity"
+                  name="qcAcceptedQuantity"
+                  type="number"
+                  min="0"
+                  value={qcAcceptedQuantity}
+                  onChange={(event) => onQcAcceptedQuantityChange(event.target.value)}
+                  disabled={qcResultDisabled}
+                />
+              </label>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-rejected-quantity">
+                Số lượng loại
+                <Input
+                  id="inbound-qc-rejected-quantity"
+                  name="qcRejectedQuantity"
+                  type="number"
+                  min="0"
+                  value={qcRejectedQuantity}
+                  onChange={(event) => onQcRejectedQuantityChange(event.target.value)}
+                  disabled={qcResultDisabled}
+                />
+              </label>
+            </div>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-code">
+              Mã lý do kết quả QC
               <Input
-                id="inbound-qc-inspected-quantity"
-                name="qcInspectedQuantity"
-                type="number"
-                min="0.0001"
-                value={qcInspectedQuantity}
-                onChange={(event) => onQcInspectedQuantityChange(event.target.value)}
+                id="inbound-qc-result-reason-code"
+                name="qcResultReasonCode"
+                value={qcResultReasonCode}
+                onChange={(event) => onQcResultReasonCodeChange(event.target.value)}
+                placeholder="RC-V1-DISCREPANCY"
                 disabled={qcResultDisabled}
               />
             </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-accepted-quantity">
-              Số lượng đạt
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-note">
+              Ghi chú lý do kết quả QC
               <Input
-                id="inbound-qc-accepted-quantity"
-                name="qcAcceptedQuantity"
-                type="number"
-                min="0"
-                value={qcAcceptedQuantity}
-                onChange={(event) => onQcAcceptedQuantityChange(event.target.value)}
+                id="inbound-qc-result-reason-note"
+                name="qcResultReasonNote"
+                value={qcResultReasonNote}
+                onChange={(event) => onQcResultReasonNoteChange(event.target.value)}
+                placeholder="Đơn vị bị loại do hư hỏng"
                 disabled={qcResultDisabled}
               />
             </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-rejected-quantity">
-              Số lượng loại
+            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-evidence-refs">
+              Tham chiếu bằng chứng kết quả QC
               <Input
-                id="inbound-qc-rejected-quantity"
-                name="qcRejectedQuantity"
-                type="number"
-                min="0"
-                value={qcRejectedQuantity}
-                onChange={(event) => onQcRejectedQuantityChange(event.target.value)}
+                id="inbound-qc-result-evidence-refs"
+                name="qcResultEvidenceRefs"
+                value={qcResultEvidenceRefs}
+                onChange={(event) => onQcResultEvidenceRefsChange(event.target.value)}
+                placeholder="photo://qc/damaged-2"
                 disabled={qcResultDisabled}
               />
             </label>
-          </div>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-code">
-            Mã lý do kết quả QC
-            <Input
-              id="inbound-qc-result-reason-code"
-              name="qcResultReasonCode"
-              value={qcResultReasonCode}
-              onChange={(event) => onQcResultReasonCodeChange(event.target.value)}
-              placeholder="RC-V1-DISCREPANCY"
-              disabled={qcResultDisabled}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-note">
-            Ghi chú lý do kết quả QC
-            <Input
-              id="inbound-qc-result-reason-note"
-              name="qcResultReasonNote"
-              value={qcResultReasonNote}
-              onChange={(event) => onQcResultReasonNoteChange(event.target.value)}
-              placeholder="Đơn vị bị loại do hư hỏng"
-              disabled={qcResultDisabled}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-evidence-refs">
-            Tham chiếu bằng chứng kết quả QC
-            <Input
-              id="inbound-qc-result-evidence-refs"
-              name="qcResultEvidenceRefs"
-              value={qcResultEvidenceRefs}
-              onChange={(event) => onQcResultEvidenceRefsChange(event.target.value)}
-              placeholder="photo://qc/damaged-2"
-              disabled={qcResultDisabled}
-            />
-          </label>
-          <TechnicalDetails testId="inbound-qc-result-technical-details">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-idempotency-key">
-              Khóa idempotency kết quả QC
-              <Input
-                id="inbound-qc-result-idempotency-key"
-                name="qcResultIdempotencyKey"
-                value={qcResultIdempotencyKey}
-                onChange={(event) => onQcResultIdempotencyKeyChange(event.target.value)}
-                disabled={qcResultDisabled}
-              />
-            </label>
-          </TechnicalDetails>
-          <p
-            className="break-words text-sm text-muted-foreground"
-            data-testid="inbound-qc-result-helper"
-          >
-            {recordHelper}
-          </p>
-          <button
-            type="submit"
-            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canRecordQcResult || isRecordQcResultPending}
-          >
-            <ClipboardCheck className="size-4" />
-            Ghi nhận kết quả QC
-          </button>
-        </form>
+            <TechnicalDetails testId="inbound-qc-result-technical-details">
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-idempotency-key">
+                Khóa idempotency kết quả QC
+                <Input
+                  id="inbound-qc-result-idempotency-key"
+                  name="qcResultIdempotencyKey"
+                  value={qcResultIdempotencyKey}
+                  onChange={(event) => onQcResultIdempotencyKeyChange(event.target.value)}
+                  disabled={qcResultDisabled}
+                />
+              </label>
+            </TechnicalDetails>
+            <p
+              className="break-words text-sm text-muted-foreground"
+              data-testid="inbound-qc-result-helper"
+            >
+              {recordHelper}
+            </p>
+            <button
+              type="submit"
+              className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canRecordQcResult || isRecordQcResultPending}
+            >
+              <ClipboardCheck className="size-4" />
+              Ghi nhận kết quả QC
+            </button>
+          </form>
+        ) : null}
 
         {qcResult && (
           <p className="break-words text-sm text-muted-foreground">

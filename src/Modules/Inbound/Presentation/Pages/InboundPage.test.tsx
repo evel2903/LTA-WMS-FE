@@ -1594,10 +1594,7 @@ describe('InboundPage', () => {
       '/inbound/inbound-plan-1/discrepancy/line-1',
     );
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(
-      screen.getByLabelText('Mã tham chiếu bằng chứng'),
-      'photo://dock/over-qty-1',
-    );
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-1');
@@ -1754,9 +1751,7 @@ describe('InboundPage', () => {
       evidenceRefs: [],
     });
     await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId('inbound-workflow-step-qc').textContent).toContain(
-      'Không yêu cầu',
-    );
+    expect(screen.getByTestId('inbound-workflow-step-qc').textContent).toContain('Không yêu cầu');
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
 
     await actor.click(screen.getByTestId('inbound-workflow-step-button-qc'));
@@ -1764,10 +1759,17 @@ describe('InboundPage', () => {
     expect((await screen.findByTestId('inbound-qc-not-required-state')).textContent).toContain(
       'QC: Không yêu cầu',
     );
-    expect(screen.getByRole('button', { name: 'Ghi nhận kết quả QC' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    // QC fast path: when the evaluated task is NOT required the record sub-form is
+    // HIDDEN entirely (not merely disabled), so neither its submit button nor its
+    // quantity inputs are in the DOM, while the LPN step is unblocked.
+    expect(screen.queryByRole('button', { name: 'Ghi nhận kết quả QC' })).toBeNull();
+    expect(screen.queryByLabelText('Số lượng đã kiểm')).toBeNull();
+    expect(screen.queryByLabelText('Số lượng đạt')).toBeNull();
+    expect(screen.queryByLabelText('Số lượng loại')).toBeNull();
+    expect(screen.queryByLabelText('Trạng thái kết quả QC')).toBeNull();
+    // The two-step model is intact: the first action stays present and distinct.
+    expect(screen.getByRole('button', { name: 'Đánh giá QC' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Xác nhận QC' })).toBeNull();
     expect(screen.queryByText(/Bỏ qua QC|Đã bỏ qua|Báo vấn đề QC/i)).toBeNull();
     expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
 
@@ -1807,6 +1809,13 @@ describe('InboundPage', () => {
     await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
 
+    // LPN/SSCC terminology (never "Pallet"): the panel title and both code fields.
+    expect(screen.getByText('LPN/SSCC và phát hành cất hàng')).toBeTruthy();
+    expect(screen.getByLabelText('Mã LPN')).toBeTruthy();
+    expect(screen.getByLabelText('Mã SSCC')).toBeTruthy();
+    expect(screen.queryByText(/Pallet/i)).toBeNull();
+    expect(screen.queryByLabelText(/Pallet/i)).toBeNull();
+
     const releaseButton = screen.getByRole('button', { name: 'Phát hành sang cất hàng' });
     expect(releaseButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã LPN'), 'LPN-0001');
@@ -1818,6 +1827,18 @@ describe('InboundPage', () => {
 
     expect(await screen.findByText(/LPN LPN-0001 \/ 003456789012345678/i)).toBeTruthy();
     await openTechnicalDetails(actor, 'inbound-release-technical-details');
+    // Conditional upfront audit warning near releaseRequireLpn: it only matters once
+    // the operator turns the requirement OFF, so it is absent while "Yêu cầu LPN" is on.
+    expect(screen.queryByTestId('inbound-release-require-lpn-warning')).toBeNull();
+    // Turning the requirement off surfaces the warning that the backend
+    // WarehouseProfile may still require an LPN even when the UI option is off.
+    await actor.click(screen.getByLabelText('Yêu cầu LPN'));
+    expect(screen.getByTestId('inbound-release-require-lpn-warning').textContent).toContain(
+      'Kho có thể vẫn yêu cầu LPN dù tắt tùy chọn này',
+    );
+    // Re-enable the requirement so the release payload below asserts requireLpn: true.
+    await actor.click(screen.getByLabelText('Yêu cầu LPN'));
+    expect(screen.queryByTestId('inbound-release-require-lpn-warning')).toBeNull();
     await actor.clear(screen.getByLabelText('Mã vị trí hiện tại'));
     await actor.type(screen.getByLabelText('Mã vị trí hiện tại'), 'RCV-01');
     await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
@@ -1921,6 +1942,18 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
     expect(await screen.findByText(/QC PendingQc \/ PENDING_QC \/ Forced/i)).toBeTruthy();
 
+    // QC fast path: when required, the record sub-form is PRESENT and the three
+    // quantities are pre-filled / auto-balanced from the line's actualQuantity
+    // (inspected = accepted = 12, rejected = 0 so accepted + rejected === inspected).
+    expect(screen.queryByTestId('inbound-qc-not-required-state')).toBeNull();
+    expect(screen.getByLabelText('Số lượng đã kiểm')).toHaveProperty('value', '12');
+    expect(screen.getByLabelText('Số lượng đạt')).toHaveProperty('value', '12');
+    expect(screen.getByLabelText('Số lượng loại')).toHaveProperty('value', '0');
+    // Two distinct steps remain — no collapsed single QC button.
+    expect(screen.getByRole('button', { name: 'Đánh giá QC' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ghi nhận kết quả QC' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Xác nhận QC' })).toBeNull();
+
     fireEvent.change(screen.getByLabelText('Trạng thái kết quả QC'), {
       target: { value: 'Failed' },
     });
@@ -1995,9 +2028,9 @@ describe('InboundPage', () => {
     expect(routeButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), ',,');
-    expect(within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent).toContain(
-      'Nhập tham chiếu bằng chứng sai lệch',
-    );
+    expect(
+      within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent,
+    ).toContain('Nhập tham chiếu bằng chứng sai lệch');
     expect(routeButton).toHaveProperty('disabled', true);
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
@@ -2260,17 +2293,16 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(
-      screen.getByLabelText('Mã tham chiếu bằng chứng'),
-      'photo://dock/over-qty-1',
-    );
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
     await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-error');
     await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
 
     const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
-    expect(await within(discrepancyDialog).findByText(/Không thể chuyển xử lý sai lệch/i)).toBeTruthy();
+    expect(
+      await within(discrepancyDialog).findByText(/Không thể chuyển xử lý sai lệch/i),
+    ).toBeTruthy();
   });
 
   it('clears stale readiness override after gate-in is recorded', async () => {
