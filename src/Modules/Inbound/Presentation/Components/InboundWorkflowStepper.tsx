@@ -11,6 +11,7 @@ const stateLabels: Record<InboundWorkflowStepState, string> = {
   active: 'Đang xử lý',
   waiting: 'Đang chờ',
   blocked: 'Bị chặn',
+  skipped: 'Không yêu cầu',
 };
 
 const stateIcon = {
@@ -18,6 +19,7 @@ const stateIcon = {
   active: PlayCircle,
   waiting: CircleDashed,
   blocked: LockKeyhole,
+  skipped: CircleDashed,
 } satisfies Record<InboundWorkflowStepState, typeof CheckCircle2>;
 
 interface InboundWorkflowStepperProps {
@@ -75,6 +77,7 @@ export function InboundWorkflowStepper({
                 step.state === 'active' && 'border-primary bg-primary/5 text-foreground',
                 step.state === 'waiting' && 'bg-background text-muted-foreground',
                 step.state === 'blocked' && 'bg-muted/50 text-muted-foreground',
+                step.state === 'skipped' && 'border-sky-200 bg-sky-50 text-sky-950',
               )}
             >
               {onStepSelect ? (

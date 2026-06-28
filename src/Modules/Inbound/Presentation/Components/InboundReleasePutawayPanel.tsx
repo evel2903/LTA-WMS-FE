@@ -213,59 +213,62 @@ export function InboundReleasePutawayPanel({
         )}
 
         <form className="space-y-3 border-t pt-3" onSubmit={onSubmitReleaseInboundToPutaway}>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-release-current-location-code">
-            Mã vị trí hiện tại
-            <Input
-              id="inbound-release-current-location-code"
-              name="releaseCurrentLocationCode"
-              value={releaseCurrentLocationCode}
-              onChange={(event) => onReleaseCurrentLocationCodeChange(event.target.value)}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm" htmlFor="inbound-release-require-lpn">
-            <input
-              id="inbound-release-require-lpn"
-              name="releaseRequireLpn"
-              type="checkbox"
-              checked={releaseRequireLpn}
-              onChange={(event) => onReleaseRequireLpnChange(event.target.checked)}
-            />
-            Yêu cầu LPN
-          </label>
-          <label
-            className="flex items-center gap-2 text-sm"
-            htmlFor="inbound-release-attempt-label-override"
-          >
-            <input
-              id="inbound-release-attempt-label-override"
-              name="releaseAttemptLabelOverride"
-              type="checkbox"
-              checked={releaseAttemptLabelOverride}
-              onChange={(event) => onReleaseAttemptLabelOverrideChange(event.target.checked)}
-            />
-            Ghi đè nhãn
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-release-reason-code">
-            Mã lý do phát hành
-            <Input
-              id="inbound-release-reason-code"
-              name="releaseReasonCode"
-              value={releaseReasonCode}
-              onChange={(event) => onReleaseReasonCodeChange(event.target.value)}
-              placeholder="RC-V1-LABEL-OVERRIDE"
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-release-evidence-refs">
-            Tham chiếu bằng chứng phát hành
-            <Input
-              id="inbound-release-evidence-refs"
-              name="releaseEvidenceRefs"
-              value={releaseEvidenceRefs}
-              onChange={(event) => onReleaseEvidenceRefsChange(event.target.value)}
-              placeholder="photo://label/override-1"
-            />
-          </label>
           <TechnicalDetails testId="inbound-release-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-current-location-code">
+              Mã vị trí hiện tại
+              <Input
+                id="inbound-release-current-location-code"
+                name="releaseCurrentLocationCode"
+                value={releaseCurrentLocationCode}
+                onChange={(event) => onReleaseCurrentLocationCodeChange(event.target.value)}
+              />
+            </label>
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="inbound-release-require-lpn"
+            >
+              <input
+                id="inbound-release-require-lpn"
+                name="releaseRequireLpn"
+                type="checkbox"
+                checked={releaseRequireLpn}
+                onChange={(event) => onReleaseRequireLpnChange(event.target.checked)}
+              />
+              Yêu cầu LPN
+            </label>
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="inbound-release-attempt-label-override"
+            >
+              <input
+                id="inbound-release-attempt-label-override"
+                name="releaseAttemptLabelOverride"
+                type="checkbox"
+                checked={releaseAttemptLabelOverride}
+                onChange={(event) => onReleaseAttemptLabelOverrideChange(event.target.checked)}
+              />
+              Ghi đè nhãn
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-reason-code">
+              Mã lý do phát hành
+              <Input
+                id="inbound-release-reason-code"
+                name="releaseReasonCode"
+                value={releaseReasonCode}
+                onChange={(event) => onReleaseReasonCodeChange(event.target.value)}
+                placeholder="RC-V1-LABEL-OVERRIDE"
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-evidence-refs">
+              Tham chiếu bằng chứng phát hành
+              <Input
+                id="inbound-release-evidence-refs"
+                name="releaseEvidenceRefs"
+                value={releaseEvidenceRefs}
+                onChange={(event) => onReleaseEvidenceRefsChange(event.target.value)}
+                placeholder="photo://label/override-1"
+              />
+            </label>
             <label className="grid gap-1 text-sm" htmlFor="inbound-release-idempotency-key">
               Khóa idempotency phát hành
               <Input

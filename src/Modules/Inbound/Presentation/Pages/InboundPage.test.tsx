@@ -975,7 +975,7 @@ describe('InboundPage', () => {
     const blockedAction = await screen.findByTestId('inbound-action-blocked');
 
     expect(blockedAction.textContent).toContain(
-      'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/Pallet',
+      'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/SSCC',
     );
     expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
     expect(screen.queryByTestId('inbound-release-putaway-panel')).toBeNull();
@@ -1369,7 +1369,7 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
 
     await actor.click(screen.getByTestId('inbound-workflow-step-button-lpn'));
-    expect(await screen.findByText(/LPN\/Pallet: Xác nhận LPN\/Pallet sau QC/i)).toBeTruthy();
+    expect(await screen.findByText(/LPN\/SSCC: Xác nhận LPN\/SSCC sau QC/i)).toBeTruthy();
     expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
     expect(fake.confirmInboundLpn).not.toHaveBeenCalled();
 
@@ -1480,6 +1480,24 @@ describe('InboundPage', () => {
       evidenceRefs: [],
     });
     await waitFor(() => expect(fake.evaluateQcTask).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('inbound-workflow-step-qc').textContent).toContain(
+      'Không yêu cầu',
+    );
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-qc'));
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    expect((await screen.findByTestId('inbound-qc-not-required-state')).textContent).toContain(
+      'QC: Không yêu cầu',
+    );
+    expect(screen.getByRole('button', { name: 'Ghi nhận kết quả QC' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.queryByText(/Bỏ qua QC|Đã bỏ qua|Báo vấn đề QC/i)).toBeNull();
+    expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-lpn'));
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
   });
 
@@ -1521,9 +1539,9 @@ describe('InboundPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Xác nhận LPN/SSCC' }));
 
     expect(await screen.findByText(/LPN LPN-0001 \/ 003456789012345678/i)).toBeTruthy();
+    await openTechnicalDetails(actor, 'inbound-release-technical-details');
     await actor.clear(screen.getByLabelText('Mã vị trí hiện tại'));
     await actor.type(screen.getByLabelText('Mã vị trí hiện tại'), 'RCV-01');
-    await openTechnicalDetails(actor, 'inbound-release-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency phát hành'));
     await actor.type(screen.getByLabelText('Khóa idempotency phát hành'), 'release-1');
     await waitFor(() => expect(releaseButton).toHaveProperty('disabled', false));

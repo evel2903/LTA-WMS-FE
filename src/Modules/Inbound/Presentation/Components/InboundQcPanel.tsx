@@ -121,7 +121,7 @@ function getRecordQcHelper({
   qcResultReasonCode: string;
 }) {
   if (!evaluatedQcTask) return 'Cần đánh giá QC trước khi ghi nhận kết quả.';
-  if (!evaluatedQcTask.required) return 'QC không bắt buộc cho dòng này; không cần ghi kết quả.';
+  if (!evaluatedQcTask.required) return 'QC không yêu cầu cho dòng này; không cần ghi kết quả.';
   if (isPending) return 'Đang ghi nhận kết quả QC.';
   if (!qcResultIdempotencyKey.trim()) return 'Cần khóa idempotency kết quả QC.';
   if (Number(qcInspectedQuantity) <= 0) return 'Số lượng đã kiểm phải lớn hơn 0.';
@@ -271,12 +271,23 @@ export function InboundQcPanel({
           </button>
         </form>
 
-        {evaluatedQcTask && (
+        {evaluatedQcTask && !evaluatedQcTask.required ? (
+          <div
+            className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950"
+            data-testid="inbound-qc-not-required-state"
+          >
+            <p className="font-medium">QC: Không yêu cầu</p>
+            <p className="mt-1 break-words">
+              Rule hiện tại đưa dòng về {evaluatedQcTask.targetInventoryStatusCode}; không cần ghi
+              kết quả QC riêng.
+            </p>
+          </div>
+        ) : evaluatedQcTask ? (
           <div className="break-words text-sm text-muted-foreground">
             QC {evaluatedQcTask.taskStatus} / {evaluatedQcTask.inventoryStatusCode} /{' '}
-            {evaluatedQcTask.required ? evaluatedQcTask.triggerReason : 'Đã bỏ qua'}
+            {evaluatedQcTask.triggerReason}
           </div>
-        )}
+        ) : null}
 
         <form className="space-y-3 border-t pt-3" onSubmit={onSubmitQcResult}>
           <div className="grid gap-3 sm:grid-cols-2">

@@ -95,7 +95,9 @@ function resolveWorkflowStepState(
   activeStep: InboundWorkflowStepKey,
   done: boolean,
   blocked = false,
+  skipped = false,
 ): InboundWorkflowStepState {
+  if (skipped) return 'skipped';
   if (done) return 'done';
   if (blocked) return 'blocked';
   if (stepKey === activeStep) return 'active';
@@ -658,7 +660,8 @@ export function InboundDetailPage() {
   const needsDiscrepancyRouting = Boolean(
     confirmedReceiptLine?.discrepancySignals.length && !capturedDiscrepancy,
   );
-  const qcDone = Boolean(recordedQcResult || (evaluatedQcTask && !evaluatedQcTask.required));
+  const qcSkipped = Boolean(evaluatedQcTask && !evaluatedQcTask.required);
+  const qcDone = Boolean(recordedQcResult || qcSkipped);
   const lpnDone = Boolean(confirmedInboundLpn);
   const releaseDone = Boolean(putawayRelease);
   const isDiscrepancyRoute = Boolean(routeDiscrepancyLineId);
@@ -700,11 +703,11 @@ export function InboundDetailPage() {
             : null
       : activeWorkflowStep === 'lpn'
         ? !receivingSession
-          ? 'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/Pallet.'
+          ? 'Cần bắt đầu phiên tiếp nhận trước khi xác nhận LPN/SSCC.'
           : !confirmedReceiptLine
-            ? 'Cần xác nhận dòng tiếp nhận trước khi xác nhận LPN/Pallet.'
+            ? 'Cần xác nhận dòng tiếp nhận trước khi xác nhận LPN/SSCC.'
             : !putawayReady
-              ? 'Cần QC đưa dòng về READY_FOR_PUTAWAY trước khi xác nhận LPN/Pallet.'
+              ? 'Cần QC đưa dòng về READY_FOR_PUTAWAY trước khi xác nhận LPN/SSCC.'
               : null
         : activeWorkflowStep === 'release'
           ? !receivingSession
@@ -714,7 +717,7 @@ export function InboundDetailPage() {
               : !putawayReady
                 ? 'Cần trạng thái READY_FOR_PUTAWAY trước khi release.'
                 : releaseRequireLpn && !confirmedInboundLpn
-                ? 'Cần xác nhận LPN/Pallet trước khi release vì cấu hình đang yêu cầu LPN.'
+                ? 'Cần xác nhận LPN/SSCC trước khi release vì cấu hình đang yêu cầu LPN.'
                 : null
           : null);
   const workflowSteps: InboundWorkflowStep[] = [
@@ -746,15 +749,17 @@ export function InboundDetailPage() {
     {
       key: 'qc',
       label: 'QC',
-      description: qcDone
-        ? 'QC đã có kết quả hoặc được bỏ qua.'
+      description: qcSkipped
+        ? 'QC không yêu cầu cho dòng này.'
+        : qcDone
+          ? 'QC đã có kết quả.'
         : 'Đánh giá QC sau khi có dòng tiếp nhận.',
-      state: resolveWorkflowStepState('qc', activeWorkflowStep, qcDone, !receivingDone),
+      state: resolveWorkflowStepState('qc', activeWorkflowStep, qcDone, !receivingDone, qcSkipped),
     },
     {
       key: 'lpn',
-      label: 'LPN/Pallet',
-      description: lpnDone ? 'Đã xác nhận LPN/Pallet.' : 'Xác nhận LPN/Pallet sau QC.',
+      label: 'LPN/SSCC',
+      description: lpnDone ? 'Đã xác nhận LPN/SSCC.' : 'Xác nhận LPN/SSCC sau QC.',
       state: resolveWorkflowStepState('lpn', activeWorkflowStep, lpnDone, !putawayReady),
     },
     {
@@ -820,7 +825,7 @@ export function InboundDetailPage() {
                           ? vietnameseOperationalLabel(recordedQcResult.resultStatus)
                           : evaluatedQcTask?.required
                             ? vietnameseOperationalLabel(evaluatedQcTask.taskStatus)
-                            : 'Bỏ qua QC',
+                            : 'Không yêu cầu QC',
                       },
                       {
                         label: 'Hướng xử lý QC',
@@ -1157,7 +1162,7 @@ export function InboundDetailPage() {
       setStepperSelectionMessage(null);
       return;
     }
-    if (step.state === 'active') {
+    if (step.state === 'active' || step.state === 'waiting' || step.state === 'skipped') {
       setCompletedSummaryStepKey(null);
       setStepperSelectionMessage(null);
       if (selected) {
@@ -1286,7 +1291,7 @@ export function InboundDetailPage() {
         : activeWorkflowStep === 'qc'
           ? 'QC'
           : activeWorkflowStep === 'lpn'
-            ? 'LPN/Pallet'
+            ? 'LPN/SSCC'
             : 'Release';
 
   const recentActivityItems = useMemo(() => {
@@ -1308,14 +1313,14 @@ export function InboundDetailPage() {
       items.push(
         evaluatedQcTask.required
           ? `QC: cần kiểm tra, trạng thái ${vietnameseOperationalLabel(evaluatedQcTask.taskStatus)}`
-          : 'QC: được bỏ qua theo rule hiện tại',
+          : 'QC: Không yêu cầu theo rule hiện tại',
       );
     }
     if (recordedQcResult) {
       items.push(`Kết quả QC: ${vietnameseOperationalLabel(recordedQcResult.resultStatus)}`);
     }
     if (confirmedInboundLpn) {
-      items.push(`LPN/Pallet: ${confirmedInboundLpn.lpnCode}`);
+      items.push(`LPN/SSCC: ${confirmedInboundLpn.lpnCode}`);
     }
     if (putawayRelease) {
       items.push(`Release: ${formatDateTime(putawayRelease.releasedAt)}`);
