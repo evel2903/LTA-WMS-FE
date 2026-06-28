@@ -1261,6 +1261,55 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
   }, 15_000);
 
+  it('opens completed-step summary from the stepper without re-firing mutations', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-summary');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-receiving'));
+    const summary = await screen.findByTestId('inbound-completed-step-summary');
+    expect(within(summary).getByText('Tóm tắt bước đã hoàn tất')).toBeTruthy();
+    expect(within(summary).getByText(/Tiếp nhận - Dòng 1 - SKU-A/i)).toBeTruthy();
+    expect(within(summary).getByText('Số lượng thực nhận')).toBeTruthy();
+    expect(within(summary).getByText('12 EA')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Xác nhận nhận hàng' })).toBeNull();
+    expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1);
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-qc'));
+    expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-lpn'));
+    expect(await screen.findByText(/LPN\/Pallet: Xác nhận LPN\/Pallet sau QC/i)).toBeTruthy();
+    expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
+    expect(fake.confirmInboundLpn).not.toHaveBeenCalled();
+
+    await actor.click(screen.getByTestId('inbound-workflow-step-button-receiving'));
+    expect(await screen.findByTestId('inbound-completed-step-summary')).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Đóng tóm tắt bước đã hoàn tất' }));
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-next-action-panel')).toBe(document.activeElement),
+    );
+  }, 15_000);
+
   it('routes a confirmed discrepancy line with reason, evidence and idempotency', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);

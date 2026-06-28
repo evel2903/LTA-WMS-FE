@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent, ReactNode, Ref } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
@@ -14,6 +14,10 @@ import {
   useInboundPlan,
   useReceivingReadiness,
 } from '@modules/Inbound/Application/Queries/UseInboundPlans';
+import {
+  InboundCompletedStepSummary,
+  type InboundCompletedStepSummaryViewModel,
+} from '@modules/Inbound/Presentation/Components/InboundCompletedStepSummary';
 import { InboundDiscrepancySheet } from '@modules/Inbound/Presentation/Components/InboundDiscrepancySheet';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
@@ -251,9 +255,22 @@ function InboundTechnicalDetails({
   );
 }
 
-function NextActionShell({ children, title }: { children: ReactNode; title: string }) {
+function NextActionShell({
+  children,
+  panelRef,
+  title,
+}: {
+  children: ReactNode;
+  panelRef?: Ref<HTMLElement>;
+  title: string;
+}) {
   return (
-    <section data-testid="inbound-next-action-panel" className="min-w-0 space-y-3">
+    <section
+      ref={panelRef}
+      tabIndex={-1}
+      data-testid="inbound-next-action-panel"
+      className="min-w-0 space-y-3 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    >
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-muted-foreground">
@@ -288,7 +305,11 @@ export function InboundDetailPage() {
   const navigate = useNavigate();
   const isCreateRoute = !routePlanId;
   const [selectedId, setSelectedId] = useState<string | null>(routePlanId ?? null);
+  const actionPanelRef = useRef<HTMLElement | null>(null);
   const lineButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [completedSummaryStepKey, setCompletedSummaryStepKey] =
+    useState<InboundWorkflowStepKey | null>(null);
+  const [stepperSelectionMessage, setStepperSelectionMessage] = useState<string | null>(null);
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -642,6 +663,109 @@ export function InboundDetailPage() {
       ),
     },
   ];
+  const completedSummaryStep = workflowSteps.find((step) => step.key === completedSummaryStepKey);
+  const selectedLineLabel = selectedLine
+    ? `Dòng ${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
+    : undefined;
+  const completedStepSummary: InboundCompletedStepSummaryViewModel | null =
+    completedSummaryStep?.state === 'done'
+      ? {
+          stepLabel: completedSummaryStep.label,
+          lineLabel:
+            completedSummaryStep.key === 'gate-in' ? undefined : selectedLineLabel ?? 'Chưa chọn dòng',
+          limitation:
+            'Tóm tắt này chỉ phản ánh dữ liệu trong phiên hiện tại; sau reload cần read model riêng.',
+          items:
+            completedSummaryStep.key === 'gate-in'
+              ? [
+                  { label: 'Trạng thái cổng', value: vietnameseOperationalLabel(selected?.gateInStatus ?? 'Recorded') },
+                  { label: 'Thời điểm vào cổng', value: formatDateTime(selected?.gateInAt) },
+                  { label: 'Tham chiếu cổng', value: selected?.gateReference ?? 'Chưa có' },
+                  { label: 'Xe', value: selected?.vehicleNumber ?? 'Chưa có' },
+                ]
+              : completedSummaryStep.key === 'receiving' && confirmedReceiptLine
+                ? [
+                    {
+                      label: 'Dòng tiếp nhận',
+                      value: `Dòng ${confirmedReceiptLine.lineNumber}`,
+                    },
+                    {
+                      label: 'Số lượng thực nhận',
+                      value: `${formatQuantity(confirmedReceiptLine.actualQuantity)} ${
+                        confirmedReceiptLine.uomCode ?? ''
+                      }`.trim(),
+                    },
+                    {
+                      label: 'Trạng thái dòng',
+                      value: vietnameseOperationalLabel(confirmedReceiptLine.status),
+                    },
+                    {
+                      label: 'Mã lý do',
+                      value: confirmedReceiptLine.reasonCode ?? 'Không có',
+                    },
+                  ]
+                : completedSummaryStep.key === 'qc'
+                  ? [
+                      {
+                        label: 'Kết luận QC',
+                        value: recordedQcResult
+                          ? vietnameseOperationalLabel(recordedQcResult.resultStatus)
+                          : evaluatedQcTask?.required
+                            ? vietnameseOperationalLabel(evaluatedQcTask.taskStatus)
+                            : 'Bỏ qua QC',
+                      },
+                      {
+                        label: 'Hướng xử lý QC',
+                        value: recordedQcResult
+                          ? vietnameseOperationalLabel(recordedQcResult.dispositionCode)
+                          : 'Không yêu cầu QC',
+                      },
+                      {
+                        label: 'Trạng thái tồn sau QC',
+                        value:
+                          recordedQcResult?.targetInventoryStatusCode ??
+                          evaluatedQcTask?.targetInventoryStatusCode ??
+                          'Chưa có',
+                      },
+                      {
+                        label: 'Số lượng kiểm',
+                        value: recordedQcResult
+                          ? formatQuantity(recordedQcResult.inspectedQuantity)
+                          : evaluatedQcTask
+                            ? formatQuantity(evaluatedQcTask.actualQuantity)
+                            : 'Chưa có',
+                      },
+                    ]
+                  : completedSummaryStep.key === 'lpn' && confirmedInboundLpn
+                    ? [
+                        { label: 'LPN', value: confirmedInboundLpn.lpnCode },
+                        { label: 'SSCC', value: confirmedInboundLpn.ssccCode ?? 'Không có' },
+                        {
+                          label: 'Số lượng',
+                          value: `${formatQuantity(confirmedInboundLpn.quantity)} ${
+                            confirmedInboundLpn.uomCode ?? ''
+                          }`.trim(),
+                        },
+                        { label: 'Thời điểm xác nhận', value: formatDateTime(confirmedInboundLpn.confirmedAt) },
+                      ]
+                    : completedSummaryStep.key === 'release' && putawayRelease
+                      ? [
+                          { label: 'Mã phát hành', value: putawayRelease.id },
+                          {
+                            label: 'Trạng thái tồn',
+                            value: putawayRelease.inventoryStatusCode,
+                          },
+                          {
+                            label: 'Số lượng',
+                            value: `${formatQuantity(putawayRelease.quantity)} ${
+                              putawayRelease.uomCode ?? ''
+                            }`.trim(),
+                          },
+                          { label: 'Thời điểm release', value: formatDateTime(putawayRelease.releasedAt) },
+                        ]
+                      : [{ label: 'Dữ liệu phiên', value: 'Chưa có dữ liệu tóm tắt trong phiên này' }],
+        }
+      : null;
 
   useEffect(() => {
     if (routePlanId && selectedId !== routePlanId) {
@@ -664,6 +788,11 @@ export function InboundDetailPage() {
       setSelectedLineId(routeDiscrepancyLineId);
     }
   }, [routeDiscrepancyLineId, selected?.lines, selectedLineId]);
+
+  useEffect(() => {
+    setCompletedSummaryStepKey(null);
+    setStepperSelectionMessage(null);
+  }, [selected?.id, selectedLine?.id]);
 
   useEffect(() => {
     setGateReference('');
@@ -903,6 +1032,30 @@ export function InboundDetailPage() {
     navigateToReceivingAndFocusSelectedLine();
   }
 
+  function closeCompletedStepSummary() {
+    setCompletedSummaryStepKey(null);
+    window.setTimeout(() => actionPanelRef.current?.focus(), 0);
+  }
+
+  function selectWorkflowStep(step: InboundWorkflowStep) {
+    if (step.state === 'done') {
+      setCompletedSummaryStepKey(step.key);
+      setStepperSelectionMessage(null);
+      return;
+    }
+    if (step.state === 'active') {
+      setCompletedSummaryStepKey(null);
+      setStepperSelectionMessage(null);
+      if (selected) {
+        void navigate(ROUTES.INBOUND.ACTION(selected.id, step.key));
+      }
+      window.setTimeout(() => actionPanelRef.current?.focus(), 0);
+      return;
+    }
+    setCompletedSummaryStepKey(null);
+    setStepperSelectionMessage(`${step.label}: ${step.description}`);
+  }
+
   function submitDiscrepancy(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!receivingSession || !confirmedReceiptLine || !canCaptureDiscrepancy) return;
@@ -1111,7 +1264,11 @@ export function InboundDetailPage() {
                   <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
                   <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
                 </div>
-                <InboundWorkflowStepper steps={workflowSteps} />
+                <InboundWorkflowStepper
+                  steps={workflowSteps}
+                  selectedStepKey={completedSummaryStepKey}
+                  onStepSelect={selectWorkflowStep}
+                />
                 <div className="hidden overflow-x-auto md:block">
                   <table className="w-full min-w-[640px] text-sm">
                     <thead>
@@ -1302,8 +1459,23 @@ export function InboundDetailPage() {
             </Card>
           )}
 
-          <NextActionShell title={nextActionTitle}>
-            {blockedActionMessage && <InboundBlockedActionHelper message={blockedActionMessage} />}
+          <NextActionShell
+            panelRef={actionPanelRef}
+            title={completedStepSummary ? `Tóm tắt ${completedStepSummary.stepLabel}` : nextActionTitle}
+          >
+            {completedStepSummary ? (
+              <InboundCompletedStepSummary
+                summary={completedStepSummary}
+                onClose={closeCompletedStepSummary}
+              />
+            ) : (
+              <>
+                {stepperSelectionMessage && (
+                  <InboundBlockedActionHelper message={stepperSelectionMessage} />
+                )}
+                {blockedActionMessage && (
+                  <InboundBlockedActionHelper message={blockedActionMessage} />
+                )}
 
             {activeWorkflowStep === 'gate-in' && (
               <InboundGateInPanel
@@ -1452,6 +1624,8 @@ export function InboundDetailPage() {
                   ssccCode={ssccCode}
                 />
               )}
+              </>
+            )}
           </NextActionShell>
 
           {selected && (
