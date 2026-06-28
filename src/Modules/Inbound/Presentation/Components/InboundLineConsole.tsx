@@ -32,6 +32,21 @@ interface InboundLineConsoleProps {
   children: ReactNode;
   /** Single authoritative blocked message (also feeds the ribbon). */
   blockedMessage?: string | null;
+  /**
+   * `true` when the focused line is eligible to report a discrepancy (the single
+   * canonical trigger is rendered but disabled until eligible). When `false` the
+   * trigger stays visible-but-disabled with a helper; when the trigger should be
+   * fully hidden (terminal / no plan) pass `showDiscrepancyTrigger={false}`.
+   */
+  canReportDiscrepancy?: boolean;
+  /** Helper line under the discrepancy trigger explaining its disabled state. */
+  discrepancyTriggerHelper?: string;
+  /**
+   * Label for the discrepancy trigger button. Defaults to `Báo sai lệch dòng
+   * này`; switches to a review/update wording once a discrepancy is on file so
+   * the operator can tell one was already reported.
+   */
+  discrepancyTriggerLabel?: string;
   /** `false` while a completed-step summary is shown (hides the step indicator). */
   isSummaryOpen: boolean;
   /**
@@ -39,7 +54,15 @@ interface InboundLineConsoleProps {
    * the active `Bước:` indicator is suppressed and no panels render.
    */
   isTerminal?: boolean;
+  /** Opens the single canonical discrepancy overlay route for the focused line. */
+  onOpenDiscrepancy?: () => void;
   panelRef?: Ref<HTMLElement>;
+  /**
+   * Whether to render the single canonical `Báo sai lệch dòng này` trigger. It
+   * is suppressed when terminal, when a completed-step summary is open, or when
+   * there is no focused line.
+   */
+  showDiscrepancyTrigger?: boolean;
   /** The one authoritative step indicator value, e.g. `Tiếp nhận hàng`. */
   stepLabel: string;
   /** Subordinate action label folded into the `Bước:` indicator, e.g. `Tiếp nhận hàng`. */
@@ -60,14 +83,24 @@ interface InboundLineConsoleProps {
 export function InboundLineConsole({
   children,
   blockedMessage,
+  canReportDiscrepancy = false,
+  discrepancyTriggerHelper,
+  discrepancyTriggerLabel = 'Báo sai lệch dòng này',
   isSummaryOpen,
   isTerminal = false,
+  onOpenDiscrepancy,
   panelRef,
+  showDiscrepancyTrigger = false,
   stepLabel,
   stepActionLabel,
   title,
 }: InboundLineConsoleProps) {
   const showStepIndicator = !isSummaryOpen && !isTerminal;
+  // The single canonical discrepancy trigger lives in the focused-line context.
+  // It is suppressed entirely when terminal or while a completed-step summary is
+  // open; otherwise it shows (disabled until the line is eligible).
+  const renderDiscrepancyTrigger =
+    showDiscrepancyTrigger && !isTerminal && !isSummaryOpen && Boolean(onOpenDiscrepancy);
   return (
     <section
       ref={panelRef}
@@ -100,6 +133,28 @@ export function InboundLineConsole({
       </div>
       {(isTerminal || !isSummaryOpen) && blockedMessage ? (
         <InboundBlockedActionHelper message={blockedMessage} />
+      ) : null}
+      {renderDiscrepancyTrigger ? (
+        <div className="space-y-1" data-testid="inbound-discrepancy-trigger">
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canReportDiscrepancy}
+            onClick={onOpenDiscrepancy}
+            data-testid="inbound-discrepancy-trigger-button"
+          >
+            <AlertTriangle className="size-4" aria-hidden="true" />
+            {discrepancyTriggerLabel}
+          </button>
+          {discrepancyTriggerHelper ? (
+            <p
+              className="break-words text-sm text-muted-foreground"
+              data-testid="inbound-discrepancy-trigger-helper"
+            >
+              {discrepancyTriggerHelper}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {children}
     </section>

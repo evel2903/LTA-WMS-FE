@@ -586,7 +586,7 @@ export function InboundDetailPage() {
         : !confirmedReceiptLine
           ? 'Cần xác nhận dòng tiếp nhận trước khi QC.'
           : needsDiscrepancyRouting
-            ? 'Dòng tiếp nhận đang có sai lệch, cần chuyển xử lý sai lệch trước khi QC.'
+            ? 'Dòng có sai lệch — xử lý trước khi QC'
             : null
       : activeWorkflowStep === 'lpn'
         ? !receivingSession
@@ -1023,9 +1023,10 @@ export function InboundDetailPage() {
   function openDiscrepancyOverlay() {
     if (!selected || !selectedLine || isCancelledTerminal) return;
     const signalType = confirmedReceiptLine?.discrepancySignals[0];
-    if (signalType) {
-      setDiscrepancyType(signalType);
-    }
+    // Pre-seed from the line's first signal when present; otherwise reset to the
+    // documented default so a no-signal line never inherits the previous line's
+    // stale type.
+    setDiscrepancyType(signalType ?? 'QuantityVariance');
     setDiscrepancyIdempotencyKey(
       `discrepancy-${confirmedReceiptLine?.id ?? selectedLine.id}-${Date.now()}`,
     );
@@ -1268,6 +1269,30 @@ export function InboundDetailPage() {
     : selectedLineLabel ?? 'Chưa chọn dòng';
   // Subordinate action label folded into the `Bước:` indicator.
   const consoleStepActionLabel = nextActionTitle;
+  // Single canonical discrepancy trigger lives in the focused-line console. It
+  // only appears once the focused line is received (a `confirmedReceiptLine`
+  // exists) — discrepancy capture requires one, so showing it earlier (e.g. on
+  // gate-in) would be a disabled, meaningless control. It then remains available
+  // across receiving/qc/lpn/release as a valid line action.
+  const showDiscrepancyTrigger = Boolean(confirmedReceiptLine) && !isCancelledTerminal;
+  const canReportDiscrepancy = Boolean(confirmedReceiptLine) && !isCancelledTerminal;
+  // Once a discrepancy has been filed in-session for the focused line, surface
+  // that state near the trigger so the operator can tell it was already reported.
+  const filedDiscrepancyStatusLabel = capturedDiscrepancy
+    ? vietnameseOperationalLabel(capturedDiscrepancy.status)
+    : null;
+  const discrepancyTriggerHelper = filedDiscrepancyStatusLabel
+    ? `Đã báo sai lệch — ${filedDiscrepancyStatusLabel}.`
+    : confirmedReceiptLine
+      ? needsDiscrepancyRouting
+        ? 'Dòng có sai lệch — mở để chuyển xử lý trước khi QC.'
+        : 'Mở báo sai lệch cho dòng đang chọn khi cần điều phối ngoại lệ.'
+      : 'Cần xác nhận dòng tiếp nhận trước khi báo sai lệch.';
+  // Relabel the trigger once a discrepancy is on file so it reads as a review /
+  // update action rather than a first-time report.
+  const discrepancyTriggerLabel = filedDiscrepancyStatusLabel
+    ? 'Xem/cập nhật sai lệch'
+    : 'Báo sai lệch dòng này';
 
   return (
     <div className="space-y-4">
@@ -1450,6 +1475,11 @@ export function InboundDetailPage() {
             blockedMessage={consoleBlockedMessage}
             isSummaryOpen={isConsoleSummaryOpen}
             isTerminal={isCancelledTerminal}
+            showDiscrepancyTrigger={showDiscrepancyTrigger}
+            canReportDiscrepancy={canReportDiscrepancy}
+            discrepancyTriggerHelper={discrepancyTriggerHelper}
+            discrepancyTriggerLabel={discrepancyTriggerLabel}
+            onOpenDiscrepancy={openDiscrepancyOverlay}
           >
             {terminalActionMessage ? null : completedStepSummary ? (
               <InboundCompletedStepSummary
@@ -1486,13 +1516,9 @@ export function InboundDetailPage() {
               <InboundReceivingPanel
                 canConfirmReceiptLine={canConfirmReceiptLine}
                 canStartReceiving={canStartReceiving}
-                confirmedReceiptLine={confirmedReceiptLine}
-                discrepancyResult={capturedDiscrepancy}
-                hasCaptureDiscrepancyError={captureDiscrepancyErrorMatchesSelectedLine}
                 hasPlan={Boolean(selected)}
                 isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
                 isStartReceivingPending={mutations.startReceivingSession.isPending}
-                onOpenDiscrepancy={openDiscrepancyOverlay}
                 onReceiptActualQuantityChange={setReceiptActualQuantity}
                 onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
                 onReceiptManualConfirmChange={setReceiptManualConfirm}

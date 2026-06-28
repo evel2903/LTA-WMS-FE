@@ -1488,14 +1488,17 @@ describe('InboundPage', () => {
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    // The single canonical discrepancy trigger lives in the focused-line console;
+    // the receiving panel no longer co-renders a competing trigger.
+    expect(screen.queryByTestId('inbound-discrepancy-entry')).toBeNull();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     expect(screen.getByTestId('location-probe').textContent).toBe(
       '/inbound/inbound-plan-1/discrepancy/line-1',
     );
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(
-      screen.getByLabelText('Bằng chứng (mã tham chiếu)'),
+      screen.getByLabelText('Mã tham chiếu bằng chứng'),
       'photo://dock/over-qty-1',
     );
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
@@ -1519,14 +1522,102 @@ describe('InboundPage', () => {
         '/inbound/inbound-plan-1/receiving',
       ),
     );
+    // Post-submit the single canonical overlay closes back to /receiving; the
+    // receiving panel renders and focus returns to the focused line in the rail.
     expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
-    expect(
-      await screen.findByText(/Sai lệch Chờ phê duyệt \/ Ngoại lệ exception-1 \/ cần phê duyệt/i),
-    ).toBeTruthy();
+    expect(screen.queryByTestId('inbound-discrepancy-overlay')).toBeNull();
     await waitFor(() =>
       expect(screen.getByTestId('inbound-line-rail-button-line-1')).toBe(document.activeElement),
     );
   });
+
+  it('keeps discrepancy as the single canonical surface: no inline trigger, reference-code evidence, no file picker', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+
+    // The receiving panel must NOT co-render a competing discrepancy surface.
+    const receivingPanel = screen.getByTestId('inbound-receiving-panel');
+    expect(within(receivingPanel).queryByTestId('inbound-discrepancy-entry')).toBeNull();
+    expect(within(receivingPanel).queryByRole('button', { name: /Báo sai lệch/i })).toBeNull();
+
+    // Before a receipt line is confirmed the trigger is hidden entirely (it would
+    // otherwise be a disabled, meaningless control with no line to report on).
+    expect(screen.queryByTestId('inbound-discrepancy-trigger')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Báo sai lệch/i })).toBeNull();
+
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    const enabledTrigger = screen.getByRole('button', { name: 'Báo sai lệch dòng này' });
+    await waitFor(() => expect(enabledTrigger).toHaveProperty('disabled', false));
+    await actor.click(enabledTrigger);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
+    expect(screen.getByTestId('location-probe').textContent).toBe(
+      '/inbound/inbound-plan-1/discrepancy/line-1',
+    );
+    // Evidence is a reference-code field — exact relabel, no upload/"Thêm ảnh" wording.
+    expect(within(dialog).getByLabelText('Mã tham chiếu bằng chứng')).toBeTruthy();
+    expect(within(dialog).queryByLabelText('Bằng chứng (mã tham chiếu)')).toBeNull();
+    expect(within(dialog).queryByText(/Thêm ảnh|Tải ảnh|Tải lên/i)).toBeNull();
+    // No file picker anywhere in the discrepancy surface.
+    expect(dialog.querySelector('input[type="file"]')).toBeNull();
+    // First input (reason code) is focused on open.
+    expect(within(dialog).getByLabelText('Mã lý do sai lệch')).toBe(document.activeElement);
+  }, 15_000);
+
+  it('surfaces the AC5 discrepancy-routing cue on the focused line before capture', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+
+    // Same `needsDiscrepancyRouting` predicate that drives the QC blocked card:
+    // the focused-line discrepancy trigger nudges the operator to handle the
+    // discrepancy before QC, and the canonical trigger is enabled to do so.
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-discrepancy-trigger-helper').textContent).toContain(
+        'Dòng có sai lệch',
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Báo sai lệch dòng này' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+  }, 15_000);
 
   it('evaluates QC skipped after a confirmed receipt line', async () => {
     const actor = userEvent.setup();
@@ -1799,12 +1890,12 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
     const routeButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     expect(routeButton).toHaveProperty('disabled', true);
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
-    await actor.type(screen.getByLabelText('Bằng chứng (mã tham chiếu)'), ',,');
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), ',,');
     expect(within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent).toContain(
       'Nhập tham chiếu bằng chứng sai lệch',
     );
@@ -1857,12 +1948,130 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Sai SKU/i)).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     expect(screen.getByLabelText('Loại sai lệch')).toHaveProperty('value', 'WrongSku');
   }, 15_000);
 
-  it('keeps stale discrepancy routing visible but blocked when a different source line is selected', async () => {
+  it('resets discrepancy type to the default when opening a no-signal line', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    // Confirm the full expected quantity (12) so the line carries NO discrepancy
+    // signal; opening the overlay must still land on the documented default type
+    // rather than inheriting a stale value.
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '12');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    const trigger = await screen.findByRole('button', { name: 'Báo sai lệch dòng này' });
+    await waitFor(() => expect(trigger).toHaveProperty('disabled', false));
+    await actor.click(trigger);
+    expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
+    expect(screen.getByLabelText('Loại sai lệch')).toHaveProperty('value', 'QuantityVariance');
+  }, 15_000);
+
+  it('hides the discrepancy trigger before a confirmed line and shows it after', async () => {
+    const actor = userEvent.setup();
+
+    // Gate-in step: a line is focused but no receipt line is confirmed yet, so the
+    // canonical trigger must be hidden (not a disabled, meaningless control).
+    const gateInFake = new FakeRepository([makePlan()]);
+    allowReceiving(gateInFake);
+    repo.current = gateInFake;
+    const gateInView = renderPage('/inbound/inbound-plan-1/gate-in');
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    expect(screen.getByTestId('inbound-gate-in-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-discrepancy-trigger')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Báo sai lệch/i })).toBeNull();
+    gateInView.unmount();
+    cleanup();
+
+    // Receiving step: still hidden before confirm; appears once a line is received.
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    expect(screen.queryByTestId('inbound-discrepancy-trigger')).toBeNull();
+
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByTestId('inbound-discrepancy-trigger')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Báo sai lệch dòng này' })).toBeTruthy();
+  }, 15_000);
+
+  it('surfaces the filed-discrepancy status near the trigger after capture', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
+    expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
+    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
+    await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
+    await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-1');
+    await actor.click(screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' }));
+
+    await waitFor(() => expect(fake.captureDiscrepancy).toHaveBeenCalledTimes(1));
+    // Overlay closes back to /receiving and the focused-line console now makes the
+    // filed state obvious: a status line + a relabelled review/update trigger.
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-discrepancy-trigger-helper').textContent).toContain(
+        'Đã báo sai lệch — Chờ phê duyệt',
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Xem/cập nhật sai lệch' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Báo sai lệch dòng này' })).toBeNull();
+  }, 15_000);
+
+  it('hides the discrepancy trigger when a different, not-yet-received source line is selected', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([
       makePlan({
@@ -1907,18 +2116,21 @@ describe('InboundPage', () => {
       screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
     );
 
-    expect(await screen.findByTestId('inbound-discrepancy-entry')).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: /Dòng 2 — SKU-B/i }));
-    await waitFor(() =>
-      expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
-        'Cần xác nhận dòng tiếp nhận',
-      ),
-    );
-    expect(screen.queryByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Báo sai lệch' })).toHaveProperty(
+    // Single canonical trigger lives in the focused-line console; the receiving
+    // panel no longer co-renders a competing discrepancy surface.
+    expect(screen.queryByTestId('inbound-discrepancy-entry')).toBeNull();
+    expect(await screen.findByTestId('inbound-discrepancy-trigger')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Báo sai lệch dòng này' })).toHaveProperty(
       'disabled',
-      true,
+      false,
     );
+    // Switching to line-2 (no confirmed receipt line) hides the trigger entirely:
+    // discrepancy capture requires a received line, and line-1's filed state must
+    // not leak onto the newly focused line.
+    await actor.click(screen.getByRole('button', { name: /Dòng 2 — SKU-B/i }));
+    await waitFor(() => expect(screen.queryByTestId('inbound-discrepancy-trigger')).toBeNull());
+    expect(screen.queryByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Báo sai lệch/i })).toBeNull();
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
@@ -1946,11 +2158,11 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch' }));
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
     await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(
-      screen.getByLabelText('Bằng chứng (mã tham chiếu)'),
+      screen.getByLabelText('Mã tham chiếu bằng chứng'),
       'photo://dock/over-qty-1',
     );
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');

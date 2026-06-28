@@ -247,7 +247,7 @@ export function InboundDiscrepancySheet({
               />
             </label>
             <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-evidence-refs">
-              Bằng chứng (mã tham chiếu)
+              Mã tham chiếu bằng chứng
               <Input
                 id="inbound-discrepancy-evidence-refs"
                 name="discrepancyEvidenceRefs"

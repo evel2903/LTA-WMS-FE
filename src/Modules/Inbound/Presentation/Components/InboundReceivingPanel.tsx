@@ -1,12 +1,11 @@
 import type { FormEvent, ReactNode } from 'react';
 
-import { AlertTriangle, PlayCircle, ScanLine } from 'lucide-react';
+import { PlayCircle, ScanLine } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import type {
-  InboundDiscrepancy,
   InboundPlanLine,
   ReceiptLine,
   ReceivingSession,
@@ -15,13 +14,9 @@ import type {
 interface InboundReceivingPanelProps {
   canConfirmReceiptLine: boolean;
   canStartReceiving: boolean;
-  confirmedReceiptLine: ReceiptLine | null;
-  discrepancyResult: InboundDiscrepancy | null;
-  hasCaptureDiscrepancyError: boolean;
   hasPlan: boolean;
   isConfirmReceiptLinePending: boolean;
   isStartReceivingPending: boolean;
-  onOpenDiscrepancy: () => void;
   onReceiptActualQuantityChange: (value: string) => void;
   onReceiptIdempotencyKeyChange: (value: string) => void;
   onReceiptManualConfirmChange: (value: boolean) => void;
@@ -114,13 +109,9 @@ function formatQuantity(value: number) {
 export function InboundReceivingPanel({
   canConfirmReceiptLine,
   canStartReceiving,
-  confirmedReceiptLine,
-  discrepancyResult,
-  hasCaptureDiscrepancyError,
   hasPlan,
   isConfirmReceiptLinePending,
   isStartReceivingPending,
-  onOpenDiscrepancy,
   onReceiptActualQuantityChange,
   onReceiptIdempotencyKeyChange,
   onReceiptManualConfirmChange,
@@ -159,7 +150,6 @@ export function InboundReceivingPanel({
     receivingSession,
     selectedLine,
   });
-  const discrepancySignals = confirmedReceiptLine?.discrepancySignals ?? [];
 
   return (
     <Card data-testid="inbound-receiving-panel">
@@ -315,48 +305,6 @@ export function InboundReceivingPanel({
             </p>
           )}
         </form>
-
-        <div
-          className="space-y-3 rounded-md border p-3"
-          data-testid="inbound-discrepancy-entry"
-        >
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <AlertTriangle className="size-4" />
-            Báo sai lệch
-          </div>
-          {discrepancySignals.length ? (
-            <div className="break-words text-xs text-muted-foreground">
-              Tín hiệu: {discrepancySignals.map(vietnameseOperationalLabel).join(', ')}
-            </div>
-          ) : null}
-          <p
-            className="break-words text-sm text-muted-foreground"
-            data-testid="inbound-discrepancy-helper"
-          >
-            {confirmedReceiptLine
-              ? 'Mở biểu mẫu sai lệch khi dòng đã nhận cần điều phối ngoại lệ.'
-              : 'Cần xác nhận dòng tiếp nhận trước khi báo sai lệch.'}
-          </p>
-          <button
-            type="button"
-            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!confirmedReceiptLine}
-            onClick={onOpenDiscrepancy}
-          >
-            <AlertTriangle className="size-4" />
-            Báo sai lệch
-          </button>
-          {discrepancyResult && (
-            <p className="break-words text-sm text-muted-foreground">
-              Sai lệch {vietnameseOperationalLabel(discrepancyResult.status)} / Ngoại lệ{' '}
-              {discrepancyResult.exceptionCaseId}
-              {discrepancyResult.status === 'PendingApproval' ? ' / cần phê duyệt' : ''}
-            </p>
-          )}
-          {hasCaptureDiscrepancyError ? (
-            <p className="text-sm text-destructive">Không thể chuyển xử lý sai lệch.</p>
-          ) : null}
-        </div>
       </CardContent>
     </Card>
   );
