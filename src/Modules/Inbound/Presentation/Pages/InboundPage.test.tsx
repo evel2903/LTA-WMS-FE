@@ -761,12 +761,19 @@ describe('InboundPage', () => {
     renderPage();
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
-    expect(screen.getByText('SKU-A')).toBeTruthy();
+    const railForList = screen.getByTestId('inbound-line-rail');
+    expect(within(railForList).getByText(/Dòng 1 — SKU-A/i)).toBeTruthy();
     expect(screen.getByText(/Dự kiến đến: 2026-06-22T08:00:00.000Z/i)).toBeTruthy();
     expect(screen.getByText(/Dấu vết CoreFlow: core-flow-1/i)).toBeTruthy();
-    expect(screen.getByText('10')).toBeTruthy();
+    expect(within(railForList).getByText(/Tham chiếu: 10/i)).toBeTruthy();
     expect(await screen.findByTestId('inbound-operator-header')).toBeTruthy();
-    expect(screen.getByTestId('inbound-next-action-panel')).toBeTruthy();
+    // Line rail is the single unified line picker; focused console replaces the old aside.
+    expect(screen.getByTestId('inbound-line-rail')).toBeTruthy();
+    expect(screen.getByTestId('inbound-line-console')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-line-queue')).toBeNull();
+    expect(screen.queryByTestId('inbound-next-action-panel')).toBeNull();
+    // One authoritative step indicator in the console.
+    expect(screen.getByTestId('inbound-console-step-indicator').textContent).toContain('Bước:');
     expect(screen.getByTestId('inbound-gate-in-panel')).toBeTruthy();
     expect(fake.validateReadiness).toHaveBeenCalledWith('inbound-plan-1', {
       attemptOverride: false,
@@ -801,10 +808,78 @@ describe('InboundPage', () => {
           /Đang xử lý|Bị chặn/,
         ),
       ).toBeTruthy();
-      expect(screen.getAllByTestId('inbound-next-action-panel')).toHaveLength(1);
+      // Single focused console with one authoritative step indicator.
+      expect(screen.getAllByTestId('inbound-line-console')).toHaveLength(1);
+      expect(screen.getAllByTestId('inbound-console-step-indicator')).toHaveLength(1);
 
       view.unmount();
     }
+  });
+
+  it('renders the line rail as the single unified line picker with per-line stage chips', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    repo.current = fake;
+    renderPage();
+
+    const rail = await screen.findByTestId('inbound-line-rail');
+    // Lists every plan line.
+    expect(within(rail).getByText(/Dòng 1 — SKU-A/i)).toBeTruthy();
+    expect(within(rail).getByText(/Dòng 2 — SKU-B/i)).toBeTruthy();
+    // Focused line (line-1) carries aria-current; non-focused lines honestly show "Chưa bắt đầu".
+    expect(screen.getByTestId('inbound-line-rail-button-line-1').getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(screen.getByTestId('inbound-line-rail-button-line-2').getAttribute('aria-current')).toBe(
+      null,
+    );
+    expect(screen.getByTestId('inbound-line-stage-chip-line-2').textContent).toContain(
+      'Chưa bắt đầu',
+    );
+
+    // Selecting a line moves focus through the single setSelectedLineId mechanism.
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    expect(screen.getByTestId('inbound-line-rail-button-line-2').getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(screen.getByTestId('inbound-workflow-progress-caption').textContent).toContain(
+      'Dòng 2 — SKU-B',
+    );
+  });
+
+  it('shows the blocked reason as a prominent single-source card inside the console', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/qc');
+
+    const consoleEl = await screen.findByTestId('inbound-line-console');
+    const blockedCard = within(consoleEl).getByTestId('inbound-action-blocked');
+    // Single prominent blocked card, not muted fine print, not a popup.
+    expect(blockedCard.textContent).toContain('Cần bắt đầu phiên tiếp nhận trước khi QC');
+    expect(screen.getAllByTestId('inbound-action-blocked')).toHaveLength(1);
+    // The active panel is suppressed while blocked.
+    expect(screen.queryByTestId('inbound-qc-panel')).toBeNull();
+    // The ribbon remains read-only: clicking a non-done step does not open a popup.
+    expect(within(consoleEl).getByTestId('inbound-console-step-indicator').textContent).toContain(
+      'Bước:',
+    );
   });
 
   it('renders gate-in and readiness panels with visible disabled helpers', async () => {
@@ -899,8 +974,12 @@ describe('InboundPage', () => {
     const header = await screen.findByTestId('inbound-operator-header');
     expect(within(header).getByText('Chứng từ: Đã đóng')).toBeTruthy();
     expect(within(header).queryByText('Đã đóng')).toBeNull();
-    expect(within(header).getByText('Bước hiện tại - Dòng: Dòng 1 - SKU-A')).toBeTruthy();
-    expect(within(header).getByText('Tiến độ hiển thị theo dòng đang chọn.')).toBeTruthy();
+    // Document band no longer carries the step metric / "Bước hiện tại - Dòng" cue card.
+    expect(within(header).queryByText(/Bước hiện tại/i)).toBeNull();
+    expect(within(header).queryByTestId('inbound-current-step-line-cue')).toBeNull();
+    expect(screen.getByTestId('inbound-workflow-progress-caption').textContent).toContain(
+      'Dòng 1 — SKU-A',
+    );
 
     const toggle = within(header).getByTestId('inbound-operator-header-toggle');
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
@@ -917,8 +996,9 @@ describe('InboundPage', () => {
     const workflowOrder = [
       'inbound-operator-header',
       'inbound-workflow-progress',
-      'inbound-next-action-panel',
-      'inbound-line-queue',
+      'inbound-line-rail',
+      'inbound-line-console',
+      'inbound-document-info',
       'inbound-recent-activity',
       'inbound-technical-details',
     ].map((testId) =>
@@ -1020,7 +1100,7 @@ describe('InboundPage', () => {
     await expectReadinessAllowed();
     expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '12');
 
-    await actor.click(screen.getByRole('button', { name: /Dòng 2 - SKU-B/i }));
+    await actor.click(screen.getByRole('button', { name: /Dòng 2 — SKU-B/i }));
 
     expect(screen.getByTestId('inbound-current-line').textContent).toContain('SKU-B');
     expect(screen.getByLabelText('Số lượng thực nhận')).toHaveProperty('value', '24');
@@ -1358,7 +1438,7 @@ describe('InboundPage', () => {
     await actor.click(screen.getByTestId('inbound-workflow-step-button-receiving'));
     const summary = await screen.findByTestId('inbound-completed-step-summary');
     expect(within(summary).getByText('Tóm tắt bước đã hoàn tất')).toBeTruthy();
-    expect(within(summary).getByText(/Tiếp nhận - Dòng 1 - SKU-A/i)).toBeTruthy();
+    expect(within(summary).getByText(/Tiếp nhận - Dòng 1 — SKU-A/i)).toBeTruthy();
     expect(within(summary).getByText('Số lượng thực nhận')).toBeTruthy();
     expect(within(summary).getByText('12 EA')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Xác nhận nhận hàng' })).toBeNull();
@@ -1368,8 +1448,12 @@ describe('InboundPage', () => {
     expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
 
+    // Clicking a blocked step in the read-only ribbon is INERT: it must NOT raise
+    // a prominent blocked card over the active QC panel nor open a summary.
     await actor.click(screen.getByTestId('inbound-workflow-step-button-lpn'));
-    expect(await screen.findByText(/LPN\/SSCC: Xác nhận LPN\/SSCC sau QC/i)).toBeTruthy();
+    expect(screen.getByTestId('inbound-qc-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-action-blocked')).toBeNull();
+    expect(screen.queryByText(/LPN\/SSCC: Xác nhận LPN\/SSCC sau QC/i)).toBeNull();
     expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
     expect(fake.confirmInboundLpn).not.toHaveBeenCalled();
 
@@ -1377,7 +1461,7 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-completed-step-summary')).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Đóng tóm tắt bước đã hoàn tất' }));
     await waitFor(() =>
-      expect(screen.getByTestId('inbound-next-action-panel')).toBe(document.activeElement),
+      expect(screen.getByTestId('inbound-line-console')).toBe(document.activeElement),
     );
   }, 15_000);
 
@@ -1440,7 +1524,7 @@ describe('InboundPage', () => {
       await screen.findByText(/Sai lệch Chờ phê duyệt \/ Ngoại lệ exception-1 \/ cần phê duyệt/i),
     ).toBeTruthy();
     await waitFor(() =>
-      expect(screen.getByTestId('inbound-line-queue-button-line-1')).toBe(document.activeElement),
+      expect(screen.getByTestId('inbound-line-rail-button-line-1')).toBe(document.activeElement),
     );
   });
 
@@ -1497,8 +1581,12 @@ describe('InboundPage', () => {
     expect(screen.queryByText(/Bỏ qua QC|Đã bỏ qua|Báo vấn đề QC/i)).toBeNull();
     expect(screen.queryByTestId('inbound-completed-step-summary')).toBeNull();
 
+    // The read-only ribbon is no longer the navigator: clicking a `waiting` step
+    // (LPN, here reachable but not active) is INERT and never raises a prominent
+    // blocked card over the open QC panel.
     await actor.click(screen.getByTestId('inbound-workflow-step-button-lpn'));
-    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
+    expect(screen.getByTestId('inbound-qc-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-action-blocked')).toBeNull();
   });
 
   it('confirms LPN/SSCC and releases READY_FOR_PUTAWAY line to putaway', async () => {
@@ -1820,7 +1908,7 @@ describe('InboundPage', () => {
     );
 
     expect(await screen.findByTestId('inbound-discrepancy-entry')).toBeTruthy();
-    await actor.click(screen.getByRole('button', { name: 'Chọn dòng 2' }));
+    await actor.click(screen.getByRole('button', { name: /Dòng 2 — SKU-B/i }));
     await waitFor(() =>
       expect(screen.getByTestId('inbound-discrepancy-helper').textContent).toContain(
         'Cần xác nhận dòng tiếp nhận',

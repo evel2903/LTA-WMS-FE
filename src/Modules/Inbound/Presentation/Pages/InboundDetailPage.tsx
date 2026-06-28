@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, ReactNode, Ref } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 
@@ -7,7 +7,6 @@ import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { cn } from '@shared/Utils/Cn';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import {
@@ -20,6 +19,9 @@ import {
 } from '@modules/Inbound/Presentation/Components/InboundCompletedStepSummary';
 import { InboundDiscrepancySheet } from '@modules/Inbound/Presentation/Components/InboundDiscrepancySheet';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
+import { InboundLineConsole } from '@modules/Inbound/Presentation/Components/InboundLineConsole';
+import { InboundLineRail } from '@modules/Inbound/Presentation/Components/InboundLineRail';
+import { deriveFocusedLineStage } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
 import { InboundReceivingPanel } from '@modules/Inbound/Presentation/Components/InboundReceivingPanel';
@@ -35,7 +37,6 @@ import type {
   InboundDiscrepancyType,
   InboundLpn,
   InboundPlan,
-  InboundPlanLine,
   InboundPutawayRelease,
   QcDispositionCode,
   QcResultStatus,
@@ -125,19 +126,8 @@ function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function InboundOperatorHeader({
-  activeStepLabel,
-  plan,
-  selectedLine,
-}: {
-  activeStepLabel: string;
-  plan: InboundPlan;
-  selectedLine: InboundPlanLine | null;
-}) {
+function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
   const [expanded, setExpanded] = useState(false);
-  const selectedLineLabel = selectedLine
-    ? `Dòng ${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
-    : 'Chưa chọn dòng';
 
   return (
     <Card data-testid="inbound-operator-header">
@@ -149,47 +139,34 @@ function InboundOperatorHeader({
               ASN {plan.sourceDocumentNumber || plan.businessReference}
             </p>
           </div>
-          <button
-            type="button"
-            className="min-h-10 shrink-0 rounded-md border px-2 text-sm font-medium hover:bg-muted"
-            aria-expanded={expanded}
-            aria-controls="inbound-operator-header-details"
-            data-testid="inbound-operator-header-toggle"
-            onClick={() => setExpanded((current) => !current)}
-          >
-            {expanded ? (
-              <ChevronUp className="size-4" aria-hidden="true" />
-            ) : (
-              <ChevronDown className="size-4" aria-hidden="true" />
-            )}
-            <span className="sr-only">
-              {expanded ? 'Thu gọn header nhập kho' : 'Mở rộng header nhập kho'}
-            </span>
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <LifecycleStatusBadge value={plan.status} />
-          <span className="rounded-md border bg-background px-2 py-1 text-xs font-medium">
-            Cổng: {vietnameseOperationalLabel(plan.gateInStatus)}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <LifecycleStatusBadge value={plan.status} />
+            <button
+              type="button"
+              className="min-h-10 shrink-0 rounded-md border px-2 text-sm font-medium hover:bg-muted"
+              aria-expanded={expanded}
+              aria-controls="inbound-operator-header-details"
+              data-testid="inbound-operator-header-toggle"
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? (
+                <ChevronUp className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              )}
+              <span className="sr-only">
+                {expanded ? 'Thu gọn header nhập kho' : 'Mở rộng header nhập kho'}
+              </span>
+            </button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <dl className="grid gap-2 sm:grid-cols-3">
           <DetailMetric label="ASN" value={plan.sourceDocumentNumber || plan.businessReference} />
           <DetailMetric label="Nhà cung cấp" value={plan.supplierCode ?? 'Chưa có mã'} />
           <DetailMetric label="Kho" value={plan.warehouseCode ?? 'Chưa có mã'} />
-          <DetailMetric label="Bước hiện tại" value={activeStepLabel} />
         </dl>
-        <div
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-          data-testid="inbound-current-step-line-cue"
-        >
-          <p className="font-medium">Bước hiện tại - Dòng: {selectedLineLabel}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Tiến độ hiển thị theo dòng đang chọn.
-          </p>
-        </div>
         {expanded && (
           <dl
             id="inbound-operator-header-details"
@@ -208,10 +185,12 @@ function InboundOperatorHeader({
 }
 
 function InboundWorkflowProgressBand({
+  caption,
   completedSummaryStepKey,
   onStepSelect,
   steps,
 }: {
+  caption: string;
   completedSummaryStepKey: InboundWorkflowStepKey | null;
   onStepSelect: (step: InboundWorkflowStep) => void;
   steps: InboundWorkflowStep[];
@@ -219,7 +198,10 @@ function InboundWorkflowProgressBand({
   return (
     <Card data-testid="inbound-workflow-progress">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Tiến độ thao tác</CardTitle>
+        <CardTitle className="text-base">Tiến độ dòng đang chọn</CardTitle>
+        <p className="text-sm text-muted-foreground" data-testid="inbound-workflow-progress-caption">
+          {caption}
+        </p>
       </CardHeader>
       <CardContent>
         <InboundWorkflowStepper
@@ -227,60 +209,6 @@ function InboundWorkflowProgressBand({
           selectedStepKey={completedSummaryStepKey}
           onStepSelect={onStepSelect}
         />
-      </CardContent>
-    </Card>
-  );
-}
-
-function InboundLineQueue({
-  lines,
-  onSelect,
-  registerLineButton,
-  selectedLineId,
-}: {
-  lines: InboundPlanLine[];
-  onSelect: (line: InboundPlanLine) => void;
-  registerLineButton: (lineId: string, element: HTMLButtonElement | null) => void;
-  selectedLineId: string | null;
-}) {
-  return (
-    <Card data-testid="inbound-line-queue">
-      <CardHeader>
-        <CardTitle className="text-base">Danh sách dòng còn lại</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Chọn dòng để hệ thống tự điền số lượng dự kiến vào phần tiếp nhận.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {lines.map((line) => {
-          const isSelected = line.id === selectedLineId;
-          return (
-            <button
-              key={line.id}
-              type="button"
-              className={cn(
-                'min-h-11 w-full rounded-md border px-3 py-2 text-left text-sm transition hover:bg-muted',
-                isSelected && 'border-primary bg-primary/5',
-              )}
-              onClick={() => onSelect(line)}
-              aria-pressed={isSelected}
-              data-testid={`inbound-line-queue-button-${line.id}`}
-              ref={(element) => registerLineButton(line.id, element)}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate font-medium">
-                  Dòng {line.lineNumber} - {line.skuCode ?? line.skuId}
-                </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatQuantity(line.expectedQuantity)} {line.uomCode ?? ''}
-                </span>
-              </span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">
-                Tham chiếu: {line.externalLineReference ?? 'không có'}
-              </span>
-            </button>
-          );
-        })}
       </CardContent>
     </Card>
   );
@@ -346,46 +274,6 @@ function InboundTechnicalDetails({
   );
 }
 
-function NextActionShell({
-  children,
-  panelRef,
-  title,
-}: {
-  children: ReactNode;
-  panelRef?: Ref<HTMLElement>;
-  title: string;
-}) {
-  return (
-    <section
-      ref={panelRef}
-      tabIndex={-1}
-      data-testid="inbound-next-action-panel"
-      className="min-w-0 space-y-3 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">
-          Hệ thống chỉ hiển thị hành động cần xử lý ngay ở bước hiện tại.
-        </p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function InboundBlockedActionHelper({ message }: { message: string }) {
-  return (
-    <Card data-testid="inbound-action-blocked">
-      <CardHeader>
-        <CardTitle className="text-base">Thao tác chưa sẵn sàng</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{message}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function InboundDetailPage() {
   const {
     id: routePlanId,
@@ -400,7 +288,6 @@ export function InboundDetailPage() {
   const lineButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [completedSummaryStepKey, setCompletedSummaryStepKey] =
     useState<InboundWorkflowStepKey | null>(null);
-  const [stepperSelectionMessage, setStepperSelectionMessage] = useState<string | null>(null);
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -778,8 +665,20 @@ export function InboundDetailPage() {
   const activeWorkflowStepLabel =
     workflowSteps.find((step) => step.key === activeWorkflowStep)?.label ?? 'Chưa xác định';
   const selectedLineLabel = selectedLine
-    ? `Dòng ${selectedLine.lineNumber} - ${selectedLine.skuCode ?? selectedLine.skuId}`
+    ? `Dòng ${selectedLine.lineNumber} — ${selectedLine.skuCode ?? selectedLine.skuId}`
     : undefined;
+  const focusedLineRibbonCaption = selectedLine
+    ? `Tiến độ dòng đang chọn: Dòng ${selectedLine.lineNumber} — ${
+        selectedLine.skuCode ?? selectedLine.skuId
+      }`
+    : 'Chưa chọn dòng nào để theo dõi tiến độ.';
+  const focusedLineStage = deriveFocusedLineStage({
+    gateInDone,
+    receivingDone,
+    qcDone,
+    lpnDone,
+    releaseDone,
+  });
   const completedStepSummary: InboundCompletedStepSummaryViewModel | null =
     completedSummaryStep?.state === 'done'
       ? {
@@ -904,7 +803,6 @@ export function InboundDetailPage() {
 
   useEffect(() => {
     setCompletedSummaryStepKey(null);
-    setStepperSelectionMessage(null);
   }, [selected?.id, selectedLine?.id]);
 
   useEffect(() => {
@@ -1151,28 +1049,28 @@ export function InboundDetailPage() {
   }
 
   function selectWorkflowStep(step: InboundWorkflowStep) {
+    // Terminal docs: the console already shows the prominent terminal message;
+    // every ribbon click just refocuses the console with no active step.
     if (terminalActionMessage) {
       setCompletedSummaryStepKey(null);
-      setStepperSelectionMessage(terminalActionMessage);
       window.setTimeout(() => actionPanelRef.current?.focus(), 0);
       return;
     }
+    // `done` → open the read-only completed-step summary.
     if (step.state === 'done') {
       setCompletedSummaryStepKey(step.key);
-      setStepperSelectionMessage(null);
       return;
     }
-    if (step.state === 'active' || step.state === 'waiting' || step.state === 'skipped') {
+    // `active`/`skipped` → focus the console on that step's panel. The line rail +
+    // console is the navigator now; `waiting`/`blocked` ribbon clicks are INERT so
+    // they can never raise the prominent blocked card over an active panel.
+    if (step.state === 'active' || step.state === 'skipped') {
       setCompletedSummaryStepKey(null);
-      setStepperSelectionMessage(null);
       if (selected) {
         void navigate(ROUTES.INBOUND.ACTION(selected.id, step.key));
       }
       window.setTimeout(() => actionPanelRef.current?.focus(), 0);
-      return;
     }
-    setCompletedSummaryStepKey(null);
-    setStepperSelectionMessage(`${step.label}: ${step.description}`);
   }
 
   function submitDiscrepancy(event: FormEvent<HTMLFormElement>) {
@@ -1356,99 +1254,42 @@ export function InboundDetailPage() {
     );
   }
 
+  // Prominent amber card reflects ONLY the current active step's blocker (or the
+  // terminal explanation). A read-only ribbon click must never raise it.
+  const consoleBlockedMessage = terminalActionMessage ?? blockedActionMessage;
+  // When the doc is terminal the terminal message always wins; an open
+  // completed-step summary must not swallow the terminal explanation.
+  const isConsoleSummaryOpen = Boolean(completedStepSummary) && !isCancelledTerminal;
+  // The prominent console title is the FOCUSED LINE; `Bước:` stays a separate
+  // indicator below it. When a completed-step summary is open the title may show
+  // that step instead.
+  const consoleTitle = isConsoleSummaryOpen
+    ? `Tóm tắt ${completedStepSummary?.stepLabel}`
+    : selectedLineLabel ?? 'Chưa chọn dòng';
+  // Subordinate action label folded into the `Bước:` indicator.
+  const consoleStepActionLabel = nextActionTitle;
+
   return (
     <div className="space-y-4">
       {selected && (
         <>
-          <InboundOperatorHeader
-            activeStepLabel={activeWorkflowStepLabel}
-            plan={selected}
-            selectedLine={selectedLine}
-          />
+          <InboundOperatorHeader plan={selected} />
           <InboundWorkflowProgressBand
+            caption={focusedLineRibbonCaption}
             completedSummaryStepKey={completedSummaryStepKey}
             steps={workflowSteps}
             onStepSelect={selectWorkflowStep}
           />
         </>
       )}
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <section className="hidden min-w-0 space-y-4 md:block">
-          {selected && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Kế hoạch và dòng hàng</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <LifecycleStatusBadge value={selected.status} />
-                  <StatusBadge value={selected.gateInStatus} />
-                  <span className="text-muted-foreground text-sm">
-                    {selected.businessReference}
-                  </span>
-                  {selected.isDuplicate ? (
-                    <span className="text-muted-foreground text-sm">
-                      Đã dùng lại kế hoạch nhập kho hiện có.
-                    </span>
-                  ) : null}
-                </div>
-                <div className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
-                  <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
-                  <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
-                </div>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[640px] text-sm">
-                    <thead>
-                      <tr className="border-b text-left">
-                        <th className="py-2">Dòng</th>
-                        <th className="py-2">SKU</th>
-                        <th className="py-2">UOM</th>
-                        <th className="py-2 text-right">Dự kiến</th>
-                        <th className="py-2 text-right">Tham chiếu ngoài</th>
-                        <th className="py-2 text-right">Tiếp nhận</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.lines.map((line) => (
-                        <tr key={line.id} className="border-b last:border-0">
-                          <td className="py-2">{line.lineNumber}</td>
-                          <td className="py-2">{line.skuCode ?? line.skuId}</td>
-                          <td className="py-2">{line.uomCode ?? line.uomId}</td>
-                          <td className="py-2 text-right">{line.expectedQuantity}</td>
-                          <td className="py-2 text-right">{line.externalLineReference ?? '-'}</td>
-                          <td className="py-2 text-right">
-                            <button
-                              type="button"
-                              className={cn(
-                                'min-h-10 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted',
-                                selectedLine?.id === line.id && 'border-primary bg-primary/5',
-                              )}
-                              onClick={() => {
-                                setSelectedLineId(line.id);
-                                setReceiptActualQuantity(String(line.expectedQuantity));
-                              }}
-                            >
-                              Chọn dòng {line.lineNumber}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </section>
 
-        <aside className="min-w-0 space-y-4">
-          {isCreateRoute && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Tạo chứng từ nguồn</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-3" onSubmit={submitCreate}>
+      {isCreateRoute && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tạo chứng từ nguồn</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={submitCreate}>
                   <label className="grid gap-1 text-sm">
                     Hệ thống nguồn
                     <Input
@@ -1586,32 +1427,37 @@ export function InboundDetailPage() {
             </Card>
           )}
 
-          <NextActionShell
+      {selected && (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <InboundLineRail
+            focusedLineStage={focusedLineStage}
+            lines={selected.lines}
+            selectedLineId={selectedLine?.id ?? null}
+            registerLineButton={(lineId, element) => {
+              lineButtonRefs.current[lineId] = element;
+            }}
+            onSelect={(line) => {
+              setSelectedLineId(line.id);
+              setReceiptActualQuantity(String(line.expectedQuantity));
+            }}
+          />
+
+          <InboundLineConsole
             panelRef={actionPanelRef}
-            title={
-              terminalActionMessage
-                ? 'Chứng từ đã kết thúc'
-                : completedStepSummary
-                  ? `Tóm tắt ${completedStepSummary.stepLabel}`
-                  : nextActionTitle
-            }
+            title={consoleTitle}
+            stepLabel={activeWorkflowStepLabel}
+            stepActionLabel={consoleStepActionLabel}
+            blockedMessage={consoleBlockedMessage}
+            isSummaryOpen={isConsoleSummaryOpen}
+            isTerminal={isCancelledTerminal}
           >
-            {terminalActionMessage ? (
-              <InboundBlockedActionHelper message={terminalActionMessage} />
-            ) : completedStepSummary ? (
+            {terminalActionMessage ? null : completedStepSummary ? (
               <InboundCompletedStepSummary
                 summary={completedStepSummary}
                 onClose={closeCompletedStepSummary}
               />
             ) : (
               <>
-                {stepperSelectionMessage && (
-                  <InboundBlockedActionHelper message={stepperSelectionMessage} />
-                )}
-                {blockedActionMessage && (
-                  <InboundBlockedActionHelper message={blockedActionMessage} />
-                )}
-
             {activeWorkflowStep === 'gate-in' && (
               <InboundGateInPanel
                 gateReference={gateReference}
@@ -1761,34 +1607,41 @@ export function InboundDetailPage() {
               )}
               </>
             )}
-          </NextActionShell>
+          </InboundLineConsole>
+        </div>
+      )}
 
-          {selected && (
-            <>
-              <InboundLineQueue
-                lines={selected.lines}
-                selectedLineId={selectedLine?.id ?? null}
-                registerLineButton={(lineId, element) => {
-                  lineButtonRefs.current[lineId] = element;
-                }}
-                onSelect={(line) => {
-                  setSelectedLineId(line.id);
-                  setReceiptActualQuantity(String(line.expectedQuantity));
-                }}
-              />
-              <InboundRecentActivity items={recentActivityItems} />
-              <InboundTechnicalDetails
-                confirmedInboundLpn={confirmedInboundLpn}
-                plan={selected}
-                putawayRelease={putawayRelease}
-                readiness={readiness}
-                receiptLine={confirmedReceiptLine}
-                receivingSession={receivingSession ?? null}
-              />
-            </>
-          )}
-        </aside>
-      </div>
+      {selected && (
+        <div className="space-y-4">
+          <Card data-testid="inbound-document-info">
+            <CardContent className="space-y-3 pt-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge value={selected.gateInStatus} />
+                <span className="text-muted-foreground text-sm">{selected.businessReference}</span>
+                {selected.isDuplicate ? (
+                  <span className="text-muted-foreground text-sm">
+                    Đã dùng lại kế hoạch nhập kho hiện có.
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
+                <span>Dự kiến đến: {selected.expectedArrivalAt ?? 'chưa thiết lập'}</span>
+                <span>Dấu vết CoreFlow: {selected.coreFlowInstanceId ?? 'chưa liên kết'}</span>
+              </div>
+            </CardContent>
+          </Card>
+          <InboundRecentActivity items={recentActivityItems} />
+          <InboundTechnicalDetails
+            confirmedInboundLpn={confirmedInboundLpn}
+            plan={selected}
+            putawayRelease={putawayRelease}
+            readiness={readiness}
+            receiptLine={confirmedReceiptLine}
+            receivingSession={receivingSession ?? null}
+          />
+        </div>
+      )}
+
       {selected && (
         <InboundDiscrepancySheet
           canCaptureDiscrepancy={canCaptureDiscrepancy}
