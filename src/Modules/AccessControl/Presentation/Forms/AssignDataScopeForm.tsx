@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import {
   DATA_SCOPE_LABELS,
   DATA_SCOPE_TYPES,
@@ -76,14 +77,14 @@ export function AssignDataScopeForm({
       )}
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={disabled || pending}>
-          Gán scope
+          Gán phạm vi
         </Button>
-        {conflict && (
-          <span className="text-destructive text-xs" role="alert">
-            {conflict}
-          </span>
-        )}
       </div>
+      {conflict && (
+        <Alert variant="destructive" role="alert" className="w-full">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
+      )}
     </form>
   );
 }

@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { ROLE_LABELS, type RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type { AssignRoleInput } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import {
@@ -30,7 +31,11 @@ export function AssignRoleForm({
   });
 
   if (availableRoles.length === 0) {
-    return <p className="text-muted-foreground text-xs">Đã gán tất cả role lõi.</p>;
+    return (
+      <Alert variant="info" role="status">
+        <AlertDescription>Đã gán tất cả vai trò lõi.</AlertDescription>
+      </Alert>
+    );
   }
 
   return (
@@ -51,12 +56,12 @@ export function AssignRoleForm({
         </select>
       </label>
       <Button type="submit" size="sm" disabled={disabled || pending}>
-        Gán role
+        Gán vai trò
       </Button>
       {conflict && (
-        <span className="text-destructive w-full text-xs" role="alert">
-          {conflict}
-        </span>
+        <Alert variant="destructive" role="alert" className="w-full">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
       )}
     </form>
   );

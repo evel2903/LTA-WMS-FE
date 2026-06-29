@@ -147,15 +147,27 @@ describe('RulePreviewPanel', () => {
   it('renders a loading state when loading is true', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={null} loading />);
     expect(html).toContain('Đang chạy preview');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('min-h-28');
+    expect(html).toContain('py-10');
+    expect(html).toContain('place-content-center');
   });
 
   it('renders an empty state when no preview has been run', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={null} />);
     expect(html).toContain('Chưa có preview');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('min-h-28');
+    expect(html).toContain('py-10');
+    expect(html).toContain('place-content-center');
   });
 
   it('renders an error message when supplied', () => {
-    const html = renderToStaticMarkup(<RulePreviewPanel preview={null} errorMessage="Preview failed" />);
-    expect(html).toContain('Preview failed');
+    const html = renderToStaticMarkup(<RulePreviewPanel preview={null} errorMessage="Preview không thành công" />);
+    expect(html).toContain('Preview không thành công');
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('min-h-28');
+    expect(html).toContain('py-10');
+    expect(html).toContain('place-content-center');
   });
 });

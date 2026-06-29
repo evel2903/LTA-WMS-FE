@@ -1,5 +1,6 @@
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type {
   EffectivePermissions,
   UserDataScope,
@@ -72,14 +73,19 @@ export function UserAssignmentPanel({
         </h2>
         <p className="text-muted-foreground text-sm">{user.email}</p>
         {!canManage && (
-          <p className="text-muted-foreground mt-1 text-xs">Chế độ chỉ đọc - bạn không có quyền chỉnh sửa.</p>
+          <Alert variant="warning" role="status" className="mt-2">
+            <AlertTitle>Chế độ chỉ đọc</AlertTitle>
+            <AlertDescription>Bạn không có quyền chỉnh sửa phân quyền của người dùng này.</AlertDescription>
+          </Alert>
         )}
       </div>
 
       <section className="space-y-2">
         <h3 className="text-sm font-medium">Vai trò</h3>
         {assignedRoles.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Chưa gán vai trò nào.</p>
+          <Alert variant="info" role="status">
+            <AlertDescription>Chưa gán vai trò nào.</AlertDescription>
+          </Alert>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {assignedRoles.map((role) => (
@@ -117,7 +123,9 @@ export function UserAssignmentPanel({
       <section className="space-y-2">
         <h3 className="text-sm font-medium">Phạm vi dữ liệu</h3>
         {dataScopes.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Chưa gán phạm vi dữ liệu nào.</p>
+          <Alert variant="info" role="status">
+            <AlertDescription>Chưa gán phạm vi dữ liệu nào.</AlertDescription>
+          </Alert>
         ) : (
           <ul className="space-y-1">
             {dataScopes.map((scope) => (
@@ -152,7 +160,9 @@ export function UserAssignmentPanel({
       <section className="space-y-2">
         <h3 className="text-sm font-medium">Quyền hiệu lực ({permissionCount})</h3>
         {permissionCount === 0 ? (
-          <p className="text-muted-foreground text-sm">Không có permission hiệu lực.</p>
+          <Alert variant="info" role="status">
+            <AlertDescription>Không có quyền hiệu lực.</AlertDescription>
+          </Alert>
         ) : (
           <ul className="text-muted-foreground grid max-h-40 grid-cols-2 gap-x-4 overflow-y-auto text-xs">
             {effective?.permissions.map((permission) => (

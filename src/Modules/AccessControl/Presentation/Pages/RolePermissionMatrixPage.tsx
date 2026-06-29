@@ -48,7 +48,7 @@ export function RolePermissionMatrixPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Ma trận vai trò và quyền</h1>
         <p className="text-muted-foreground">
-          Sáu role lõi V0 và quyền theo action/object (read-only — cấu hình qua seed).
+          Sáu vai trò lõi V0 và quyền theo action/object (chỉ đọc — cấu hình từ dữ liệu khởi tạo).
         </p>
       </div>
 

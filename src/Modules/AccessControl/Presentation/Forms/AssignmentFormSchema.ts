@@ -37,14 +37,14 @@ export const assignDataScopeFormSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['scopeValueCode'],
-        message: 'Không thể vừa chọn "Tất cả" vừa nhập giá trị scope',
+        message: 'Không thể vừa chọn "Tất cả" vừa nhập giá trị phạm vi',
       });
     }
     if (!values.includeAll && !hasValue) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['scopeValueCode'],
-        message: 'Cần chọn "Tất cả" hoặc nhập một giá trị scope',
+        message: 'Cần chọn "Tất cả" hoặc nhập một giá trị phạm vi',
       });
     }
   });

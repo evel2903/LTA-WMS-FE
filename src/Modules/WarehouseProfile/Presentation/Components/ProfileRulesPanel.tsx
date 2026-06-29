@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '@shared/Components/Ui/Button';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
 import { VI_CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
@@ -44,9 +45,17 @@ export function ProfileRulesPanel({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium">Quy tắc</p>
+      {!canEdit && (
+        <Alert variant="warning" role="status">
+          <AlertTitle>Chỉ đọc</AlertTitle>
+          <AlertDescription>Bạn không có quyền gắn hoặc gỡ quy tắc.</AlertDescription>
+        </Alert>
+      )}
 
       {profileRules.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Chưa gắn quy tắc nào.</p>
+        <Alert variant="info" role="status">
+          <AlertDescription>Chưa gắn quy tắc nào.</AlertDescription>
+        </Alert>
       ) : (
         <ul className="space-y-1 text-sm">
           {profileRules.map((profileRule) => {

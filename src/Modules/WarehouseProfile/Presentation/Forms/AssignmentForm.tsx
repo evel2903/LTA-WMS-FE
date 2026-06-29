@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import {
   assignmentFormSchema,
   type AssignmentFormValues,
@@ -50,9 +51,9 @@ export function AssignmentForm({ disabled = false, pending = false, conflict, on
       )}
 
       {conflict && (
-        <span className="text-destructive text-xs" role="alert">
-          {conflict}
-        </span>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
       )}
       <Button type="submit" disabled={disabled || pending}>Thêm gán</Button>
     </form>

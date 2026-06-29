@@ -114,7 +114,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
     expect(await screen.findByText('Chưa gán vai trò nào.')).toBeTruthy();
 
-    await actor.click(screen.getByRole('button', { name: 'Gán role' }));
+    await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
 
     // The default selection is the first available core role (WMS Admin). After the
     // mutation invalidates the effective query, the panel re-reads and shows it.
@@ -134,7 +134,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     // IncludeAll satisfies the XOR validation without a value (default scopeType = WAREHOUSE).
     await actor.click(await screen.findByLabelText(/IncludeAll/i));
-    await actor.click(screen.getByRole('button', { name: 'Gán scope' }));
+    await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
 
     // After invalidate→refetch the new scope renders in the panel as a removable row
     // ("Gỡ" only appears for a listed scope; "Tất cả" is its includeAll value label).
@@ -161,7 +161,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     const fake = new FakeRepository();
     fake.assignDataScope = vi.fn(() =>
       Promise.reject(
-        new ApiError({ status: 409, code: 'CONFLICT', message: 'User already has this data scope' }),
+        new ApiError({ status: 409, code: 'CONFLICT', message: 'Người dùng đã có phạm vi dữ liệu này' }),
       ),
     );
     repo.current = fake as unknown as IAccessControlRepository;
@@ -171,9 +171,9 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
     // IncludeAll satisfies the XOR validation without a value.
     await actor.click(await screen.findByLabelText(/IncludeAll/i));
-    await actor.click(screen.getByRole('button', { name: 'Gán scope' }));
+    await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
 
-    expect(await screen.findByText('User already has this data scope')).toBeTruthy();
+    expect(await screen.findByText('Người dùng đã có phạm vi dữ liệu này')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
   });
 });

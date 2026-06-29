@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type {
   ActivateWarehouseProfileInput,
   DeactivateWarehouseProfileInput,
@@ -41,7 +42,12 @@ export function ProfileLifecycleActions({
 
   return (
     <div className="space-y-3">
-      {!canManage && <p className="text-muted-foreground text-sm">Chỉ đọc</p>}
+      {!canManage && (
+        <Alert variant="warning" role="status">
+          <AlertTitle>Chỉ đọc</AlertTitle>
+          <AlertDescription>Bạn không có quyền thực hiện hành động vòng đời.</AlertDescription>
+        </Alert>
+      )}
 
       <label className="grid gap-1 text-sm">Mã lý do<Input
           disabled={!canManage}
@@ -73,17 +79,19 @@ export function ProfileLifecycleActions({
       </div>
 
       {conflictMessage && (
-        <div className="border-destructive/40 bg-destructive/5 rounded-md border p-3 text-sm" role="alert">
-          <p className="text-destructive font-medium">Xung đột</p>
-          <p className="text-destructive">{conflictMessage}</p>
-          <p className="text-muted-foreground mt-1 text-xs">Hồ sơ chưa được thay đổi. Hãy xử lý phạm vi chồng lấn rồi thử lại.</p>
-        </div>
+        <Alert variant="destructive" role="alert">
+          <AlertTitle>Xung đột</AlertTitle>
+          <AlertDescription>
+            <p>{conflictMessage}</p>
+            <p>Hồ sơ chưa được thay đổi. Hãy xử lý phạm vi chồng lấn rồi thử lại.</p>
+          </AlertDescription>
+        </Alert>
       )}
 
       {!conflictMessage && errorMessage && (
-        <p className="text-destructive text-sm" role="alert">
-          {errorMessage}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
       )}
     </div>
   );

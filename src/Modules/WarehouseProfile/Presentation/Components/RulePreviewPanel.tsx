@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/RulePreview';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
 import {
@@ -13,6 +14,8 @@ interface RulePreviewPanelProps {
   errorMessage?: string;
 }
 
+const TOP_LEVEL_ALERT_CLASS_NAME = 'min-h-28 place-content-center py-10 text-center';
+
 /**
  * Renders the B4 `RulePreviewResult` directly: winner, four-mode control summary,
  * skipped rules (with the reason enum LABELLED), conflicts (as DATA, not an
@@ -22,25 +25,28 @@ interface RulePreviewPanelProps {
 export function RulePreviewPanel({ preview, loading = false, errorMessage }: RulePreviewPanelProps) {
   if (loading) {
     return (
-      <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Đang chạy preview...</CardContent>
-      </Card>
+      <Alert variant="info" role="status" className={TOP_LEVEL_ALERT_CLASS_NAME}>
+        <AlertDescription className="justify-items-center">Đang chạy preview...</AlertDescription>
+      </Alert>
     );
   }
 
   if (errorMessage) {
     return (
-      <Card>
-        <CardContent className="text-destructive py-6 text-sm">{errorMessage}</CardContent>
-      </Card>
+      <Alert variant="destructive" role="alert" className={TOP_LEVEL_ALERT_CLASS_NAME}>
+        <AlertTitle>Không thể chạy preview</AlertTitle>
+        <AlertDescription className="justify-items-center">{errorMessage}</AlertDescription>
+      </Alert>
     );
   }
 
   if (!preview) {
     return (
-      <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Chưa có preview. Nhập ngữ cảnh và chạy preview để xem cách quy tắc được áp dụng.</CardContent>
-      </Card>
+      <Alert variant="info" role="status" className={TOP_LEVEL_ALERT_CLASS_NAME}>
+        <AlertDescription className="justify-items-center">
+          Chưa có preview. Nhập ngữ cảnh và chạy preview để xem cách quy tắc được áp dụng.
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -67,7 +73,9 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
               <ControlModeBadge mode={winner.controlMode} />
             </div>
           ) : (
-            <p className="text-muted-foreground">Không có quy tắc nào áp dụng cho ngữ cảnh này.</p>
+            <Alert variant="info" role="status">
+              <AlertDescription>Không có quy tắc nào áp dụng cho ngữ cảnh này.</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -91,16 +99,20 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
             </span>
           </p>
           {controlMode.warning && (
-            <p className="text-amber-700">
-              {VI_CONTROL_MODE_LABELS.SOFT_WARNING}: {controlMode.warning.message} (
-              {controlMode.warning.ruleCode})
-            </p>
+            <Alert variant="warning" role="status">
+              <AlertTitle>{VI_CONTROL_MODE_LABELS.SOFT_WARNING}</AlertTitle>
+              <AlertDescription>
+                {controlMode.warning.message} ({controlMode.warning.ruleCode})
+              </AlertDescription>
+            </Alert>
           )}
           {controlMode.suggestion && (
-            <p className="text-muted-foreground">
-              {VI_CONTROL_MODE_LABELS.AUTO_SUGGESTION}: {controlMode.suggestion.message} (
-              {controlMode.suggestion.ruleCode})
-            </p>
+            <Alert variant="info" role="status">
+              <AlertTitle>{VI_CONTROL_MODE_LABELS.AUTO_SUGGESTION}</AlertTitle>
+              <AlertDescription>
+                {controlMode.suggestion.message} ({controlMode.suggestion.ruleCode})
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
@@ -112,7 +124,9 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
         </CardHeader>
         <CardContent className="text-sm">
           {skippedRules.length === 0 ? (
-            <p className="text-muted-foreground">Không có quy tắc bị bỏ qua.</p>
+            <Alert variant="info" role="status">
+              <AlertDescription>Không có quy tắc bị bỏ qua.</AlertDescription>
+            </Alert>
           ) : (
             <ul className="space-y-2">
               {skippedRules.map((rule) => (
@@ -139,7 +153,9 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
         </CardHeader>
         <CardContent className="text-sm">
           {conflicts.length === 0 ? (
-            <p className="text-muted-foreground">Không phát hiện xung đột.</p>
+            <Alert variant="info" role="status">
+              <AlertDescription>Không phát hiện xung đột.</AlertDescription>
+            </Alert>
           ) : (
             <ul className="space-y-3">
               {conflicts.map((conflict) => (
@@ -182,7 +198,9 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
               <li>Cho phép ghi đè: {reasonReadiness.allowOverride ? 'Có' : 'Không'}</li>
             </ul>
           ) : (
-            <p className="text-muted-foreground">Không áp dụng.</p>
+            <Alert variant="info" role="status">
+              <AlertDescription>Không áp dụng.</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>

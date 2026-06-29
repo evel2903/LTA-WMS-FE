@@ -108,6 +108,7 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
       />,
     );
     expect(html).toContain('Chưa gắn quy tắc nào.');
+    expect(html).toContain('role="status"');
   });
 
   it('disables the attach + remove controls when read-only', () => {
@@ -121,5 +122,6 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
       />,
     );
     expect(html).toContain('disabled');
+    expect(html).toContain('role="status"');
   });
 });

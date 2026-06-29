@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { WarehouseProfile } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfile';
 import {
   warehouseProfileFormSchema,
@@ -65,12 +66,12 @@ export function WarehouseProfileForm({
         {errors.profileCode && (
           <span className="text-destructive text-xs">{errors.profileCode.message}</span>
         )}
-        {conflict && (
-          <span className="text-destructive text-xs" role="alert">
-            {conflict}
-          </span>
-        )}
       </label>
+      {conflict && (
+        <Alert variant="destructive" role="alert">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
+      )}
       <label className="grid gap-1 text-sm">Tên hồ sơ<Input disabled={disabled} {...form.register('profileName')} />
         {errors.profileName && (
           <span className="text-destructive text-xs">{errors.profileName.message}</span>

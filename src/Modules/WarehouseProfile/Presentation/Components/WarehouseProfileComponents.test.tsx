@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { ROUTES } from '@app/Config/Routes';
 import { warehouseProfileRoutes } from '@modules/WarehouseProfile/Presentation/Routes/WarehouseProfileRoutes';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
+import { ProfileAssignmentPanel } from '@modules/WarehouseProfile/Presentation/Components/ProfileAssignmentPanel';
 import { WarehouseProfileStatusBadge } from '@modules/WarehouseProfile/Presentation/Components/WarehouseProfileStatusBadge';
 import { ProfileStateView } from '@modules/WarehouseProfile/Presentation/Components/StateViews';
 import { ProfileLifecycleActions } from '@modules/WarehouseProfile/Presentation/Components/ProfileLifecycleActions';
+import { AssignmentForm } from '@modules/WarehouseProfile/Presentation/Forms/AssignmentForm';
+import { WarehouseProfileForm } from '@modules/WarehouseProfile/Presentation/Forms/WarehouseProfileForm';
 
 describe('WarehouseProfileStatusBadge', () => {
   it('renders each lifecycle status label', () => {
@@ -36,9 +39,21 @@ describe('ProfileStateView (AC5 states)', () => {
   });
 
   it('renders an error message in the error state', () => {
-    expect(renderToStaticMarkup(<ProfileStateView state="error" errorMessage="Backend down" />)).toContain(
-      'Backend down',
+    expect(renderToStaticMarkup(<ProfileStateView state="error" errorMessage="Máy chủ không phản hồi" />)).toContain(
+      'Máy chủ không phản hồi',
     );
+  });
+
+  it('uses polite status semantics for helper states and assertive semantics for errors', () => {
+    const emptyHtml = renderToStaticMarkup(<ProfileStateView state="empty" />);
+
+    expect(emptyHtml).toContain('role="status"');
+    expect(emptyHtml).toContain('min-h-28');
+    expect(emptyHtml).toContain('py-10');
+    expect(emptyHtml).toContain('place-content-center');
+    expect(renderToStaticMarkup(<ProfileStateView state="loading" />)).toContain('role="status"');
+    expect(renderToStaticMarkup(<ProfileStateView state="denied" />)).toContain('role="status"');
+    expect(renderToStaticMarkup(<ProfileStateView state="error" />)).toContain('role="alert"');
   });
 });
 
@@ -55,13 +70,14 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
     const html = renderToStaticMarkup(
       <ProfileLifecycleActions
         status="DRAFT"
-        conflictMessage="Overlapping active profile for this scope."
+        conflictMessage="Đã có hồ sơ đang hoạt động cho phạm vi này."
         onActivate={() => undefined}
         onDeactivate={() => undefined}
       />,
     );
     expect(html).toContain('Xung đột');
-    expect(html).toContain('Overlapping active profile for this scope.');
+    expect(html).toContain('Đã có hồ sơ đang hoạt động cho phạm vi này.');
+    expect(html).toContain('role="alert"');
   });
 
   it('disables the actions and shows a read-only label when not permitted', () => {
@@ -75,6 +91,59 @@ describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
     );
     expect(html).toContain('disabled');
     expect(html).toContain('Chỉ đọc');
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders non-conflict backend errors as assertive alerts', () => {
+    const html = renderToStaticMarkup(
+      <ProfileLifecycleActions
+        status="DRAFT"
+        errorMessage="Vòng đời hồ sơ không hợp lệ"
+        onActivate={() => undefined}
+        onDeactivate={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Vòng đời hồ sơ không hợp lệ');
+    expect(html).toContain('role="alert"');
+  });
+});
+
+describe('WarehouseProfile ReUI helper alerts', () => {
+  it('renders assignment panel read-only and empty helpers as polite status alerts', () => {
+    const html = renderToStaticMarkup(
+      <ProfileAssignmentPanel
+        assignments={[]}
+        canEdit={false}
+        onCreate={() => undefined}
+      />,
+    );
+
+    expect(html.match(/role="status"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('Chỉ đọc');
+    expect(html).toContain('Chưa có gán nào.');
+  });
+
+  it('renders assignment form conflicts as assertive destructive alerts', () => {
+    const html = renderToStaticMarkup(
+      <AssignmentForm conflict="Xung đột phạm vi gán" onSubmit={() => undefined} />,
+    );
+
+    expect(html).toContain('Xung đột phạm vi gán');
+    expect(html).toContain('role="alert"');
+  });
+
+  it('renders profile form conflicts as assertive destructive alerts', () => {
+    const html = renderToStaticMarkup(
+      <WarehouseProfileForm
+        submitLabel="Lưu hồ sơ"
+        conflict="Mã hồ sơ đã tồn tại"
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Mã hồ sơ đã tồn tại');
+    expect(html).toContain('role="alert"');
   });
 });
 

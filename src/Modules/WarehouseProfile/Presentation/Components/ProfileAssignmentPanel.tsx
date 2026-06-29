@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
 import type { AssignmentFormValues } from '@modules/WarehouseProfile/Presentation/Forms/WarehouseProfileFormSchema';
 import { AssignmentForm } from '@modules/WarehouseProfile/Presentation/Forms/AssignmentForm';
@@ -20,8 +21,16 @@ export function ProfileAssignmentPanel({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium">Phạm vi gán</p>
+      {!canEdit && (
+        <Alert variant="warning" role="status">
+          <AlertTitle>Chỉ đọc</AlertTitle>
+          <AlertDescription>Bạn không có quyền thêm hoặc gỡ phạm vi gán.</AlertDescription>
+        </Alert>
+      )}
       {assignments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Chưa có gán nào.</p>
+        <Alert variant="info" role="status">
+          <AlertDescription>Chưa có gán nào.</AlertDescription>
+        </Alert>
       ) : (
         <ul className="space-y-1 text-sm">
           {assignments.map((assignment) => (
