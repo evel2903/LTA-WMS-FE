@@ -344,6 +344,7 @@ export function InboundQcPanel({
                   name="qcInspectedQuantity"
                   type="number"
                   min="0.0001"
+                  step="any"
                   value={qcInspectedQuantity}
                   onChange={(event) => onQcInspectedQuantityChange(event.target.value)}
                   disabled={qcResultDisabled}
@@ -356,6 +357,7 @@ export function InboundQcPanel({
                   name="qcAcceptedQuantity"
                   type="number"
                   min="0"
+                  step="any"
                   value={qcAcceptedQuantity}
                   onChange={(event) => onQcAcceptedQuantityChange(event.target.value)}
                   disabled={qcResultDisabled}
@@ -368,6 +370,7 @@ export function InboundQcPanel({
                   name="qcRejectedQuantity"
                   type="number"
                   min="0"
+                  step="any"
                   value={qcRejectedQuantity}
                   onChange={(event) => onQcRejectedQuantityChange(event.target.value)}
                   disabled={qcResultDisabled}

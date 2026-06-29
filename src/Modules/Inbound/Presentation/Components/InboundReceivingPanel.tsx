@@ -233,7 +233,7 @@ export function InboundReceivingPanel({
               name="receiptActualQuantity"
               type="number"
               min="0.0001"
-              step="0.0001"
+              step="any"
               value={receiptActualQuantity}
               onChange={(event) => onReceiptActualQuantityChange(event.target.value)}
             />

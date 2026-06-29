@@ -1471,7 +1471,8 @@ export function InboundDetailPage() {
                           Số lượng dự kiến
                           <Input
                             type="number"
-                            min="1"
+                            min="0.0001"
+                            step="any"
                             value={line.expectedQuantity}
                             onChange={(event) =>
                               updateLine(line.id, { expectedQuantity: event.target.value })
