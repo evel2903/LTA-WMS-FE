@@ -2390,7 +2390,9 @@ describe('InboundPage', () => {
     repo.current = fake;
     renderListPage();
 
-    await screen.findByText('ASN-10001');
+    // Card (mobile) and table (desktop) both live in the DOM (responsive is CSS-only),
+    // so the document number now matches twice — assert with findAllByText.
+    await screen.findAllByText('ASN-10001');
     expect(screen.getByRole('link', { name: 'Tạo kế hoạch nhập kho' })).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'Mở chi tiết' })[0]).toHaveProperty(
       'href',
@@ -2409,6 +2411,36 @@ describe('InboundPage', () => {
       { timeout: 5_000 },
     );
   }, 15_000);
+
+  it('renders the desktop table with columns and per-row actions alongside the mobile cards', async () => {
+    const fake = new FakeRepository([
+      makePlan({ sourceDocumentNumber: 'ASN-10001', warehouseCode: 'WT-01' }),
+    ]);
+    repo.current = fake;
+    renderListPage();
+
+    // Desktop table block (rendered in DOM regardless of viewport since responsive is CSS-only).
+    const table = await screen.findByTestId('inbound-plan-table');
+    expect(within(table).getByText('Số chứng từ')).toBeTruthy();
+    expect(within(table).getByText('Trạng thái')).toBeTruthy();
+    expect(within(table).getByText('CoreFlow')).toBeTruthy();
+
+    // The plan row carries its own testid and the same column data as the card.
+    const row = screen.getByTestId('inbound-plan-row-inbound-plan-1');
+    expect(within(row).getByText('WT-01')).toBeTruthy();
+
+    // Per-row actions route to detail and receiving just like the card.
+    const detailLink = within(row).getByRole('link', { name: 'Mở chi tiết' });
+    expect(detailLink).toHaveProperty('href', expect.stringContaining('/inbound/inbound-plan-1'));
+    const receivingLink = within(row).getByRole('link', { name: 'Thao tác tiếp nhận' });
+    expect(receivingLink).toHaveProperty(
+      'href',
+      expect.stringContaining('/inbound/inbound-plan-1/receiving'),
+    );
+
+    // Mobile cards remain in the DOM too (responsive switch is Tailwind CSS).
+    expect(screen.getAllByText('ASN-10001').length).toBeGreaterThanOrEqual(2);
+  });
 
   it('rehydrates receiving progress from operational-state after reload without re-firing mutations', async () => {
     const fake = new FakeRepository([makePlan()]);

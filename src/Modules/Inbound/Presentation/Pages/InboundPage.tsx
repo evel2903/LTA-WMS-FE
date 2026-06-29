@@ -6,6 +6,14 @@ import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@shared/Components/Ui/Table';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
@@ -59,6 +67,58 @@ function InboundPlanCard({ plan }: { plan: InboundPlan }) {
         </Button>
       </div>
     </article>
+  );
+}
+
+// Desktop (>= md) presentation: same plan fields/actions as the card, laid out as a
+// dense table for faster scanning/column comparison on wide screens. Reuses the shared
+// Ui/Table primitives (no new dependency). The status cell mirrors the card's bordered
+// span on purpose — Badge unification is owned by the FOUNDATION-UX-REUI epic.
+function InboundPlanTable({ plans }: { plans: InboundPlan[] }) {
+  return (
+    <Table data-testid="inbound-plan-table">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Số chứng từ</TableHead>
+          <TableHead>Hệ thống / Loại</TableHead>
+          <TableHead>Trạng thái</TableHead>
+          <TableHead>Kho</TableHead>
+          <TableHead>Chủ hàng</TableHead>
+          <TableHead>Số dòng</TableHead>
+          <TableHead>CoreFlow</TableHead>
+          <TableHead>Hành động</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {plans.map((plan) => (
+          <TableRow key={plan.id} data-testid={`inbound-plan-row-${plan.id}`}>
+            <TableCell className="font-medium text-foreground">{plan.sourceDocumentNumber}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {plan.sourceSystem} - {plan.sourceDocumentType}
+            </TableCell>
+            <TableCell>
+              <span className="rounded-md border px-2 py-1 text-xs font-medium">
+                {statusLabel(plan)}
+              </span>
+            </TableCell>
+            <TableCell>{plan.warehouseCode ?? plan.warehouseId}</TableCell>
+            <TableCell>{plan.ownerCode ?? plan.ownerId}</TableCell>
+            <TableCell>{plan.lines.length}</TableCell>
+            <TableCell>{plan.coreFlowInstanceId ?? 'chưa liên kết'}</TableCell>
+            <TableCell>
+              <div className="flex gap-2">
+                <Button asChild size="sm">
+                  <Link to={ROUTES.INBOUND.DETAIL(plan.id)}>Mở chi tiết</Link>
+                </Button>
+                <Button asChild variant="secondary" size="sm">
+                  <Link to={ROUTES.INBOUND.ACTION(plan.id, 'receiving')}>Thao tác tiếp nhận</Link>
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -143,10 +203,15 @@ export function InboundPage() {
               : undefined
       }
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {/* Mobile (< md): card grid — easier to tap. Hidden from md up. */}
+      <div className="grid gap-3 md:hidden">
         {plans.map((plan) => (
           <InboundPlanCard key={plan.id} plan={plan} />
         ))}
+      </div>
+      {/* Desktop (>= md): dense table for scanning/column comparison. */}
+      <div className="hidden md:block">
+        <InboundPlanTable plans={plans} />
       </div>
     </ListPageShell>
   );
