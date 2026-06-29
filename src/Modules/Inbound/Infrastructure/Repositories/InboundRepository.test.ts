@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { HttpClient } from '@shared/Services/Http/ApiClient';
+import type { InboundLineImportPreviewDto } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
 import { InboundRepository } from '@modules/Inbound/Infrastructure/Repositories/InboundRepository';
 
 class FakeHttpClient implements HttpClient {
@@ -347,5 +348,133 @@ describe('InboundRepository', () => {
         EvidenceJson: { rejectedQuantity: 4 },
       },
     });
+  });
+});
+
+describe('InboundRepository line import (IFB-03)', () => {
+  class ImportHttpClient implements HttpClient {
+    public posts: Array<{ url: string; body: unknown; config?: unknown }> = [];
+    public blobUrl: string | null = null;
+
+    private readonly previewDto: InboundLineImportPreviewDto = {
+      FileName: 'lines.xlsx',
+      Rows: [
+        {
+          RowNumber: 2,
+          SkuCode: 'SKU-1',
+          UomCode: 'EA',
+          ExpectedQuantity: '12',
+          ExternalLineReference: '10',
+          SkuId: 'sku-1',
+          UomId: 'uom-1',
+          Errors: [],
+        },
+        {
+          RowNumber: 3,
+          SkuCode: 'SKU-X',
+          UomCode: 'EA',
+          ExpectedQuantity: '0',
+          ExternalLineReference: '',
+          Errors: ['SKU không tồn tại.'],
+        },
+      ],
+      Summary: { Total: 2, Valid: 1, Invalid: 1 },
+      HeaderError: null,
+    };
+
+    get<T>(): Promise<T> {
+      return Promise.resolve(undefined as T);
+    }
+
+    getBlob(url: string): Promise<Blob> {
+      this.blobUrl = url;
+      return Promise.resolve(new Blob(['xlsx']));
+    }
+
+    post<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
+      this.posts.push({ url, body, config });
+      const params = (config as { params?: Record<string, unknown> } | undefined)?.params ?? {};
+      if (params.Preview) return Promise.resolve(this.previewDto as T);
+      return Promise.resolve({ Id: 'inbound-plan-9', Lines: [] } as unknown as T);
+    }
+
+    put<T>(): Promise<T> {
+      return Promise.resolve(undefined as T);
+    }
+
+    patch<T>(): Promise<T> {
+      return Promise.resolve(undefined as T);
+    }
+
+    delete<T>(): Promise<T> {
+      return Promise.resolve(undefined as T);
+    }
+  }
+
+  it('downloads the .xlsx template through the binary getBlob channel', async () => {
+    const http = new ImportHttpClient();
+    const repository = new InboundRepository(http);
+
+    const blob = await repository.downloadLineImportTemplate();
+
+    expect(http.blobUrl).toBe('/inbound-plans/line-import-template');
+    expect(blob).toBeInstanceOf(Blob);
+  });
+
+  it('previews an upload as multipart with PascalCase scope params and maps per-row errors', async () => {
+    const http = new ImportHttpClient();
+    const repository = new InboundRepository(http);
+    const file = new File(['x'], 'lines.xlsx');
+
+    const preview = await repository.previewLineImport(file, {
+      warehouseId: 'wh-1',
+      ownerId: 'owner-1',
+    });
+
+    const call = http.posts[0];
+    expect(call?.url).toBe('/inbound-plans/import');
+    expect(call?.body).toBeInstanceOf(FormData);
+    expect((call?.body as FormData).get('file')).toBe(file);
+    expect(call?.config).toMatchObject({
+      params: { Preview: 'true', WarehouseId: 'wh-1', OwnerId: 'owner-1' },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    expect(preview.summary).toEqual({ total: 2, valid: 1, invalid: 1 });
+    expect(preview.rows[1]?.errors).toEqual(['SKU không tồn tại.']);
+  });
+
+  it('commits an upload with PascalCase header params and omits undefined optionals', async () => {
+    const http = new ImportHttpClient();
+    const repository = new InboundRepository(http);
+    const file = new File(['x'], 'lines.xlsx');
+
+    await repository.commitLineImport(file, {
+      sourceSystem: 'ERP',
+      sourceDocumentType: 'ASN',
+      sourceDocumentNumber: 'ASN-10001',
+      supplierId: 'supplier-1',
+      ownerId: 'owner-1',
+      warehouseId: 'wh-1',
+      warehouseProfileId: null,
+      expectedArrivalAt: null,
+    });
+
+    const call = http.posts[0];
+    expect(call?.url).toBe('/inbound-plans/import');
+    expect(call?.config).toMatchObject({
+      params: {
+        WarehouseId: 'wh-1',
+        OwnerId: 'owner-1',
+        SourceSystem: 'ERP',
+        SourceDocumentType: 'ASN',
+        SourceDocumentNumber: 'ASN-10001',
+        SupplierId: 'supplier-1',
+      },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const params = (call?.config as { params: Record<string, unknown> }).params;
+    expect('Preview' in params).toBe(false);
+    expect('WarehouseProfileId' in params).toBe(false);
+    expect('ExpectedArrivalAt' in params).toBe(false);
   });
 });

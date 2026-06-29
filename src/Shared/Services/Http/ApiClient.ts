@@ -94,6 +94,11 @@ axiosInstance.interceptors.response.use(
  */
 export interface HttpClient {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  /**
+   * Binary download (e.g. an .xlsx template) — returns the raw Blob, bypassing the envelope
+   * unwrap. Optional so existing test doubles need not implement it; the real `httpClient` does.
+   */
+  getBlob?(url: string, config?: AxiosRequestConfig): Promise<Blob>;
   post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T>;
   put<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T>;
   patch<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T>;
@@ -114,6 +119,12 @@ export const httpClient: HttpClient = {
   get: async <T>(url: string, config?: AxiosRequestConfig) => {
     const response = await axiosInstance.get<AxiosPayload<T>>(url, config);
     return unwrap(response.data);
+  },
+  // Binary download (e.g. .xlsx template): the response body is the raw file, NOT a
+  // { Success, Data } envelope, so it must NOT go through `unwrap`.
+  getBlob: async (url: string, config?: AxiosRequestConfig) => {
+    const response = await axiosInstance.get<Blob>(url, { ...config, responseType: 'blob' });
+    return response.data;
   },
   post: async <T>(url: string, body?: unknown, config?: AxiosRequestConfig) => {
     const response = await axiosInstance.post<AxiosPayload<T>>(url, body, config);

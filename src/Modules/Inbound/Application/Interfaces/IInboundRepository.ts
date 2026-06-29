@@ -1,6 +1,7 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
+  InboundLineImportPreview,
   InboundLpn,
   InboundOperationalState,
   InboundPlan,
@@ -30,6 +31,12 @@ export interface IInboundRepository {
   getById(id: string): Promise<InboundPlan>;
   getOperationalState(id: string): Promise<InboundOperationalState>;
   create(input: CreateInboundPlanInput): Promise<InboundPlan>;
+  downloadLineImportTemplate(): Promise<Blob>;
+  previewLineImport(
+    file: File,
+    scope: { warehouseId: string; ownerId: string },
+  ): Promise<InboundLineImportPreview>;
+  commitLineImport(file: File, header: Omit<CreateInboundPlanInput, 'lines'>): Promise<InboundPlan>;
   recordGateIn(id: string, input: RecordGateInInput): Promise<InboundPlan>;
   validateReadiness(
     id: string,

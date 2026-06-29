@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
@@ -7,11 +7,13 @@ import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
+import { downloadBlob } from '@shared/Utils/DownloadBlob';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useActiveOwners, useActiveUoms, useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 import { useWarehouseProfiles } from '@modules/WarehouseProfile/Application/Queries/UseWarehouseProfiles';
+import type { InboundLineImportPreview } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface DraftLine {
   id: number;
@@ -270,6 +272,8 @@ export function InboundCreatePage() {
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('');
   const [lineDrafts, setLineDrafts] = useState<DraftLine[]>(() => [initialLine()]);
   const [lineImportPreview, setLineImportPreview] = useState<LineImportPreview | null>(null);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelPreview, setExcelPreview] = useState<InboundLineImportPreview | null>(null);
 
   const canCreate = Boolean(
     sourceSystem.trim() &&
@@ -393,6 +397,65 @@ export function InboundCreatePage() {
       })),
     );
     setLineImportPreview(null);
+  }
+
+  // ── Import Excel server-side (IFB-03) ───────────────────────────────────────
+  const canImportScope = Boolean(warehouseId.trim() && ownerId.trim());
+  const importHeaderReady = Boolean(
+    canImportScope && sourceSystem.trim() && sourceDocumentNumber.trim() && supplierId.trim(),
+  );
+  const excelImportHasErrors = Boolean(
+    excelPreview && (excelPreview.headerError || excelPreview.summary.invalid > 0),
+  );
+  const canCommitExcel = Boolean(importHeaderReady && excelFile && excelPreview && !excelImportHasErrors);
+
+  // Preview được BE validate theo scope (Kho + Chủ hàng). Đổi scope làm preview cũ hết hiệu lực
+  // — bỏ file + preview để buộc upload lại, tránh commit file đã validate theo scope khác.
+  // ponytail: nếu có preview đang in-flight khi đổi scope, onSuccess trễ có thể set lại
+  // excelPreview, nhưng KHÔNG set lại excelFile → canCommitExcel vẫn false (không commit nhầm).
+  useEffect(() => {
+    setExcelFile(null);
+    setExcelPreview(null);
+  }, [warehouseId, ownerId]);
+
+  function handleDownloadTemplate() {
+    mutations.downloadLineImportTemplate.mutate(undefined, {
+      onSuccess: (blob) => downloadBlob(blob, 'inbound-line-template.xlsx'),
+    });
+  }
+
+  function handleExcelFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    // Reset value để chọn lại CÙNG file vẫn re-fire onChange (sau lỗi preview hoặc đổi scope).
+    event.target.value = '';
+    setExcelFile(file);
+    setExcelPreview(null);
+    if (file && canImportScope) {
+      mutations.previewLineImport.mutate(
+        { file, scope: { warehouseId: warehouseId.trim(), ownerId: ownerId.trim() } },
+        { onSuccess: setExcelPreview },
+      );
+    }
+  }
+
+  function commitExcelImport() {
+    if (!excelFile || !canCommitExcel) return;
+    mutations.commitLineImport.mutate(
+      {
+        file: excelFile,
+        header: {
+          sourceSystem: sourceSystem.trim(),
+          sourceDocumentType: sourceDocumentType.trim() || 'ASN',
+          sourceDocumentNumber: sourceDocumentNumber.trim(),
+          supplierId: supplierId.trim(),
+          ownerId: ownerId.trim(),
+          warehouseId: warehouseId.trim(),
+          warehouseProfileId: warehouseProfileId.trim() || null,
+          expectedArrivalAt: expectedArrivalAt ? new Date(expectedArrivalAt).toISOString() : null,
+        },
+      },
+      { onSuccess: (plan) => void navigate(ROUTES.INBOUND.DETAIL(plan.id)) },
+    );
   }
 
   function submitCreate(event: FormEvent<HTMLFormElement>) {
@@ -542,6 +605,119 @@ export function InboundCreatePage() {
               optional
               onChange={setWarehouseProfileId}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Import Excel hàng loạt (tùy chọn)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <Button
+                id="inbound-download-template"
+                name="downloadTemplate"
+                type="button"
+                variant="secondary"
+                onClick={handleDownloadTemplate}
+                disabled={mutations.downloadLineImportTemplate.isPending}
+              >
+                {mutations.downloadLineImportTemplate.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : null}
+                Tải template Excel
+              </Button>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-excel-import">
+                Import Excel dòng hàng (.xlsx)
+                <Input
+                  id="inbound-excel-import"
+                  name="excelImport"
+                  type="file"
+                  accept=".xlsx"
+                  disabled={!canImportScope || mutations.previewLineImport.isPending}
+                  onChange={handleExcelFileChange}
+                />
+              </label>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Tải template, điền dòng hàng rồi tải lên. Cần chọn Kho và Chủ hàng trước khi import. File được đọc và
+              kiểm tra ở máy chủ — phù hợp số lượng dòng lớn (1000–2000).
+            </p>
+            {!canImportScope ? (
+              <p className="text-muted-foreground text-xs">Chọn Kho và Chủ hàng ở trên để bật import Excel.</p>
+            ) : null}
+            {mutations.previewLineImport.isPending ? (
+              <p className="text-muted-foreground text-sm">Đang kiểm tra file...</p>
+            ) : null}
+            {excelPreview ? (
+              <div
+                className="space-y-2 rounded-md bg-muted/30 p-3 text-sm"
+                data-testid="inbound-excel-import-preview"
+              >
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-medium">Preview {excelPreview.fileName}</p>
+                  <p className={excelImportHasErrors ? 'text-destructive' : 'text-emerald-700'}>
+                    Tổng {excelPreview.summary.total} · Hợp lệ {excelPreview.summary.valid} · Lỗi{' '}
+                    {excelPreview.summary.invalid}
+                  </p>
+                </div>
+                {excelPreview.headerError ? (
+                  <p className="text-destructive">{excelPreview.headerError}</p>
+                ) : null}
+                {excelPreview.rows.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px] text-left text-xs">
+                      <thead className="text-muted-foreground">
+                        <tr>
+                          <th className="py-2 pr-3">Dòng</th>
+                          <th className="py-2 pr-3">SKU</th>
+                          <th className="py-2 pr-3">Đơn vị tính</th>
+                          <th className="py-2 pr-3">Số lượng</th>
+                          <th className="py-2 pr-3">Tham chiếu</th>
+                          <th className="py-2 pr-3">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {excelPreview.rows.slice(0, 50).map((row) => (
+                          <tr key={row.rowNumber} className="border-t">
+                            <td className="py-2 pr-3">{row.rowNumber}</td>
+                            <td className="py-2 pr-3">{row.skuCode}</td>
+                            <td className="py-2 pr-3">{row.uomCode}</td>
+                            <td className="py-2 pr-3">{row.expectedQuantity}</td>
+                            <td className="py-2 pr-3">{row.externalLineReference || '-'}</td>
+                            <td className={row.errors.length > 0 ? 'py-2 pr-3 text-destructive' : 'py-2 pr-3'}>
+                              {row.errors.length > 0 ? row.errors.join(' ') : 'Hợp lệ'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {excelPreview.rows.length > 50 ? (
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        … và {excelPreview.rows.length - 50} dòng nữa.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <Button
+                  id="inbound-excel-commit"
+                  name="commitExcelImport"
+                  type="button"
+                  disabled={!canCommitExcel || mutations.commitLineImport.isPending}
+                  onClick={commitExcelImport}
+                >
+                  {mutations.commitLineImport.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : null}
+                  Tạo từ file
+                </Button>
+                {!importHeaderReady ? (
+                  <p className="text-muted-foreground text-xs">
+                    Cần nhập đủ Hệ thống nguồn, Số chứng từ, Nhà cung cấp, Kho, Chủ hàng để tạo từ file.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

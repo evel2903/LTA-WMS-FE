@@ -1,6 +1,7 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
+  InboundLineImportPreview,
   InboundLpn,
   InboundOperationalState,
   InboundPlan,
@@ -30,6 +31,7 @@ import type {
   CreateInboundPlanRequestDto,
   EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
+  InboundLineImportPreviewDto,
   InboundLpnDto,
   InboundOperationalStateDto,
   InboundPlanDto,
@@ -104,6 +106,28 @@ export const InboundMapper = {
       pageSize: meta?.PageSize ?? 0,
       totalItems: meta?.TotalItems ?? 0,
       totalPages: meta?.TotalPages ?? 0,
+    };
+  },
+
+  toLineImportPreview(dto: InboundLineImportPreviewDto): InboundLineImportPreview {
+    return {
+      fileName: dto.FileName,
+      rows: (dto.Rows ?? []).map((row) => ({
+        rowNumber: row.RowNumber,
+        skuCode: row.SkuCode,
+        uomCode: row.UomCode,
+        expectedQuantity: row.ExpectedQuantity,
+        externalLineReference: row.ExternalLineReference,
+        skuId: row.SkuId,
+        uomId: row.UomId,
+        errors: row.Errors ?? [],
+      })),
+      summary: {
+        total: dto.Summary?.Total ?? 0,
+        valid: dto.Summary?.Valid ?? 0,
+        invalid: dto.Summary?.Invalid ?? 0,
+      },
+      headerError: dto.HeaderError ?? null,
     };
   },
 

@@ -76,6 +76,24 @@ export interface InboundPlan {
   updatedBy: string | null;
 }
 
+export interface InboundLineImportRow {
+  rowNumber: number;
+  skuCode: string;
+  uomCode: string;
+  expectedQuantity: string;
+  externalLineReference: string;
+  skuId?: string;
+  uomId?: string;
+  errors: string[];
+}
+
+export interface InboundLineImportPreview {
+  fileName: string;
+  rows: InboundLineImportRow[];
+  summary: { total: number; valid: number; invalid: number };
+  headerError: string | null;
+}
+
 export interface ReceivingReadiness {
   allowed: boolean;
   blocked: boolean;

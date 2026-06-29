@@ -1,5 +1,7 @@
 export const INBOUND_ENDPOINTS = {
   PLANS: '/inbound-plans',
+  LINE_IMPORT_TEMPLATE: '/inbound-plans/line-import-template',
+  LINE_IMPORT: '/inbound-plans/import',
   PLAN_BY_ID: (id: string) => `/inbound-plans/${id}`,
   PLAN_OPERATIONAL_STATE: (id: string) => `/inbound-plans/${id}/operational-state`,
   GATE_IN: (id: string) => `/inbound-plans/${id}/gate-in`,

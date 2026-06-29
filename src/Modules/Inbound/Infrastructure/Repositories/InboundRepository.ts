@@ -7,6 +7,7 @@ import {
 } from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
   InboundDiscrepancy,
+  InboundLineImportPreview,
   InboundLpn,
   InboundOperationalState,
   InboundPlan,
@@ -33,6 +34,7 @@ import type {
 import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEndpoints';
 import type {
   InboundDiscrepancyDto,
+  InboundLineImportPreviewDto,
   InboundLpnDto,
   InboundOperationalStateDto,
   InboundPlanDto,
@@ -90,6 +92,49 @@ export class InboundRepository implements IInboundRepository {
       INBOUND_ENDPOINTS.PLANS,
       InboundMapper.toCreateRequest(input),
     );
+    return InboundMapper.toInboundPlan(dto);
+  }
+
+  async downloadLineImportTemplate(): Promise<Blob> {
+    // Call on `this.http` (not an extracted reference) so a class-based HttpClient keeps its binding.
+    if (!this.http.getBlob) {
+      throw new Error('HttpClient.getBlob không khả dụng để tải template Excel.');
+    }
+    return this.http.getBlob(INBOUND_ENDPOINTS.LINE_IMPORT_TEMPLATE);
+  }
+
+  async previewLineImport(
+    file: File,
+    scope: { warehouseId: string; ownerId: string },
+  ): Promise<InboundLineImportPreview> {
+    const form = new FormData();
+    form.append('file', file);
+    const dto = await this.http.post<InboundLineImportPreviewDto>(INBOUND_ENDPOINTS.LINE_IMPORT, form, {
+      params: { Preview: 'true', WarehouseId: scope.warehouseId, OwnerId: scope.ownerId },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return InboundMapper.toLineImportPreview(dto);
+  }
+
+  async commitLineImport(
+    file: File,
+    header: Omit<CreateInboundPlanInput, 'lines'>,
+  ): Promise<InboundPlan> {
+    const form = new FormData();
+    form.append('file', file);
+    const dto = await this.http.post<InboundPlanDto>(INBOUND_ENDPOINTS.LINE_IMPORT, form, {
+      params: removeUndefined({
+        WarehouseId: header.warehouseId,
+        OwnerId: header.ownerId,
+        SourceSystem: header.sourceSystem,
+        SourceDocumentType: header.sourceDocumentType,
+        SourceDocumentNumber: header.sourceDocumentNumber,
+        SupplierId: header.supplierId,
+        WarehouseProfileId: header.warehouseProfileId ?? undefined,
+        ExpectedArrivalAt: header.expectedArrivalAt ?? undefined,
+      }),
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return InboundMapper.toInboundPlan(dto);
   }
 

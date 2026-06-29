@@ -28,6 +28,21 @@ export function useInboundMutations() {
       onSuccess: invalidateInbound,
       onError: notifyError,
     }),
+    downloadLineImportTemplate: useMutation({
+      mutationFn: () => inboundRepository.downloadLineImportTemplate(),
+      onError: notifyError,
+    }),
+    previewLineImport: useMutation({
+      mutationFn: ({ file, scope }: { file: File; scope: { warehouseId: string; ownerId: string } }) =>
+        inboundRepository.previewLineImport(file, scope),
+      onError: notifyError,
+    }),
+    commitLineImport: useMutation({
+      mutationFn: ({ file, header }: { file: File; header: Omit<CreateInboundPlanInput, 'lines'> }) =>
+        inboundRepository.commitLineImport(file, header),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
     recordGateIn: useMutation({
       mutationFn: ({ id, input }: { id: string; input: RecordGateInInput }) =>
         inboundRepository.recordGateIn(id, input),

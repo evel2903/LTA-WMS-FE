@@ -85,6 +85,24 @@ export interface CreateInboundPlanRequestDto {
   Lines: CreateInboundPlanLineRequestDto[];
 }
 
+export interface InboundLineImportRowDto {
+  RowNumber: number;
+  SkuCode: string;
+  UomCode: string;
+  ExpectedQuantity: string;
+  ExternalLineReference: string;
+  SkuId?: string;
+  UomId?: string;
+  Errors: string[];
+}
+
+export interface InboundLineImportPreviewDto {
+  FileName: string;
+  Rows: InboundLineImportRowDto[];
+  Summary: { Total: number; Valid: number; Invalid: number };
+  HeaderError: string | null;
+}
+
 export interface RecordGateInRequestDto {
   GateInAt: string;
   GateReference: string;

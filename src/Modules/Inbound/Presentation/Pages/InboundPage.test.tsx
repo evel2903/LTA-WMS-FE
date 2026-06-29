@@ -10,6 +10,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
 import type {
   InboundDiscrepancy,
+  InboundLineImportPreview,
   InboundLpn,
   InboundOperationalState,
   InboundPlan,
@@ -436,6 +437,22 @@ class FakeRepository implements Partial<IInboundRepository> {
     this.items = [created, ...this.items];
     return Promise.resolve(created);
   });
+
+  downloadLineImportTemplate = vi.fn((): Promise<Blob> => Promise.resolve(new Blob()));
+
+  previewLineImport = vi.fn(
+    (): Promise<InboundLineImportPreview> =>
+      Promise.resolve({
+        fileName: 'template.xlsx',
+        rows: [],
+        summary: { total: 0, valid: 0, invalid: 0 },
+        headerError: null,
+      }),
+  );
+
+  commitLineImport = vi.fn((_file: File, header: Omit<CreateInboundPlanInput, 'lines'>) =>
+    this.create({ ...header, lines: [] }),
+  );
 
   recordGateIn = vi.fn((id: string, input: RecordGateInInput) => {
     const index = this.items.findIndex((item) => item.id === id);
