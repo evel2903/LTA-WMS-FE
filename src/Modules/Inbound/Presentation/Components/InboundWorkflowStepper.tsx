@@ -138,8 +138,12 @@ export function InboundWorkflowStepper({
               <button
                 type="button"
                 className={cn(
-                  'flex min-h-16 w-full flex-col items-center rounded-md px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                  isSelected && 'ring-2 ring-primary ring-offset-2',
+                  // cursor-pointer + hover tint signal the node is clickable; rings are
+                  // `ring-inset` (not offset) because the horizontally-scrollable parent
+                  // computes overflow-y:auto and would clip an offset ring's top/bottom,
+                  // leaving only the side bars (the ugly "[ ]" look).
+                  'flex min-h-16 w-full cursor-pointer flex-col items-center rounded-md px-1 py-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                  isSelected && 'bg-primary/10 ring-2 ring-primary ring-inset',
                 )}
                 onClick={() => onStepSelect(step)}
                 aria-pressed={isSelected}
