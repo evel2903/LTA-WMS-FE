@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type { SiteLocationTree } from '@modules/MasterData/Domain/Types/MasterDataTree';
@@ -36,12 +37,10 @@ export function SiteLocationTreePageView({
     return (
       <div className="space-y-6">
         <PageHeader />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Không có quyền</CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">Bạn không có quyền đọc cây site và vị trí trong phạm vi này.</CardContent>
-        </Card>
+        <Alert role="status" variant="warning">
+          <AlertTitle>Không có quyền</AlertTitle>
+          <AlertDescription>Bạn không có quyền đọc cây site và vị trí trong phạm vi này.</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -61,14 +60,10 @@ export function SiteLocationTreePageView({
     return (
       <div className="space-y-6">
         <PageHeader />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Không thể tải cây site và vị trí</CardTitle>
-          </CardHeader>
-          <CardContent className="text-destructive text-sm">
-            {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
-          </CardContent>
-        </Card>
+        <Alert variant="destructive">
+          <AlertTitle>Không thể tải cây site và vị trí</AlertTitle>
+          <AlertDescription>{errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -77,19 +72,24 @@ export function SiteLocationTreePageView({
     return (
       <div className="space-y-6">
         <PageHeader />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Chưa có site</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>Tạo site đầu tiên trước khi thêm kho, khu vực và vị trí.</p>
-            {canCreate ? (
-              (formPanel ?? <p>Dùng biểu mẫu tạo site để bắt đầu.</p>)
-            ) : (
-              <p>Chỉ đọc</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Alert role="status" variant="info">
+            <AlertTitle>Chưa có site</AlertTitle>
+            <AlertDescription>Tạo site đầu tiên trước khi thêm kho, khu vực và vị trí.</AlertDescription>
+          </Alert>
+          {canCreate ? (
+            (formPanel ?? (
+              <Alert role="status" variant="info">
+                <AlertDescription>Dùng biểu mẫu tạo site để bắt đầu.</AlertDescription>
+              </Alert>
+            ))
+          ) : (
+            <Alert role="status" variant="warning">
+              <AlertTitle>Chỉ đọc</AlertTitle>
+              <AlertDescription>Bạn chỉ có quyền xem cấu hình site và vị trí.</AlertDescription>
+            </Alert>
+          )}
+        </div>
       </div>
     );
   }

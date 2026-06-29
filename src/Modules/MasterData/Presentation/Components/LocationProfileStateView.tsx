@@ -1,3 +1,5 @@
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
+
 export type LocationProfileViewState = 'loading' | 'empty' | 'ready' | 'error' | 'denied';
 
 interface LocationProfileStateViewProps {
@@ -6,6 +8,12 @@ interface LocationProfileStateViewProps {
 }
 
 export function LocationProfileStateView({ state, errorMessage }: LocationProfileStateViewProps) {
+  const variant =
+    state === 'denied' || state === 'empty'
+      ? 'warning'
+      : state === 'error'
+        ? 'destructive'
+        : 'info';
   const title =
     state === 'denied'
       ? 'Không có quyền'
@@ -24,13 +32,11 @@ export function LocationProfileStateView({ state, errorMessage }: LocationProfil
           : 'Không có hồ sơ vị trí phù hợp với bộ lọc hiện tại.';
 
   return (
-    <div className="space-y-2 py-10">
-      <h2 className="text-base font-medium">{title}</h2>
-      <p
-        className={state === 'error' ? 'text-destructive text-sm' : 'text-muted-foreground text-sm'}
-      >
-        {message}
-      </p>
+    <div className="py-8">
+      <Alert role={state === 'error' ? 'alert' : 'status'} variant={variant}>
+        <AlertTitle>{title}</AlertTitle>
+        <AlertDescription>{message}</AlertDescription>
+      </Alert>
     </div>
   );
 }

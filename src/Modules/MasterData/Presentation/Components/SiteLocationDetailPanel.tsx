@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type { SiteLocationTree } from '@modules/MasterData/Domain/Types/MasterDataTree';
@@ -69,9 +70,13 @@ export function SiteLocationDetailPanel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Detail</CardTitle>
+          <CardTitle className="text-base">Chi tiết</CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">Chọn site, kho, khu vực hoặc vị trí để xem chi tiết.</CardContent>
+        <CardContent>
+          <Alert role="status" variant="info">
+            <AlertDescription>Chọn site, kho, khu vực hoặc vị trí để xem chi tiết.</AlertDescription>
+          </Alert>
+        </CardContent>
       </Card>
     );
   }
@@ -94,6 +99,12 @@ export function SiteLocationDetailPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {!canEdit && (
+          <Alert role="status" variant="warning">
+            <AlertTitle>Chỉ đọc</AlertTitle>
+            <AlertDescription>Bạn chỉ có quyền xem cấu hình này.</AlertDescription>
+          </Alert>
+        )}
         <div className="space-y-2">
           <DetailRow label="ID" value={selectedNode.entity.id} />
           {renderEntityDetails(selectedNode)}

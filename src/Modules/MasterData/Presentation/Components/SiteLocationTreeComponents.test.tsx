@@ -160,7 +160,7 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('aria-selected="true"');
   });
 
-  it('renders warehouse map legend, partial overlay notice, and location drilldown', () => {
+  it('renders warehouse map legend, partial overlay notice, and location detail', () => {
     const html = renderToStaticMarkup(
       <WarehouseMapPanel
         nodes={tree}
@@ -170,12 +170,12 @@ describe('Site & Location Tree components', () => {
     );
 
     expect(html).toContain('Bản đồ kho và vị trí');
-    expect(html).toContain('Chú giải heatmap tồn kho');
+    expect(html).toContain('Chú giải bản đồ nhiệt tồn kho');
     expect(html).toContain('Tồn kho cao');
     expect(html).toContain('Chưa có lớp dữ liệu tồn kho theo vị trí');
     expect(html).toContain('ZONE-A - Ambient Zone');
     expect(html).toContain('A-01-01 - Aisle 01 Rack 01');
-    expect(html).toContain('Drilldown khu');
+    expect(html).toContain('Chi tiết khu');
   });
 
   it('calls onSelect with the selected zone and location from the map', () => {
@@ -321,7 +321,7 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('WH-02 - Cold Warehouse');
     expect(html).not.toContain('WH-01 - Tier 1 Warehouse');
     expect(html).toContain('Kho này chưa có khu vực');
-    expect(html).not.toContain('Khu này chưa có vị trí con để drilldown');
+    expect(html).not.toContain('Khu này chưa có vị trí con để xem chi tiết');
   });
 
   it('keeps the selected location visible when it is outside the first preview page', () => {

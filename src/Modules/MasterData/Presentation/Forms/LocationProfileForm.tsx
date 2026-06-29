@@ -3,6 +3,7 @@ import { ArchiveX } from 'lucide-react';
 import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useForm } from 'react-hook-form';
 
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
@@ -134,17 +135,18 @@ export function LocationProfileForm({
             {...form.register('reasonCode')}
           />
           <ErrorText message={errors.reasonCode?.message} />
-          {inlineError && (
-            <span className="text-destructive text-xs" role="alert">
-              {inlineError}
-            </span>
-          )}
         </label>
         <label className="grid gap-1 text-sm">Hệ thống nguồn<Input disabled={disabled} {...form.register('sourceSystem')} />
         </label>
         <label className="grid gap-1 text-sm">ID tham chiếu<Input disabled={disabled} {...form.register('referenceId')} />
         </label>
       </div>
+
+      {inlineError && (
+        <Alert role="alert" variant="destructive">
+          <AlertDescription>{inlineError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={disabled || pending}>

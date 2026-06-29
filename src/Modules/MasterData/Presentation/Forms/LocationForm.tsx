@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 
 import { ROUTES } from '@app/Config/Routes';
+import { Alert, AlertAction, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type {
@@ -85,10 +86,14 @@ export function LocationForm({
 
   if (!hasProfiles) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        <span>Chưa có hồ sơ vị trí đang hoạt động. Hãy quản lý hồ sơ trước khi thêm vị trí.</span>
-        <ManageProfilesLink />
-      </div>
+      <Alert role="status" variant="warning">
+        <AlertDescription>
+          Chưa có hồ sơ vị trí đang hoạt động. Hãy quản lý hồ sơ trước khi thêm vị trí.
+        </AlertDescription>
+        <AlertAction>
+          <ManageProfilesLink />
+        </AlertAction>
+      </Alert>
     );
   }
 

@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 
 function PolicyBlock({ title, value }: { title: string; value: Record<string, unknown> }) {
@@ -18,11 +19,14 @@ export function LocationProfileConstraintsPanel({
 }) {
   if (!profile) {
     return (
-      <div className="text-muted-foreground rounded-md border p-3 text-sm">
-        {profileId
-          ? `Hồ sơ ${profileId} không nằm trong danh sách hoạt động; không thể xem ràng buộc.`
-          : 'Chưa gán hồ sơ vị trí.'}
-      </div>
+      <Alert role="status" variant={profileId ? 'warning' : 'info'}>
+        <AlertTitle>{profileId ? 'Không thể xem ràng buộc' : 'Chưa gán hồ sơ vị trí'}</AlertTitle>
+        <AlertDescription>
+          {profileId
+            ? `Hồ sơ ${profileId} không nằm trong danh sách hoạt động; không thể xem ràng buộc.`
+            : 'Chưa gán hồ sơ vị trí.'}
+        </AlertDescription>
+      </Alert>
     );
   }
 

@@ -1,5 +1,6 @@
 import { AlertTriangle, Layers3, MapPin, PackageCheck, Warehouse } from 'lucide-react';
 
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -146,8 +147,12 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
         <CardHeader>
           <CardTitle className="text-base">Bản đồ kho</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Chưa có kho để dựng sơ đồ. Tạo site và kho trước khi thêm khu vực hoặc vị trí.
+        <CardContent>
+          <Alert role="status" variant="info">
+            <AlertDescription>
+              Chưa có kho để dựng sơ đồ. Tạo site và kho trước khi thêm khu vực hoặc vị trí.
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
     );
@@ -178,7 +183,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Chú giải heatmap tồn kho</span>
+          <span className="font-medium text-foreground">Chú giải bản đồ nhiệt tồn kho</span>
           <LegendDot className={HEAT_CLASS.high} label="Tồn kho cao" />
           <LegendDot className={HEAT_CLASS.medium} label="Tồn kho trung bình" />
           <LegendDot className={HEAT_CLASS.low} label="Tồn kho thấp" />
@@ -186,20 +191,22 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-          <div className="flex gap-2">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <Alert role="status" variant="warning">
+          <AlertTriangle aria-hidden="true" />
+          <AlertDescription>
             <p>
-              Chưa có lớp dữ liệu tồn kho theo vị trí. Màu hiện là proxy theo trạng thái/cấu hình vị trí, không phải
+              Chưa có lớp dữ liệu tồn kho theo vị trí. Màu hiện chỉ mô phỏng theo trạng thái/cấu hình vị trí, không phải
               số lượng tồn thực tế.
             </p>
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
 
         {summary.zones.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            Kho này chưa có khu vực. Tạo khu vực trước khi thêm vị trí hoặc xem heatmap theo khu.
-          </div>
+          <Alert role="status" variant="info">
+            <AlertDescription>
+              Kho này chưa có khu vực. Tạo khu vực trước khi thêm vị trí hoặc xem bản đồ nhiệt theo khu.
+            </AlertDescription>
+          </Alert>
         ) : (
           <>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -247,7 +254,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
               <div className="rounded-lg border p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <Layers3 className="size-4" aria-hidden="true" />
-                  Drilldown khu
+                  Chi tiết khu
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {focusedZone ? focusedZone.zone.label : 'Chọn một khu trên bản đồ để xem vị trí.'}
@@ -268,7 +275,9 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
                   </Badge>
                 </div>
                 {locationPreview.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Khu này chưa có vị trí con để drilldown.</p>
+                  <Alert role="status" variant="info">
+                    <AlertDescription>Khu này chưa có vị trí con để xem chi tiết.</AlertDescription>
+                  </Alert>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {locationPreview.map((location) => (
