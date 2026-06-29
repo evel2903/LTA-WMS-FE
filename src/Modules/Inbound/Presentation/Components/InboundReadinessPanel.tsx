@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type { ReceivingReadiness } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 interface InboundReadinessPanelProps {
@@ -59,6 +60,11 @@ export function InboundReadinessPanel({
   readiness,
   reasonCode,
 }: InboundReadinessPanelProps) {
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions({ action: 'Override' });
   const statusText = getReadinessStatus(readiness, isReadinessLoading);
   const helperText = getReadinessHelper({
     gateInDone,
@@ -95,22 +101,25 @@ export function InboundReadinessPanel({
               statusText
             )}
           </p>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-readiness-reason-code">
-            Mã lý do sẵn sàng
-            <Input
-              id="inbound-readiness-reason-code"
-              name="readinessReasonCode"
-              value={reasonCode}
-              onChange={(event) => onReasonCodeChange(event.target.value)}
-              placeholder="RC-V1-HANDOFF"
-              disabled={
-                !hasPlan ||
-                isPending ||
-                isReadinessLoading ||
-                Boolean(readiness?.allowed || readiness?.overrideAccepted)
-              }
-            />
-          </label>
+          <LookupSelect
+            id="inbound-readiness-reason-code"
+            name="readinessReasonCode"
+            label="Mã lý do sẵn sàng"
+            value={reasonCode}
+            placeholder="Chọn mã lý do"
+            options={reasonCodeOptions}
+            isLoading={reasonCodesLoading}
+            isError={reasonCodesError}
+            emptyMessage="Chưa có mã lý do khả dụng."
+            errorMessage="Không tải được danh sách mã lý do."
+            disabled={
+              !hasPlan ||
+              isPending ||
+              isReadinessLoading ||
+              Boolean(readiness?.allowed || readiness?.overrideAccepted)
+            }
+            onChange={onReasonCodeChange}
+          />
           <p
             className="break-words text-sm text-muted-foreground"
             data-testid="inbound-readiness-helper"

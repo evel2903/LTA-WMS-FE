@@ -8,6 +8,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
 import { downloadBlob } from '@shared/Utils/DownloadBlob';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import {
   useActiveOwners,
@@ -27,26 +28,6 @@ interface DraftLine {
   externalLineReference: string;
 }
 
-interface LookupOption {
-  value: string;
-  label: string;
-}
-
-interface LookupSelectProps {
-  id: string;
-  name: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  options: LookupOption[];
-  isLoading: boolean;
-  isError: boolean;
-  emptyMessage: string;
-  errorMessage: string;
-  optional?: boolean;
-  onChange: (value: string) => void;
-}
-
 let nextDraftLineId = 0;
 
 const initialLine = (): DraftLine => ({
@@ -56,62 +37,6 @@ const initialLine = (): DraftLine => ({
   expectedQuantity: '1',
   externalLineReference: '',
 });
-
-const selectClassName =
-  'h-9 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
-
-function LookupSelect({
-  id,
-  name,
-  label,
-  value,
-  placeholder,
-  options,
-  isLoading,
-  isError,
-  emptyMessage,
-  errorMessage,
-  optional = false,
-  onChange,
-}: LookupSelectProps) {
-  const hasOptions = options.length > 0;
-  const disabled = isLoading || isError || (!optional && !hasOptions) || (optional && !hasOptions);
-  const helperId = `${id}-helper`;
-  const helperText = isLoading
-    ? 'Đang tải danh sách...'
-    : isError
-      ? errorMessage
-      : !hasOptions
-        ? emptyMessage
-        : null;
-
-  return (
-    <label className="grid gap-1 text-sm" htmlFor={id}>
-      {label}
-      <select
-        id={id}
-        name={name}
-        className={selectClassName}
-        value={value}
-        disabled={disabled}
-        aria-describedby={helperText ? helperId : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">{isLoading ? 'Đang tải...' : placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {helperText ? (
-        <span id={helperId} className="text-muted-foreground text-xs">
-          {helperText}
-        </span>
-      ) : null}
-    </label>
-  );
-}
 
 export function InboundCreatePage() {
   const navigate = useNavigate();

@@ -4,6 +4,8 @@ import { PackageCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type {
   InboundLpn,
   InboundPutawayRelease,
@@ -138,6 +140,11 @@ export function InboundReleasePutawayPanel({
   releaseRequireLpn,
   ssccCode,
 }: InboundReleasePutawayPanelProps) {
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions({ action: 'Override' });
   const lpnHelper = getLpnHelper({
     confirmedReceiptLine,
     isPending: isConfirmInboundLpnPending,
@@ -261,16 +268,19 @@ export function InboundReleasePutawayPanel({
               />
               Ghi đè nhãn
             </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-release-reason-code">
-              Mã lý do phát hành
-              <Input
-                id="inbound-release-reason-code"
-                name="releaseReasonCode"
-                value={releaseReasonCode}
-                onChange={(event) => onReleaseReasonCodeChange(event.target.value)}
-                placeholder="RC-V1-LABEL-OVERRIDE"
-              />
-            </label>
+            <LookupSelect
+              id="inbound-release-reason-code"
+              name="releaseReasonCode"
+              label="Mã lý do phát hành"
+              value={releaseReasonCode}
+              placeholder="Chọn mã lý do"
+              options={reasonCodeOptions}
+              isLoading={reasonCodesLoading}
+              isError={reasonCodesError}
+              emptyMessage="Chưa có mã lý do khả dụng."
+              errorMessage="Không tải được danh sách mã lý do."
+              onChange={onReleaseReasonCodeChange}
+            />
             <label className="grid gap-1 text-sm" htmlFor="inbound-release-evidence-refs">
               Tham chiếu bằng chứng phát hành
               <Input

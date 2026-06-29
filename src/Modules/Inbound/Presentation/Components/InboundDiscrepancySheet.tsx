@@ -4,6 +4,8 @@ import type { FormEvent, ReactNode } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
 import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { INBOUND_DISCREPANCY_TYPES } from '@modules/Inbound/Domain/Constants/InboundConstants';
 import type {
@@ -108,6 +110,11 @@ export function InboundDiscrepancySheet({
   open,
   selectedLine,
 }: InboundDiscrepancySheetProps) {
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions();
   const helper = getDiscrepancyHelper({
     confirmedReceiptLine,
     discrepancyEvidenceRefs,
@@ -223,18 +230,21 @@ export function InboundDiscrepancySheet({
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-reason-code">
-              Mã lý do sai lệch
-              <Input
-                id="inbound-discrepancy-reason-code"
-                name="discrepancyReasonCode"
-                autoFocus
-                value={discrepancyReasonCode}
-                onChange={(event) => onDiscrepancyReasonCodeChange(event.target.value)}
-                placeholder="RC-V1-DISCREPANCY"
-                disabled={!confirmedReceiptLine}
-              />
-            </label>
+            <LookupSelect
+              id="inbound-discrepancy-reason-code"
+              name="discrepancyReasonCode"
+              label="Mã lý do sai lệch"
+              value={discrepancyReasonCode}
+              placeholder="Chọn mã lý do"
+              options={reasonCodeOptions}
+              isLoading={reasonCodesLoading}
+              isError={reasonCodesError}
+              emptyMessage="Chưa có mã lý do khả dụng."
+              errorMessage="Không tải được danh sách mã lý do."
+              autoFocus
+              disabled={!confirmedReceiptLine}
+              onChange={onDiscrepancyReasonCodeChange}
+            />
             <label className="grid gap-1 text-sm" htmlFor="inbound-discrepancy-reason-note">
               Ghi chú sai lệch
               <Input

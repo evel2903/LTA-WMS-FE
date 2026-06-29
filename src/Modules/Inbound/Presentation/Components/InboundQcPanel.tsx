@@ -4,6 +4,8 @@ import { ClipboardCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import {
   QC_DISPOSITION_CODES,
@@ -203,6 +205,11 @@ export function InboundQcPanel({
   const qcNotRequired = Boolean(evaluatedQcTask && !evaluatedQcTask.required);
   const showRecordForm = !qcNotRequired;
   const qcResultDisabled = !evaluatedQcTask?.required;
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions();
 
   return (
     <Card data-testid="inbound-qc-panel">
@@ -222,16 +229,19 @@ export function InboundQcPanel({
             Bắt buộc QC
           </label>
           <TechnicalDetails testId="inbound-qc-task-technical-details">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-code">
-              Mã lý do kích hoạt QC
-              <Input
-                id="inbound-qc-task-reason-code"
-                name="qcTaskReasonCode"
-                value={qcTaskReasonCode}
-                onChange={(event) => onQcTaskReasonCodeChange(event.target.value)}
-                placeholder="RC-V1-DISCREPANCY"
-              />
-            </label>
+            <LookupSelect
+              id="inbound-qc-task-reason-code"
+              name="qcTaskReasonCode"
+              label="Mã lý do kích hoạt QC"
+              value={qcTaskReasonCode}
+              placeholder="Chọn mã lý do"
+              options={reasonCodeOptions}
+              isLoading={reasonCodesLoading}
+              isError={reasonCodesError}
+              emptyMessage="Chưa có mã lý do khả dụng."
+              errorMessage="Không tải được danh sách mã lý do."
+              onChange={onQcTaskReasonCodeChange}
+            />
             <label className="grid gap-1 text-sm" htmlFor="inbound-qc-task-reason-note">
               Ghi chú lý do kích hoạt QC
               <Input
@@ -380,17 +390,20 @@ export function InboundQcPanel({
             {/* Reason code + its note pair into 2 columns only at 2xl (single column
                 below); adjacent in the original order so the flow is preserved. */}
             <div className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
-              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-code">
-                Mã lý do kết quả QC
-                <Input
-                  id="inbound-qc-result-reason-code"
-                  name="qcResultReasonCode"
-                  value={qcResultReasonCode}
-                  onChange={(event) => onQcResultReasonCodeChange(event.target.value)}
-                  placeholder="RC-V1-DISCREPANCY"
-                  disabled={qcResultDisabled}
-                />
-              </label>
+              <LookupSelect
+                id="inbound-qc-result-reason-code"
+                name="qcResultReasonCode"
+                label="Mã lý do kết quả QC"
+                value={qcResultReasonCode}
+                placeholder="Chọn mã lý do"
+                options={reasonCodeOptions}
+                isLoading={reasonCodesLoading}
+                isError={reasonCodesError}
+                emptyMessage="Chưa có mã lý do khả dụng."
+                errorMessage="Không tải được danh sách mã lý do."
+                disabled={qcResultDisabled}
+                onChange={onQcResultReasonCodeChange}
+              />
               <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-note">
                 Ghi chú lý do kết quả QC
                 <Input

@@ -4,6 +4,8 @@ import { PlayCircle, ScanLine } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import type {
   InboundPlanLine,
@@ -133,6 +135,11 @@ export function InboundReceivingPanel({
   receivingSessionKey,
   selectedLine,
 }: InboundReceivingPanelProps) {
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions();
   const startHelper = getStartReceivingHelper({
     hasPlan,
     isPending: isStartReceivingPending,
@@ -265,17 +272,20 @@ export function InboundReceivingPanel({
               />
               Xác nhận thủ công
             </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-reason-code">
-              Mã lý do tiếp nhận
-              <Input
-                id="inbound-receipt-reason-code"
-                name="receiptReasonCode"
-                value={receiptReasonCode}
-                onChange={(event) => onReceiptReasonCodeChange(event.target.value)}
-                disabled={!receiptManualConfirm}
-                placeholder="RC-V1-MANUAL-SCAN"
-              />
-            </label>
+            <LookupSelect
+              id="inbound-receipt-reason-code"
+              name="receiptReasonCode"
+              label="Mã lý do tiếp nhận"
+              value={receiptReasonCode}
+              placeholder="Chọn mã lý do"
+              options={reasonCodeOptions}
+              isLoading={reasonCodesLoading}
+              isError={reasonCodesError}
+              emptyMessage="Chưa có mã lý do khả dụng."
+              errorMessage="Không tải được danh sách mã lý do."
+              disabled={!receiptManualConfirm}
+              onChange={onReceiptReasonCodeChange}
+            />
           </div>
           <TechnicalDetails testId="inbound-receipt-technical-details">
             <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-idempotency-key">

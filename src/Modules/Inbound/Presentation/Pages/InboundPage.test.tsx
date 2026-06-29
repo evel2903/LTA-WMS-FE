@@ -85,6 +85,20 @@ vi.mock(
   }),
 );
 
+// Reason-code dropdowns (IFB-04): mock the options hook so panels render selectable codes.
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: () => ({
+    options: [
+      { value: 'RC-V1-HANDOFF', label: 'RC-V1-HANDOFF — Bàn giao' },
+      { value: 'RC-V1-DISCREPANCY', label: 'RC-V1-DISCREPANCY — Sai lệch' },
+      { value: 'RC-V1-MANUAL-SCAN', label: 'RC-V1-MANUAL-SCAN — Nhập tay' },
+      { value: 'RC-V1-LABEL-OVERRIDE', label: 'RC-V1-LABEL-OVERRIDE — Ghi đè nhãn' },
+    ],
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 import { InboundDetailPage } from '@modules/Inbound/Presentation/Pages/InboundDetailPage';
 import { InboundCreatePage } from '@modules/Inbound/Presentation/Pages/InboundCreatePage';
 import { InboundPage as InboundListPage } from '@modules/Inbound/Presentation/Pages/InboundPage';
@@ -1289,7 +1303,7 @@ describe('InboundPage', () => {
     expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
       'Xác nhận thủ công cần mã lý do',
     );
-    await actor.type(screen.getByLabelText('Mã lý do tiếp nhận'), 'RC-V1-MANUAL-SCAN');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do tiếp nhận'), 'RC-V1-MANUAL-SCAN');
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
   });
 
@@ -1434,7 +1448,7 @@ describe('InboundPage', () => {
       true,
     );
 
-    await actor.type(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
 
     await waitFor(() =>
@@ -1576,7 +1590,7 @@ describe('InboundPage', () => {
     expect(screen.getByTestId('location-probe').textContent).toBe(
       '/inbound/inbound-plan-1/discrepancy/line-1',
     );
-    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -2009,7 +2023,7 @@ describe('InboundPage', () => {
     const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
     const routeButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     expect(routeButton).toHaveProperty('disabled', true);
-    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), ',,');
     expect(
       within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent,
@@ -2167,7 +2181,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
-    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -2275,7 +2289,7 @@ describe('InboundPage', () => {
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
-    await actor.type(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -2295,7 +2309,7 @@ describe('InboundPage', () => {
     renderPage('/inbound/inbound-plan-1/receiving');
 
     await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
-    await actor.type(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
     expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Ghi nhận vào cổng' })).toBeNull();
