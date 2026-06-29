@@ -1,7 +1,15 @@
 import { ApiError } from '@shared/Services/Http/ApiError';
 
+const API_MESSAGE_VI: Record<string, string> = {
+  'Reason code is required for this change.': 'Cần mã lý do cho thay đổi này.',
+};
+
+function toUserFacingApiMessage(error: ApiError): string {
+  return API_MESSAGE_VI[error.message.trim()] ?? error.message;
+}
+
 export function toMutationErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (error instanceof ApiError) return toUserFacingApiMessage(error);
   if (error instanceof Error && error.message) return error.message;
   return 'Không thể lưu thay đổi. Vui lòng thử lại.';
 }

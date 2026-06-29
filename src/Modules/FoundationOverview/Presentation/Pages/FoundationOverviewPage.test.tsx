@@ -226,5 +226,6 @@ describe('FoundationOverviewPage (C17)', () => {
     renderPage();
 
     expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+    expect(screen.getByRole('status')).toBeTruthy();
   });
 });

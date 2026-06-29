@@ -6,6 +6,7 @@ import type {
   ResolveExceptionInput,
   SubmitExceptionInput,
 } from '@modules/Compliance/Domain/Types/ComplianceTypes';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { ExceptionStateBadge } from '@modules/Compliance/Presentation/Components/ExceptionStateBadge';
 import { ExceptionActionForm } from '@modules/Compliance/Presentation/Forms/ExceptionActionForm';
 
@@ -71,9 +72,13 @@ export function ExceptionDetailPanel({
       <div className="border-t pt-3">
         <h4 className="mb-2 text-sm font-medium">Hành động vòng đời</h4>
         {action === null ? (
-          <p className="text-muted-foreground text-sm">Đã đóng — không còn action.</p>
+          <Alert variant="info" role="status">
+            <AlertDescription>Đã đóng - không còn hành động.</AlertDescription>
+          </Alert>
         ) : !canManage ? (
-          <p className="text-muted-foreground text-sm">Read only — bạn không có quyền thao tác.</p>
+          <Alert variant="warning" role="status">
+            <AlertDescription>Chỉ đọc - bạn không có quyền thao tác.</AlertDescription>
+          </Alert>
         ) : (
           <ExceptionActionForm
             action={action}

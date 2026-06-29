@@ -226,7 +226,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
       expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
     );
     expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
-    expect(screen.getByText('Page 2 / 2')).toBeTruthy();
+    expect(screen.getByText('Trang 2 / 2')).toBeTruthy();
   });
 
   it('normalizes invalid enum, date, and decimal page values from the audit URL', async () => {
@@ -301,7 +301,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByText('Không có sự kiện kiểm toán khớp bộ lọc.')).toBeTruthy();
-    expect(screen.queryByText(/Page 1/)).toBeNull();
+    expect(screen.queryByText(/Trang 1/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Trước' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Tiếp' })).toBeNull();
   });
@@ -315,6 +315,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByText(/Cần quyền truy cập/i)).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
   });
 
   it('keeps loaded rows visible when a non-403 refetch fails', async () => {
@@ -347,6 +348,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage();
 
     expect(await screen.findByText('Initial audit failed')).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
   });
 
   it('surfaces a non-403 detail error without rendering a list-row fallback', async () => {

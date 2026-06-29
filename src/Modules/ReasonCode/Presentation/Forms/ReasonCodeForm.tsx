@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { ReasonCode } from '@modules/ReasonCode/Domain/Entities/ReasonCode';
 import {
   ACTION_CODES,
@@ -122,12 +123,12 @@ export function ReasonCodeForm({
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
-        {conflict && (
-          <span className="text-destructive text-xs" role="alert">
-            {conflict}
-          </span>
-        )}
       </label>
+      {conflict && (
+        <Alert variant="destructive" role="alert" className="w-full">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
+      )}
 
       <label className="grid gap-1 text-sm">Nhóm<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"

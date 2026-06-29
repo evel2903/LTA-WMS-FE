@@ -60,14 +60,14 @@ export function InventoryStatusCatalogPage() {
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1 text-sm">Mã trạng thái<Input
               className="h-9"
-              placeholder="e.g. AVAILABLE"
+              placeholder="Ví dụ: AVAILABLE"
               value={filters.statusCode}
               onChange={(e) => patch({ statusCode: e.target.value })}
             />
           </label>
           <label className="grid gap-1 text-sm">Nhóm chặng<Input
               className="h-9"
-              placeholder="e.g. Storage"
+              placeholder="Ví dụ: Storage"
               value={filters.stageGroup}
               onChange={(e) => patch({ stageGroup: e.target.value })}
             />
@@ -100,7 +100,7 @@ export function InventoryStatusCatalogPage() {
               />
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+                  Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
                 </span>
                 <div className="flex gap-2">
                   <Button

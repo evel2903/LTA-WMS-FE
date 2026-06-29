@@ -1,5 +1,6 @@
 import type { ApprovalRequest } from '@modules/Approval/Domain/Entities/Approval';
 import type { DecideApprovalInput } from '@modules/Approval/Domain/Types/ApprovalTypes';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { nextApprovalAction } from '@modules/Approval/Application/UseCases/NextApprovalAction';
 import { ApprovalDecisionBadge } from '@modules/Approval/Presentation/Components/ApprovalDecisionBadge';
 import { JsonBlock } from '@modules/Approval/Presentation/Components/StateViews';
@@ -70,13 +71,17 @@ export function ApprovalDetailPanel({
       <div className="border-t pt-3">
         <h4 className="mb-2 text-sm font-medium">Quyết định</h4>
         {action === null ? (
-          <p className="text-muted-foreground text-sm">Đã quyết định — không còn action.</p>
+          <Alert variant="info" role="status">
+            <AlertDescription>Đã quyết định - không còn hành động.</AlertDescription>
+          </Alert>
         ) : isSelfRequester ? (
-          <p className="text-muted-foreground text-sm">
-            Không thể tự duyệt request của chính mình.
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>Không thể tự duyệt yêu cầu của chính mình.</AlertDescription>
+          </Alert>
         ) : !canManage ? (
-          <p className="text-muted-foreground text-sm">Chỉ đọc — bạn không có quyền duyệt.</p>
+          <Alert variant="warning" role="status">
+            <AlertDescription>Chỉ đọc - bạn không có quyền duyệt.</AlertDescription>
+          </Alert>
         ) : (
           <ApprovalDecisionForm
             pending={pending}

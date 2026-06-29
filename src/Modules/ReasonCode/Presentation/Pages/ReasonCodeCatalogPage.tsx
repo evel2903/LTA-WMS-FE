@@ -121,7 +121,7 @@ export function ReasonCodeCatalogPage() {
               />
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+                  Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
                 </span>
                 <div className="flex gap-2">
                   <Button

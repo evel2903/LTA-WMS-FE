@@ -23,7 +23,7 @@ export function FoundationChecklistPanel({ rows }: { rows: WarehouseProfileReadi
                 {row.warehouseCode} · {row.activeProfileCode}
               </h3>
               <p className="text-muted-foreground text-xs">
-                Evaluated at {row.checklist?.evaluatedAt ?? '—'}
+                Đánh giá lúc {row.checklist?.evaluatedAt ?? '—'}
               </p>
             </div>
             <FoundationStatusBadge status={row.status} />
@@ -40,7 +40,7 @@ export function FoundationChecklistPanel({ rows }: { rows: WarehouseProfileReadi
                 <p className="text-muted-foreground">{item.message}</p>
                 {item.deferredToStory ? (
                   <p className="text-muted-foreground text-xs">
-                    Deferred to {item.deferredToStory}
+                    Dời sang {item.deferredToStory}
                   </p>
                 ) : null}
               </div>

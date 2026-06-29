@@ -153,7 +153,8 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     await actor.type(within(editForm).getByLabelText('Mã lý do'), 'RC-WRONG');
     await actor.click(updateBtn);
 
-    expect(await screen.findByText('Reason code is required for this change.')).toBeTruthy();
+    expect(await screen.findByText('Cần mã lý do cho thay đổi này.')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('Cần mã lý do cho thay đổi này.');
     expect(toastError).not.toHaveBeenCalled();
   });
 });

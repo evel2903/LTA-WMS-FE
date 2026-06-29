@@ -72,7 +72,7 @@ function TabButton({
 }
 
 function valueOrNa(value: string | null | undefined) {
-  return value && value.trim() ? value : 'n/a';
+  return value && value.trim() ? value : 'Không áp dụng';
 }
 
 function ValidationRulesTable({

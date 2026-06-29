@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { DecideApprovalInput } from '@modules/Approval/Domain/Types/ApprovalTypes';
 import {
   approvalDecisionSchema,
@@ -22,9 +23,9 @@ interface ApprovalDecisionFormProps {
 function Blocked({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <span className="text-destructive text-xs" role="alert">
-      {message}
-    </span>
+    <Alert variant="destructive" role="alert" className="w-full">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }
 
@@ -71,8 +72,8 @@ export function ApprovalDecisionForm({
           disabled={disabled || pending}
           onClick={decide(onReject)}
         >Từ chối</Button>
-        <Blocked message={blocked} />
       </div>
+      <Blocked message={blocked} />
     </form>
   );
 }

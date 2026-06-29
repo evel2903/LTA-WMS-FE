@@ -140,7 +140,8 @@ describe('ApprovalQueuePage (C15)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
     await actor.click(await screen.findByRole('button', { name: 'Từ chối' }));
 
-    expect(await screen.findByText('Request already decided')).toBeTruthy();
+    expect(await screen.findByText('Yêu cầu đã được quyết định')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('Yêu cầu đã được quyết định');
     expect(toastError).not.toHaveBeenCalled();
     // Panel stays open — the decision form is still mounted.
     expect(screen.getByRole('button', { name: 'Phê duyệt' })).toBeTruthy();
@@ -157,7 +158,8 @@ describe('ApprovalQueuePage (C15)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
 
     // Scope to the unique panel suffix — the page header also mentions self-approval.
-    expect(await screen.findByText(/Không thể tự duyệt request/i)).toBeTruthy();
+    expect(await screen.findByText(/Không thể tự duyệt yêu cầu/i)).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('Không thể tự duyệt yêu cầu');
     expect(screen.queryByRole('button', { name: 'Phê duyệt' })).toBeNull();
   });
 
@@ -168,5 +170,6 @@ describe('ApprovalQueuePage (C15)', () => {
     renderPage();
 
     expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
   });
 });

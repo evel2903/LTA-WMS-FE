@@ -1,7 +1,15 @@
 import { ApiError } from '@shared/Services/Http/ApiError';
 
+function toUserFacingApiMessage(error: ApiError): string {
+  const duplicate = /^Reason code already exists(?::\s*(.+))?$/i.exec(error.message.trim());
+  if (duplicate) {
+    return duplicate[1] ? `Mã lý do đã tồn tại: ${duplicate[1]}` : 'Mã lý do đã tồn tại.';
+  }
+  return error.message;
+}
+
 export function toMutationErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (error instanceof ApiError) return toUserFacingApiMessage(error);
   if (error instanceof Error && error.message) return error.message;
   return 'Không thể lưu thay đổi. Vui lòng thử lại.';
 }
@@ -12,7 +20,7 @@ export function isConflictError(error: unknown): boolean {
 }
 
 export function conflictMessage(error: unknown): string | null {
-  if (error instanceof ApiError && error.code === 'CONFLICT') return error.message;
+  if (error instanceof ApiError && error.code === 'CONFLICT') return toMutationErrorMessage(error);
   return null;
 }
 

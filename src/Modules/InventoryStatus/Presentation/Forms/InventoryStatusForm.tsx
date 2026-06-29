@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { InventoryStatus } from '@modules/InventoryStatus/Domain/Entities/InventoryStatus';
 import {
   inventoryStatusFormSchema,
@@ -106,12 +107,12 @@ export function InventoryStatusForm({
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
-        {inlineError && (
-          <span className="text-destructive text-xs" role="alert">
-            {inlineError}
-          </span>
-        )}
       </label>
+      {inlineError && (
+        <Alert variant="destructive" role="alert" className="w-full">
+          <AlertDescription>{inlineError}</AlertDescription>
+        </Alert>
+      )}
 
       <Button type="submit" disabled={disabled || pending}>Cập nhật trạng thái tồn kho</Button>
     </form>

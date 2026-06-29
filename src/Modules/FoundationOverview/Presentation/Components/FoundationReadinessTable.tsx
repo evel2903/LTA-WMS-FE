@@ -98,7 +98,7 @@ export function WarehouseProfileReadinessTable({
                   <div className="text-muted-foreground text-xs">{row.activeProfileName}</div>
                 </>
               ) : (
-                <span className="text-muted-foreground">None</span>
+                <span className="text-muted-foreground">Chưa có</span>
               )}
             </TableCell>
             <TableCell className="text-muted-foreground whitespace-normal">{row.message}</TableCell>

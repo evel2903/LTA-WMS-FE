@@ -223,7 +223,7 @@ describe('OverrideLogPage (C16)', () => {
       expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
     );
     expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
-    expect(screen.getByText('Page 2 / 2')).toBeTruthy();
+    expect(screen.getByText('Trang 2 / 2')).toBeTruthy();
   });
 
   it('normalizes invalid enum, date, and decimal page values from the override URL', async () => {
@@ -297,7 +297,7 @@ describe('OverrideLogPage (C16)', () => {
     renderPage();
 
     expect(await screen.findByText('Không có nhật ký ghi đè khớp bộ lọc.')).toBeTruthy();
-    expect(screen.queryByText(/Page 1/)).toBeNull();
+    expect(screen.queryByText(/Trang 1/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Trước' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Tiếp' })).toBeNull();
   });
@@ -309,6 +309,7 @@ describe('OverrideLogPage (C16)', () => {
     renderPage();
 
     expect(await screen.findByText(/Cần quyền truy cập/i)).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
   });
 
   it('surfaces a detail error without rendering a list-row fallback', async () => {
@@ -320,6 +321,7 @@ describe('OverrideLogPage (C16)', () => {
     renderPage(ROUTES.FOUNDATION.OVERRIDE_DETAIL('ov1'));
 
     expect(await screen.findByText('Override detail failed')).toBeTruthy();
+    expect(screen.getByRole('alert')).toBeTruthy();
     expect(screen.queryByText('Trước thay đổi')).toBeNull();
   });
 });

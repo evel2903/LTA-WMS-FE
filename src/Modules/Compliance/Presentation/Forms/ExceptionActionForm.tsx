@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { ExceptionAction } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
 import type {
   AssignExceptionInput,
@@ -37,9 +38,9 @@ interface ExceptionActionFormProps {
 function Blocked({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <span className="text-destructive text-xs" role="alert">
-      {message}
-    </span>
+    <Alert variant="destructive" role="alert" className="w-full">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }
 
@@ -73,8 +74,8 @@ function LogForm({ disabled, pending, blocked, onLog }: ExceptionActionFormProps
         />Chặn cứng</label>
       <div className="flex items-center gap-2">
         <Button size="sm" disabled={disabled || pending} onClick={() => onLog({ hardBlock })}>Ghi log</Button>
-        <Blocked message={blocked} />
       </div>
+      <Blocked message={blocked} />
     </div>
   );
 }
@@ -111,8 +112,8 @@ function AssignForm({ disabled, pending, blocked, onAssign }: ExceptionActionFor
       {errors.ownerId && <span className="text-destructive text-xs">{errors.ownerId.message}</span>}
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={disabled || pending}>Gán</Button>
-        <Blocked message={blocked} />
       </div>
+      <Blocked message={blocked} />
     </form>
   );
 }
@@ -141,8 +142,8 @@ function SubmitForm({ disabled, pending, blocked, onSubmit }: ExceptionActionFor
       </label>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={disabled || pending}>Gửi để rà soát</Button>
-        <Blocked message={blocked} />
       </div>
+      <Blocked message={blocked} />
     </form>
   );
 }
@@ -171,16 +172,18 @@ function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionF
       </label>
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={disabled || pending}>Xử lý</Button>
-        <Blocked message={blocked} />
       </div>
+      <Blocked message={blocked} />
     </form>
   );
 }
 
 function CloseForm({ disabled, pending, blocked, onClose }: ExceptionActionFormProps) {
   return (
-    <div className="flex items-center gap-2">
-      <Button size="sm" disabled={disabled || pending} onClick={() => onClose()}>Đóng</Button>
+    <div className="grid gap-2">
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={disabled || pending} onClick={() => onClose()}>Đóng</Button>
+      </div>
       <Blocked message={blocked} />
     </div>
   );

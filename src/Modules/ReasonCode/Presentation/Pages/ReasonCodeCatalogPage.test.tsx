@@ -181,7 +181,8 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     await actor.click(screen.getByLabelText('SKU'));
     await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
 
-    expect(await screen.findByText('Reason code already exists: RC-DUP')).toBeTruthy();
+    expect(await screen.findByText('Mã lý do đã tồn tại: RC-DUP')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain('Mã lý do đã tồn tại: RC-DUP');
     expect(toastError).not.toHaveBeenCalled();
   });
 });

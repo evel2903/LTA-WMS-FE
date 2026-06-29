@@ -219,11 +219,11 @@ export function AuditLogPage() {
           <label className="grid gap-1 text-sm">ID mã lý do<Input value={filters.reasonCodeId} onChange={(event) => patch({ reasonCodeId: event.target.value })} />
           </label>
           <label className="grid gap-1 text-sm">
-            From
+            Từ ngày
             <Input type="date" value={filters.from} onChange={(event) => patch({ from: event.target.value })} />
           </label>
           <label className="grid gap-1 text-sm">
-            To
+            Đến ngày
             <Input type="date" value={filters.to} onChange={(event) => patch({ to: event.target.value })} />
           </label>
         </div>
@@ -232,7 +232,7 @@ export function AuditLogPage() {
         listState === 'ready' ? (
           <div className="flex w-full items-center justify-between gap-3 text-sm">
             <span className="text-muted-foreground">
-              Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+              Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
             </span>
             <div className="flex gap-2">
               <Button

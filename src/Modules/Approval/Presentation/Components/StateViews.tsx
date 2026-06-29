@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 
 export type ApprovalViewState = 'loading' | 'empty' | 'ready' | 'error' | 'denied';
 
@@ -12,39 +12,35 @@ interface ApprovalStateViewProps {
 export function ApprovalStateView({ state, emptyLabel, errorMessage }: ApprovalStateViewProps) {
   if (state === 'denied') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Không có quyền</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem yêu cầu phê duyệt trong phạm vi hiện tại.</CardContent>
-      </Card>
+      <Alert variant="warning" role="status" className="min-h-28 place-content-center py-10 text-center">
+        <AlertTitle>Không có quyền</AlertTitle>
+        <AlertDescription className="justify-items-center">
+          Bạn không có quyền xem yêu cầu phê duyệt trong phạm vi hiện tại.
+        </AlertDescription>
+      </Alert>
     );
   }
   if (state === 'error') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
-        </CardHeader>
-        <CardContent className="text-destructive text-sm">
+      <Alert variant="destructive" role="alert" className="min-h-28 place-content-center py-10 text-center">
+        <AlertTitle>Đã xảy ra lỗi</AlertTitle>
+        <AlertDescription className="justify-items-center">
           {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
-        </CardContent>
-      </Card>
+        </AlertDescription>
+      </Alert>
     );
   }
   if (state === 'loading') {
     return (
-      <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải…</CardContent>
-      </Card>
+      <Alert variant="info" role="status" className="min-h-28 place-content-center py-10 text-center">
+        <AlertDescription className="justify-items-center">Đang tải...</AlertDescription>
+      </Alert>
     );
   }
   return (
-    <Card>
-      <CardContent className="text-muted-foreground py-10 text-sm">
-        {emptyLabel ?? 'Chưa có bản ghi.'}
-      </CardContent>
-    </Card>
+    <Alert variant="info" role="status" className="min-h-28 place-content-center py-10 text-center">
+      <AlertDescription className="justify-items-center">{emptyLabel ?? 'Chưa có bản ghi.'}</AlertDescription>
+    </Alert>
   );
 }
 

@@ -147,7 +147,10 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Mở vòng đời' }));
     await actor.click(await screen.findByRole('button', { name: 'Xử lý' }));
 
-    expect(await screen.findByText('Resolve requires evidence for this exception type')).toBeTruthy();
+    expect(await screen.findByText('Cần bằng chứng để xử lý loại ngoại lệ này')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Cần bằng chứng để xử lý loại ngoại lệ này',
+    );
     expect(toastError).not.toHaveBeenCalled();
   });
 });

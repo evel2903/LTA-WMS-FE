@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 
 export type FoundationOverviewViewState = 'loading' | 'empty' | 'ready' | 'error' | 'denied';
 
@@ -13,44 +13,44 @@ export function FoundationOverviewStateView({
 }: FoundationOverviewStateViewProps) {
   if (state === 'denied') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Không có quyền</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">Bạn không có quyền xem mức sẵn sàng nền tảng trong phạm vi hiện tại.</CardContent>
-      </Card>
+      <Alert variant="warning" role="status" className="min-h-28 place-content-center py-10 text-center">
+        <AlertTitle>Không có quyền</AlertTitle>
+        <AlertDescription className="justify-items-center">
+          Bạn không có quyền xem mức sẵn sàng nền tảng trong phạm vi hiện tại.
+        </AlertDescription>
+      </Alert>
     );
   }
   if (state === 'error') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Đã xảy ra lỗi</CardTitle>
-        </CardHeader>
-        <CardContent className="text-destructive text-sm">
+      <Alert variant="destructive" role="alert" className="min-h-28 place-content-center py-10 text-center">
+        <AlertTitle>Đã xảy ra lỗi</AlertTitle>
+        <AlertDescription className="justify-items-center">
           {errorMessage ?? 'Không thể tải mức sẵn sàng nền tảng.'}
-        </CardContent>
-      </Card>
+        </AlertDescription>
+      </Alert>
     );
   }
   if (state === 'loading') {
     return (
-      <Card>
-        <CardContent className="text-muted-foreground py-10 text-sm">Đang tải…</CardContent>
-      </Card>
+      <Alert variant="info" role="status" className="min-h-28 place-content-center py-10 text-center">
+        <AlertDescription className="justify-items-center">Đang tải...</AlertDescription>
+      </Alert>
     );
   }
   return (
-    <Card>
-      <CardContent className="text-muted-foreground py-10 text-sm">Không có dữ liệu nền tảng nào hiển thị trong phạm vi hiện tại.</CardContent>
-    </Card>
+    <Alert variant="info" role="status" className="min-h-28 place-content-center py-10 text-center">
+      <AlertDescription className="justify-items-center">
+        Không có dữ liệu nền tảng nào hiển thị trong phạm vi hiện tại.
+      </AlertDescription>
+    </Alert>
   );
 }
 
 export function NoDataScopeWarning({ message }: { message: string }) {
   return (
-    <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      {message}
-    </div>
+    <Alert variant="warning" role="status">
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }

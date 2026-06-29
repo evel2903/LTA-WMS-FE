@@ -137,7 +137,7 @@ export function ApprovalQueuePage() {
       pagination={
         <div className="flex items-center gap-3 text-sm">
           <span className="text-muted-foreground">
-            Page {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+            Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
           </span>
           <Button
             size="sm"
