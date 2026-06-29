@@ -119,6 +119,11 @@ async function fillCommitHeader(actor: ReturnType<typeof userEvent.setup>) {
   await actor.selectOptions(field('inbound-supplier-id'), 'supplier-1');
 }
 
+// The Excel flow now lives inside a popup opened from the "Import Excel" button.
+async function openImport(actor: ReturnType<typeof userEvent.setup>) {
+  await actor.click(screen.getByRole('button', { name: 'Import Excel' }));
+}
+
 function renderPage() {
   return render(
     <MemoryRouter>
@@ -145,6 +150,7 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
   it('downloads the .xlsx template via the repository and triggers a browser download', async () => {
     const actor = userEvent.setup();
     renderPage();
+    await openImport(actor);
 
     await actor.click(screen.getByRole('button', { name: /Tải template Excel/i }));
 
@@ -152,8 +158,10 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
     expect(h.downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'inbound-line-template.xlsx');
   });
 
-  it('keeps the upload disabled until a warehouse and owner scope is chosen', () => {
+  it('keeps the upload disabled until a warehouse and owner scope is chosen', async () => {
+    const actor = userEvent.setup();
     renderPage();
+    await openImport(actor);
     expect((field('inbound-excel-import') as HTMLInputElement).disabled).toBe(true);
   });
 
@@ -163,6 +171,7 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
     renderPage();
 
     await selectScope(actor);
+    await openImport(actor);
     await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
 
     expect(h.previewMutate).toHaveBeenCalledTimes(1);
@@ -184,6 +193,7 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
     renderPage();
 
     await selectScope(actor);
+    await openImport(actor);
     await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
     expect(await screen.findByTestId('inbound-excel-import-preview')).toBeTruthy();
 
@@ -204,6 +214,7 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
 
     await selectScope(actor);
     await fillCommitHeader(actor);
+    await openImport(actor);
     await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
 
     await waitFor(() => expect(commitButton().hasAttribute('disabled')).toBe(false));
