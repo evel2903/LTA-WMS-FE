@@ -18,13 +18,10 @@ import {
 import { PARTNER_EMPTY_LABEL_VI } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 import type { Partner, PartnerStatus, PartnerType } from '@modules/PartnerMaster/Domain/Types/Partner';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
+import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
 
 type PartnerTypeFilter = 'All' | PartnerType;
 type PartnerStatusFilter = 'All' | PartnerStatus;
-
-function StatusBadge({ status }: { status: PartnerStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
-}
 
 export function PartnerMasterPage() {
   const navigate = useNavigate();
@@ -74,7 +71,7 @@ export function PartnerMasterPage() {
     },
     { header: 'Tên', render: (partner) => partner.partnerName },
     { header: 'Loại', render: (partner) => partner.partnerType },
-    { header: 'Trạng thái', render: (partner) => <StatusBadge status={partner.status} /> },
+    { header: 'Trạng thái', render: (partner) => <PartnerStatusBadge status={partner.status} /> },
     { header: 'Tham chiếu ngoài', render: (partner) => partner.externalReference },
   ];
 

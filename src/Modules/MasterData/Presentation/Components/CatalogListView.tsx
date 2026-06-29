@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Card, CardContent } from '@shared/Components/Ui/Card';
 import {
   Table,
   TableBody,
@@ -80,14 +81,12 @@ export function CatalogListView<TRow>({
     return (
       <div className="space-y-6">
         <PageHeader title={title} description={description} />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Không có quyền</CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
+        <Alert role="status" variant="warning">
+          <AlertTitle>Không có quyền</AlertTitle>
+          <AlertDescription>
             Bạn không có quyền xem {title.toLowerCase()} trong phạm vi này.
-          </CardContent>
-        </Card>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -96,14 +95,12 @@ export function CatalogListView<TRow>({
     return (
       <div className="space-y-6">
         <PageHeader title={title} description={description} />
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Không thể tải {title.toLowerCase()}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-destructive text-sm">
+        <Alert role="alert" variant="destructive">
+          <AlertTitle>Không thể tải {title.toLowerCase()}</AlertTitle>
+          <AlertDescription>
             {errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.'}
-          </CardContent>
-        </Card>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -111,14 +108,23 @@ export function CatalogListView<TRow>({
   return (
     <div className="space-y-6">
       <PageHeader title={title} description={description} headerAction={headerAction} />
-      {!canCreate && <p className="text-muted-foreground text-sm">Chỉ đọc</p>}
+      {!canCreate && (
+        <Alert role="status" variant="info">
+          <AlertTitle>Chỉ đọc</AlertTitle>
+          <AlertDescription>Bạn chỉ có quyền xem dữ liệu trong phạm vi này.</AlertDescription>
+        </Alert>
+      )}
       {toolbar && <div className="flex flex-wrap items-end gap-3">{toolbar}</div>}
       <Card>
         <CardContent className="py-2">
           {state === 'loading' ? (
             <p className="text-muted-foreground py-10 text-sm">Đang tải {title.toLowerCase()}...</p>
           ) : state === 'empty' ? (
-            <p className="text-muted-foreground py-10 text-sm">{emptyLabel ?? 'Không tìm thấy bản ghi.'}</p>
+            <div className="py-6">
+              <Alert role="status" variant="info">
+                <AlertDescription>{emptyLabel ?? 'Không tìm thấy bản ghi.'}</AlertDescription>
+              </Alert>
+            </div>
           ) : (
             <Table>
               <TableHeader>

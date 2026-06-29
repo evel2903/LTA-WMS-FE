@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
@@ -77,12 +78,12 @@ export function SkuForm({
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
       <label className="grid gap-1 text-sm">Mã SKU<Input disabled={disabled} {...form.register('skuCode')} />
         {errors.skuCode && <span className="text-destructive text-xs">{errors.skuCode.message}</span>}
-        {conflict && (
-          <span className="text-destructive text-xs" role="alert">
-            {conflict}
-          </span>
-        )}
       </label>
+      {conflict && (
+        <Alert role="alert" variant="destructive">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
+      )}
       <label className="grid gap-1 text-sm">Tên SKU<Input disabled={disabled} {...form.register('skuName')} />
         {errors.skuName && <span className="text-destructive text-xs">{errors.skuName.message}</span>}
       </label>

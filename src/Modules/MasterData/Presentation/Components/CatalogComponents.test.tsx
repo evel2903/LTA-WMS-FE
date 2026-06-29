@@ -44,6 +44,8 @@ describe('Catalog components', () => {
   it('renders the empty state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="empty" />);
     expect(html).toContain('Không tìm thấy bản ghi.');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="status"');
   });
 
   it('renders an entity-specific empty label when supplied', () => {
@@ -77,11 +79,15 @@ describe('Catalog components', () => {
       <CatalogListView {...baseProps} state="error" errorMessage="Backend unavailable" />,
     );
     expect(html).toContain('Backend unavailable');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="alert"');
   });
 
   it('renders the permission-denied state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="denied" />);
     expect(html).toContain('Không có quyền');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="status"');
   });
 
   it('renders rows and the entity title in the ready state', () => {
@@ -108,24 +114,44 @@ describe('Catalog components', () => {
     expect(renderToStaticMarkup(<SkuStatusBadge status="Discontinued" />)).toContain('Discontinued');
   });
 
-  it('renders an inline conflict message in the owner form', () => {
+  it('hiển thị cảnh báo trùng mã trong form chủ hàng', () => {
     const html = renderToStaticMarkup(
-      <OwnerForm submitLabel="Create Owner" conflict="Owner code already exists" onSubmit={() => undefined} />,
+      <OwnerForm submitLabel="Tạo chủ hàng" conflict="Mã chủ hàng đã tồn tại" onSubmit={() => undefined} />,
     );
-    expect(html).toContain('Owner code already exists');
+    expect(html).toContain('Mã chủ hàng đã tồn tại');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="alert"');
   });
 
-  it('renders an inline conflict message in the sku form', () => {
+  it('hiển thị cảnh báo trùng mã trong form SKU', () => {
     const html = renderToStaticMarkup(
       <SkuForm
-        submitLabel="Create SKU"
+        submitLabel="Tạo SKU"
         owners={[]}
         uoms={[]}
-        conflict="SKU code already exists"
+        conflict="Mã SKU đã tồn tại"
         onSubmit={() => undefined}
       />,
     );
-    expect(html).toContain('SKU code already exists');
+    expect(html).toContain('Mã SKU đã tồn tại');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="alert"');
+  });
+
+  it('hiển thị cảnh báo chỉ đọc khi tạo mới không được phép', () => {
+    const html = renderToStaticMarkup(
+      <CatalogListView
+        {...baseProps}
+        state="ready"
+        rows={[{ id: 'owner-1', code: 'OWN-01' }]}
+        canCreate={false}
+      />,
+    );
+
+    expect(html).toContain('Chỉ đọc');
+    expect(html).toContain('Bạn chỉ có quyền xem dữ liệu trong phạm vi này.');
+    expect(html).toContain('data-slot="alert"');
+    expect(html).toContain('role="status"');
   });
 
   it('renders audit metadata with values and dashes for nulls', () => {

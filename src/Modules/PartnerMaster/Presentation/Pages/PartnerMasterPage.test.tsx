@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -25,6 +26,7 @@ vi.mock('@modules/PartnerMaster/Infrastructure/Repositories/PartnerRepositoryIns
 
 import { PartnerMasterPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterPage';
 import { PartnerMasterDetailPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage';
+import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -137,6 +139,17 @@ function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.MASTER_DATA.PA
 afterEach(() => cleanup());
 
 describe('PartnerMasterPage', () => {
+  it('hiển thị trạng thái đối tác bằng Badge thống nhất', () => {
+    const activeHtml = renderToStaticMarkup(<PartnerStatusBadge status="Active" />);
+    const inactiveHtml = renderToStaticMarkup(<PartnerStatusBadge status="Inactive" />);
+
+    expect(activeHtml).toContain('data-slot="badge"');
+    expect(activeHtml).toContain('Active');
+
+    expect(inactiveHtml).toContain('data-slot="badge"');
+    expect(inactiveHtml).toContain('Inactive');
+  });
+
   it('creates, edits and deactivates Supplier/Customer/Carrier through the repository', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();

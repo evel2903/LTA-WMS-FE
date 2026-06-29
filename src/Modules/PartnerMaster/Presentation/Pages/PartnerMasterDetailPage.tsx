@@ -8,15 +8,11 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { conflictMessage } from '@modules/MasterData/Application/Commands/CatalogConflictError';
 import { usePartnerMutations } from '@modules/PartnerMaster/Application/Commands/UsePartnerMutations';
 import { usePartner } from '@modules/PartnerMaster/Application/Queries/UsePartners';
-import type { PartnerStatus } from '@modules/PartnerMaster/Domain/Types/Partner';
+import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
 import { PartnerForm } from '@modules/PartnerMaster/Presentation/Forms/PartnerForm';
 
 interface PartnerMasterDetailPageProps {
   mode: 'create' | 'detail' | 'edit';
-}
-
-function StatusBadge({ status }: { status: PartnerStatus }) {
-  return <span className="rounded-md border px-2 py-1 text-xs font-medium">{status}</span>;
 }
 
 export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) {
@@ -66,7 +62,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
       subtitle="Dữ liệu chủ nhà cung cấp, khách hàng hoặc đơn vị vận chuyển"
       backTo={ROUTES.FOUNDATION.MASTER_DATA.PARTNERS}
       backLabel="Quay lại đối tác"
-      status={!isCreate ? <StatusBadge status={existingPartner.status} /> : null}
+      status={!isCreate ? <PartnerStatusBadge status={existingPartner.status} /> : null}
       summary={
         !isCreate ? (
           <>

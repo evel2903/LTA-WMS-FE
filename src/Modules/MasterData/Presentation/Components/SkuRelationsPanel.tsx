@@ -4,6 +4,7 @@ import { Pencil, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -109,6 +110,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           error={packs.error}
           emptyLabel="Chưa có quy cách đóng gói"
           disabled={readonlyPack}
+          readOnly={!canEdit}
           columns={[
             { header: 'Mã', render: (pack) => pack.packCode },
             { header: 'Tên', render: (pack) => pack.packName },
@@ -170,6 +172,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           error={barcodes.error}
           emptyLabel="Chưa có mã vạch"
           disabled={readonlyBarcode}
+          readOnly={!canEdit}
           columns={[
             { header: 'Giá trị', render: (barcode) => barcode.barcodeValue },
             { header: 'Loại', render: (barcode) => barcode.barcodeType },
@@ -238,6 +241,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           error={conversions.error}
           emptyLabel="Chưa có quy đổi"
           disabled={readonlyConversion}
+          readOnly={!canEdit}
           columns={[
             {
               header: 'Từ',
@@ -308,6 +312,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           error={coverages.error}
           emptyLabel="Chưa có phạm vi hàng hóa"
           disabled={readonlyCoverage}
+          readOnly={!canEdit}
           columns={[
             {
               header: 'Kho',
@@ -384,6 +389,7 @@ function RelationSection<T extends { id: string }>({
   error,
   emptyLabel,
   disabled,
+  readOnly,
   columns,
   onEdit,
   form,
@@ -395,11 +401,12 @@ function RelationSection<T extends { id: string }>({
   error: unknown;
   emptyLabel: string;
   disabled: boolean;
+  readOnly: boolean;
   columns: RelationColumn<T>[];
   onEdit: (row: T) => void;
   form: ReactNode;
 }) {
-  const message = relationMessage({ loading, error, empty: rows.length === 0, emptyLabel });
+  const state = relationState({ loading, error, empty: rows.length === 0, emptyLabel });
 
   return (
     <section className="space-y-3">
@@ -407,6 +414,11 @@ function RelationSection<T extends { id: string }>({
         <h3 className="text-sm font-medium">{title}</h3>
         {disabled && <span className="text-muted-foreground text-xs">Chỉ đọc</span>}
       </div>
+      {readOnly && (
+        <Alert role="status" variant="info">
+          <AlertDescription>Quan hệ này đang ở chế độ chỉ đọc.</AlertDescription>
+        </Alert>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -417,10 +429,12 @@ function RelationSection<T extends { id: string }>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {message ? (
+          {state ? (
             <TableRow>
-              <TableCell colSpan={columns.length + 1} className="text-muted-foreground text-xs">
-                {message}
+              <TableCell colSpan={columns.length + 1}>
+                <Alert role={state.role} variant={state.variant}>
+                  <AlertDescription>{state.message}</AlertDescription>
+                </Alert>
               </TableCell>
             </TableRow>
           ) : (
@@ -869,9 +883,9 @@ function FormActions({
   return (
     <div className="grid gap-2">
       {conflict && (
-        <span className="text-destructive text-xs" role="alert">
-          {conflict}
-        </span>
+        <Alert role="alert" variant="destructive">
+          <AlertDescription>{conflict}</AlertDescription>
+        </Alert>
       )}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" disabled={disabled || pending}>
@@ -887,7 +901,10 @@ function FormActions({
   );
 }
 
-function relationMessage({
+type RelationAlertVariant = 'info' | 'warning' | 'destructive';
+type RelationAlertRole = 'status' | 'alert';
+
+function relationState({
   loading,
   error,
   empty,
@@ -897,12 +914,18 @@ function relationMessage({
   error: unknown;
   empty: boolean;
   emptyLabel: string;
-}) {
-  if (loading) return 'Đang tải...';
-  if (isForbidden(error)) return 'Không có quyền. Quan hệ này đang ở chế độ chỉ đọc.';
-  if (error instanceof ApiError) return error.message;
-  if (error) return 'Không thể tải dữ liệu quan hệ.';
-  if (empty) return emptyLabel;
+}): { message: string; variant: RelationAlertVariant; role: RelationAlertRole } | null {
+  if (loading) return { message: 'Đang tải...', variant: 'info', role: 'status' };
+  if (isForbidden(error)) {
+    return {
+      message: 'Không có quyền. Quan hệ này đang ở chế độ chỉ đọc.',
+      variant: 'warning',
+      role: 'status',
+    };
+  }
+  if (error instanceof ApiError) return { message: error.message, variant: 'destructive', role: 'alert' };
+  if (error) return { message: 'Không thể tải dữ liệu quan hệ.', variant: 'destructive', role: 'alert' };
+  if (empty) return { message: emptyLabel, variant: 'info', role: 'status' };
   return null;
 }
 
