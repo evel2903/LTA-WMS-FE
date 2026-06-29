@@ -816,6 +816,33 @@ describe('InboundPage', () => {
     }
   });
 
+  it('exposes non-active step descriptions via aria-describedby without changing the accessible name', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/gate-in');
+
+    expect(await screen.findByRole('navigation', { name: 'Luồng xử lý nhập kho' })).toBeTruthy();
+
+    // A non-active step (receiving is `blocked` on the /gate-in route) points
+    // aria-describedby at an sr-only node carrying its description, while its
+    // accessible name stays exactly `${label}: ${stateLabel}` (the description is
+    // NOT folded into the name, so existing accessible-name queries stay valid).
+    const receivingButton = screen.getByTestId('inbound-workflow-step-button-receiving');
+    const describedBy = receivingButton.getAttribute('aria-describedby');
+    expect(describedBy).toBe('inbound-workflow-step-desc-receiving');
+    expect(receivingButton.getAttribute('aria-label')).toBe('Tiếp nhận: Bị chặn');
+    const description = document.getElementById(describedBy as string);
+    expect(description?.textContent).toBe('Cần vào cổng trước khi tiếp nhận.');
+
+    // The active step (gate-in) shows its description as visible text below the stepper
+    // and carries no aria-describedby (its description is not duplicated for AT).
+    const gateInButton = screen.getByTestId('inbound-workflow-step-button-gate-in');
+    expect(gateInButton.getAttribute('aria-describedby')).toBeNull();
+    expect(screen.getByTestId('inbound-workflow-active-step-description').textContent).toContain(
+      'Cần ghi nhận xe/hàng vào cổng.',
+    );
+  });
+
   it('renders the line rail as the single unified line picker with per-line stage chips', async () => {
     const actor = userEvent.setup();
     const basePlan = makePlan();
