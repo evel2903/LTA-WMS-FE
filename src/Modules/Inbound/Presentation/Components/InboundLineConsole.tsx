@@ -1,7 +1,8 @@
 import type { ReactNode, Ref } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
+import { Badge } from '@shared/Components/Reui/badge';
 
 /**
  * Prominent inline blocked card. Bordered, high-visibility — never muted gray
@@ -10,20 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/
  */
 export function InboundBlockedActionHelper({ message }: { message: string }) {
   return (
-    <Card
-      data-testid="inbound-action-blocked"
-      className="border-amber-300 bg-amber-50 text-amber-950"
-    >
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
-          Thao tác chưa sẵn sàng
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm font-medium">{message}</p>
-      </CardContent>
-    </Card>
+    <Alert variant="warning" data-testid="inbound-action-blocked">
+      <AlertTriangle aria-hidden="true" />
+      <AlertTitle>Thao tác chưa sẵn sàng</AlertTitle>
+      <AlertDescription className="font-medium text-foreground">{message}</AlertDescription>
+    </Alert>
   );
 }
 
@@ -114,12 +106,13 @@ export function InboundLineConsole({
         </h2>
         {showStepIndicator ? (
           <div className="flex flex-wrap items-center gap-2">
-            <p
-              className="inline-flex rounded-md border border-primary bg-primary/5 px-2 py-0.5 text-sm font-medium text-foreground"
+            <Badge
+              variant="primary-light"
+              size="xl"
               data-testid="inbound-console-step-indicator"
             >
               Bước: {stepLabel}
-            </p>
+            </Badge>
             {stepActionLabel ? (
               <span
                 className="text-sm font-medium text-muted-foreground"

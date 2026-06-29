@@ -1,4 +1,4 @@
-import { cn } from '@shared/Utils/Cn';
+import { Badge, type BadgeProps } from '@shared/Components/Reui/badge';
 import type { InboundLineStage } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 
 const stageLabels: Record<InboundLineStage, string> = {
@@ -10,13 +10,15 @@ const stageLabels: Record<InboundLineStage, string> = {
   released: 'Đã release',
 };
 
-const stageClasses: Record<InboundLineStage, string> = {
-  'not-started': 'bg-background text-muted-foreground',
-  'gate-in': 'border-amber-200 bg-amber-50 text-amber-950',
-  receiving: 'border-sky-200 bg-sky-50 text-sky-950',
-  qc: 'border-indigo-200 bg-indigo-50 text-indigo-950',
-  lpn: 'border-violet-200 bg-violet-50 text-violet-950',
-  released: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+// Map each milestone to a ReUI semantic badge variant instead of a hand-rolled
+// per-stage colour map. released -> success, gate-in -> warning, etc.
+const stageVariant: Record<InboundLineStage, NonNullable<BadgeProps['variant']>> = {
+  'not-started': 'secondary',
+  'gate-in': 'warning-light',
+  receiving: 'info-light',
+  qc: 'primary-light',
+  lpn: 'invert-light',
+  released: 'success-light',
 };
 
 /**
@@ -34,14 +36,12 @@ export function InboundLineStageChip({
   stage: InboundLineStage;
 }) {
   return (
-    <span
+    <Badge
+      variant={stageVariant[stage]}
+      size="lg"
       data-testid={`inbound-line-stage-chip-${lineId}`}
-      className={cn(
-        'inline-flex shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium',
-        stageClasses[stage],
-      )}
     >
       {stageLabels[stage]}
-    </span>
+    </Badge>
   );
 }

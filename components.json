@@ -17,5 +17,8 @@
     "lib": "@shared/Utils",
     "hooks": "@shared/Hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "registries": {
+    "@reui": "https://reui.io/r/{name}.json"
+  }
 }
