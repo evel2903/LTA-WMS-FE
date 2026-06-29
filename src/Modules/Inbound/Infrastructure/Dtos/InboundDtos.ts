@@ -410,3 +410,13 @@ export interface QcResultDto {
   CreatedAt: string;
   UpdatedAt: string;
 }
+
+export interface InboundOperationalStateDto {
+  InboundPlanId: string;
+  ReceivingSessions: ReceivingSessionDto[];
+  ReceiptLines: ReceiptLineDto[];
+  QcTasks: QcTaskDto[];
+  QcResults: QcResultDto[];
+  Lpns: InboundLpnDto[];
+  Releases: InboundPutawayReleaseDto[];
+}

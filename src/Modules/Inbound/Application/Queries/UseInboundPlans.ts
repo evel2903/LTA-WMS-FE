@@ -19,6 +19,14 @@ export function useInboundPlan(id: string | null) {
   });
 }
 
+export function useInboundOperationalState(id: string | null) {
+  return useQuery({
+    queryKey: inboundQueryKeys.operationalState(id ?? ''),
+    queryFn: () => inboundRepository.getOperationalState(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useReceivingReadiness(id: string | null) {
   return useQuery({
     queryKey: inboundQueryKeys.readiness(id ?? ''),

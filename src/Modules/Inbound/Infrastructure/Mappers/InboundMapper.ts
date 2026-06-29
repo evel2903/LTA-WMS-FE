@@ -2,6 +2,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
   InboundLpn,
+  InboundOperationalState,
   InboundPlan,
   InboundPutawayRelease,
   QcResult,
@@ -30,6 +31,7 @@ import type {
   EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
   InboundLpnDto,
+  InboundOperationalStateDto,
   InboundPlanDto,
   InboundPutawayReleaseDto,
   PagedInboundPlanDto,
@@ -340,6 +342,18 @@ export const InboundMapper = {
       isDuplicate: dto.IsDuplicate,
       createdAt: dto.CreatedAt,
       updatedAt: dto.UpdatedAt,
+    };
+  },
+
+  toOperationalState(dto: InboundOperationalStateDto): InboundOperationalState {
+    return {
+      inboundPlanId: dto.InboundPlanId,
+      receivingSessions: (dto.ReceivingSessions ?? []).map((item) => InboundMapper.toReceivingSession(item)),
+      receiptLines: (dto.ReceiptLines ?? []).map((item) => InboundMapper.toReceiptLine(item)),
+      qcTasks: (dto.QcTasks ?? []).map((item) => InboundMapper.toQcTask(item)),
+      qcResults: (dto.QcResults ?? []).map((item) => InboundMapper.toQcResult(item)),
+      lpns: (dto.Lpns ?? []).map((item) => InboundMapper.toInboundLpn(item)),
+      releases: (dto.Releases ?? []).map((item) => InboundMapper.toInboundPutawayRelease(item)),
     };
   },
 

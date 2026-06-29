@@ -10,6 +10,7 @@ import { Input } from '@shared/Components/Ui/Input';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import {
+  useInboundOperationalState,
   useInboundPlan,
   useReceivingReadiness,
 } from '@modules/Inbound/Application/Queries/UseInboundPlans';
@@ -362,6 +363,7 @@ export function InboundDetailPage() {
   const [releaseIdempotencyKey, setReleaseIdempotencyKey] = useState(() => `release-${Date.now()}`);
 
   const detailQuery = useInboundPlan(routePlanId ?? null);
+  const operationalStateQuery = useInboundOperationalState(routePlanId ?? null);
   const mutations = useInboundMutations();
   const resetValidateReadiness = mutations.validateReadiness.reset;
   const resetStartReceiving = mutations.startReceivingSession.reset;
@@ -382,30 +384,61 @@ export function InboundDetailPage() {
       null,
     [detailQuery.data, mutations.createInboundPlan.data, mutations.recordGateIn.data, selectedId],
   );
+  // IRM-02: operational-state read model (persisted, survives reload).
+  const operationalState = operationalStateQuery.data ?? null;
+  // The read model can carry more than one row per line (re-receive / re-QC), and array order
+  // is not a contract — pick the LATEST matching row by timestamp deterministically.
+  const latestBy = <T,>(items: T[] | undefined, when: (item: T) => string | null | undefined): T | null => {
+    if (!items || items.length === 0) return null;
+    return [...items].sort((a, b) => (when(b) ?? '').localeCompare(when(a) ?? ''))[0] ?? null;
+  };
+  // Mutation-first, persisted-fallback: this session's just-performed action wins immediately
+  // (fresh, no stale flicker); the persisted read model fills in on reload when no mutation
+  // result is present — that is what fixes "step lost on reload".
   const receivingSession =
-    mutations.startReceivingSession.data?.inboundPlanId === selected?.id
+    (mutations.startReceivingSession.data?.inboundPlanId === selected?.id
       ? mutations.startReceivingSession.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.receivingSessions.filter((session) => session.inboundPlanId === selected?.id),
+      (session) => session.startedAt,
+    );
   const selectedLine = useMemo(
     () => selected?.lines.find((line) => line.id === selectedLineId) ?? selected?.lines[0] ?? null,
     [selected?.lines, selectedLineId],
   );
   const lastConfirmedLine = mutations.confirmReceiptLine.data;
-  const confirmedReceiptLine =
+  const mutationConfirmedReceiptLine =
     lastConfirmedLine &&
     lastConfirmedLine.inboundPlanId === selected?.id &&
     lastConfirmedLine.inboundPlanLineId === selectedLine?.id
       ? lastConfirmedLine
       : null;
+  const confirmedReceiptLine =
+    mutationConfirmedReceiptLine ??
+    latestBy(
+      operationalState?.receiptLines.filter(
+        (line) => line.inboundPlanId === selected?.id && line.inboundPlanLineId === selectedLine?.id,
+      ),
+      (line) => line.receivedAt,
+    );
   const evaluatedQcTask =
-    mutations.evaluateQcTask.data &&
+    (mutations.evaluateQcTask.data &&
     confirmedReceiptLine?.id === mutations.evaluateQcTask.data.receiptLineId
       ? mutations.evaluateQcTask.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.qcTasks.filter((task) => task.receiptLineId === confirmedReceiptLine?.id),
+      (task) => task.createdAt,
+    );
   const recordedQcResult =
-    mutations.recordQcResult.data && evaluatedQcTask?.id === mutations.recordQcResult.data.qcTaskId
+    (mutations.recordQcResult.data && evaluatedQcTask?.id === mutations.recordQcResult.data.qcTaskId
       ? mutations.recordQcResult.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.qcResults.filter((result) => result.receiptLineId === confirmedReceiptLine?.id),
+      (result) => result.recordedAt,
+    );
   const capturedDiscrepancy =
     mutations.captureDiscrepancy.data &&
     mutations.captureDiscrepancy.data.receiptLineId === confirmedReceiptLine?.id
@@ -417,15 +450,23 @@ export function InboundDetailPage() {
     mutations.captureDiscrepancy.variables?.input.receiptLineId === confirmedReceiptLine.id,
   );
   const confirmedInboundLpn =
-    mutations.confirmInboundLpn.data &&
+    (mutations.confirmInboundLpn.data &&
     mutations.confirmInboundLpn.data.receiptLineId === confirmedReceiptLine?.id
       ? mutations.confirmInboundLpn.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.lpns.filter((lpn) => lpn.receiptLineId === confirmedReceiptLine?.id),
+      (lpn) => lpn.confirmedAt,
+    );
   const putawayRelease =
-    mutations.releaseInboundToPutaway.data &&
+    (mutations.releaseInboundToPutaway.data &&
     mutations.releaseInboundToPutaway.data.receiptLineId === confirmedReceiptLine?.id
       ? mutations.releaseInboundToPutaway.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.releases.filter((release) => release.receiptLineId === confirmedReceiptLine?.id),
+      (release) => release.releasedAt,
+    );
   const selectedInitialLineId = selected?.lines[0]?.id ?? null;
   const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
   const readinessQuery = useReceivingReadiness(selected?.id ?? null);

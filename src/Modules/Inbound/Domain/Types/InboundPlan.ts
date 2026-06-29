@@ -312,3 +312,13 @@ export interface QcResult {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface InboundOperationalState {
+  inboundPlanId: string;
+  receivingSessions: ReceivingSession[];
+  receiptLines: ReceiptLine[];
+  qcTasks: QcTask[];
+  qcResults: QcResult[];
+  lpns: InboundLpn[];
+  releases: InboundPutawayRelease[];
+}

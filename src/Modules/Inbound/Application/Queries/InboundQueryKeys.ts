@@ -7,4 +7,5 @@ export const inboundQueryKeys = {
   list: (filter?: InboundPlanFilter) => [...inboundQueryKeys.lists(), filter ?? {}] as const,
   detail: (id: string) => [...inboundQueryKeys.all, 'detail', id] as const,
   readiness: (id: string) => [...inboundQueryKeys.all, 'readiness', id] as const,
+  operationalState: (id: string) => [...inboundQueryKeys.all, 'operational-state', id] as const,
 };

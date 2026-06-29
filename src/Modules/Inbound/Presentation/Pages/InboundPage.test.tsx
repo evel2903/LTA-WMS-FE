@@ -11,6 +11,7 @@ import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces
 import type {
   InboundDiscrepancy,
   InboundLpn,
+  InboundOperationalState,
   InboundPlan,
   InboundPutawayRelease,
   QcResult,
@@ -390,6 +391,25 @@ class FakeRepository implements Partial<IInboundRepository> {
           new ApiError({ status: 404, code: 'NOT_FOUND', message: `Inbound plan ${id} not found` }),
         );
   });
+
+  // IRM-02: persisted operational-state read model. Defaults to empty (so mutation-driven
+  // tests behave as before via fallback); set `operationalState` to simulate reload rehydrate.
+  public operationalState: InboundOperationalState | null = null;
+
+  getOperationalState = vi.fn(
+    (id: string): Promise<InboundOperationalState> =>
+      Promise.resolve(
+        this.operationalState ?? {
+          inboundPlanId: id,
+          receivingSessions: [],
+          receiptLines: [],
+          qcTasks: [],
+          qcResults: [],
+          lpns: [],
+          releases: [],
+        },
+      ),
+  );
 
   create = vi.fn((input: CreateInboundPlanInput) => {
     const created = makePlan({
@@ -2389,4 +2409,105 @@ describe('InboundPage', () => {
       { timeout: 5_000 },
     );
   }, 15_000);
+
+  it('rehydrates receiving progress from operational-state after reload without re-firing mutations', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = {
+      inboundPlanId: 'inbound-plan-1',
+      receivingSessions: [
+        { inboundPlanId: 'inbound-plan-1', receiptId: 'receipt-1' } as unknown as ReceivingSession,
+      ],
+      receiptLines: [
+        {
+          id: 'receipt-line-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          status: 'Received',
+          discrepancySignals: [],
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [],
+      releases: [],
+    };
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    // Persisted receipt line is rehydrated on load (simulating reload): the focused line's
+    // stage reflects "Đã tiếp nhận" without any confirmReceiptLine mutation in this session.
+    const chip = await screen.findByTestId('inbound-line-stage-chip-line-1');
+    expect(chip.textContent).toContain('Đã tiếp nhận');
+    expect(fake.getOperationalState).toHaveBeenCalledWith('inbound-plan-1');
+    expect(fake.confirmReceiptLine).not.toHaveBeenCalled();
+  });
+
+  it('rehydrates the LATEST receipt line and its correlated QC result on reload (multi-row)', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    // Two receipt lines for the same plan line (re-receive); QC result is tied to the NEWER one.
+    // The derivation must pick the latest receipt line so the QC result correlates → stage = QC.
+    // First-match selection would pick `rl-old`, the QC result would not correlate, and the
+    // line would stay stuck at "Đã tiếp nhận".
+    fake.operationalState = {
+      inboundPlanId: 'inbound-plan-1',
+      receivingSessions: [
+        {
+          inboundPlanId: 'inbound-plan-1',
+          receiptId: 'receipt-1',
+          startedAt: '2026-06-29T01:00:00Z',
+        } as unknown as ReceivingSession,
+      ],
+      receiptLines: [
+        {
+          id: 'rl-old',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          status: 'Received',
+          receivedAt: '2026-06-29T01:00:00Z',
+          discrepancySignals: [],
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-new',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          status: 'Received',
+          receivedAt: '2026-06-29T05:00:00Z',
+          discrepancySignals: [],
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [
+        {
+          id: 'qc-1',
+          receiptLineId: 'rl-new',
+          inboundPlanLineId: 'line-1',
+          taskStatus: 'Dispositioned',
+          required: true,
+          createdAt: '2026-06-29T05:30:00Z',
+        } as unknown as QcTask,
+      ],
+      qcResults: [
+        {
+          id: 'qcr-1',
+          qcTaskId: 'qc-1',
+          receiptLineId: 'rl-new',
+          resultStatus: 'Passed',
+          dispositionCode: 'Release',
+          recordedAt: '2026-06-29T06:00:00Z',
+        } as unknown as QcResult,
+      ],
+      lpns: [],
+      releases: [],
+    };
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    const chip = await screen.findByTestId('inbound-line-stage-chip-line-1');
+    expect(chip.textContent).toContain('Đã QC');
+    expect(fake.recordQcResult).not.toHaveBeenCalled();
+  });
 });

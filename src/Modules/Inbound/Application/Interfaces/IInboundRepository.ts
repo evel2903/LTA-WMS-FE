@@ -2,6 +2,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   InboundDiscrepancy,
   InboundLpn,
+  InboundOperationalState,
   InboundPlan,
   InboundPutawayRelease,
   QcResult,
@@ -27,6 +28,7 @@ import type {
 export interface IInboundRepository {
   list(filter?: InboundPlanFilter): Promise<PaginatedResponse<InboundPlan>>;
   getById(id: string): Promise<InboundPlan>;
+  getOperationalState(id: string): Promise<InboundOperationalState>;
   create(input: CreateInboundPlanInput): Promise<InboundPlan>;
   recordGateIn(id: string, input: RecordGateInInput): Promise<InboundPlan>;
   validateReadiness(

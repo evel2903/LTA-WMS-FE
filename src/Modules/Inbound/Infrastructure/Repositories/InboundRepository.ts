@@ -8,6 +8,7 @@ import {
 import type {
   InboundDiscrepancy,
   InboundLpn,
+  InboundOperationalState,
   InboundPlan,
   InboundPutawayRelease,
   QcResult,
@@ -33,6 +34,7 @@ import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEn
 import type {
   InboundDiscrepancyDto,
   InboundLpnDto,
+  InboundOperationalStateDto,
   InboundPlanDto,
   InboundPutawayReleaseDto,
   PagedInboundPlanDto,
@@ -74,6 +76,13 @@ export class InboundRepository implements IInboundRepository {
   async getById(id: string): Promise<InboundPlan> {
     const dto = await this.http.get<InboundPlanDto>(INBOUND_ENDPOINTS.PLAN_BY_ID(id));
     return InboundMapper.toInboundPlan(dto);
+  }
+
+  async getOperationalState(id: string): Promise<InboundOperationalState> {
+    const dto = await this.http.get<InboundOperationalStateDto>(
+      INBOUND_ENDPOINTS.PLAN_OPERATIONAL_STATE(id),
+    );
+    return InboundMapper.toOperationalState(dto);
   }
 
   async create(input: CreateInboundPlanInput): Promise<InboundPlan> {
