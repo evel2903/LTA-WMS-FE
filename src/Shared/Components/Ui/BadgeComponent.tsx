@@ -1,15 +1,23 @@
-import * as React from 'react';
-import type { VariantProps } from 'class-variance-authority';
+import type * as React from 'react';
 
-import { cn } from '@shared/Utils/Cn';
-import { badgeVariants } from '@shared/Components/Ui/BadgeVariants';
+import {
+  Badge as ReuiBadge,
+} from '@shared/Components/Reui/badge';
 
-function Badge({
-  className,
-  variant,
-  ...props
-}: React.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
-  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />;
+type LegacyBadgeVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'success'
+  | 'warning';
+
+interface BadgeProps extends React.ComponentProps<'span'> {
+  variant?: LegacyBadgeVariant | null;
 }
 
-export { Badge };
+function Badge(props: BadgeProps) {
+  return <ReuiBadge {...props} />;
+}
+
+export { Badge, type BadgeProps };
