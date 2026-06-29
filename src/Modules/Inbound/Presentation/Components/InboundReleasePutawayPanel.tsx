@@ -162,24 +162,28 @@ export function InboundReleasePutawayPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <form className="space-y-3" onSubmit={onSubmitInboundLpn}>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-code">
-            Mã LPN
-            <Input
-              id="inbound-lpn-code"
-              name="lpnCode"
-              value={lpnCode}
-              onChange={(event) => onLpnCodeChange(event.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-sscc-code">
-            Mã SSCC
-            <Input
-              id="inbound-sscc-code"
-              name="ssccCode"
-              value={ssccCode}
-              onChange={(event) => onSsccCodeChange(event.target.value)}
-            />
-          </label>
+          {/* LPN + SSCC codes pair into 2 columns only at 2xl (single column below);
+              adjacent in the original order so the flow is preserved. */}
+          <div className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-code">
+              Mã LPN
+              <Input
+                id="inbound-lpn-code"
+                name="lpnCode"
+                value={lpnCode}
+                onChange={(event) => onLpnCodeChange(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-sscc-code">
+              Mã SSCC
+              <Input
+                id="inbound-sscc-code"
+                name="ssccCode"
+                value={ssccCode}
+                onChange={(event) => onSsccCodeChange(event.target.value)}
+              />
+            </label>
+          </div>
           <TechnicalDetails testId="inbound-lpn-technical-details">
             <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-idempotency-key">
               Khóa idempotency LPN

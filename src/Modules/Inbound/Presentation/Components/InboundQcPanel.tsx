@@ -374,28 +374,32 @@ export function InboundQcPanel({
                 />
               </label>
             </div>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-code">
-              Mã lý do kết quả QC
-              <Input
-                id="inbound-qc-result-reason-code"
-                name="qcResultReasonCode"
-                value={qcResultReasonCode}
-                onChange={(event) => onQcResultReasonCodeChange(event.target.value)}
-                placeholder="RC-V1-DISCREPANCY"
-                disabled={qcResultDisabled}
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-note">
-              Ghi chú lý do kết quả QC
-              <Input
-                id="inbound-qc-result-reason-note"
-                name="qcResultReasonNote"
-                value={qcResultReasonNote}
-                onChange={(event) => onQcResultReasonNoteChange(event.target.value)}
-                placeholder="Đơn vị bị loại do hư hỏng"
-                disabled={qcResultDisabled}
-              />
-            </label>
+            {/* Reason code + its note pair into 2 columns only at 2xl (single column
+                below); adjacent in the original order so the flow is preserved. */}
+            <div className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-code">
+                Mã lý do kết quả QC
+                <Input
+                  id="inbound-qc-result-reason-code"
+                  name="qcResultReasonCode"
+                  value={qcResultReasonCode}
+                  onChange={(event) => onQcResultReasonCodeChange(event.target.value)}
+                  placeholder="RC-V1-DISCREPANCY"
+                  disabled={qcResultDisabled}
+                />
+              </label>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-reason-note">
+                Ghi chú lý do kết quả QC
+                <Input
+                  id="inbound-qc-result-reason-note"
+                  name="qcResultReasonNote"
+                  value={qcResultReasonNote}
+                  onChange={(event) => onQcResultReasonNoteChange(event.target.value)}
+                  placeholder="Đơn vị bị loại do hư hỏng"
+                  disabled={qcResultDisabled}
+                />
+              </label>
+            </div>
             <label className="grid gap-1 text-sm" htmlFor="inbound-qc-result-evidence-refs">
               Tham chiếu bằng chứng kết quả QC
               <Input

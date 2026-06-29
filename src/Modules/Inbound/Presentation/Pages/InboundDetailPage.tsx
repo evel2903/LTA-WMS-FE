@@ -1328,7 +1328,13 @@ export function InboundDetailPage() {
     : 'Báo sai lệch dòng này';
 
   return (
-    <div className="space-y-4">
+    // Wide-screen cap: the rendered inbound-detail content is centered and capped at
+    // 1536px (screen-2xl) so on large monitors (~1600px+ content area) it stops
+    // stretching edge-to-edge and gains intentional side margins. Vertical rhythm
+    // (space-y-4) is preserved; mobile/standard-desktop are unaffected (below the cap
+    // the container is just `w-full`). Applied here at the page's outermost render
+    // wrapper, NOT in DashboardLayout.
+    <div className="mx-auto w-full max-w-[1536px] space-y-4">
       {selected && (
         <>
           <InboundOperatorHeader plan={selected} />
@@ -1487,7 +1493,7 @@ export function InboundDetailPage() {
           )}
 
       {selected && (
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)]">
           {/* Mobile (below xl): rail is rendered SECOND (collapsible `Dòng khác`
               below the pinned console) via order-2; desktop keeps it as the
               always-visible LEFT column via xl:order-1. The console mirrors this

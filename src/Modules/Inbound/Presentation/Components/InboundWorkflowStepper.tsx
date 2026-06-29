@@ -108,7 +108,15 @@ export function InboundWorkflowStepper({
 }: InboundWorkflowStepperProps) {
   const activeStep = steps.find((step) => step.state === 'active');
   return (
-    <nav aria-label="Luồng xử lý nhập kho" className="min-w-0 rounded-md border bg-card p-3">
+    <nav
+      aria-label="Luồng xử lý nhập kho"
+      // Cap the connected step row at ~1024px (max-w-5xl) and left-align it (no
+      // mx-auto) so on wide screens the steps stay grouped with tight connectors
+      // instead of spreading edge-to-edge. The cap is on the nav; the inner
+      // overflow-x-auto + the ol's min-w-max are PRESERVED so a wide row at 390px
+      // still scrolls horizontally inside this container rather than overflowing.
+      className="min-w-0 max-w-5xl rounded-md border bg-card p-3"
+    >
       {/* Horizontally scrollable so a wide connected row never forces the whole page
           to scroll sideways at 390px; touch targets stay >= 40px (min-h-16 button +
           size-9 circle). */}

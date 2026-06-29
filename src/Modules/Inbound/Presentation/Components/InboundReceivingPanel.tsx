@@ -223,6 +223,9 @@ export function InboundReceivingPanel({
               <p className="mt-1 text-muted-foreground">Chưa có dòng hàng để nhận.</p>
             )}
           </div>
+          {/* Number entry + scan-first primary field stay FULL-WIDTH (above any 2-col
+              pairing) so the scan→confirm flow is never split into a side-by-side
+              column on wide screens. Field ORDER is unchanged from the linear flow. */}
           <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-actual-quantity">
             Số lượng thực nhận
             <Input
@@ -245,30 +248,35 @@ export function InboundReceivingPanel({
               disabled={receiptManualConfirm}
             />
           </label>
-          <label
-            className="flex items-center gap-2 text-sm"
-            htmlFor="inbound-receipt-manual-confirm"
-          >
-            <input
-              id="inbound-receipt-manual-confirm"
-              name="receiptManualConfirm"
-              type="checkbox"
-              checked={receiptManualConfirm}
-              onChange={(event) => onReceiptManualConfirmChange(event.target.checked)}
-            />
-            Xác nhận thủ công
-          </label>
-          <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-reason-code">
-            Mã lý do tiếp nhận
-            <Input
-              id="inbound-receipt-reason-code"
-              name="receiptReasonCode"
-              value={receiptReasonCode}
-              onChange={(event) => onReceiptReasonCodeChange(event.target.value)}
-              disabled={!receiptManualConfirm}
-              placeholder="RC-V1-MANUAL-SCAN"
-            />
-          </label>
+          {/* Manual-confirm toggle + its gated reason code pair into 2 columns only at
+              2xl (single column below); these two are adjacent in the original order so
+              pairing preserves the linear operate flow. */}
+          <div className="grid items-end gap-x-4 gap-y-3 2xl:grid-cols-2">
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="inbound-receipt-manual-confirm"
+            >
+              <input
+                id="inbound-receipt-manual-confirm"
+                name="receiptManualConfirm"
+                type="checkbox"
+                checked={receiptManualConfirm}
+                onChange={(event) => onReceiptManualConfirmChange(event.target.checked)}
+              />
+              Xác nhận thủ công
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-reason-code">
+              Mã lý do tiếp nhận
+              <Input
+                id="inbound-receipt-reason-code"
+                name="receiptReasonCode"
+                value={receiptReasonCode}
+                onChange={(event) => onReceiptReasonCodeChange(event.target.value)}
+                disabled={!receiptManualConfirm}
+                placeholder="RC-V1-MANUAL-SCAN"
+              />
+            </label>
+          </div>
           <TechnicalDetails testId="inbound-receipt-technical-details">
             <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-idempotency-key">
               Khóa idempotency
