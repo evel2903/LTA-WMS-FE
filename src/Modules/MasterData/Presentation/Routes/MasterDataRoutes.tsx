@@ -15,6 +15,12 @@ const LocationProfileCatalogPage = lazy(() =>
   })),
 );
 
+const WarehouseTypeCatalogPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/WarehouseTypeCatalogPage').then((module) => ({
+    default: module.WarehouseTypeCatalogPage,
+  })),
+);
+
 const LocationProfileDetailPage = lazy(() =>
   import('@modules/MasterData/Presentation/Pages/LocationProfileDetailPage').then((module) => ({
     default: module.LocationProfileDetailPage,
@@ -22,7 +28,9 @@ const LocationProfileDetailPage = lazy(() =>
 );
 
 export const masterDataRoutes: RouteObject[] = [
-  { path: ROUTES.FOUNDATION.LOCATIONS, element: <SiteLocationTreePage /> },
+  { path: ROUTES.FOUNDATION.LOCATIONS, element: <SiteLocationTreePage mode="master" /> },
+  { path: ROUTES.FOUNDATION.LOCATION_MAP(), element: <SiteLocationTreePage mode="detail" /> },
+  { path: ROUTES.FOUNDATION.WAREHOUSE_TYPES, element: <WarehouseTypeCatalogPage /> },
   { path: ROUTES.FOUNDATION.LOCATION_PROFILES, element: <LocationProfileCatalogPage /> },
   { path: ROUTES.FOUNDATION.LOCATION_PROFILE_NEW, element: <LocationProfileDetailPage mode="create" /> },
   { path: ROUTES.FOUNDATION.LOCATION_PROFILE_DETAIL(), element: <LocationProfileDetailPage mode="detail" /> },

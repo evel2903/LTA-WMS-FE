@@ -17,6 +17,21 @@ function renderSidebar(initialPath = '/inbound') {
 afterEach(() => cleanup());
 
 describe('Sidebar V1 route hygiene', () => {
+  it('groups Foundation navigation and exposes warehouse type catalog', () => {
+    renderSidebar(ROUTES.FOUNDATION.WAREHOUSE_TYPES);
+
+    expect(screen.getByText('Cấu trúc vật lý')).toBeTruthy();
+    expect(screen.getByText('Sản phẩm và đóng gói')).toBeTruthy();
+    expect(screen.getByText('Quy tắc và hồ sơ')).toBeTruthy();
+    expect(screen.getByText('Quản trị')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Loại kho' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.WAREHOUSE_TYPES,
+    );
+    expect(screen.getByRole('link', { name: 'Kho và sơ đồ kho' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.LOCATIONS,
+    );
+  });
+
   it('shows only implemented operational route groups in V1', () => {
     renderSidebar();
 

@@ -7,16 +7,19 @@ import type {
   CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   LocationTree,
   SiteLocationTree,
   UpdateLocationProfileInput,
+  UpdateWarehouseTypeInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
   Location,
   LocationProfile,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
@@ -45,6 +48,20 @@ const warehouse: Warehouse = {
   warehouseTypeCode: 'WT-01',
   status: 'Active',
   timezone: 'Asia/Bangkok',
+  sourceSystem: null,
+  referenceId: null,
+  createdAt: site.createdAt,
+  updatedAt: site.updatedAt,
+  createdBy: null,
+  updatedBy: null,
+};
+
+const warehouseType: WarehouseType = {
+  id: 'wt-1',
+  warehouseTypeCode: 'WT-01',
+  warehouseTypeName: 'Kho thường',
+  description: null,
+  status: 'Active',
   sourceSystem: null,
   referenceId: null,
   createdAt: site.createdAt,
@@ -137,6 +154,16 @@ class FakeRepository implements IMasterDataRepository {
     });
   }
 
+  listWarehouseTypes(_filter?: MasterDataListFilter) {
+    return Promise.resolve({
+      items: [warehouseType],
+      page: 1,
+      pageSize: 100,
+      totalItems: 1,
+      totalPages: 1,
+    });
+  }
+
   listZones(_filter?: MasterDataListFilter) {
     return Promise.resolve({ items: [zone], page: 1, pageSize: 100, totalItems: 1, totalPages: 1 });
   }
@@ -178,6 +205,18 @@ class FakeRepository implements IMasterDataRepository {
 
   updateWarehouse(): Promise<Warehouse> {
     return Promise.resolve(warehouse);
+  }
+
+  createWarehouseType(input: CreateWarehouseTypeInput): Promise<WarehouseType> {
+    return Promise.resolve({
+      ...warehouseType,
+      warehouseTypeCode: input.warehouseTypeCode,
+      warehouseTypeName: input.warehouseTypeName,
+    });
+  }
+
+  updateWarehouseType(_id: string, input: UpdateWarehouseTypeInput): Promise<WarehouseType> {
+    return Promise.resolve({ ...warehouseType, ...input });
   }
 
   createZone(input: CreateZoneInput): Promise<Zone> {

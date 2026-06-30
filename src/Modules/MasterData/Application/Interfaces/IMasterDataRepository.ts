@@ -5,6 +5,7 @@ import type {
   LocationTree,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
@@ -12,11 +13,13 @@ import type {
   CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   UpdateLocationInput,
   UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
+  UpdateWarehouseTypeInput,
   UpdateZoneInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
@@ -27,6 +30,7 @@ import type {
 export interface IMasterDataRepository {
   listSites(filter?: MasterDataListFilter): Promise<PaginatedResponse<Site>>;
   listWarehouses(filter?: MasterDataListFilter): Promise<PaginatedResponse<Warehouse>>;
+  listWarehouseTypes(filter?: MasterDataListFilter): Promise<PaginatedResponse<WarehouseType>>;
   listZones(filter?: MasterDataListFilter): Promise<PaginatedResponse<Zone>>;
   listLocationProfiles(filter?: MasterDataListFilter): Promise<PaginatedResponse<LocationProfile>>;
   getLocationTree(filter: LocationTreeFilter): Promise<LocationTree[]>;
@@ -35,6 +39,8 @@ export interface IMasterDataRepository {
   updateSite(id: string, input: UpdateSiteInput): Promise<Site>;
   createWarehouse(input: CreateWarehouseInput): Promise<Warehouse>;
   updateWarehouse(id: string, input: UpdateWarehouseInput): Promise<Warehouse>;
+  createWarehouseType(input: CreateWarehouseTypeInput): Promise<WarehouseType>;
+  updateWarehouseType(id: string, input: UpdateWarehouseTypeInput): Promise<WarehouseType>;
   createZone(input: CreateZoneInput): Promise<Zone>;
   updateZone(id: string, input: UpdateZoneInput): Promise<Zone>;
   createLocation(input: CreateLocationInput): Promise<Location>;

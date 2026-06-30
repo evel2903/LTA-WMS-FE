@@ -29,6 +29,14 @@ export interface Warehouse extends MasterDataAuditFields {
   timezone: string | null;
 }
 
+export interface WarehouseType extends MasterDataAuditFields {
+  id: string;
+  warehouseTypeCode: string;
+  warehouseTypeName: string;
+  description: string | null;
+  status: MasterDataStatus;
+}
+
 export interface Zone extends MasterDataAuditFields {
   id: string;
   warehouseId: string;

@@ -49,6 +49,16 @@ export const warehouseFormSchema = z.object({
   referenceId: optionalText(100),
 });
 
+export const warehouseTypeFormSchema = z.object({
+  warehouseTypeCode: requiredText(50, 'Cần mã loại kho'),
+  warehouseTypeName: requiredText(255, 'Cần tên loại kho'),
+  description: optionalNullableText(500),
+  status: masterDataStatusSchema,
+  sourceSystem: optionalNullableText(100),
+  referenceId: optionalNullableText(100),
+  reasonCode: optionalNullableText(64),
+});
+
 export const zoneFormSchema = z.object({
   warehouseId: requiredText(36, 'Cần kho'),
   zoneCode: requiredText(50, 'Cần mã zone'),
@@ -93,6 +103,7 @@ export const locationFormSchema = z.object({
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>;
 export type WarehouseFormValues = z.infer<typeof warehouseFormSchema>;
+export type WarehouseTypeFormValues = z.infer<typeof warehouseTypeFormSchema>;
 export type ZoneFormValues = z.infer<typeof zoneFormSchema>;
 export type LocationFormValues = z.infer<typeof locationFormSchema>;
 
@@ -101,6 +112,30 @@ export interface LocationProfileOption {
   label: string;
   /** True when this option is the currently-assigned profile that is no longer in the active list. */
   unavailable: boolean;
+}
+
+export interface WarehouseTypeOption {
+  value: string;
+  label: string;
+  unavailable: boolean;
+}
+
+export function buildWarehouseTypeOptions(
+  warehouseTypes: Array<{ warehouseTypeCode: string; warehouseTypeName: string }>,
+  currentWarehouseTypeCode?: string | null,
+): WarehouseTypeOption[] {
+  const options = warehouseTypes.map<WarehouseTypeOption>((warehouseType) => ({
+    value: warehouseType.warehouseTypeCode,
+    label: `${warehouseType.warehouseTypeCode} - ${warehouseType.warehouseTypeName}`,
+    unavailable: false,
+  }));
+
+  const currentCode = currentWarehouseTypeCode?.trim();
+  if (currentCode && !options.some((option) => option.value === currentCode)) {
+    return [{ value: currentCode, label: `${currentCode} (giá trị hiện tại)`, unavailable: true }, ...options];
+  }
+
+  return options;
 }
 
 /**

@@ -11,6 +11,7 @@ export interface MasterDataListFilter {
   siteCode?: string;
   warehouseId?: string;
   warehouseCode?: string;
+  warehouseTypeCode?: string;
   zoneId?: string;
   zoneCode?: string;
   locationStatus?: LocationStatus;

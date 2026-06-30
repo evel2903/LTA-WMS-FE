@@ -11,15 +11,18 @@ import type {
   CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   LocationTree,
   UpdateLocationProfileInput,
+  UpdateWarehouseTypeInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
   Location,
   LocationProfile,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type { MasterDataListFilter } from '@modules/MasterData/Domain/Types/MasterDataQuery';
@@ -27,6 +30,7 @@ import type { MasterDataListFilter } from '@modules/MasterData/Domain/Types/Mast
 class InMemoryMasterDataRepository implements IMasterDataRepository {
   private sites: Site[] = [];
   private warehouses: Warehouse[] = [];
+  private warehouseTypes: WarehouseType[] = [];
   private zones: Zone[] = [];
   private locations: LocationTree[] = [];
   private profiles: LocationProfile[] = [];
@@ -49,6 +53,16 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
       page: 1,
       pageSize: 100,
       totalItems: this.warehouses.length,
+      totalPages: 1,
+    });
+  }
+
+  listWarehouseTypes(_filter?: MasterDataListFilter) {
+    return Promise.resolve({
+      items: this.warehouseTypes,
+      page: 1,
+      pageSize: 100,
+      totalItems: this.warehouseTypes.length,
       totalPages: 1,
     });
   }
@@ -120,6 +134,30 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
 
   updateWarehouse(): Promise<Warehouse> {
     return Promise.resolve(this.warehouses[0]);
+  }
+
+  createWarehouseType(input: CreateWarehouseTypeInput): Promise<WarehouseType> {
+    const warehouseType: WarehouseType = {
+      id: `wt-${this.warehouseTypes.length + 1}`,
+      warehouseTypeCode: input.warehouseTypeCode,
+      warehouseTypeName: input.warehouseTypeName,
+      description: input.description ?? null,
+      status: input.status,
+      sourceSystem: input.sourceSystem ?? null,
+      referenceId: input.referenceId ?? null,
+      createdAt: this.now,
+      updatedAt: this.now,
+      createdBy: null,
+      updatedBy: null,
+    };
+    this.warehouseTypes.push(warehouseType);
+    return Promise.resolve(warehouseType);
+  }
+
+  updateWarehouseType(_id: string, input: UpdateWarehouseTypeInput): Promise<WarehouseType> {
+    const warehouseType = { ...this.warehouseTypes[0], ...input };
+    this.warehouseTypes[0] = warehouseType;
+    return Promise.resolve(warehouseType);
   }
 
   createZone(input: CreateZoneInput): Promise<Zone> {

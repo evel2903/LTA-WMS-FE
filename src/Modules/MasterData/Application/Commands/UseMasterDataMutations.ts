@@ -6,19 +6,23 @@ import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands
 import { CreateLocationUseCase } from '@modules/MasterData/Application/UseCases/CreateLocationUseCase';
 import { CreateSiteUseCase } from '@modules/MasterData/Application/UseCases/CreateSiteUseCase';
 import { CreateWarehouseUseCase } from '@modules/MasterData/Application/UseCases/CreateWarehouseUseCase';
+import { CreateWarehouseTypeUseCase } from '@modules/MasterData/Application/UseCases/CreateWarehouseTypeUseCase';
 import { CreateZoneUseCase } from '@modules/MasterData/Application/UseCases/CreateZoneUseCase';
 import { UpdateLocationUseCase } from '@modules/MasterData/Application/UseCases/UpdateLocationUseCase';
 import { UpdateSiteUseCase } from '@modules/MasterData/Application/UseCases/UpdateSiteUseCase';
 import { UpdateWarehouseUseCase } from '@modules/MasterData/Application/UseCases/UpdateWarehouseUseCase';
+import { UpdateWarehouseTypeUseCase } from '@modules/MasterData/Application/UseCases/UpdateWarehouseTypeUseCase';
 import { UpdateZoneUseCase } from '@modules/MasterData/Application/UseCases/UpdateZoneUseCase';
 import type {
   CreateLocationInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   UpdateLocationInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
+  UpdateWarehouseTypeInput,
   UpdateZoneInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataRepository } from '@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryInstance';
@@ -27,6 +31,8 @@ const createSiteUseCase = new CreateSiteUseCase(masterDataRepository);
 const updateSiteUseCase = new UpdateSiteUseCase(masterDataRepository);
 const createWarehouseUseCase = new CreateWarehouseUseCase(masterDataRepository);
 const updateWarehouseUseCase = new UpdateWarehouseUseCase(masterDataRepository);
+const createWarehouseTypeUseCase = new CreateWarehouseTypeUseCase(masterDataRepository);
+const updateWarehouseTypeUseCase = new UpdateWarehouseTypeUseCase(masterDataRepository);
 const createZoneUseCase = new CreateZoneUseCase(masterDataRepository);
 const updateZoneUseCase = new UpdateZoneUseCase(masterDataRepository);
 const createLocationUseCase = new CreateLocationUseCase(masterDataRepository);
@@ -36,6 +42,8 @@ export function useMasterDataMutations() {
   const queryClient = useQueryClient();
   const invalidateTree = () =>
     queryClient.invalidateQueries({ queryKey: masterDataQueryKeys.siteLocationTree() });
+  const invalidateWarehouseTypes = () =>
+    queryClient.invalidateQueries({ queryKey: masterDataQueryKeys.warehouseTypesRoot() });
   // Surface failures (validation, 403, 409 duplicate code, network) instead of
   // swallowing them; without this a failed create/update looks like a no-op.
   const notifyError = (error: unknown) => toast.error(toMutationErrorMessage(error));
@@ -61,6 +69,17 @@ export function useMasterDataMutations() {
       mutationFn: ({ id, input }: { id: string; input: UpdateWarehouseInput }) =>
         updateWarehouseUseCase.execute(id, input),
       onSuccess: invalidateTree,
+      onError: notifyError,
+    }),
+    createWarehouseType: useMutation({
+      mutationFn: (input: CreateWarehouseTypeInput) => createWarehouseTypeUseCase.execute(input),
+      onSuccess: invalidateWarehouseTypes,
+      onError: notifyError,
+    }),
+    updateWarehouseType: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdateWarehouseTypeInput }) =>
+        updateWarehouseTypeUseCase.execute(id, input),
+      onSuccess: invalidateWarehouseTypes,
       onError: notifyError,
     }),
     createZone: useMutation({

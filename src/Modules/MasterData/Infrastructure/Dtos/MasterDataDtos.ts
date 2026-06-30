@@ -29,6 +29,14 @@ export interface WarehouseDto extends MasterDataAuditDto {
   Timezone: string | null;
 }
 
+export interface WarehouseTypeDto extends MasterDataAuditDto {
+  Id: string;
+  WarehouseTypeCode: string;
+  WarehouseTypeName: string;
+  Description: string | null;
+  Status: MasterDataStatus;
+}
+
 export interface ZoneDto extends MasterDataAuditDto {
   Id: string;
   WarehouseId: string;
@@ -106,6 +114,18 @@ export type CreateWarehouseRequestDto = Pick<
   Partial<Pick<WarehouseDto, 'Timezone' | 'SourceSystem' | 'ReferenceId'>>;
 
 export type UpdateWarehouseRequestDto = Partial<CreateWarehouseRequestDto>;
+
+export type CreateWarehouseTypeRequestDto = Pick<
+  WarehouseTypeDto,
+  'WarehouseTypeCode' | 'WarehouseTypeName' | 'Status'
+> &
+  Partial<Pick<WarehouseTypeDto, 'Description' | 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
+
+export type UpdateWarehouseTypeRequestDto = Partial<
+  Omit<CreateWarehouseTypeRequestDto, 'WarehouseTypeCode'>
+>;
 
 export type CreateZoneRequestDto = Pick<
   ZoneDto,

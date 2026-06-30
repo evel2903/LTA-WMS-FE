@@ -11,6 +11,7 @@ import type {
   LocationTree,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
@@ -18,11 +19,13 @@ import type {
   CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   UpdateLocationInput,
   UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
+  UpdateWarehouseTypeInput,
   UpdateZoneInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
@@ -37,6 +40,7 @@ import type {
   PagedMasterDataDto,
   SiteDto,
   WarehouseDto,
+  WarehouseTypeDto,
   ZoneDto,
 } from '@modules/MasterData/Infrastructure/Dtos/MasterDataDtos';
 import { MasterDataMapper } from '@modules/MasterData/Infrastructure/Mappers/MasterDataMapper';
@@ -55,6 +59,7 @@ function listParams(filter: MasterDataListFilter = {}) {
     SiteCode: filter.siteCode,
     WarehouseId: filter.warehouseId,
     WarehouseCode: filter.warehouseCode,
+    WarehouseTypeCode: filter.warehouseTypeCode,
     ZoneId: filter.zoneId,
     ZoneCode: filter.zoneCode,
     LocationStatus: filter.locationStatus,
@@ -81,6 +86,14 @@ export class MasterDataRepository implements IMasterDataRepository {
       { params: listParams(filter) },
     );
     return MasterDataMapper.toPaged(dto, (item) => MasterDataMapper.toWarehouse(item));
+  }
+
+  async listWarehouseTypes(filter?: MasterDataListFilter): Promise<PaginatedResponse<WarehouseType>> {
+    const dto = await this.http.get<PagedMasterDataDto<WarehouseTypeDto>>(
+      MASTER_DATA_ENDPOINTS.WAREHOUSE_TYPES,
+      { params: listParams(filter) },
+    );
+    return MasterDataMapper.toPaged(dto, (item) => MasterDataMapper.toWarehouseType(item));
   }
 
   async listZones(filter?: MasterDataListFilter): Promise<PaginatedResponse<Zone>> {
@@ -149,6 +162,22 @@ export class MasterDataRepository implements IMasterDataRepository {
       MasterDataMapper.toUpdateWarehouseRequest(input),
     );
     return MasterDataMapper.toWarehouse(dto);
+  }
+
+  async createWarehouseType(input: CreateWarehouseTypeInput): Promise<WarehouseType> {
+    const dto = await this.http.post<WarehouseTypeDto>(
+      MASTER_DATA_ENDPOINTS.WAREHOUSE_TYPES,
+      MasterDataMapper.toCreateWarehouseTypeRequest(input),
+    );
+    return MasterDataMapper.toWarehouseType(dto);
+  }
+
+  async updateWarehouseType(id: string, input: UpdateWarehouseTypeInput): Promise<WarehouseType> {
+    const dto = await this.http.patch<WarehouseTypeDto>(
+      MASTER_DATA_ENDPOINTS.WAREHOUSE_TYPE_BY_ID(id),
+      MasterDataMapper.toUpdateWarehouseTypeRequest(input),
+    );
+    return MasterDataMapper.toWarehouseType(dto);
   }
 
   async createZone(input: CreateZoneInput): Promise<Zone> {

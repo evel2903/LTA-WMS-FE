@@ -5,6 +5,7 @@ import type {
   LocationTree,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
@@ -12,11 +13,13 @@ import type {
   CreateLocationProfileInput,
   CreateSiteInput,
   CreateWarehouseInput,
+  CreateWarehouseTypeInput,
   CreateZoneInput,
   UpdateLocationInput,
   UpdateLocationProfileInput,
   UpdateSiteInput,
   UpdateWarehouseInput,
+  UpdateWarehouseTypeInput,
   UpdateZoneInput,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import type {
@@ -24,6 +27,7 @@ import type {
   CreateLocationProfileRequestDto,
   CreateSiteRequestDto,
   CreateWarehouseRequestDto,
+  CreateWarehouseTypeRequestDto,
   CreateZoneRequestDto,
   LocationDto,
   LocationProfileDto,
@@ -34,8 +38,10 @@ import type {
   UpdateLocationProfileRequestDto,
   UpdateSiteRequestDto,
   UpdateWarehouseRequestDto,
+  UpdateWarehouseTypeRequestDto,
   UpdateZoneRequestDto,
   WarehouseDto,
+  WarehouseTypeDto,
   ZoneDto,
 } from '@modules/MasterData/Infrastructure/Dtos/MasterDataDtos';
 
@@ -85,6 +91,22 @@ export const MasterDataMapper = {
       warehouseTypeCode: dto.WarehouseTypeCode,
       status: dto.Status,
       timezone: dto.Timezone,
+      sourceSystem: dto.SourceSystem,
+      referenceId: dto.ReferenceId,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+      createdBy: dto.CreatedBy,
+      updatedBy: dto.UpdatedBy,
+    };
+  },
+
+  toWarehouseType(dto: WarehouseTypeDto): WarehouseType {
+    return {
+      id: dto.Id,
+      warehouseTypeCode: dto.WarehouseTypeCode,
+      warehouseTypeName: dto.WarehouseTypeName,
+      description: dto.Description,
+      status: dto.Status,
       sourceSystem: dto.SourceSystem,
       referenceId: dto.ReferenceId,
       createdAt: dto.CreatedAt,
@@ -221,6 +243,29 @@ export const MasterDataMapper = {
       Timezone: input.timezone,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+    });
+  },
+
+  toCreateWarehouseTypeRequest(input: CreateWarehouseTypeInput): CreateWarehouseTypeRequestDto {
+    return removeUndefined({
+      WarehouseTypeCode: input.warehouseTypeCode,
+      WarehouseTypeName: input.warehouseTypeName,
+      Description: input.description,
+      Status: input.status,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
+    });
+  },
+
+  toUpdateWarehouseTypeRequest(input: UpdateWarehouseTypeInput): UpdateWarehouseTypeRequestDto {
+    return removeUndefined({
+      WarehouseTypeName: input.warehouseTypeName,
+      Description: input.description,
+      Status: input.status,
+      SourceSystem: input.sourceSystem,
+      ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 

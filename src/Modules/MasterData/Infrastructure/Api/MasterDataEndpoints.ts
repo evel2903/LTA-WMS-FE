@@ -3,6 +3,8 @@ export const MASTER_DATA_ENDPOINTS = {
   SITE_BY_ID: (id: string) => `/sites/${id}`,
   WAREHOUSES: '/warehouses',
   WAREHOUSE_BY_ID: (id: string) => `/warehouses/${id}`,
+  WAREHOUSE_TYPES: '/warehouse-types',
+  WAREHOUSE_TYPE_BY_ID: (id: string) => `/warehouse-types/${id}`,
   ZONES: '/zones',
   ZONE_BY_ID: (id: string) => `/zones/${id}`,
   LOCATION_PROFILES: '/location-profiles',

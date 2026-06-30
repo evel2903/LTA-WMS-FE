@@ -6,6 +6,7 @@ import type {
   MasterDataStatus,
   Site,
   Warehouse,
+  WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 
@@ -54,6 +55,18 @@ export interface CreateWarehouseInput {
 }
 
 export type UpdateWarehouseInput = Partial<CreateWarehouseInput>;
+
+export interface CreateWarehouseTypeInput {
+  warehouseTypeCode: string;
+  warehouseTypeName: string;
+  description?: string | null;
+  status: MasterDataStatus;
+  sourceSystem?: string | null;
+  referenceId?: string | null;
+  reasonCode?: string | null;
+}
+
+export type UpdateWarehouseTypeInput = Partial<Omit<CreateWarehouseTypeInput, 'warehouseTypeCode'>>;
 
 export interface CreateZoneInput {
   warehouseId: string;
@@ -117,4 +130,4 @@ export type UpdateLocationProfileInput = Partial<CreateLocationProfileInput> & {
   version?: number;
 };
 
-export type { Location, LocationProfile, LocationTree, Site, Warehouse, Zone };
+export type { Location, LocationProfile, LocationTree, Site, Warehouse, WarehouseType, Zone };

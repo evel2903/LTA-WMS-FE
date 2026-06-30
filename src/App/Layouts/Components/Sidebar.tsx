@@ -43,12 +43,18 @@ interface NavLeaf {
 interface NavGroup {
   label: string;
   icon: IconType;
-  children: NavLeaf[];
+  children: NavChild[];
 }
 
+interface NavSection {
+  section: string;
+}
+
+type NavChild = NavLeaf | NavSection;
 type NavEntry = NavLeaf | NavGroup;
 
 const isGroup = (entry: NavEntry): entry is NavGroup => 'children' in entry;
+const isSection = (child: NavChild): child is NavSection => 'section' in child;
 
 /** Navigation registry. Add a leaf to the relevant group; add a module group here. */
 const NAV_ENTRIES: NavEntry[] = [
@@ -58,23 +64,29 @@ const NAV_ENTRIES: NavEntry[] = [
     label: 'Nền tảng',
     icon: Layers,
     children: [
+      { section: 'Tổng quan' },
       { label: 'Tổng quan nền tảng', to: ROUTES.FOUNDATION.ROOT, icon: Layers },
-      { label: 'Cây kho và vị trí', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
+      { section: 'Cấu trúc vật lý' },
+      { label: 'Kho và sơ đồ kho', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
+      { label: 'Loại kho', to: ROUTES.FOUNDATION.WAREHOUSE_TYPES, icon: Warehouse },
       {
         label: 'Hồ sơ vị trí',
         to: ROUTES.FOUNDATION.LOCATION_PROFILES,
         icon: SlidersHorizontal,
       },
+      { section: 'Sản phẩm và đóng gói' },
       { label: 'Chủ hàng', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, icon: Building2 },
       { label: 'Đơn vị tính', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS, icon: Ruler },
       { label: 'SKU', to: ROUTES.FOUNDATION.MASTER_DATA.SKUS, icon: Package },
       { label: 'Đối tác', to: ROUTES.FOUNDATION.MASTER_DATA.PARTNERS, icon: Users },
+      { section: 'Quy tắc và hồ sơ' },
       {
         label: 'Hồ sơ kho',
         to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES,
         icon: SlidersHorizontal,
       },
       { label: 'Ma trận quy tắc', to: ROUTES.FOUNDATION.RULE_MATRIX, icon: Network },
+      { section: 'Quản trị' },
       { label: 'Vai trò và quyền', to: ROUTES.FOUNDATION.ACCESS.ROLES, icon: ShieldCheck },
       { label: 'Người dùng và phân quyền', to: ROUTES.FOUNDATION.ACCESS.USERS, icon: Users },
       { label: 'Nhật ký kiểm toán', to: ROUTES.FOUNDATION.AUDIT, icon: History },
@@ -136,12 +148,21 @@ function NavGroupItem({ group, defaultOpen }: { group: NavGroup; defaultOpen: bo
       </button>
       {open && (
         <div className="border-sidebar-border mt-1 ml-4 space-y-1 border-l pl-2">
-          {group.children.map(({ label, to, icon: Icon }) => (
-            <NavLink key={to} to={to} end={to === ROUTES.FOUNDATION.ROOT} className={leafLinkClass}>
-              <Icon className="size-4" />
-              {label}
-            </NavLink>
-          ))}
+          {group.children.map((child) =>
+            isSection(child) ? (
+              <div
+                key={child.section}
+                className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-normal text-muted-foreground"
+              >
+                {child.section}
+              </div>
+            ) : (
+              <NavLink key={child.to} to={child.to} end={child.to === ROUTES.FOUNDATION.ROOT} className={leafLinkClass}>
+                <child.icon className="size-4" />
+                {child.label}
+              </NavLink>
+            ),
+          )}
         </div>
       )}
     </div>
@@ -163,7 +184,7 @@ export function Sidebar() {
             <NavGroupItem
               key={entry.label}
               group={entry}
-              defaultOpen={entry.children.some((child) => pathname.startsWith(child.to))}
+              defaultOpen={entry.children.some((child) => !isSection(child) && pathname.startsWith(child.to))}
             />
           ) : (
             <NavLink

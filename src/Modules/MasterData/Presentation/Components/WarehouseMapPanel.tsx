@@ -1,4 +1,4 @@
-import { AlertTriangle, Layers3, MapPin, PackageCheck, Warehouse } from 'lucide-react';
+import { Layers3, MapPin, Warehouse } from 'lucide-react';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Badge } from '@shared/Components/Ui/Badge';
@@ -16,6 +16,7 @@ interface WarehouseMapPanelProps {
 
 interface WarehouseSummary {
   warehouse: SiteLocationTree;
+  warehouses: SiteLocationTree[];
   zones: ZoneSummary[];
 }
 
@@ -23,19 +24,18 @@ interface ZoneSummary {
   zone: SiteLocationTree;
   locations: SiteLocationTree[];
   totalLocations: number;
-  activeLocations: number;
-  inactiveLocations: number;
-  blockedLocations: number;
-  maintenanceLocations: number;
   capacityQty: number;
 }
 
-const HEAT_CLASS = {
-  empty: 'border-slate-200 bg-slate-50 text-slate-700',
-  low: 'border-rose-200 bg-rose-50 text-rose-900',
-  medium: 'border-amber-200 bg-amber-50 text-amber-900',
-  high: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-} as const;
+interface AisleSummary {
+  code: string;
+  floors: FloorSummary[];
+}
+
+interface FloorSummary {
+  code: string;
+  locations: SiteLocationTree[];
+}
 
 function flattenWarehouses(nodes: SiteLocationTree[]): SiteLocationTree[] {
   return nodes.flatMap((node) => {
@@ -50,9 +50,9 @@ function containsNode(root: SiteLocationTree, id: string | null): boolean {
   return root.children.some((child) => containsNode(child, id));
 }
 
-function collectLocations(node: SiteLocationTree): SiteLocationTree[] {
-  const direct = node.type === 'location' ? [node] : [];
-  return [...direct, ...node.children.flatMap(collectLocations)];
+function collectPhysicalSlots(node: SiteLocationTree): SiteLocationTree[] {
+  if (node.type === 'location' && node.children.length === 0) return [node];
+  return node.children.flatMap(collectPhysicalSlots);
 }
 
 function buildWarehouseSummary(nodes: SiteLocationTree[], selectedNode: SiteLocationTree | null): WarehouseSummary | null {
@@ -63,11 +63,7 @@ function buildWarehouseSummary(nodes: SiteLocationTree[], selectedNode: SiteLoca
   const zones = selectedWarehouse.children
     .filter((child) => child.type === 'zone')
     .map((zone) => {
-      const locations = collectLocations(zone);
-      const activeLocations = locations.filter((location) => location.status === 'Active').length;
-      const inactiveLocations = locations.filter((location) => location.status === 'Inactive').length;
-      const blockedLocations = locations.filter((location) => location.status === 'Blocked').length;
-      const maintenanceLocations = locations.filter((location) => location.status === 'Maintenance').length;
+      const locations = collectPhysicalSlots(zone);
       const capacityQty = locations.reduce((sum, location) => {
         if (location.type !== 'location') return sum;
         return sum + (Number(location.entity.capacityQty) || 0);
@@ -77,26 +73,32 @@ function buildWarehouseSummary(nodes: SiteLocationTree[], selectedNode: SiteLoca
         zone,
         locations,
         totalLocations: locations.length,
-        activeLocations,
-        inactiveLocations,
-        blockedLocations,
-        maintenanceLocations,
         capacityQty,
       };
     });
 
-  return { warehouse: selectedWarehouse, zones };
+  return { warehouse: selectedWarehouse, warehouses, zones };
 }
 
 function resolveSelectedWarehouse(
   warehouses: SiteLocationTree[],
   selectedNode: SiteLocationTree | null,
 ): SiteLocationTree | null {
-  if (!selectedNode) return warehouses[0] ?? null;
+  if (!selectedNode) return preferredWarehouse(warehouses);
   if (selectedNode.type === 'warehouse') return selectedNode;
-  if (selectedNode.type === 'site') return flattenWarehouses(selectedNode.children)[0] ?? null;
+  if (selectedNode.type === 'site') {
+    return preferredWarehouse(flattenWarehouses(selectedNode.children));
+  }
 
-  return warehouses.find((warehouse) => containsNode(warehouse, selectedNode.id)) ?? warehouses[0] ?? null;
+  return warehouses.find((warehouse) => containsNode(warehouse, selectedNode.id)) ?? preferredWarehouse(warehouses);
+}
+
+function preferredWarehouse(warehouses: SiteLocationTree[]): SiteLocationTree | null {
+  return warehouses.find(hasPhysicalStructure) ?? warehouses[0] ?? null;
+}
+
+function hasPhysicalStructure(warehouse: SiteLocationTree): boolean {
+  return warehouse.children.some((child) => child.type === 'zone');
 }
 
 function selectedZone(summary: WarehouseSummary, selectedNode: SiteLocationTree | null): ZoneSummary | null {
@@ -105,18 +107,6 @@ function selectedZone(summary: WarehouseSummary, selectedNode: SiteLocationTree 
     summary.zones[0] ??
     null
   );
-}
-
-function heatLevel(zone: ZoneSummary): keyof typeof HEAT_CLASS {
-  if (zone.totalLocations === 0) return 'empty';
-  const activeRatio = zone.activeLocations / zone.totalLocations;
-  if (activeRatio >= 0.8) return 'high';
-  if (activeRatio >= 0.4) return 'medium';
-  return 'low';
-}
-
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value);
 }
 
 function locationPreviewForZone(
@@ -138,6 +128,130 @@ function locationPreviewForZone(
   return [...preview.slice(0, 11), selectedLocation];
 }
 
+function buildAisles(zone: ZoneSummary | null): AisleSummary[] {
+  if (!zone) return [];
+
+  const grouped = new Map<string, Map<string, SiteLocationTree[]>>();
+  zone.locations.forEach((location, index) => {
+    const code = aisleCode(location, index);
+    const floor = floorCode(location);
+    const aisle = grouped.get(code) ?? new Map<string, SiteLocationTree[]>();
+    aisle.set(floor, [...(aisle.get(floor) ?? []), location]);
+    grouped.set(code, aisle);
+  });
+
+  return [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, 'vi'))
+    .map(([code, floors]) => ({
+      code,
+      floors: [...floors.entries()]
+        .sort(([left], [right]) => left.localeCompare(right, 'vi'))
+        .map(([floorCodeValue, locations]) => ({
+          code: floorCodeValue,
+          locations: [...locations].sort((left, right) => baySortValue(left) - baySortValue(right)),
+        })),
+    }));
+}
+
+function zoneCode(zone: ZoneSummary): string {
+  if (zone.zone.type === 'zone') return zone.zone.entity.zoneCode;
+  return zone.zone.label.split(' - ')[0] ?? zone.zone.label;
+}
+
+function zoneName(zone: ZoneSummary): string {
+  if (zone.zone.type === 'zone') return zone.zone.entity.zoneName;
+  return zone.zone.label;
+}
+
+function zoneType(zone: ZoneSummary): string {
+  if (zone.zone.type === 'zone') return zone.zone.entity.zoneType;
+  return zone.zone.type;
+}
+
+function locationCode(location: SiteLocationTree): string {
+  if (location.type === 'location') return location.entity.locationCode;
+  return location.label.split(' - ')[0] ?? location.label;
+}
+
+function locationType(location: SiteLocationTree): string {
+  if (location.type === 'location') return location.entity.locationType;
+  return location.type;
+}
+
+function aisleCode(location: SiteLocationTree, index: number): string {
+  const parts = physicalNumericParts(locationCode(location));
+  return String(parts[0] ?? Math.floor(index / 12) + 1).padStart(2, '0');
+}
+
+function baySortValue(location: SiteLocationTree): number {
+  const parts = physicalNumericParts(locationCode(location));
+  return parts[1] ?? locationOrder(location);
+}
+
+function floorCode(location: SiteLocationTree): string {
+  const parts = physicalNumericParts(locationCode(location));
+  return String(parts[2] ?? 1).padStart(2, '0');
+}
+
+function physicalNumericParts(code: string): number[] {
+  return (code.match(/\d+/g) ?? []).map((part) => Number(part)).filter(Number.isFinite);
+}
+
+function locationOrder(location: SiteLocationTree): number {
+  if (location.type !== 'location') return 0;
+  return location.entity.pickSequence ?? location.entity.putawaySequence ?? 0;
+}
+
+function warehouseCounts(warehouse: SiteLocationTree): { zones: number; locations: number } {
+  return {
+    zones: warehouse.children.filter((child) => child.type === 'zone').length,
+    locations: collectPhysicalSlots(warehouse).length,
+  };
+}
+
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value);
+}
+
+function statusDotClass(status: SiteLocationTree['status']): string {
+  if (status === 'Active') return 'bg-emerald-500';
+  if (status === 'Inactive') return 'bg-slate-300';
+  if (status === 'Blocked') return 'bg-amber-500';
+  if (status === 'Maintenance') return 'bg-sky-500';
+  return 'bg-slate-300';
+}
+
+function zoneCellClass(zone: ZoneSummary, selected: boolean): string {
+  const base = 'border-slate-200 bg-slate-50 text-slate-900';
+  const status =
+    zone.zone.status === 'Active'
+      ? 'hover:border-emerald-300 hover:bg-emerald-50'
+      : zone.zone.status === 'Blocked'
+        ? 'border-amber-200 bg-amber-50 text-amber-950'
+        : zone.zone.status === 'Inactive'
+          ? 'bg-slate-100 text-slate-600'
+          : 'border-sky-200 bg-sky-50 text-sky-950';
+
+  return cn(base, status, selected && 'border-primary bg-primary/5 ring-2 ring-primary');
+}
+
+function locationCellClass(location: SiteLocationTree, selected: boolean): string {
+  const status =
+    location.status === 'Active'
+      ? 'border-emerald-200 bg-emerald-100 hover:bg-emerald-200'
+      : location.status === 'Blocked'
+        ? 'border-amber-200 bg-amber-100 hover:bg-amber-200'
+        : location.status === 'Inactive'
+          ? 'border-slate-200 bg-slate-200 hover:bg-slate-300'
+          : 'border-sky-200 bg-sky-100 hover:bg-sky-200';
+
+  return cn(
+    'size-4 rounded-[3px] border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    status,
+    selected && 'ring-2 ring-primary ring-offset-1',
+  );
+}
+
 export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMapPanelProps) {
   const summary = buildWarehouseSummary(nodes, selectedNode);
 
@@ -145,7 +259,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Bản đồ kho</CardTitle>
+          <CardTitle className="text-base">Sơ đồ kho</CardTitle>
         </CardHeader>
         <CardContent>
           <Alert role="status" variant="info">
@@ -160,146 +274,229 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
 
   const focusedZone = selectedZone(summary, selectedNode);
   const locationPreview = locationPreviewForZone(focusedZone, selectedNode);
+  const aisleRows = buildAisles(focusedZone);
   const totalLocations = summary.zones.reduce((sum, zone) => sum + zone.totalLocations, 0);
   const totalCapacity = summary.zones.reduce((sum, zone) => sum + zone.capacityQty, 0);
+  const maxBays = Math.max(...aisleRows.flatMap((aisle) => aisle.floors.map((floor) => floor.locations.length)), 0);
+  const floorCount = new Set(aisleRows.flatMap((aisle) => aisle.floors.map((floor) => floor.code))).size;
+  const zoneSlots = focusedZone?.totalLocations ?? 0;
 
   return (
-    <Card>
-      <CardHeader className="gap-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Warehouse className="size-4" aria-hidden="true" />
-              Bản đồ kho và vị trí
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {summary.warehouse.label} · {summary.zones.length} khu · {totalLocations} vị trí
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-            <Metric label="Khu" value={summary.zones.length} />
-            <Metric label="Vị trí" value={totalLocations} />
-            <Metric label="Sức chứa" value={formatNumber(totalCapacity)} />
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Chú giải bản đồ nhiệt tồn kho</span>
-          <LegendDot className={HEAT_CLASS.high} label="Tồn kho cao" />
-          <LegendDot className={HEAT_CLASS.medium} label="Tồn kho trung bình" />
-          <LegendDot className={HEAT_CLASS.low} label="Tồn kho thấp" />
-          <LegendDot className={HEAT_CLASS.empty} label="Chưa có dữ liệu" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <Alert role="status" variant="warning">
-          <AlertTriangle aria-hidden="true" />
-          <AlertDescription>
-            <p>
-              Chưa có lớp dữ liệu tồn kho theo vị trí. Màu hiện chỉ mô phỏng theo trạng thái/cấu hình vị trí, không phải
-              số lượng tồn thực tế.
-            </p>
-          </AlertDescription>
-        </Alert>
-
-        {summary.zones.length === 0 ? (
-          <Alert role="status" variant="info">
-            <AlertDescription>
-              Kho này chưa có khu vực. Tạo khu vực trước khi thêm vị trí hoặc xem bản đồ nhiệt theo khu.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {summary.zones.map((zone) => {
-                const level = heatLevel(zone);
-                const selected = focusedZone?.zone.id === zone.zone.id;
-
-                return (
-                  <button
-                    key={zone.zone.id}
-                    type="button"
-                    className={cn(
-                      'min-h-32 rounded-lg border p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      HEAT_CLASS[level],
-                      selected && 'ring-2 ring-primary',
-                    )}
-                    onClick={() => onSelect(zone.zone)}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{zone.zone.label}</div>
-                        <div className="mt-1 text-xs opacity-80">{zone.zone.type}</div>
-                      </div>
-                      <MasterDataStatusBadge status={zone.zone.status} />
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                      <Metric label="Vị trí" value={zone.totalLocations} compact />
-                      <Metric label="Hoạt động" value={zone.activeLocations} compact />
-                      <Metric label="Không hoạt động" value={zone.inactiveLocations} compact />
-                      <Metric label="Bị khóa" value={zone.blockedLocations} compact />
-                      <Metric label="Bảo trì" value={zone.maintenanceLocations} compact />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs opacity-80">
-                      <span className="inline-flex items-center gap-2">
-                        <PackageCheck className="size-4" aria-hidden="true" />
-                        Sức chứa {formatNumber(zone.capacityQty)}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Warehouse className="size-4" aria-hidden="true" />
+                Sơ đồ kho tổng
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {summary.warehouse.label} · {summary.zones.length} khu · {totalLocations} vị trí
+              </p>
             </div>
+            <Button
+              type="button"
+              variant={selectedNode?.id === summary.warehouse.id ? 'secondary' : 'outline'}
+              className="w-fit"
+              onClick={() => onSelect(summary.warehouse)}
+            >
+              Chọn kho
+            </Button>
+            <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+              <Metric label="Khu" value={summary.zones.length} />
+              <Metric label="Vị trí" value={totalLocations} />
+              <Metric label="Sức chứa vật lý" value={formatNumber(totalCapacity)} />
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">Bấm khu để xem chi tiết dãy · kệ · tầng.</div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {summary.warehouses.length > 1 && (
+            <label className="grid gap-1 text-sm">
+              <span className="text-xs font-medium uppercase text-muted-foreground">Kho</span>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={summary.warehouse.id}
+                onChange={(event) => {
+                  const warehouse = summary.warehouses.find((item) => item.id === event.target.value);
+                  if (warehouse) onSelect(warehouse);
+                }}
+              >
+                {summary.warehouses.map((warehouse) => {
+                  const counts = warehouseCounts(warehouse);
+                  return (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.label} · {counts.zones} khu · {counts.locations} vị trí
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          )}
 
-            <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-              <div className="rounded-lg border p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Layers3 className="size-4" aria-hidden="true" />
-                  Chi tiết khu
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {focusedZone ? focusedZone.zone.label : 'Chọn một khu trên bản đồ để xem vị trí.'}
-                </p>
-                {focusedZone && (
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <Metric label="Vị trí" value={focusedZone.totalLocations} compact />
-                    <Metric label="Sức chứa" value={formatNumber(focusedZone.capacityQty)} compact />
-                  </div>
-                )}
+          {summary.zones.length === 0 ? (
+            <Alert role="status" variant="info">
+              <AlertDescription>
+                Kho này chưa có khu vực. Tạo khu vực trước khi thêm vị trí hoặc xem sơ đồ cấu trúc kho.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="grid auto-rows-[88px] grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-12">
+                {summary.zones.map((zone) => {
+                  const selected = focusedZone?.zone.id === zone.zone.id;
+
+                  return (
+                    <button
+                      key={zone.zone.id}
+                      type="button"
+                      aria-label={zone.zone.label}
+                      className={cn(
+                        'flex flex-col justify-between rounded-lg border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        zoneCellClass(zone, selected),
+                      )}
+                      onClick={() => onSelect(zone.zone)}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-extrabold">{zoneCode(zone)}</span>
+                        <span className={cn('mt-1 size-2.5 rounded-full', statusDotClass(zone.zone.status))} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-medium">{zoneName(zone)}</span>
+                        <span className="mt-1 block text-[10px] text-muted-foreground">
+                          {zone.totalLocations} vị trí · {zoneType(zone)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="rounded-lg border p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold">Vị trí trong khu</div>
-                  <Badge variant="outline">
-                    {locationPreview.length}/{focusedZone?.totalLocations ?? 0} hiển thị
-                  </Badge>
+              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                <LegendDot className="bg-emerald-500" label="Hoạt động" />
+                <LegendDot className="bg-slate-300" label="Không hoạt động" />
+                <LegendDot className="bg-amber-500" label="Bị khóa" />
+                <LegendDot className="bg-sky-500" label="Bảo trì" />
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {focusedZone && (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,0.9fr)]">
+          <Card>
+            <CardHeader className="gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <span className="flex size-8 items-center justify-center rounded-md bg-foreground text-sm font-extrabold text-background">
+                      {zoneCode(focusedZone).replace(/^ZONE[-_]?/i, '').slice(0, 3)}
+                    </span>
+                    Khu {zoneCode(focusedZone)} · {zoneName(focusedZone)}
+                  </CardTitle>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {aisleRows.length} dãy × {maxBays} kệ/dãy × {floorCount} tầng · {zoneSlots} ô vị trí
+                  </p>
                 </div>
-                {locationPreview.length === 0 ? (
-                  <Alert role="status" variant="info">
-                    <AlertDescription>Khu này chưa có vị trí con để xem chi tiết.</AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {locationPreview.map((location) => (
-                      <Button
-                        key={location.id}
-                        type="button"
-                        variant={selectedNode?.id === location.id ? 'secondary' : 'outline'}
-                        className="h-auto justify-start gap-2 px-3 py-2 text-left"
-                        onClick={() => onSelect(location)}
-                      >
-                        <MapPin className="size-4 shrink-0" aria-hidden="true" />
-                        <span className="min-w-0 flex-1 truncate">{location.label}</span>
-                      </Button>
+                <MasterDataStatusBadge status={focusedZone.zone.status} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {aisleRows.length === 0 ? (
+                <Alert role="status" variant="info">
+                  <AlertDescription>Khu này chưa có vị trí con để dựng sơ đồ chi tiết.</AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="space-y-2 overflow-x-auto">
+                    {aisleRows.map((aisle) => (
+                      <div key={aisle.code} className="min-w-max space-y-1">
+                        {aisle.floors.map((floor) => (
+                          <div key={`${aisle.code}-${floor.code}`} className="flex items-center gap-3">
+                            <span className="w-28 shrink-0 text-xs font-bold text-muted-foreground tabular-nums">
+                              Dãy {aisle.code} · Tầng {floor.code}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              {floor.locations.map((location) => (
+                                <button
+                                  key={location.id}
+                                  type="button"
+                                  className={locationCellClass(location, selectedNode?.id === location.id)}
+                                  aria-label={`Ô sơ đồ ${locationCode(location)}`}
+                                  title={location.label}
+                                  onClick={() => onSelect(location)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ))}
                   </div>
-                )}
+
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                    <LegendDot className="bg-emerald-500" label="Vị trí hoạt động" />
+                    <LegendDot className="bg-amber-500" label="Bị khóa" />
+                    <LegendDot className="bg-sky-500" label="Bảo trì" />
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      Mỗi ô = 1 vị trí vật lý · mã khu-dãy-kệ · ví dụ {zoneCode(focusedZone)}-01-01
+                    </span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Layers3 className="size-4" aria-hidden="true" />
+                    Vị trí trong khu
+                  </CardTitle>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Chọn vị trí để xem cấu hình chi tiết phía dưới.
+                  </p>
+                </div>
+                <Badge variant="outline">
+                  {locationPreview.length}/{focusedZone.totalLocations} hiển thị
+                </Badge>
               </div>
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            </CardHeader>
+            <CardContent>
+              {locationPreview.length === 0 ? (
+                <Alert role="status" variant="info">
+                  <AlertDescription>Khu này chưa có vị trí con để xem chi tiết.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid gap-2">
+                  {locationPreview.map((location) => (
+                    <Button
+                      key={location.id}
+                      type="button"
+                      variant={selectedNode?.id === location.id ? 'secondary' : 'outline'}
+                      className="h-auto justify-start gap-3 px-3 py-2 text-left"
+                      onClick={() => onSelect(location)}
+                    >
+                      <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">{location.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {locationType(location)} · thứ tự {locationOrder(location) || '-'}
+                        </span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -323,7 +520,7 @@ function Metric({
 function LegendDot({ className, label }: { className: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={cn('size-2.5 rounded-full border', className)} aria-hidden="true" />
+      <span className={cn('size-2.5 rounded-[3px]', className)} aria-hidden="true" />
       {label}
     </span>
   );

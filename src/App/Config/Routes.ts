@@ -19,6 +19,11 @@ export const ROUTES = {
   FOUNDATION: {
     ROOT: '/foundation',
     LOCATIONS: '/foundation/locations',
+    LOCATION_MAP: (warehouseId = ':warehouseId') =>
+      warehouseId === ':warehouseId'
+        ? '/foundation/locations/:warehouseId/map'
+        : `/foundation/locations/${encodeURIComponent(warehouseId)}/map`,
+    WAREHOUSE_TYPES: '/foundation/warehouse-types',
     LOCATION_PROFILES: '/foundation/location-profiles',
     LOCATION_PROFILE_NEW: '/foundation/location-profiles/new',
     LOCATION_PROFILE_DETAIL: (id = ':id') => `/foundation/location-profiles/${id}`,
