@@ -35,6 +35,7 @@ export class ReasonCodeRepository implements IReasonCodeRepository {
         ReasonGroup: filter.reasonGroup,
         Status: filter.status,
         Action: filter.action,
+        ObjectType: filter.objectType,
       },
     });
     return ReasonCodeMapper.toPaged(dto, (item) => ReasonCodeMapper.toReasonCode(item));

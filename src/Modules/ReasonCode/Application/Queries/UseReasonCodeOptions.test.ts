@@ -46,4 +46,31 @@ describe('useReasonCodeOptions', () => {
     expect(result.current.isLoading).toBe(true);
     expect(result.current.options).toEqual([]);
   });
+
+  it('passes objectType filters through to the ReasonCode query', () => {
+    h.useReasonCodes.mockReturnValue({ data: { items: [] }, isLoading: false, isError: false });
+
+    renderHook(() => useReasonCodeOptions({ action: 'Update', objectType: 'Warehouse' }));
+
+    expect(h.useReasonCodes).toHaveBeenCalledWith({
+      status: 'ACTIVE',
+      pageSize: 100,
+      action: 'Update',
+      objectType: 'Warehouse',
+    });
+  });
+
+  it('hides placeholder options from a previous action/objectType while the new query loads', () => {
+    h.useReasonCodes.mockReturnValue({
+      data: { items: [{ reasonCode: 'RC-OLD', description: 'Old context' }] },
+      isLoading: false,
+      isError: false,
+      isPlaceholderData: true,
+    });
+
+    const { result } = renderHook(() => useReasonCodeOptions({ action: 'Update', objectType: 'Warehouse' }));
+
+    expect(result.current.options).toEqual([]);
+    expect(result.current.isLoading).toBe(true);
+  });
 });

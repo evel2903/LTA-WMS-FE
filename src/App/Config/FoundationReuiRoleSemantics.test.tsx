@@ -4,6 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
+
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'RC-FOUNDATION', label: 'RC-FOUNDATION - Foundation guardrail' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
+
 import { ApprovalStateView } from '@modules/Approval/Presentation/Components/StateViews';
 import { ApprovalDetailPanel } from '@modules/Approval/Presentation/Components/ApprovalDetailPanel';
 import { ApprovalDecisionForm } from '@modules/Approval/Presentation/Forms/ApprovalDecisionForm';
@@ -86,6 +98,7 @@ function makeInventoryStatus(): InventoryStatus {
 afterEach(() => {
   cleanup();
   noop.mockClear();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
 });
 
 describe('Foundation ReUI role semantics guardrail', () => {

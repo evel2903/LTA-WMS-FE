@@ -19,6 +19,7 @@ import {
 import { conflictMessage } from '@modules/MasterData/Application/Commands/CatalogConflictError';
 import { useCatalogMutations } from '@modules/MasterData/Application/Commands/UseCatalogMutations';
 import { useSkuRelations } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import { MASTER_DATA_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type {
   ItemCoverage,
@@ -502,6 +503,7 @@ function PackForm({
     defaultValues: defaults,
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
@@ -529,9 +531,22 @@ function PackForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
-          <Input disabled={disabled} {...form.register('reasonCode')} />
-        </Field>
+        <div>
+          <ReasonCodeSelect
+            id="pack-definition-reason-code"
+            name="reasonCode"
+            label="Mã lý do"
+            value={reasonCode}
+            action={initialValue ? 'Update' : 'Create'}
+            objectType="SKU"
+            optional
+            disabled={disabled}
+            onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+          />
+          {form.formState.errors.reasonCode?.message ? (
+            <p className="mt-1 text-xs text-destructive">{form.formState.errors.reasonCode.message}</p>
+          ) : null}
+        </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" disabled={disabled} {...form.register('isDefault')} />Quy cách mặc định</label>
@@ -588,6 +603,7 @@ function BarcodeForm({
     defaultValues: defaults,
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
@@ -621,9 +637,22 @@ function BarcodeForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
-          <Input disabled={disabled} {...form.register('reasonCode')} />
-        </Field>
+        <div>
+          <ReasonCodeSelect
+            id="sku-barcode-reason-code"
+            name="reasonCode"
+            label="Mã lý do"
+            value={reasonCode}
+            action={initialValue ? 'Update' : 'Create'}
+            objectType="SKU"
+            optional
+            disabled={disabled}
+            onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+          />
+          {form.formState.errors.reasonCode?.message ? (
+            <p className="mt-1 text-xs text-destructive">{form.formState.errors.reasonCode.message}</p>
+          ) : null}
+        </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" disabled={disabled} {...form.register('isPrimary')} />Mã vạch chính</label>
@@ -677,6 +706,7 @@ function ConversionForm({
     defaultValues: defaults,
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
@@ -711,9 +741,22 @@ function ConversionForm({
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
-        <Field label="Mã lý do" error={form.formState.errors.reasonCode?.message}>
-          <Input disabled={disabled} {...form.register('reasonCode')} />
-        </Field>
+        <div>
+          <ReasonCodeSelect
+            id="uom-conversion-reason-code"
+            name="reasonCode"
+            label="Mã lý do"
+            value={reasonCode}
+            action={initialValue ? 'Update' : 'Create'}
+            objectType="UOM"
+            optional
+            disabled={disabled}
+            onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+          />
+          {form.formState.errors.reasonCode?.message ? (
+            <p className="mt-1 text-xs text-destructive">{form.formState.errors.reasonCode.message}</p>
+          ) : null}
+        </div>
       </div>
       <FormActions
         editing={Boolean(initialValue)}

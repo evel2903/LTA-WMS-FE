@@ -5,6 +5,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { DecideApprovalInput } from '@modules/Approval/Domain/Types/ApprovalTypes';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   approvalDecisionSchema,
   parseEvidenceRefs,
@@ -41,6 +42,7 @@ export function ApprovalDecisionForm({
     defaultValues: { reasonCode: '', reasonNote: '', evidenceRefs: '' },
   });
   const errors = form.formState.errors;
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   // Approve and reject share the same validated values; the chosen verb is the only difference.
   const decide = (handler: (input: DecideApprovalInput) => void) =>
@@ -54,11 +56,22 @@ export function ApprovalDecisionForm({
 
   return (
     <form className="grid gap-2" onSubmit={decide(onApprove)}>
-      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} placeholder="VD: RC-APPROVE" {...form.register('reasonCode')} />
+      <div>
+        <ReasonCodeSelect
+          id="approval-reason-code"
+          name="reasonCode"
+          label="Mã lý do"
+          value={reasonCode}
+          action="Approve"
+          objectType="ApprovalRequest"
+          optional
+          disabled={disabled}
+          onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+        />
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
-      </label>
+      </div>
       <label className="grid gap-1 text-sm">Ghi chú lý do<Input disabled={disabled} {...form.register('reasonNote')} />
       </label>
       <label className="grid gap-1 text-sm">Tham chiếu bằng chứng (phân tách bằng dấu phẩy)<Input disabled={disabled} {...form.register('evidenceRefs')} />

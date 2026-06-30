@@ -22,6 +22,16 @@ vi.mock(
     },
   }),
 );
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'OVERRIDE', label: 'OVERRIDE - Xem trước ghi đè' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { RuleMatrixPage } from '@modules/WarehouseProfile/Presentation/Pages/RuleMatrixPage';
 import { RuleMatrixPreviewPage } from '@modules/WarehouseProfile/Presentation/Pages/RuleMatrixPreviewPage';
@@ -113,7 +123,9 @@ function renderPage(initialPath: string = ROUTES.FOUNDATION.RULE_MATRIX) {
 }
 
 afterEach(() => cleanup());
-beforeEach(() => undefined);
+beforeEach(() => {
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
+});
 
 describe('RuleMatrixPage (AC3 fixed precedence order)', () => {
   it('renders the six tiers in the immutable order with no reorder control', async () => {

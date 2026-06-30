@@ -6,6 +6,18 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
+
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'RC-MD-CREATE', label: 'RC-MD-CREATE - Thay đổi master data' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
+
 import { EntityTree } from '@modules/MasterData/Presentation/Components/EntityTree';
 import { SiteLocationDetailPanel } from '@modules/MasterData/Presentation/Components/SiteLocationDetailPanel';
 import { WarehouseMapPanel } from '@modules/MasterData/Presentation/Components/WarehouseMapPanel';

@@ -26,6 +26,19 @@ const currentUser = vi.hoisted(() => ({
 vi.mock('@modules/Auth/Application/UseCases/UseCurrentUser', () => ({
   useCurrentUser: () => currentUser.current,
 }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [
+      { value: 'RC-APPROVE', label: 'RC-APPROVE - Duyệt yêu cầu' },
+      { value: 'RC-REJECT', label: 'RC-REJECT - Từ chối yêu cầu' },
+    ],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { ApprovalQueuePage } from '@modules/Approval/Presentation/Pages/ApprovalQueuePage';
 import { ApprovalRequestDetailPage } from '@modules/Approval/Presentation/Pages/ApprovalRequestDetailPage';
@@ -105,6 +118,7 @@ beforeEach(() => {
   useApprovalStore.setState({ selectedRequestId: null });
   currentUser.current = { id: 'reviewer-1' };
   toastError.mockClear();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
 });
 afterEach(() => cleanup());
 

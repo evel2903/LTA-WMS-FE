@@ -1,7 +1,19 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
+
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'POLICY', label: 'POLICY - Lifecycle policy' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
+
 import { warehouseProfileRoutes } from '@modules/WarehouseProfile/Presentation/Routes/WarehouseProfileRoutes';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
 import { ProfileAssignmentPanel } from '@modules/WarehouseProfile/Presentation/Components/ProfileAssignmentPanel';
@@ -59,11 +71,16 @@ describe('ProfileStateView (AC5 states)', () => {
 
 describe('ProfileLifecycleActions (AC2 + AC5 conflict / denied)', () => {
   it('renders activate + deactivate actions for a draft profile', () => {
+    reasonCodeOptions.useReasonCodeOptions.mockClear();
     const html = renderToStaticMarkup(
       <ProfileLifecycleActions status="DRAFT" onActivate={() => undefined} onDeactivate={() => undefined} />,
     );
     expect(html).toContain('Kích hoạt');
     expect(html).toContain('Ngưng kích hoạt');
+    expect(reasonCodeOptions.useReasonCodeOptions).toHaveBeenCalledWith({
+      action: 'Update',
+      objectType: 'WarehouseProfile',
+    });
   });
 
   it('renders the conflict list as a distinct state when a 409 conflict message is supplied', () => {

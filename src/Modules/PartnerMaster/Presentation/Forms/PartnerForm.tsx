@@ -6,6 +6,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { PARTNER_STATUSES, PARTNER_TYPES } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
 import type { Partner } from '@modules/PartnerMaster/Domain/Types/Partner';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   partnerDeactivateSchema,
   partnerFormSchema,
@@ -50,6 +51,7 @@ export function PartnerForm({
     resolver: zodResolver(partnerDeactivateSchema),
     defaultValues: { reasonCode: '' },
   });
+  const deactivateReasonCode = deactivateForm.watch('reasonCode');
 
   return (
     <form
@@ -114,13 +116,25 @@ export function PartnerForm({
       </Button>
       {onDeactivate && (
         <div className="border-t pt-3">
-          <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...deactivateForm.register('reasonCode')} />
+          <div>
+            <ReasonCodeSelect
+              id="partner-deactivate-reason-code"
+              name="reasonCode"
+              label="Mã lý do"
+              value={deactivateReasonCode}
+              action="DeleteCancel"
+              objectType="Partner"
+              disabled={disabled}
+              onChange={(value) =>
+                deactivateForm.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })
+              }
+            />
             {deactivateForm.formState.errors.reasonCode && (
               <span className="text-destructive text-xs">
                 {deactivateForm.formState.errors.reasonCode.message}
               </span>
             )}
-          </label>
+          </div>
           <Button
             type="button"
             variant="outline"

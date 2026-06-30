@@ -19,6 +19,19 @@ vi.mock('@modules/Compliance/Infrastructure/Repositories/ComplianceRepositoryIns
 }));
 const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError } }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [
+      { value: 'RC-EXC-SUBMIT', label: 'RC-EXC-SUBMIT - Gửi phê duyệt ngoại lệ' },
+      { value: 'RC-EXC-RESOLVE', label: 'RC-EXC-RESOLVE - Xử lý ngoại lệ' },
+    ],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { ExceptionQueuePage } from '@modules/Compliance/Presentation/Pages/ExceptionQueuePage';
 import { ExceptionDetailPage } from '@modules/Compliance/Presentation/Pages/ExceptionDetailPage';
@@ -76,6 +89,7 @@ function renderPage(initialPath = ROUTES.FOUNDATION.EXCEPTIONS) {
 beforeEach(() => {
   useComplianceStore.setState({ selectedAuditLogId: null, selectedExceptionId: null });
   toastError.mockClear();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
 });
 afterEach(() => cleanup());
 

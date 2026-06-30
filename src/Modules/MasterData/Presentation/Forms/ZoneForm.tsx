@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type { Zone } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   zoneFormSchema,
   type ZoneFormValues,
@@ -39,6 +40,8 @@ export function ZoneForm({
       reasonCode: '',
     },
   });
+  const reasonCode = form.watch('reasonCode');
+  const reasonAction = initialValue ? 'Update' : 'Create';
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -57,11 +60,21 @@ export function ZoneForm({
           <option value="Inactive">Không hoạt động</option>
         </select>
       </label>
-      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} placeholder="VD: RC-MD-CREATE hoặc RC-MD-UPDATE" {...form.register('reasonCode')} />
+      <div>
+        <ReasonCodeSelect
+          id="zone-reason-code"
+          name="reasonCode"
+          label="Mã lý do"
+          value={reasonCode}
+          action={reasonAction}
+          objectType="Zone"
+          disabled={disabled}
+          onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+        />
         {form.formState.errors.reasonCode && (
           <span className="text-destructive text-xs">{form.formState.errors.reasonCode.message}</span>
         )}
-      </label>
+      </div>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}
       </Button>
