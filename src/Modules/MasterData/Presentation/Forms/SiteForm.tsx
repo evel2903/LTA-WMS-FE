@@ -32,6 +32,7 @@ export function SiteForm({
       status: initialValue?.status ?? 'Active',
       sourceSystem: initialValue?.sourceSystem ?? '',
       referenceId: initialValue?.referenceId ?? '',
+      reasonCode: '',
     },
   });
 
@@ -51,6 +52,11 @@ export function SiteForm({
           <option value="Active">Đang hoạt động</option>
           <option value="Inactive">Không hoạt động</option>
         </select>
+      </label>
+      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} placeholder="VD: RC-MD-CREATE hoặc RC-MD-UPDATE" {...form.register('reasonCode')} />
+        {form.formState.errors.reasonCode && (
+          <span className="text-destructive text-xs">{form.formState.errors.reasonCode.message}</span>
+        )}
       </label>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}

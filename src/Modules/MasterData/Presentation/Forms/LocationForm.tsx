@@ -66,6 +66,10 @@ export function LocationForm({
       locationType: initialValue?.locationType ?? locationProfiles[0]?.locationType ?? '',
       locationProfileId: initialValue?.locationProfileId ?? profileOptions[0]?.value ?? '',
       locationStatus: initialValue?.locationStatus ?? 'Active',
+      aisleCode: initialValue?.aisleCode ?? '',
+      rackCode: initialValue?.rackCode ?? '',
+      levelCode: initialValue?.levelCode ?? '',
+      binCode: initialValue?.binCode ?? '',
       capacityQty: initialValue?.capacityQty ?? undefined,
       capacityVolume: initialValue?.capacityVolume ?? undefined,
       capacityWeight: initialValue?.capacityWeight ?? undefined,
@@ -81,6 +85,7 @@ export function LocationForm({
       putawaySequence: initialValue?.putawaySequence ?? undefined,
       sourceSystem: initialValue?.sourceSystem ?? '',
       referenceId: initialValue?.referenceId ?? '',
+      reasonCode: '',
     },
   });
 
@@ -102,44 +107,75 @@ export function LocationForm({
       <input type="hidden" {...form.register('warehouseId')} />
       <input type="hidden" {...form.register('zoneId')} />
       <input type="hidden" {...form.register('parentLocationId')} />
-      <label className="grid gap-1 text-sm">Mã vị trí<Input disabled={disabled} {...form.register('locationCode')} />
-        {form.formState.errors.locationCode && (
-          <span className="text-destructive text-xs">
-            {form.formState.errors.locationCode.message}
+      <fieldset className="grid gap-3 rounded-md border p-3">
+        <legend className="px-1 text-sm font-semibold">Thông tin cơ bản</legend>
+        <label className="grid gap-1 text-sm">Mã vị trí<Input disabled={disabled} {...form.register('locationCode')} />
+          {form.formState.errors.locationCode && (
+            <span className="text-destructive text-xs">
+              {form.formState.errors.locationCode.message}
+            </span>
+          )}
+        </label>
+        <label className="grid gap-1 text-sm">Tên vị trí<Input disabled={disabled} {...form.register('locationName')} />
+        </label>
+        <label className="grid gap-1 text-sm">Loại vị trí<Input disabled={disabled} {...form.register('locationType')} />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="flex items-center justify-between gap-2">Hồ sơ vị trí<ManageProfilesLink />
           </span>
-        )}
-      </label>
-      <label className="grid gap-1 text-sm">Tên vị trí<Input disabled={disabled} {...form.register('locationName')} />
-      </label>
-      <label className="grid gap-1 text-sm">Loại vị trí<Input disabled={disabled} {...form.register('locationType')} />
+          <select
+            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            disabled={disabled}
+            {...form.register('locationProfileId')}
+          >
+            {profileOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">Trạng thái<select
+            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            disabled={disabled}
+            {...form.register('locationStatus')}
+          >
+            <option value="Active">Đang hoạt động</option>
+            <option value="Inactive">Không hoạt động</option>
+            <option value="Blocked">Bị khóa</option>
+            <option value="Maintenance">Bảo trì</option>
+          </select>
+        </label>
+      </fieldset>
+      <fieldset className="grid gap-3 rounded-md border p-3">
+        <legend className="px-1 text-sm font-semibold">Địa chỉ vật lý</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm">
+            Dãy
+            <Input disabled={disabled} {...form.register('aisleCode')} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Kệ/Shelf
+            <Input disabled={disabled} {...form.register('rackCode')} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Tầng
+            <Input disabled={disabled} {...form.register('levelCode')} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Ô/bin
+            <Input disabled={disabled} {...form.register('binCode')} />
+          </label>
+        </div>
+      </fieldset>
+      <label className="grid gap-1 text-sm">Sức chứa<Input type="number" disabled={disabled} {...form.register('capacityQty')} />
       </label>
       <label className="grid gap-1 text-sm">
-        <span className="flex items-center justify-between gap-2">Hồ sơ vị trí<ManageProfilesLink />
-        </span>
-        <select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('locationProfileId')}
-        >
-          {profileOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm">Trạng thái<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('locationStatus')}
-        >
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-          <option value="Blocked">Bị khóa</option>
-          <option value="Maintenance">Bảo trì</option>
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm">Sức chứa<Input type="number" disabled={disabled} {...form.register('capacityQty')} />
+        Mã lý do
+        <Input disabled={disabled} placeholder="VD: RC-MD-CREATE hoặc RC-MD-UPDATE" {...form.register('reasonCode')} />
+        {form.formState.errors.reasonCode && (
+          <span className="text-destructive text-xs">{form.formState.errors.reasonCode.message}</span>
+        )}
       </label>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}

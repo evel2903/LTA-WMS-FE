@@ -59,6 +59,10 @@ export interface Location extends MasterDataAuditFields {
   locationType: string;
   locationProfileId: string;
   locationStatus: LocationStatus;
+  aisleCode: string | null;
+  rackCode: string | null;
+  levelCode: string | null;
+  binCode: string | null;
   capacityQty: number | null;
   capacityVolume: number | null;
   capacityWeight: number | null;

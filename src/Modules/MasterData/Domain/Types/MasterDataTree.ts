@@ -39,6 +39,7 @@ export interface CreateSiteInput {
   status: MasterDataStatus;
   sourceSystem?: string;
   referenceId?: string;
+  reasonCode?: string | null;
 }
 
 export type UpdateSiteInput = Partial<CreateSiteInput>;
@@ -52,6 +53,7 @@ export interface CreateWarehouseInput {
   timezone?: string;
   sourceSystem?: string;
   referenceId?: string;
+  reasonCode?: string | null;
 }
 
 export type UpdateWarehouseInput = Partial<CreateWarehouseInput>;
@@ -79,6 +81,7 @@ export interface CreateZoneInput {
   complianceFlags?: Record<string, unknown>;
   sourceSystem?: string;
   referenceId?: string;
+  reasonCode?: string | null;
 }
 
 export type UpdateZoneInput = Partial<CreateZoneInput>;
@@ -92,6 +95,10 @@ export interface CreateLocationInput {
   locationType: string;
   locationProfileId: string;
   locationStatus: LocationStatus;
+  aisleCode?: string | null;
+  rackCode?: string | null;
+  levelCode?: string | null;
+  binCode?: string | null;
   capacityQty?: number | null;
   capacityVolume?: number | null;
   capacityWeight?: number | null;
@@ -107,6 +114,7 @@ export interface CreateLocationInput {
   putawaySequence?: number | null;
   sourceSystem?: string | null;
   referenceId?: string | null;
+  reasonCode?: string | null;
 }
 
 export type UpdateLocationInput = Partial<CreateLocationInput>;

@@ -45,9 +45,14 @@ describe('MasterData form schemas', () => {
   });
 
   it('rejects whitespace-only required fields and trims surrounding spaces', () => {
-    expect(siteFormSchema.safeParse({ siteCode: '   ', siteName: '   ', status: 'Active' }).success).toBe(
-      false,
-    );
+    expect(
+      siteFormSchema.safeParse({
+        siteCode: '   ',
+        siteName: '   ',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }).success,
+    ).toBe(false);
     expect(
       zoneFormSchema.safeParse({
         warehouseId: 'wh-1',
@@ -62,10 +67,42 @@ describe('MasterData form schemas', () => {
       siteCode: '  SITE-01  ',
       siteName: '  Main Site  ',
       status: 'Active',
+      reasonCode: '  RC-MD-CREATE  ',
     });
     expect(trimmed.success).toBe(true);
     expect(trimmed.success && trimmed.data.siteCode).toBe('SITE-01');
     expect(trimmed.success && trimmed.data.siteName).toBe('Main Site');
+    expect(trimmed.success && trimmed.data.reasonCode).toBe('RC-MD-CREATE');
+  });
+
+  it('requires a reason code for physical-structure mutations', () => {
+    expect(
+      siteFormSchema.safeParse({
+        siteCode: 'SITE-01',
+        siteName: 'Main Site',
+        status: 'Active',
+      }).success,
+    ).toBe(false);
+    expect(
+      warehouseFormSchema.safeParse({
+        siteId: 'site-1',
+        warehouseCode: 'WH-01',
+        warehouseName: 'Main Warehouse',
+        warehouseTypeCode: 'WT-01',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }).success,
+    ).toBe(true);
+    expect(
+      zoneFormSchema.safeParse({
+        warehouseId: 'wh-1',
+        zoneCode: 'ZONE-A',
+        zoneName: 'Zone A',
+        zoneType: 'Storage',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }).success,
+    ).toBe(true);
   });
 
   it('builds profile options and surfaces the current profile when it is missing from the active list', () => {
@@ -111,6 +148,7 @@ describe('MasterData form schemas', () => {
       locationType: 'Bin',
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
+      reasonCode: 'RC-MD-CREATE',
     });
     const invalid = locationFormSchema.safeParse({
       warehouseId: 'wh-1',
@@ -121,9 +159,47 @@ describe('MasterData form schemas', () => {
       locationType: 'Bin',
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
+      reasonCode: 'RC-MD-CREATE',
     });
 
     expect(valid.success).toBe(true);
+    expect(invalid.success).toBe(false);
+  });
+
+  it('trims optional physical address fields and preserves null values for clearing them', () => {
+    const valid = locationFormSchema.safeParse({
+      warehouseId: 'wh-1',
+      zoneId: 'zone-1',
+      parentLocationId: null,
+      locationCode: 'A-01-01',
+      locationName: 'Aisle 01 Rack 01',
+      locationType: 'Bin',
+      locationProfileId: 'profile-1',
+      locationStatus: 'Active',
+      reasonCode: 'RC-MD-CREATE',
+      aisleCode: '  A01  ',
+      rackCode: null,
+      levelCode: '',
+      binCode: '  B01  ',
+    });
+    const invalid = locationFormSchema.safeParse({
+      warehouseId: 'wh-1',
+      zoneId: 'zone-1',
+      parentLocationId: null,
+      locationCode: 'A-01-01',
+      locationName: 'Aisle 01 Rack 01',
+      locationType: 'Bin',
+      locationProfileId: 'profile-1',
+      locationStatus: 'Active',
+      reasonCode: 'RC-MD-CREATE',
+      aisleCode: 'A'.repeat(51),
+    });
+
+    expect(valid.success).toBe(true);
+    expect(valid.success && valid.data.aisleCode).toBe('A01');
+    expect(valid.success && valid.data.rackCode).toBeNull();
+    expect(valid.success && valid.data.levelCode).toBeNull();
+    expect(valid.success && valid.data.binCode).toBe('B01');
     expect(invalid.success).toBe(false);
   });
 });

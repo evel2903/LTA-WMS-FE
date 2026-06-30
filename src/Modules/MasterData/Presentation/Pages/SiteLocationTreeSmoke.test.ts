@@ -197,6 +197,10 @@ class InMemoryMasterDataRepository implements IMasterDataRepository {
       locationType: input.locationType,
       locationProfileId: input.locationProfileId,
       locationStatus: input.locationStatus,
+      aisleCode: input.aisleCode ?? null,
+      rackCode: input.rackCode ?? null,
+      levelCode: input.levelCode ?? null,
+      binCode: input.binCode ?? null,
       capacityQty: input.capacityQty ?? null,
       capacityVolume: input.capacityVolume ?? null,
       capacityWeight: input.capacityWeight ?? null,
@@ -297,6 +301,10 @@ describe('Site Location Tree smoke', () => {
       locationType: 'Bin',
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
+      aisleCode: '01',
+      rackCode: '01',
+      levelCode: '01',
+      binCode: '01',
     });
 
     const tree = await new GetSiteLocationTreeUseCase(repository).execute();

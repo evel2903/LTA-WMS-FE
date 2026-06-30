@@ -45,6 +45,10 @@ function renderEntityDetails(node: SiteLocationTree) {
           <DetailRow label="Code" value={node.entity.locationCode} />
           <DetailRow label="Name" value={node.entity.locationName} />
           <DetailRow label="Type" value={node.entity.locationType} />
+          <DetailRow label="Dãy" value={node.entity.aisleCode} />
+          <DetailRow label="Kệ/Shelf" value={node.entity.rackCode} />
+          <DetailRow label="Tầng" value={node.entity.levelCode} />
+          <DetailRow label="Ô/bin" value={node.entity.binCode} />
           <DetailRow label="Profile" value={node.entity.locationProfileId} />
           <DetailRow label="Sức chứa" value={node.entity.capacityQty} />
           <DetailRow label="Trộn SKU" value={node.entity.mixSkuPolicy} />

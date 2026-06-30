@@ -67,7 +67,10 @@ const NAV_ENTRIES: NavEntry[] = [
       { section: 'Tổng quan' },
       { label: 'Tổng quan nền tảng', to: ROUTES.FOUNDATION.ROOT, icon: Layers },
       { section: 'Cấu trúc vật lý' },
-      { label: 'Kho và sơ đồ kho', to: ROUTES.FOUNDATION.LOCATIONS, icon: MapPinned },
+      { label: 'Site', to: ROUTES.FOUNDATION.SITES, icon: Building2 },
+      { label: 'Kho', to: ROUTES.FOUNDATION.LOCATIONS, icon: Warehouse },
+      { label: 'Zone', to: ROUTES.FOUNDATION.ZONES, icon: Network },
+      { label: 'Vị trí vật lý', to: ROUTES.FOUNDATION.PHYSICAL_LOCATIONS, icon: MapPinned },
       { label: 'Loại kho', to: ROUTES.FOUNDATION.WAREHOUSE_TYPES, icon: Warehouse },
       {
         label: 'Hồ sơ vị trí',

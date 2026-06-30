@@ -59,6 +59,10 @@ export interface LocationDto extends MasterDataAuditDto {
   LocationType: string;
   LocationProfileId: string;
   LocationStatus: LocationStatus;
+  AisleCode: string | null;
+  RackCode: string | null;
+  LevelCode: string | null;
+  BinCode: string | null;
   CapacityQty: number | null;
   CapacityVolume: number | null;
   CapacityWeight: number | null;
@@ -103,7 +107,9 @@ export interface PagedMasterDataDto<TItem> {
 }
 
 export type CreateSiteRequestDto = Pick<SiteDto, 'SiteCode' | 'SiteName' | 'Status'> &
-  Partial<Pick<SiteDto, 'SourceSystem' | 'ReferenceId'>>;
+  Partial<Pick<SiteDto, 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateSiteRequestDto = Partial<CreateSiteRequestDto>;
 
@@ -111,7 +117,9 @@ export type CreateWarehouseRequestDto = Pick<
   WarehouseDto,
   'SiteId' | 'WarehouseCode' | 'WarehouseName' | 'WarehouseTypeCode' | 'Status'
 > &
-  Partial<Pick<WarehouseDto, 'Timezone' | 'SourceSystem' | 'ReferenceId'>>;
+  Partial<Pick<WarehouseDto, 'Timezone' | 'SourceSystem' | 'ReferenceId'>> & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateWarehouseRequestDto = Partial<CreateWarehouseRequestDto>;
 
@@ -136,7 +144,9 @@ export type CreateZoneRequestDto = Pick<
       ZoneDto,
       'Sequence' | 'TemperatureClass' | 'ComplianceFlags' | 'SourceSystem' | 'ReferenceId'
     >
-  >;
+  > & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateZoneRequestDto = Partial<CreateZoneRequestDto>;
 
@@ -154,6 +164,10 @@ export type CreateLocationRequestDto = Pick<
     Pick<
       LocationDto,
       | 'ParentLocationId'
+      | 'AisleCode'
+      | 'RackCode'
+      | 'LevelCode'
+      | 'BinCode'
       | 'CapacityQty'
       | 'CapacityVolume'
       | 'CapacityWeight'
@@ -170,7 +184,9 @@ export type CreateLocationRequestDto = Pick<
       | 'SourceSystem'
       | 'ReferenceId'
     >
-  >;
+  > & {
+    ReasonCode?: string | null;
+  };
 
 export type UpdateLocationRequestDto = Partial<CreateLocationRequestDto>;
 

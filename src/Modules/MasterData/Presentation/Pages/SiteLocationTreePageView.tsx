@@ -262,16 +262,11 @@ export function SiteLocationTreePageView({
       />
       <WarehouseMapPanel nodes={nodes} selectedNode={selectedNode} onSelect={onSelect} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div>
-          <SiteLocationDetailPanel
-            selectedNode={selectedNode}
-            locationProfiles={locationProfiles}
-            canEdit={canEdit}
-          />
-        </div>
-        <div>{formPanel}</div>
-      </div>
+      <SiteLocationDetailPanel
+        selectedNode={selectedNode}
+        locationProfiles={locationProfiles}
+        canEdit={canEdit}
+      />
     </div>
   );
 }

@@ -27,8 +27,11 @@ describe('Sidebar V1 route hygiene', () => {
     expect(screen.getByRole('link', { name: 'Loại kho' }).getAttribute('href')).toBe(
       ROUTES.FOUNDATION.WAREHOUSE_TYPES,
     );
-    expect(screen.getByRole('link', { name: 'Kho và sơ đồ kho' }).getAttribute('href')).toBe(
-      ROUTES.FOUNDATION.LOCATIONS,
+    expect(screen.getByRole('link', { name: 'Site' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.SITES);
+    expect(screen.getByRole('link', { name: 'Kho' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.LOCATIONS);
+    expect(screen.getByRole('link', { name: 'Zone' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.ZONES);
+    expect(screen.getByRole('link', { name: 'Vị trí vật lý' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.PHYSICAL_LOCATIONS,
     );
   });
 

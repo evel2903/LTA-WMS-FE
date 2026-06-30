@@ -98,6 +98,10 @@ const location: Location = {
   locationType: 'Bin',
   locationProfileId: 'profile-1',
   locationStatus: 'Active',
+  aisleCode: '01',
+  rackCode: '01',
+  levelCode: '01',
+  binCode: '01',
   capacityQty: 100,
   capacityVolume: null,
   capacityWeight: null,
@@ -232,6 +236,10 @@ class FakeRepository implements IMasterDataRepository {
       ...location,
       locationCode: input.locationCode,
       locationName: input.locationName,
+      aisleCode: input.aisleCode ?? null,
+      rackCode: input.rackCode ?? null,
+      levelCode: input.levelCode ?? null,
+      binCode: input.binCode ?? null,
     });
   }
 

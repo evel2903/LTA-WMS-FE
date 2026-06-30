@@ -18,11 +18,14 @@ export const ROUTES = {
   },
   FOUNDATION: {
     ROOT: '/foundation',
+    SITES: '/foundation/sites',
     LOCATIONS: '/foundation/locations',
     LOCATION_MAP: (warehouseId = ':warehouseId') =>
       warehouseId === ':warehouseId'
         ? '/foundation/locations/:warehouseId/map'
         : `/foundation/locations/${encodeURIComponent(warehouseId)}/map`,
+    ZONES: '/foundation/zones',
+    PHYSICAL_LOCATIONS: '/foundation/physical-locations',
     WAREHOUSE_TYPES: '/foundation/warehouse-types',
     LOCATION_PROFILES: '/foundation/location-profiles',
     LOCATION_PROFILE_NEW: '/foundation/location-profiles/new',

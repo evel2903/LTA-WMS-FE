@@ -41,6 +41,13 @@ const profile: LocationProfile = {
   updatedBy: null,
 };
 
+const emptyPhysicalAddress = {
+  aisleCode: null,
+  rackCode: null,
+  levelCode: null,
+  binCode: null,
+} as const;
+
 const tree: SiteLocationTree[] = [
   {
     id: 'site-1',
@@ -119,6 +126,10 @@ const tree: SiteLocationTree[] = [
                   locationType: 'Bin',
                   locationProfileId: 'profile-1',
                   locationStatus: 'Active',
+                  aisleCode: '01',
+                  rackCode: '01',
+                  levelCode: '01',
+                  binCode: '01',
                   capacityQty: 100,
                   capacityVolume: null,
                   capacityWeight: null,
@@ -186,6 +197,106 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('Khu ZONE-A · Ambient Zone');
   });
 
+  it('prefers explicit physical address fields over legacy LocationCode parsing', () => {
+    const baseSite = tree[0];
+    const baseWarehouse = baseSite?.children[0];
+    const baseZone = baseWarehouse?.children[0];
+    const baseLocation = baseZone?.children[0];
+    if (!baseSite || !baseWarehouse || !baseZone || !baseLocation) {
+      throw new Error('Missing base location tree fixture');
+    }
+    if (baseLocation.type !== 'location') throw new Error('Expected location fixture');
+
+    const explicitLocation: SiteLocationTree = {
+      ...baseLocation,
+      id: 'loc-explicit',
+      label: 'LEGACY-999 - Explicit Slot',
+      entity: {
+        ...baseLocation.entity,
+        id: 'loc-explicit',
+        locationCode: 'LEGACY-999',
+        locationName: 'Explicit Slot',
+        aisleCode: 'A-EXP',
+        rackCode: 'R-EXP',
+        levelCode: 'L-EXP',
+        binCode: 'B-EXP',
+      },
+    };
+    const explicitTree: SiteLocationTree[] = [
+      {
+        ...baseSite,
+        children: [
+          {
+            ...baseWarehouse,
+            children: [
+              {
+                ...baseZone,
+                children: [explicitLocation],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel nodes={explicitTree} selectedNode={explicitLocation} onSelect={() => undefined} />,
+    );
+
+    expect(html).toContain('Dãy A-EXP · Tầng L-EXP');
+    expect(html).toContain('Dãy A-EXP · Kệ/Shelf R-EXP · Tầng L-EXP · Ô/bin B-EXP');
+    expect(html).not.toContain('Dãy 999');
+  });
+
+  it('falls back to legacy LocationCode parts for missing physical bin code', () => {
+    const baseSite = tree[0];
+    const baseWarehouse = baseSite?.children[0];
+    const baseZone = baseWarehouse?.children[0];
+    const baseLocation = baseZone?.children[0];
+    if (!baseSite || !baseWarehouse || !baseZone || !baseLocation) {
+      throw new Error('Missing base location tree fixture');
+    }
+    if (baseLocation.type !== 'location') throw new Error('Expected location fixture');
+
+    const legacyLocation: SiteLocationTree = {
+      ...baseLocation,
+      id: 'loc-legacy-bin',
+      label: 'A-02-03 - Legacy Slot',
+      entity: {
+        ...baseLocation.entity,
+        id: 'loc-legacy-bin',
+        locationCode: 'A-02-03',
+        locationName: 'Legacy Slot',
+        ...emptyPhysicalAddress,
+        pickSequence: null,
+        putawaySequence: null,
+      },
+    };
+    const legacyTree: SiteLocationTree[] = [
+      {
+        ...baseSite,
+        children: [
+          {
+            ...baseWarehouse,
+            children: [
+              {
+                ...baseZone,
+                children: [legacyLocation],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <WarehouseMapPanel nodes={legacyTree} selectedNode={legacyLocation} onSelect={() => undefined} />,
+    );
+
+    expect(html).toContain('bin 03');
+    expect(html).not.toContain('bin 00');
+  });
+
   it('calls onSelect with the selected zone and location from the map', () => {
     const onSelect = vi.fn();
     render(<WarehouseMapPanel nodes={tree} selectedNode={tree[0]?.children[0] ?? null} onSelect={onSelect} />);
@@ -247,6 +358,7 @@ describe('Site & Location Tree components', () => {
           locationType: 'Bin',
           locationProfileId: 'profile-1',
           locationStatus: status,
+          ...emptyPhysicalAddress,
           capacityQty: 10,
           capacityVolume: null,
           capacityWeight: null,
@@ -484,6 +596,7 @@ describe('Site & Location Tree components', () => {
           locationType: 'Bin',
           locationProfileId: 'profile-1',
           locationStatus: 'Active',
+          ...emptyPhysicalAddress,
           capacityQty: 100,
           capacityVolume: null,
           capacityWeight: null,
@@ -556,6 +669,35 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('chính sách vận hành');
   });
 
+  it('renders physical address inputs in the location form', () => {
+    const locationNode = tree[0]?.children[0]?.children[0]?.children[0] ?? null;
+    if (!locationNode || locationNode.type !== 'location') throw new Error('Missing base location fixture');
+
+    render(
+      <MemoryRouter>
+        <LocationForm
+          initialValue={{
+            ...locationNode.entity,
+            aisleCode: 'A01',
+            rackCode: 'R01',
+            levelCode: 'L01',
+            binCode: 'B01',
+          }}
+          locationProfiles={[profile]}
+          submitLabel="Lưu"
+          onSubmit={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Thông tin cơ bản')).not.toBeNull();
+    expect(screen.getByText('Địa chỉ vật lý')).not.toBeNull();
+    expect(screen.getByLabelText('Dãy')).toHaveProperty('value', 'A01');
+    expect(screen.getByLabelText('Kệ/Shelf')).toHaveProperty('value', 'R01');
+    expect(screen.getByLabelText('Tầng')).toHaveProperty('value', 'L01');
+    expect(screen.getByLabelText('Ô/bin')).toHaveProperty('value', 'B01');
+  });
+
   it('maps each status to a distinct badge variant', () => {
     expect(masterDataStatusVariant('Active')).toBe('success');
     expect(masterDataStatusVariant('Inactive')).toBe('secondary');
@@ -598,7 +740,8 @@ describe('Site & Location Tree components', () => {
     expect(screen.queryByRole('tree', { name: /Cây kho và vị trí/i })).toBeNull();
     expect(screen.getByText('Sơ đồ kho tổng')).not.toBeNull();
     expect(screen.getByText('WH-01 - Tier 1 Warehouse')).not.toBeNull();
-    expect(screen.getByText('READY_FORM_PANEL')).not.toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Cấu hình vật lý' })).toBeNull();
+    expect(screen.queryByText('READY_FORM_PANEL')).toBeNull();
   });
 
   it('registers a dedicated warehouse map detail route', () => {
@@ -608,6 +751,9 @@ describe('Site & Location Tree components', () => {
     expect(masterDataRoutes.map((route) => route.path)).toContain(
       ROUTES.FOUNDATION.LOCATION_MAP(),
     );
+    expect(masterDataRoutes.map((route) => route.path)).toContain(ROUTES.FOUNDATION.SITES);
+    expect(masterDataRoutes.map((route) => route.path)).toContain(ROUTES.FOUNDATION.ZONES);
+    expect(masterDataRoutes.map((route) => route.path)).toContain(ROUTES.FOUNDATION.PHYSICAL_LOCATIONS);
     expect(masterDataRoutes.map((route) => route.path)).toContain(ROUTES.FOUNDATION.WAREHOUSE_TYPES);
   });
 
@@ -789,8 +935,30 @@ describe('Site & Location Tree components', () => {
     const backLink = screen.getByRole('link', { name: 'Quay lại danh sách kho' });
     expect(backLink.getAttribute('href')).toBe('/foundation/locations');
     expect(screen.getByText('Sơ đồ kho tổng')).not.toBeNull();
-    expect(screen.getByText('DETAIL_FORM_PANEL')).not.toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Cấu hình vật lý' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Mã vị trí' })).toBeNull();
+    expect(screen.queryByText('DETAIL_FORM_PANEL')).toBeNull();
     expect(screen.queryByText(/tồn kho/i)).toBeNull();
+  });
+
+  it('keeps the warehouse map read-only even when a location is selected', () => {
+    render(
+      <MemoryRouter>
+        <SiteLocationTreePageView
+          mode="detail"
+          state="ready"
+          nodes={tree}
+          selectedNode={tree[0]?.children[0]?.children[0]?.children[0] ?? null}
+          locationProfiles={[profile]}
+          canCreate
+          canEdit
+          formPanel={<div>DETAIL_FORM_PANEL</div>}
+          onSelect={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('DETAIL_FORM_PANEL')).toBeNull();
   });
 
   it('disables the submit button while a mutation is pending', () => {

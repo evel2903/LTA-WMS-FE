@@ -74,7 +74,10 @@ export function WarehouseTypeForm({
       </label>
       <label className="grid gap-1 text-sm">
         Mã lý do
-        <Input disabled={disabled} placeholder="Nếu chính sách yêu cầu" {...form.register('reasonCode')} />
+        <Input disabled={disabled} placeholder="VD: RC-MD-CREATE hoặc RC-MD-UPDATE" {...form.register('reasonCode')} />
+        {form.formState.errors.reasonCode && (
+          <span className="text-destructive text-xs">{form.formState.errors.reasonCode.message}</span>
+        )}
       </label>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}

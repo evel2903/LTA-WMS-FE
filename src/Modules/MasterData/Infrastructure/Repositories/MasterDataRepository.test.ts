@@ -92,11 +92,17 @@ describe('MasterDataRepository', () => {
     const http = new FakeHttpClient();
     const repository = new MasterDataRepository(http);
 
-    await repository.createSite({ siteCode: 'SITE-01', siteName: 'Main Site', status: 'Active' });
+    await repository.createSite({
+      siteCode: 'SITE-01',
+      siteName: 'Main Site',
+      status: 'Active',
+      reasonCode: 'RC-MD-CREATE',
+    });
     await repository.updateWarehouse('wh-1', {
       siteId: 'site-1',
       warehouseName: 'Updated Warehouse',
       status: 'Inactive',
+      reasonCode: 'RC-MD-UPDATE',
     });
     await repository.createLocation({
       warehouseId: 'wh-1',
@@ -107,6 +113,11 @@ describe('MasterDataRepository', () => {
       locationType: 'Bin',
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
+      aisleCode: 'A01',
+      rackCode: 'R01',
+      levelCode: 'L01',
+      binCode: 'B01',
+      reasonCode: 'RC-MD-CREATE',
     });
     await repository.createLocationProfile({
       profileCode: 'BIN-STD',
@@ -126,12 +137,22 @@ describe('MasterDataRepository', () => {
     expect(http.calls[0]).toMatchObject({
       method: 'post',
       url: '/sites',
-      body: { SiteCode: 'SITE-01', SiteName: 'Main Site', Status: 'Active' },
+      body: {
+        SiteCode: 'SITE-01',
+        SiteName: 'Main Site',
+        Status: 'Active',
+        ReasonCode: 'RC-MD-CREATE',
+      },
     });
     expect(http.calls[1]).toMatchObject({
       method: 'patch',
       url: '/warehouses/wh-1',
-      body: { SiteId: 'site-1', WarehouseName: 'Updated Warehouse', Status: 'Inactive' },
+      body: {
+        SiteId: 'site-1',
+        WarehouseName: 'Updated Warehouse',
+        Status: 'Inactive',
+        ReasonCode: 'RC-MD-UPDATE',
+      },
     });
     expect(http.calls[2]).toMatchObject({
       method: 'post',
@@ -145,6 +166,11 @@ describe('MasterDataRepository', () => {
         LocationType: 'Bin',
         LocationProfileId: 'profile-1',
         LocationStatus: 'Active',
+        AisleCode: 'A01',
+        RackCode: 'R01',
+        LevelCode: 'L01',
+        BinCode: 'B01',
+        ReasonCode: 'RC-MD-CREATE',
       },
     });
     expect(http.calls[3]).toMatchObject({

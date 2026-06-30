@@ -17,6 +17,11 @@ const optionalNullableText = (max: number) =>
     z.string().trim().max(max).nullable().optional(),
   );
 
+const optionalPhysicalAddressText = z.preprocess(
+  (value) => (value === '' ? null : value),
+  z.string().trim().max(50).nullable().optional(),
+);
+
 const optionalNumber = z.preprocess(
   (value) => (value === '' || value === null ? undefined : value),
   z.coerce.number().nonnegative().optional(),
@@ -36,6 +41,7 @@ export const siteFormSchema = z.object({
   status: masterDataStatusSchema,
   sourceSystem: optionalText(100),
   referenceId: optionalText(100),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export const warehouseFormSchema = z.object({
@@ -47,6 +53,7 @@ export const warehouseFormSchema = z.object({
   timezone: optionalText(100),
   sourceSystem: optionalText(100),
   referenceId: optionalText(100),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export const warehouseTypeFormSchema = z.object({
@@ -56,7 +63,7 @@ export const warehouseTypeFormSchema = z.object({
   status: masterDataStatusSchema,
   sourceSystem: optionalNullableText(100),
   referenceId: optionalNullableText(100),
-  reasonCode: optionalNullableText(64),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export const zoneFormSchema = z.object({
@@ -67,6 +74,7 @@ export const zoneFormSchema = z.object({
   status: masterDataStatusSchema,
   sequence: optionalInteger,
   temperatureClass: optionalText(50),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export const locationFormSchema = z.object({
@@ -84,6 +92,10 @@ export const locationFormSchema = z.object({
   locationType: requiredText(50, 'Cần loại vị trí'),
   locationProfileId: requiredText(36, 'Cần hồ sơ vị trí'),
   locationStatus: locationStatusSchema,
+  aisleCode: optionalPhysicalAddressText,
+  rackCode: optionalPhysicalAddressText,
+  levelCode: optionalPhysicalAddressText,
+  binCode: optionalPhysicalAddressText,
   capacityQty: optionalNumber,
   capacityVolume: optionalNumber,
   capacityWeight: optionalNumber,
@@ -99,6 +111,7 @@ export const locationFormSchema = z.object({
   putawaySequence: optionalInteger,
   sourceSystem: optionalNullableText(100),
   referenceId: optionalNullableText(100),
+  reasonCode: requiredText(64, 'Cần mã lý do'),
 });
 
 export type SiteFormValues = z.infer<typeof siteFormSchema>;

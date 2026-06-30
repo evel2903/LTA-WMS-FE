@@ -76,6 +76,9 @@ describe('WarehouseTypeCatalogPage', () => {
     fireEvent.change(within(editDialog).getByLabelText('Tên loại kho'), {
       target: { value: 'Kho thường cập nhật' },
     });
+    fireEvent.change(within(editDialog).getByLabelText('Mã lý do'), {
+      target: { value: 'RC-MD-UPDATE' },
+    });
     fireEvent.click(within(editDialog).getByRole('button', { name: 'Cập nhật loại kho' }));
 
     await waitFor(() => expect(mutationSpies.update).toHaveBeenCalled());
@@ -84,5 +87,6 @@ describe('WarehouseTypeCatalogPage', () => {
     ];
     expect(payload.id).toBe('wt-1');
     expect(Object.prototype.hasOwnProperty.call(payload.input, 'warehouseTypeCode')).toBe(false);
+    expect(payload.input.reasonCode).toBe('RC-MD-UPDATE');
   });
 });

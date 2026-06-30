@@ -147,6 +147,10 @@ export const MasterDataMapper = {
       locationType: dto.LocationType,
       locationProfileId: dto.LocationProfileId,
       locationStatus: dto.LocationStatus,
+      aisleCode: dto.AisleCode,
+      rackCode: dto.RackCode,
+      levelCode: dto.LevelCode,
+      binCode: dto.BinCode,
       capacityQty: dto.CapacityQty,
       capacityVolume: dto.CapacityVolume,
       capacityWeight: dto.CapacityWeight,
@@ -207,6 +211,7 @@ export const MasterDataMapper = {
       Status: input.status,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -217,6 +222,7 @@ export const MasterDataMapper = {
       Status: input.status,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -230,6 +236,7 @@ export const MasterDataMapper = {
       Timezone: input.timezone,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -243,6 +250,7 @@ export const MasterDataMapper = {
       Timezone: input.timezone,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -281,6 +289,7 @@ export const MasterDataMapper = {
       ComplianceFlags: input.complianceFlags,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -296,6 +305,7 @@ export const MasterDataMapper = {
       ComplianceFlags: input.complianceFlags,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -309,6 +319,10 @@ export const MasterDataMapper = {
       LocationType: input.locationType,
       LocationProfileId: input.locationProfileId,
       LocationStatus: input.locationStatus,
+      AisleCode: input.aisleCode,
+      RackCode: input.rackCode,
+      LevelCode: input.levelCode,
+      BinCode: input.binCode,
       CapacityQty: input.capacityQty,
       CapacityVolume: input.capacityVolume,
       CapacityWeight: input.capacityWeight,
@@ -324,6 +338,7 @@ export const MasterDataMapper = {
       PutawaySequence: input.putawaySequence,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 
@@ -337,6 +352,10 @@ export const MasterDataMapper = {
       LocationType: input.locationType,
       LocationProfileId: input.locationProfileId,
       LocationStatus: input.locationStatus,
+      AisleCode: input.aisleCode,
+      RackCode: input.rackCode,
+      LevelCode: input.levelCode,
+      BinCode: input.binCode,
       CapacityQty: input.capacityQty,
       CapacityVolume: input.capacityVolume,
       CapacityWeight: input.capacityWeight,
@@ -352,6 +371,7 @@ export const MasterDataMapper = {
       PutawaySequence: input.putawaySequence,
       SourceSystem: input.sourceSystem,
       ReferenceId: input.referenceId,
+      ReasonCode: input.reasonCode,
     });
   },
 

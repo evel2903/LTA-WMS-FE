@@ -37,6 +37,13 @@ interface FloorSummary {
   locations: SiteLocationTree[];
 }
 
+interface PhysicalAddress {
+  aisleCode: string | null;
+  rackCode: string | null;
+  levelCode: string | null;
+  binCode: string | null;
+}
+
 function flattenWarehouses(nodes: SiteLocationTree[]): SiteLocationTree[] {
   return nodes.flatMap((node) => {
     if (node.type === 'warehouse') return [node];
@@ -148,7 +155,7 @@ function buildAisles(zone: ZoneSummary | null): AisleSummary[] {
         .sort(([left], [right]) => left.localeCompare(right, 'vi'))
         .map(([floorCodeValue, locations]) => ({
           code: floorCodeValue,
-          locations: [...locations].sort((left, right) => baySortValue(left) - baySortValue(right)),
+          locations: [...locations].sort(comparePhysicalSlots),
         })),
     }));
 }
@@ -178,23 +185,78 @@ function locationType(location: SiteLocationTree): string {
   return location.type;
 }
 
-function aisleCode(location: SiteLocationTree, index: number): string {
+function explicitPhysicalAddress(location: SiteLocationTree): PhysicalAddress {
+  if (location.type !== 'location') {
+    return { aisleCode: null, rackCode: null, levelCode: null, binCode: null };
+  }
+
+  return {
+    aisleCode: normalizePhysicalPart(location.entity.aisleCode),
+    rackCode: normalizePhysicalPart(location.entity.rackCode),
+    levelCode: normalizePhysicalPart(location.entity.levelCode),
+    binCode: normalizePhysicalPart(location.entity.binCode),
+  };
+}
+
+function normalizePhysicalPart(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function aisleCode(location: SiteLocationTree, index = 0): string {
+  const explicit = explicitPhysicalAddress(location).aisleCode;
+  if (explicit) return explicit;
+
   const parts = physicalNumericParts(locationCode(location));
   return String(parts[0] ?? Math.floor(index / 12) + 1).padStart(2, '0');
 }
 
-function baySortValue(location: SiteLocationTree): number {
+function rackCode(location: SiteLocationTree): string {
+  const explicit = explicitPhysicalAddress(location).rackCode;
+  if (explicit) return explicit;
+
   const parts = physicalNumericParts(locationCode(location));
-  return parts[1] ?? locationOrder(location);
+  return String(parts[1] ?? (locationOrder(location) || 1)).padStart(2, '0');
 }
 
 function floorCode(location: SiteLocationTree): string {
+  const explicit = explicitPhysicalAddress(location).levelCode;
+  if (explicit) return explicit;
+
   const parts = physicalNumericParts(locationCode(location));
   return String(parts[2] ?? 1).padStart(2, '0');
 }
 
+function binCode(location: SiteLocationTree): string {
+  const explicit = explicitPhysicalAddress(location).binCode;
+  if (explicit) return explicit;
+
+  const parts = physicalNumericParts(locationCode(location));
+  const order = locationOrder(location);
+  return String(parts[3] ?? (order > 0 ? order : (parts[1] ?? 1))).padStart(2, '0');
+}
+
+function physicalAddressLabel(location: SiteLocationTree): string | null {
+  if (location.type !== 'location') return null;
+
+  return `Dãy ${aisleCode(location)} · Kệ/Shelf ${rackCode(location)} · Tầng ${floorCode(location)} · Ô/bin ${binCode(location)}`;
+}
+
 function physicalNumericParts(code: string): number[] {
   return (code.match(/\d+/g) ?? []).map((part) => Number(part)).filter(Number.isFinite);
+}
+
+function comparePhysicalSlots(left: SiteLocationTree, right: SiteLocationTree): number {
+  return (
+    compareAddressPart(rackCode(left), rackCode(right)) ||
+    compareAddressPart(binCode(left), binCode(right)) ||
+    locationOrder(left) - locationOrder(right) ||
+    locationCode(left).localeCompare(locationCode(right), 'vi', { numeric: true, sensitivity: 'base' })
+  );
+}
+
+function compareAddressPart(left: string, right: string): number {
+  return left.localeCompare(right, 'vi', { numeric: true, sensitivity: 'base' });
 }
 
 function locationOrder(location: SiteLocationTree): number {
@@ -338,7 +400,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
           {summary.zones.length === 0 ? (
             <Alert role="status" variant="info">
               <AlertDescription>
-                Kho này chưa có khu vực. Tạo khu vực trước khi thêm vị trí hoặc xem sơ đồ cấu trúc kho.
+                Kho này chưa có khu vực. Cấu hình zone và vị trí vật lý ở các màn bảng trước khi xem sơ đồ.
               </AlertDescription>
             </Alert>
           ) : (
@@ -425,7 +487,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
                                   type="button"
                                   className={locationCellClass(location, selectedNode?.id === location.id)}
                                   aria-label={`Ô sơ đồ ${locationCode(location)}`}
-                                  title={location.label}
+                                  title={`${location.label} · ${physicalAddressLabel(location) ?? locationType(location)}`}
                                   onClick={() => onSelect(location)}
                                 />
                               ))}
@@ -441,7 +503,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
                     <LegendDot className="bg-amber-500" label="Bị khóa" />
                     <LegendDot className="bg-sky-500" label="Bảo trì" />
                     <span className="ml-auto text-[11px] text-muted-foreground">
-                      Mỗi ô = 1 vị trí vật lý · mã khu-dãy-kệ · ví dụ {zoneCode(focusedZone)}-01-01
+                      Mỗi ô = 1 vị trí vật lý · Dãy · Kệ/Shelf · Tầng · Ô/bin
                     </span>
                   </div>
                 </>
@@ -485,7 +547,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm">{location.label}</span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {locationType(location)} · thứ tự {locationOrder(location) || '-'}
+                          {physicalAddressLabel(location) ?? `${locationType(location)} · thứ tự ${locationOrder(location) || '-'}`}
                         </span>
                       </span>
                     </Button>

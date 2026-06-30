@@ -88,6 +88,10 @@ const locationDto: LocationDto = {
   LocationType: 'Bin',
   LocationProfileId: 'profile-1',
   LocationStatus: 'Active',
+  AisleCode: 'A01',
+  RackCode: 'R01',
+  LevelCode: 'L01',
+  BinCode: 'B01',
   CapacityQty: 100,
   CapacityVolume: null,
   CapacityWeight: null,
@@ -133,6 +137,10 @@ describe('MasterDataMapper', () => {
       locationCode: 'A-01-01',
       locationProfileId: 'profile-1',
       locationStatus: 'Active',
+      aisleCode: 'A01',
+      rackCode: 'R01',
+      levelCode: 'L01',
+      binCode: 'B01',
       mixSkuPolicy: 'SingleSku',
     });
     expect(MasterDataMapper.toLocationProfile(locationProfileDto)).toMatchObject({
@@ -201,6 +209,66 @@ describe('MasterDataMapper', () => {
 
   it('keeps create/update payloads in PascalCase for backend contract', () => {
     expect(
+      MasterDataMapper.toCreateSiteRequest({
+        siteCode: 'SITE-01',
+        siteName: 'Main Site',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }),
+    ).toEqual({
+      SiteCode: 'SITE-01',
+      SiteName: 'Main Site',
+      Status: 'Active',
+      ReasonCode: 'RC-MD-CREATE',
+    });
+
+    expect(
+      MasterDataMapper.toUpdateSiteRequest({
+        siteName: 'Main Site Updated',
+        reasonCode: 'RC-MD-UPDATE',
+      }),
+    ).toEqual({
+      SiteName: 'Main Site Updated',
+      ReasonCode: 'RC-MD-UPDATE',
+    });
+
+    expect(
+      MasterDataMapper.toCreateWarehouseRequest({
+        siteId: 'site-1',
+        warehouseCode: 'WH-01',
+        warehouseName: 'Main Warehouse',
+        warehouseTypeCode: 'WT-01',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }),
+    ).toEqual({
+      SiteId: 'site-1',
+      WarehouseCode: 'WH-01',
+      WarehouseName: 'Main Warehouse',
+      WarehouseTypeCode: 'WT-01',
+      Status: 'Active',
+      ReasonCode: 'RC-MD-CREATE',
+    });
+
+    expect(
+      MasterDataMapper.toCreateZoneRequest({
+        warehouseId: 'wh-1',
+        zoneCode: 'ZONE-A',
+        zoneName: 'Zone A',
+        zoneType: 'Storage',
+        status: 'Active',
+        reasonCode: 'RC-MD-CREATE',
+      }),
+    ).toEqual({
+      WarehouseId: 'wh-1',
+      ZoneCode: 'ZONE-A',
+      ZoneName: 'Zone A',
+      ZoneType: 'Storage',
+      Status: 'Active',
+      ReasonCode: 'RC-MD-CREATE',
+    });
+
+    expect(
       MasterDataMapper.toCreateLocationRequest({
         warehouseId: 'wh-1',
         zoneId: 'zone-1',
@@ -210,7 +278,12 @@ describe('MasterDataMapper', () => {
         locationType: 'Bin',
         locationProfileId: 'profile-1',
         locationStatus: 'Active',
+        aisleCode: 'A01',
+        rackCode: 'R01',
+        levelCode: 'L01',
+        binCode: 'B01',
         bondedFlag: false,
+        reasonCode: 'RC-MD-CREATE',
       }),
     ).toEqual({
       WarehouseId: 'wh-1',
@@ -221,7 +294,28 @@ describe('MasterDataMapper', () => {
       LocationType: 'Bin',
       LocationProfileId: 'profile-1',
       LocationStatus: 'Active',
+      AisleCode: 'A01',
+      RackCode: 'R01',
+      LevelCode: 'L01',
+      BinCode: 'B01',
       BondedFlag: false,
+      ReasonCode: 'RC-MD-CREATE',
+    });
+
+    expect(
+      MasterDataMapper.toUpdateLocationRequest({
+        aisleCode: 'A02',
+        rackCode: null,
+        levelCode: 'L02',
+        binCode: 'B02',
+        reasonCode: 'RC-MD-UPDATE',
+      }),
+    ).toEqual({
+      AisleCode: 'A02',
+      RackCode: null,
+      LevelCode: 'L02',
+      BinCode: 'B02',
+      ReasonCode: 'RC-MD-UPDATE',
     });
 
     expect(
