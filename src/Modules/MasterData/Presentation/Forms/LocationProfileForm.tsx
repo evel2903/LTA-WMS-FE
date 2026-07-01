@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   locationProfileFormSchema,
   locationProfileToFormValues,
@@ -65,6 +66,7 @@ export function LocationProfileForm({
     defaultValues: locationProfileToFormValues(initialValue),
   });
   const errors = form.formState.errors;
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   return (
     <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)}>
@@ -129,13 +131,19 @@ export function LocationProfileForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-sm">Mã lý do<Input
+        <div>
+          <ReasonCodeSelect
+            id="location-profile-reason-code"
+            name="reasonCode"
+            label="Mã lý do"
+            value={reasonCode}
+            action={mode === 'create' ? 'Create' : 'Update'}
+            objectType="LocationProfile"
             disabled={disabled}
-            placeholder="e.g. RC-MD-UPDATE"
-            {...form.register('reasonCode')}
+            onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
           />
           <ErrorText message={errors.reasonCode?.message} />
-        </label>
+        </div>
         <label className="grid gap-1 text-sm">Hệ thống nguồn<Input disabled={disabled} {...form.register('sourceSystem')} />
         </label>
         <label className="grid gap-1 text-sm">ID tham chiếu<Input disabled={disabled} {...form.register('referenceId')} />

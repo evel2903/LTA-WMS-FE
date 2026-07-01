@@ -9,6 +9,17 @@ const mutationSpies = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
 }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'RC-MD-UPDATE', label: 'RC-MD-UPDATE - Cập nhật master data' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 vi.mock('@modules/MasterData/Application/Queries/UseWarehouseTypes', () => ({
   useWarehouseTypes: () => ({
@@ -49,6 +60,7 @@ afterEach(() => {
   cleanup();
   mutationSpies.create.mockClear();
   mutationSpies.update.mockClear();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
 });
 
 describe('WarehouseTypeCatalogPage', () => {

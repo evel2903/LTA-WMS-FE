@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import type {
   ActivateWarehouseProfileInput,
   DeactivateWarehouseProfileInput,
@@ -49,13 +50,17 @@ export function ProfileLifecycleActions({
         </Alert>
       )}
 
-      <label className="grid gap-1 text-sm">Mã lý do<Input
-          disabled={!canManage}
-          value={reasonCode}
-          onChange={(event) => setReasonCode(event.target.value)}
-          placeholder="e.g. POLICY_CHANGE"
-        />
-      </label>
+      <ReasonCodeSelect
+        id="warehouse-profile-lifecycle-reason-code"
+        name="reasonCode"
+        label="Mã lý do"
+        value={reasonCode}
+        action="Update"
+        objectType="WarehouseProfile"
+        optional
+        disabled={!canManage}
+        onChange={setReasonCode}
+      />
       <label className="grid gap-1 text-sm">Ghi chú lý do<Input
           disabled={!canManage}
           value={reasonNote}

@@ -6,6 +6,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { ExceptionAction } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import type {
   AssignExceptionInput,
   LogExceptionInput,
@@ -123,6 +124,7 @@ function SubmitForm({ disabled, pending, blocked, onSubmit }: ExceptionActionFor
     resolver: zodResolver(submitExceptionSchema),
     defaultValues: { requireApproval: false, reasonCode: '', reasonNote: '' },
   });
+  const reasonCode = form.watch('reasonCode') ?? '';
   return (
     <form
       className="grid gap-2"
@@ -136,8 +138,17 @@ function SubmitForm({ disabled, pending, blocked, onSubmit }: ExceptionActionFor
     >
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" disabled={disabled} {...form.register('requireApproval')} />Yêu cầu phê duyệt</label>
-      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
-      </label>
+      <ReasonCodeSelect
+        id="exception-submit-reason-code"
+        name="reasonCode"
+        label="Mã lý do"
+        value={reasonCode}
+        action="Approve"
+        objectType="ExceptionCase"
+        optional
+        disabled={disabled}
+        onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+      />
       <label className="grid gap-1 text-sm">Ghi chú lý do<Input disabled={disabled} {...form.register('reasonNote')} />
       </label>
       <div className="flex items-center gap-2">
@@ -153,6 +164,7 @@ function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionF
     resolver: zodResolver(resolveExceptionSchema),
     defaultValues: { reasonCode: '', resolutionNote: '', evidenceRefs: '' },
   });
+  const reasonCode = form.watch('reasonCode') ?? '';
   return (
     <form
       className="grid gap-2"
@@ -164,8 +176,17 @@ function ResolveForm({ disabled, pending, blocked, onResolve }: ExceptionActionF
         }),
       )}
     >
-      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
-      </label>
+      <ReasonCodeSelect
+        id="exception-resolve-reason-code"
+        name="reasonCode"
+        label="Mã lý do"
+        value={reasonCode}
+        action="Update"
+        objectType="ExceptionCase"
+        optional
+        disabled={disabled}
+        onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+      />
       <label className="grid gap-1 text-sm">Ghi chú xử lý<Input disabled={disabled} {...form.register('resolutionNote')} />
       </label>
       <label className="grid gap-1 text-sm">Tham chiếu bằng chứng (phân tách bằng dấu phẩy)<Input disabled={disabled} {...form.register('evidenceRefs')} />

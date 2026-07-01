@@ -6,6 +6,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { Alert, AlertAction, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import type {
   Location,
   LocationProfile,
@@ -88,6 +89,8 @@ export function LocationForm({
       reasonCode: '',
     },
   });
+  const reasonCode = form.watch('reasonCode');
+  const reasonAction = initialValue ? 'Update' : 'Create';
 
   if (!hasProfiles) {
     return (
@@ -170,13 +173,21 @@ export function LocationForm({
       </fieldset>
       <label className="grid gap-1 text-sm">Sức chứa<Input type="number" disabled={disabled} {...form.register('capacityQty')} />
       </label>
-      <label className="grid gap-1 text-sm">
-        Mã lý do
-        <Input disabled={disabled} placeholder="VD: RC-MD-CREATE hoặc RC-MD-UPDATE" {...form.register('reasonCode')} />
+      <div>
+        <ReasonCodeSelect
+          id="location-reason-code"
+          name="reasonCode"
+          label="Mã lý do"
+          value={reasonCode}
+          action={reasonAction}
+          objectType="Location"
+          disabled={disabled}
+          onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+        />
         {form.formState.errors.reasonCode && (
           <span className="text-destructive text-xs">{form.formState.errors.reasonCode.message}</span>
         )}
-      </label>
+      </div>
       <Button type="submit" disabled={disabled || pending}>
         {submitLabel}
       </Button>

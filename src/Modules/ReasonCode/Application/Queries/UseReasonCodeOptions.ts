@@ -16,16 +16,19 @@ interface ReasonCodeOption {
  */
 export function useReasonCodeOptions(filter: ReasonCodeFilter = {}) {
   const query = useReasonCodes({ status: 'ACTIVE', pageSize: 100, ...filter });
+  const isPlaceholderData = query.isPlaceholderData === true;
   const options = useMemo<ReasonCodeOption[]>(
     () =>
-      (query.data?.items ?? []).map((reasonCode) => ({
-        value: reasonCode.reasonCode,
-        label: reasonCode.description
-          ? `${reasonCode.reasonCode} — ${reasonCode.description}`
-          : reasonCode.reasonCode,
-      })),
-    [query.data?.items],
+      isPlaceholderData
+        ? []
+        : (query.data?.items ?? []).map((reasonCode) => ({
+            value: reasonCode.reasonCode,
+            label: reasonCode.description
+              ? `${reasonCode.reasonCode} — ${reasonCode.description}`
+              : reasonCode.reasonCode,
+          })),
+    [isPlaceholderData, query.data?.items],
   );
 
-  return { options, isLoading: query.isLoading, isError: query.isError };
+  return { options, isLoading: query.isLoading || isPlaceholderData, isError: query.isError };
 }

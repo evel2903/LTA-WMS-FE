@@ -21,6 +21,16 @@ vi.mock('@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryIns
     return repo.current;
   },
 }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'RC-MD-UPDATE', label: 'RC-MD-UPDATE - Cập nhật hồ sơ vị trí' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { LocationProfileCatalogPage } from '@modules/MasterData/Presentation/Pages/LocationProfileCatalogPage';
 import { LocationProfileDetailPage } from '@modules/MasterData/Presentation/Pages/LocationProfileDetailPage';
@@ -141,7 +151,10 @@ function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.LOCATION_PROFI
   );
 }
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
+});
 
 describe('LocationProfileCatalogPage (A10)', () => {
   it('creates, edits, inactivates, and re-reads a location profile', async () => {

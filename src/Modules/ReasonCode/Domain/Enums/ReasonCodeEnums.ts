@@ -75,7 +75,29 @@ export type ObjectType =
   | 'ApprovalRequest'
   | 'OverrideLog'
   | 'AuditLog'
-  | 'ExceptionCase';
+  | 'ExceptionCase'
+  | 'Partner'
+  | 'CoreFlow'
+  | 'InboundPlan'
+  | 'Receipt'
+  | 'QcTask'
+  | 'PutawayTask'
+  | 'InventoryMovement'
+  | 'CycleCount'
+  | 'ReplenishmentTask'
+  | 'OutboundOrder'
+  | 'Allocation'
+  | 'PickTask'
+  | 'Package'
+  | 'Shipment'
+  | 'Load'
+  | 'GoodsIssue'
+  | 'MobileTask'
+  | 'LabelTemplate'
+  | 'PrintJob'
+  | 'IntegrationMessage'
+  | 'DeadLetterMessage'
+  | 'ReconciliationRun';
 
 export const OBJECT_TYPES: ObjectType[] = [
   'Site',
@@ -98,6 +120,28 @@ export const OBJECT_TYPES: ObjectType[] = [
   'OverrideLog',
   'AuditLog',
   'ExceptionCase',
+  'Partner',
+  'CoreFlow',
+  'InboundPlan',
+  'Receipt',
+  'QcTask',
+  'PutawayTask',
+  'InventoryMovement',
+  'CycleCount',
+  'ReplenishmentTask',
+  'OutboundOrder',
+  'Allocation',
+  'PickTask',
+  'Package',
+  'Shipment',
+  'Load',
+  'GoodsIssue',
+  'MobileTask',
+  'LabelTemplate',
+  'PrintJob',
+  'IntegrationMessage',
+  'DeadLetterMessage',
+  'ReconciliationRun',
 ];
 
 export type RoleCode =

@@ -46,4 +46,19 @@ describe('ReasonCodeRepository', () => {
     expect(http.calls[0]?.config).toMatchObject({ params: { Page: 1, PageSize: 100 } });
     expect(http.calls[1]?.config).toMatchObject({ params: { Page: 1, PageSize: 50 } });
   });
+
+  it('passes Action and ObjectType filters to GET /reason-codes', async () => {
+    const http = new FakeHttpClient();
+    const repository = new ReasonCodeRepository(http);
+
+    await repository.list({ action: 'Update', objectType: 'Warehouse', pageSize: 100 });
+
+    expect(http.calls[0]?.config).toMatchObject({
+      params: {
+        Action: 'Update',
+        ObjectType: 'Warehouse',
+        PageSize: 100,
+      },
+    });
+  });
 });

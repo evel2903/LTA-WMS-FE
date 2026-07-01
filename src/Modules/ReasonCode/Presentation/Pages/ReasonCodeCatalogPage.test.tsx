@@ -108,7 +108,9 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
-    await actor.type(await screen.findByLabelText('Mã lý do'), 'RC-NEW-1');
+    const codeField = await screen.findByLabelText('Mã lý do');
+    expect(codeField.tagName).toBe('INPUT');
+    await actor.type(codeField, 'RC-NEW-1');
     await actor.click(screen.getByLabelText('Update')); // an applies-to action
     await actor.click(screen.getByLabelText('SKU')); // an applies-to object
     await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));

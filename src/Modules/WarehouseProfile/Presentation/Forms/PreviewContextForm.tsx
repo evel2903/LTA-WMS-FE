@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   previewContextFormSchema,
   type PreviewContextFormValues,
@@ -56,6 +57,7 @@ export function PreviewContextForm({
     },
   });
   const errors = form.formState.errors;
+  const reasonCode = form.watch('reasonCode') ?? '';
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -70,8 +72,17 @@ export function PreviewContextForm({
           <Input disabled={disabled} {...form.register(field.name)} />
         </label>
       ))}
-      <label className="grid gap-1 text-sm">Mã lý do<Input disabled={disabled} {...form.register('reasonCode')} />
-      </label>
+      <ReasonCodeSelect
+        id="rule-preview-reason-code"
+        name="reasonCode"
+        label="Mã lý do"
+        value={reasonCode}
+        action="Override"
+        objectType="Rule"
+        optional
+        disabled={disabled}
+        onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
+      />
       <label className="grid gap-1 text-sm">Thời điểm đánh giá (ISO, tùy chọn)<Input disabled={disabled} placeholder="2026-06-19T00:00:00Z" {...form.register('evaluatedAt')} />
       </label>
       <Button type="submit" disabled={disabled || pending}>Chạy preview</Button>

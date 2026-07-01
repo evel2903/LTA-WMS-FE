@@ -28,6 +28,19 @@ const toastError = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({
   toast: { error: toastError },
 }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [
+      { value: 'POLICY', label: 'POLICY - Kích hoạt chính sách' },
+      { value: 'RETIRE', label: 'RETIRE - Ngưng áp dụng' },
+    ],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { WarehouseProfilesPage } from '@modules/WarehouseProfile/Presentation/Pages/WarehouseProfilesPage';
 import { WarehouseProfileDetailPage } from '@modules/WarehouseProfile/Presentation/Pages/WarehouseProfileDetailPage';
@@ -158,6 +171,7 @@ beforeEach(() => {
     page: 1,
   });
   toastError.mockClear();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
 });
 
 afterEach(() => cleanup());

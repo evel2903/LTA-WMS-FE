@@ -5,6 +5,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import type { InventoryStatus } from '@modules/InventoryStatus/Domain/Entities/InventoryStatus';
+import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   inventoryStatusFormSchema,
   type InventoryStatusFormValues,
@@ -51,6 +52,7 @@ export function InventoryStatusForm({
     },
   });
   const errors = form.formState.errors;
+  const reasonCode = form.watch('reasonCode');
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -99,15 +101,21 @@ export function InventoryStatusForm({
         </label>
       </div>
 
-      <label className="grid gap-1 text-sm">Mã lý do<Input
+      <div>
+        <ReasonCodeSelect
+          id="inventory-status-reason-code"
+          name="reasonCode"
+          label="Mã lý do"
+          value={reasonCode}
+          action="Update"
+          objectType="InventoryStatus"
           disabled={disabled}
-          placeholder="VD: RC-MD-UPDATE"
-          {...form.register('reasonCode')}
+          onChange={(value) => form.setValue('reasonCode', value, { shouldDirty: true, shouldValidate: true })}
         />
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
-      </label>
+      </div>
       {inlineError && (
         <Alert variant="destructive" role="alert" className="w-full">
           <AlertDescription>{inlineError}</AlertDescription>

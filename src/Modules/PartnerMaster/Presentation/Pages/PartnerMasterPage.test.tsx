@@ -23,6 +23,16 @@ vi.mock('@modules/PartnerMaster/Infrastructure/Repositories/PartnerRepositoryIns
     return repo.current;
   },
 }));
+const reasonCodeOptions = vi.hoisted(() => ({
+  useReasonCodeOptions: vi.fn(() => ({
+    options: [{ value: 'RC-CANCEL', label: 'RC-CANCEL - Ngưng kích hoạt đối tác' }],
+    isLoading: false,
+    isError: false,
+  })),
+}));
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
 
 import { PartnerMasterPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterPage';
 import { PartnerMasterDetailPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage';
@@ -136,7 +146,10 @@ function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.MASTER_DATA.PA
   );
 }
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  reasonCodeOptions.useReasonCodeOptions.mockClear();
+});
 
 describe('PartnerMasterPage', () => {
   it('hiển thị trạng thái đối tác bằng Badge thống nhất', () => {
@@ -194,11 +207,11 @@ describe('PartnerMasterPage', () => {
     await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
     const refreshedUpdateButton = await screen.findByRole('button', { name: 'Cập nhật đối tác' });
     const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
-    await actor.type(within(refreshedForm).getByLabelText('Mã lý do'), 'RC-V1-CANCEL');
+    await actor.selectOptions(within(refreshedForm).getByLabelText('Mã lý do'), 'RC-CANCEL');
     await actor.click(within(refreshedForm).getByRole('button', { name: 'Ngưng kích hoạt đối tác' }));
 
     await waitFor(() =>
-      expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-V1-CANCEL' }),
+      expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-CANCEL' }),
     );
     await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0));
   });

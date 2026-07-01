@@ -13,6 +13,7 @@ export interface ReasonCodeFilter {
   reasonGroup?: ReasonGroup;
   status?: ReasonCodeStatus;
   action?: ActionCode;
+  objectType?: ObjectType;
 }
 
 /** Create input for `POST /reason-codes` (Status/Version are server-forced). */
