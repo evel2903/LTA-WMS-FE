@@ -1057,7 +1057,12 @@ function WarehouseTable({ rows, onEdit }: { rows: WarehouseRow[]; onEdit: (wareh
                       Sửa
                     </Button>
                     <Button asChild size="sm" variant="outline">
-                      <Link to={ROUTES.FOUNDATION.LOCATION_MAP(row.warehouse.id)}>Sơ đồ</Link>
+                      <Link
+                        aria-label={`Sơ đồ kho ${row.warehouse.entity.warehouseCode}`}
+                        to={ROUTES.FOUNDATION.LOCATION_MAP(row.warehouse.id)}
+                      >
+                        Sơ đồ kho
+                      </Link>
                     </Button>
                   </div>
                 </TableCell>
@@ -1073,7 +1078,12 @@ function WarehouseTable({ rows, onEdit }: { rows: WarehouseRow[]; onEdit: (wareh
             Sửa
           </Button>
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.FOUNDATION.LOCATION_MAP(row.warehouse.id)}>Sơ đồ</Link>
+            <Link
+              aria-label={`Sơ đồ kho ${row.warehouse.entity.warehouseCode}`}
+              to={ROUTES.FOUNDATION.LOCATION_MAP(row.warehouse.id)}
+            >
+              Sơ đồ kho
+            </Link>
           </Button>
         </EntityCard>
       ))}
