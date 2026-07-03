@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 
+import { GovernanceStateBanner } from '@shared/Components/Page';
 import { ApiError } from '@shared/Services/Http/ApiError';
 
 const reasonCodeOptions = vi.hoisted(() => ({
@@ -24,7 +25,6 @@ import { ComplianceStateView } from '@modules/Compliance/Presentation/Components
 import { ExceptionActionForm } from '@modules/Compliance/Presentation/Forms/ExceptionActionForm';
 import { blockedMessage as complianceBlockedMessage } from '@modules/Compliance/Application/Commands/ComplianceMutationError';
 import { ControlValidationCatalogStateView } from '@modules/ControlValidationCatalog/Presentation/Components/StateViews';
-import { FoundationOverviewStateView, NoDataScopeWarning } from '@modules/FoundationOverview/Presentation/Components/StateViews';
 import { InventoryStatusStateView } from '@modules/InventoryStatus/Presentation/Components/StateViews';
 import { InventoryStatusForm } from '@modules/InventoryStatus/Presentation/Forms/InventoryStatusForm';
 import { inlineMessage as inventoryStatusInlineMessage } from '@modules/InventoryStatus/Application/Commands/InventoryStatusMutationError';
@@ -47,7 +47,6 @@ const stateViews: Array<{ name: string; render: StateViewRender }> = [
     name: 'ControlValidationCatalog',
     render: (props) => <ControlValidationCatalogStateView {...props} />,
   },
-  { name: 'FoundationOverview', render: (props) => <FoundationOverviewStateView {...props} /> },
 ];
 
 const noop = vi.fn();
@@ -113,8 +112,15 @@ describe('Foundation ReUI role semantics guardrail', () => {
   });
 
   it('renders warning helper and mutation-blocking approval self-rule with the expected roles', () => {
-    render(<NoDataScopeWarning message="Thiếu phạm vi dữ liệu" />);
-    expect(screen.getByRole('status').textContent).toContain('Thiếu phạm vi dữ liệu');
+    const { container } = render(
+      <GovernanceStateBanner
+        state="missingSetup"
+        title="Thiếu phạm vi dữ liệu"
+        message="Thiếu phạm vi dữ liệu"
+      />,
+    );
+    expect(container.querySelector('aside')?.getAttribute('aria-live')).toBe('assertive');
+    expect(screen.getAllByText('Thiếu phạm vi dữ liệu').length).toBeGreaterThan(0);
 
     cleanup();
 

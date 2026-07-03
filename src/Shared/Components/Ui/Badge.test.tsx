@@ -40,7 +40,7 @@ describe('Badge primitive ReUI compatibility', () => {
   it('renders a foundation representative badge through the unified primitive', () => {
     const html = renderToStaticMarkup(<FoundationStatusBadge status="ready" />);
 
-    expect(html).toContain('Ready');
+    expect(html).toContain('Sẵn sàng');
     expect(html).toContain('data-slot="badge"');
     expect(html).toContain('bg-success');
   });
