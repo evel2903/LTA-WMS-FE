@@ -3,7 +3,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
 
@@ -14,8 +14,26 @@ const reasonCodeOptions = vi.hoisted(() => ({
     isError: false,
   })),
 }));
+const physicalCatalogMocks = vi.hoisted(() => ({
+  useSiteLocationTree: vi.fn(),
+  useLocationProfiles: vi.fn(),
+  useActiveWarehouseTypes: vi.fn(),
+  useMasterDataMutations: vi.fn(),
+}));
 vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
   useReasonCodeOptions: reasonCodeOptions.useReasonCodeOptions,
+}));
+vi.mock('@modules/MasterData/Application/Queries/UseSiteLocationTree', () => ({
+  useSiteLocationTree: physicalCatalogMocks.useSiteLocationTree,
+}));
+vi.mock('@modules/MasterData/Application/Queries/UseLocationProfiles', () => ({
+  useLocationProfiles: physicalCatalogMocks.useLocationProfiles,
+}));
+vi.mock('@modules/MasterData/Application/Queries/UseWarehouseTypes', () => ({
+  useActiveWarehouseTypes: physicalCatalogMocks.useActiveWarehouseTypes,
+}));
+vi.mock('@modules/MasterData/Application/Commands/UseMasterDataMutations', () => ({
+  useMasterDataMutations: physicalCatalogMocks.useMasterDataMutations,
 }));
 
 import { EntityTree } from '@modules/MasterData/Presentation/Components/EntityTree';
@@ -27,6 +45,7 @@ import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
 import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseForm';
 import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import { buildWarehouseTypeOptions } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
+import { PhysicalStructureCatalogPage } from '@modules/MasterData/Presentation/Pages/PhysicalStructureCatalogPage';
 import { SiteLocationTreePageView } from '@modules/MasterData/Presentation/Pages/SiteLocationTreePageView';
 import type {
   LocationProfile,
@@ -172,7 +191,47 @@ const tree: SiteLocationTree[] = [
   },
 ];
 
-afterEach(cleanup);
+function idleMutation() {
+  return {
+    isPending: false,
+    mutate: vi.fn(),
+  };
+}
+
+function mockMasterDataMutations() {
+  return {
+    createSite: idleMutation(),
+    updateSite: idleMutation(),
+    createWarehouse: idleMutation(),
+    updateWarehouse: idleMutation(),
+    createWarehouseType: idleMutation(),
+    updateWarehouseType: idleMutation(),
+    createZone: idleMutation(),
+    updateZone: idleMutation(),
+    createLocation: idleMutation(),
+    updateLocation: idleMutation(),
+  };
+}
+
+beforeEach(() => {
+  physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+    data: tree,
+    isLoading: false,
+    error: null,
+  });
+  physicalCatalogMocks.useLocationProfiles.mockReturnValue({
+    data: { items: [profile] },
+  });
+  physicalCatalogMocks.useActiveWarehouseTypes.mockReturnValue({
+    data: { items: [] },
+  });
+  physicalCatalogMocks.useMasterDataMutations.mockReturnValue(mockMasterDataMutations());
+});
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe('Site & Location Tree components', () => {
   it('renders hierarchical tree nodes and active status badges', () => {
@@ -869,6 +928,20 @@ describe('Site & Location Tree components', () => {
     if (!mapLink) throw new Error('Missing warehouse map action');
     expect(mapLink.getAttribute('href')).toBe('/foundation/locations/wh-1/map');
     expect(screen.queryByText(/tồn kho/i)).toBeNull();
+  });
+
+  it('renders active warehouse catalog map actions with warehouse-specific labels', () => {
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="warehouses" />
+      </MemoryRouter>,
+    );
+
+    const mapLinks = screen.getAllByRole('link', { name: 'Sơ đồ kho WH-01' });
+
+    expect(mapLinks.length).toBeGreaterThan(0);
+    expect(mapLinks[0]?.getAttribute('href')).toBe('/foundation/locations/wh-1/map');
+    expect(screen.queryByRole('link', { name: 'Sơ đồ' })).toBeNull();
   });
 
   it('keeps master filter controls constrained so the site select cannot overlap search', () => {
