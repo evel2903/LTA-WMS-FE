@@ -2,10 +2,10 @@ import { Badge } from '@shared/Components/Ui/Badge';
 import type { FoundationReadinessStatus } from '@modules/FoundationOverview/Domain/Entities/FoundationReadiness';
 
 const LABEL: Record<FoundationReadinessStatus, string> = {
-  ready: 'Ready',
-  warning: 'Warning',
-  missing: 'Missing',
-  error: 'Error',
+  ready: 'Sẵn sàng',
+  warning: 'Cần kiểm tra',
+  missing: 'Thiếu cấu hình',
+  error: 'Lỗi cấu hình',
 };
 
 const VARIANT: Record<
