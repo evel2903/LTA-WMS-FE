@@ -168,51 +168,62 @@ export function InboundReceivingPanel({
         <CardTitle className="text-base">Tiếp nhận hàng</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form className="space-y-3" onSubmit={onSubmitStartReceiving}>
-          <TechnicalDetails testId="inbound-receiving-session-technical-details">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-session-key">
-              Khóa phiên tiếp nhận
-              <Input
-                id="inbound-receiving-session-key"
-                name="receivingSessionKey"
-                value={receivingSessionKey}
-                onChange={(event) => onReceivingSessionKeyChange(event.target.value)}
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-device-code">
-              Mã thiết bị
-              <Input
-                id="inbound-receiving-device-code"
-                name="receivingDeviceCode"
-                value={receivingDeviceCode}
-                onChange={(event) => onReceivingDeviceCodeChange(event.target.value)}
-              />
-            </label>
-          </TechnicalDetails>
-          <p
-            className="break-words text-sm text-muted-foreground"
-            data-testid="inbound-receiving-start-helper"
+        {receivingSession ? (
+          // Once a session exists, starting again is a no-op (idempotent) and
+          // has no further action to take — collapse to a read-only summary so
+          // this never sits alongside "Xác nhận nhận hàng" as a second,
+          // equally-weighted full-width button (IFB-08).
+          <div
+            className="rounded-md border bg-muted/40 p-3 text-sm"
+            data-testid="inbound-receiving-session-summary"
           >
-            {startHelper}
-          </p>
-          <button
-            type="submit"
-            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canStartReceiving || isStartReceivingPending}
-          >
-            <PlayCircle className="size-4" />
-            Bắt đầu tiếp nhận
-          </button>
-          {receivingSession && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">Phiên tiếp nhận</p>
+            <p className="mt-1 font-medium text-foreground">
               Phiếu tiếp nhận {receivingSession.receiptNumber}
               {receivingSession.isDuplicate ? ' đã dùng lại' : ' đã sẵn sàng'}.
             </p>
-          )}
-          {startReceivingErrorMessage ? (
-            <p className="text-sm text-destructive">{startReceivingErrorMessage}</p>
-          ) : null}
-        </form>
+          </div>
+        ) : (
+          <form className="space-y-3" onSubmit={onSubmitStartReceiving}>
+            <TechnicalDetails testId="inbound-receiving-session-technical-details">
+              <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-session-key">
+                Khóa phiên tiếp nhận
+                <Input
+                  id="inbound-receiving-session-key"
+                  name="receivingSessionKey"
+                  value={receivingSessionKey}
+                  onChange={(event) => onReceivingSessionKeyChange(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm" htmlFor="inbound-receiving-device-code">
+                Mã thiết bị
+                <Input
+                  id="inbound-receiving-device-code"
+                  name="receivingDeviceCode"
+                  value={receivingDeviceCode}
+                  onChange={(event) => onReceivingDeviceCodeChange(event.target.value)}
+                />
+              </label>
+            </TechnicalDetails>
+            <p
+              className="break-words text-sm text-muted-foreground"
+              data-testid="inbound-receiving-start-helper"
+            >
+              {startHelper}
+            </p>
+            <button
+              type="submit"
+              className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canStartReceiving || isStartReceivingPending}
+            >
+              <PlayCircle className="size-4" />
+              Bắt đầu tiếp nhận
+            </button>
+            {startReceivingErrorMessage ? (
+              <p className="text-sm text-destructive">{startReceivingErrorMessage}</p>
+            ) : null}
+          </form>
+        )}
 
         <form className="space-y-3" onSubmit={onSubmitReceiptLine}>
           <div

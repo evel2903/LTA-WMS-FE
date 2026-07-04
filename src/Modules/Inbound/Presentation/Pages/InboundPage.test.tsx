@@ -1652,6 +1652,47 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
   }, 15_000);
 
+  it('collapses the start-receiving form to a read-only summary once a session exists, leaving a single primary action (IFB-08)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+
+    // Before a session exists: only the start-session form's button is present.
+    expect(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' })).toBeTruthy();
+    expect(screen.queryByTestId('inbound-receiving-session-summary')).toBeNull();
+
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+
+    // After a session exists: the start-session button is gone entirely (not
+    // just disabled) — a single, unambiguous read-only summary replaces it, so
+    // it never sits alongside "Xác nhận nhận hàng" as a second competing
+    // full-width action.
+    const summary = await screen.findByTestId('inbound-receiving-session-summary');
+    expect(summary.textContent).toContain('Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng');
+    expect(screen.queryByRole('button', { name: 'Bắt đầu tiếp nhận' })).toBeNull();
+    expect(screen.queryByLabelText('Khóa phiên tiếp nhận')).toBeNull();
+
+    // The confirm-line form/button is untouched — still the sole action, still
+    // wired to the same repository call.
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-single-action');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+  });
+
   it('opens completed-step summary from the stepper without re-firing mutations', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
