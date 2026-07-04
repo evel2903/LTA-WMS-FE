@@ -51,7 +51,7 @@ function getReadinessHelper({
     return 'Sẵn sàng đã đạt; không cần ghi đè.';
   }
   if (readiness?.gateInRequired && !readiness.gateInRecorded && !gateInDone) {
-    return 'Vào cổng chưa được ghi nhận; nhập mã lý do nếu cần ghi đè sẵn sàng.';
+    return 'Vào cổng chưa được ghi nhận; nhập mã lý do nếu cần ghi đè kiểm tra sẵn sàng.';
   }
   if (!reasonCode.trim()) return 'Nhập mã lý do để ghi đè kiểm tra sẵn sàng.';
   return 'Sẵn sàng gửi yêu cầu ghi đè kiểm tra sẵn sàng.';
@@ -92,7 +92,7 @@ export function InboundReadinessPanel({
   return (
     <Card data-testid="inbound-readiness-panel">
       <CardHeader>
-        <CardTitle className="text-base">Kiểm tra sẵn sàng / ghi đè</CardTitle>
+        <CardTitle className="text-base">Kiểm tra sẵn sàng và ghi đè</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={onSubmit}>

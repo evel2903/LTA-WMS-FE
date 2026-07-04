@@ -720,7 +720,7 @@ export function InboundDetailPage() {
               : 'Đã xác nhận ít nhất một dòng tiếp nhận.'
             : 'Sẵn sàng quét và xác nhận dòng hàng.'
           : readinessApprovalRequired
-            ? 'Sẵn sàng cần phê duyệt — nhập mã lý do để ghi đè.'
+            ? 'Cần phê duyệt sẵn sàng — nhập mã lý do để ghi đè.'
             : 'Đang bị chặn bởi kiểm tra sẵn sàng.',
       state: resolveWorkflowStepState(
         'receiving',
