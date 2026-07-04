@@ -43,22 +43,22 @@ interface InboundReceivingPanelProps {
   selectedLine: InboundPlanLine | null;
 }
 
+// `receivingSession` truthy is handled entirely by the caller collapsing the
+// form to a read-only summary (IFB-08) — this helper is only ever invoked
+// while `!receivingSession`, so it takes no such param.
 function getStartReceivingHelper({
   hasPlan,
   isPending,
   readinessDone,
-  receivingSession,
   receivingSessionKey,
 }: {
   hasPlan: boolean;
   isPending: boolean;
   readinessDone: boolean;
-  receivingSession: ReceivingSession | null;
   receivingSessionKey: string;
 }) {
   if (!hasPlan) return 'Chưa có chứng từ nhập kho để bắt đầu tiếp nhận.';
   if (isPending) return 'Đang bắt đầu phiên tiếp nhận.';
-  if (receivingSession) return 'Phiên tiếp nhận đã sẵn sàng; có thể tiếp tục xác nhận dòng.';
   if (!readinessDone) return 'Cần hoàn tất kiểm tra sẵn sàng trước khi bắt đầu tiếp nhận.';
   if (!receivingSessionKey.trim()) return 'Nhập khóa phiên tiếp nhận để bắt đầu.';
   return 'Sẵn sàng bắt đầu phiên tiếp nhận.';
@@ -144,13 +144,17 @@ export function InboundReceivingPanel({
     isLoading: reasonCodesLoading,
     isError: reasonCodesError,
   } = useReasonCodeOptions();
-  const startHelper = getStartReceivingHelper({
-    hasPlan,
-    isPending: isStartReceivingPending,
-    readinessDone,
-    receivingSession,
-    receivingSessionKey,
-  });
+  // Only computed while the start-session form is actually the rendered
+  // branch (`!receivingSession`) — once a session exists the summary div
+  // replaces the form and this text has no consumer (IFB-08).
+  const startHelper = receivingSession
+    ? null
+    : getStartReceivingHelper({
+        hasPlan,
+        isPending: isStartReceivingPending,
+        readinessDone,
+        receivingSessionKey,
+      });
   const receiptLineHelper = getReceiptLineHelper({
     isPending: isConfirmReceiptLinePending,
     receiptActualQuantity,
