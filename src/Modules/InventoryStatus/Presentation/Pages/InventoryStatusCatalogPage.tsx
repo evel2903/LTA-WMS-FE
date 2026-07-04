@@ -59,14 +59,12 @@ export function InventoryStatusCatalogPage() {
       filters={
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1 text-sm">Mã trạng thái<Input
-              className="h-9"
               placeholder="Ví dụ: AVAILABLE"
               value={filters.statusCode}
               onChange={(e) => patch({ statusCode: e.target.value })}
             />
           </label>
           <label className="grid gap-1 text-sm">Nhóm chặng<Input
-              className="h-9"
               placeholder="Ví dụ: Storage"
               value={filters.stageGroup}
               onChange={(e) => patch({ stageGroup: e.target.value })}

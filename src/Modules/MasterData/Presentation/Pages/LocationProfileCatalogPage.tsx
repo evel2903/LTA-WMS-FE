@@ -134,7 +134,6 @@ export function LocationProfileCatalogPage() {
           <label className="grid min-w-0 gap-1 text-sm">
             Lọc mã hồ sơ
             <Input
-              className="h-9 min-w-0"
               placeholder="VD: BIN-STD"
               value={filters.profileCode}
               onChange={(event) => patch({ profileCode: event.target.value })}
@@ -143,7 +142,6 @@ export function LocationProfileCatalogPage() {
           <label className="grid min-w-0 gap-1 text-sm">
             Lọc loại vị trí
             <Input
-              className="h-9 min-w-0"
               placeholder="VD: Ô chứa"
               value={filters.locationType}
               onChange={(event) => patch({ locationType: event.target.value })}

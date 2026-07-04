@@ -45,7 +45,6 @@ export function ControlValidationCatalogPage() {
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="grid w-full max-w-lg gap-1 text-sm">Lọc danh mục<Input
-            className="h-9"
             placeholder="Tìm theo mã, nhóm, trigger, chủ sở hữu, deferred..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
