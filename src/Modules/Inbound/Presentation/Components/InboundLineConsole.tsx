@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Ban } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Badge } from '@shared/Components/Reui/badge';
@@ -7,13 +7,21 @@ import { Badge } from '@shared/Components/Reui/badge';
 /**
  * Prominent inline blocked card. Bordered, high-visibility — never muted gray
  * fine print, never a popup. Driven by the page's single `blockedActionMessage`
- * source so the ribbon and this card cannot diverge.
+ * source so the ribbon and this card cannot diverge. `isTerminal` (Cancelled doc)
+ * renders a distinct destructive/red variant so it never reads as the same
+ * recoverable "needs an action" block as `warning` (IFB-07).
  */
-export function InboundBlockedActionHelper({ message }: { message: string }) {
+export function InboundBlockedActionHelper({
+  isTerminal = false,
+  message,
+}: {
+  isTerminal?: boolean;
+  message: string;
+}) {
   return (
-    <Alert variant="warning" data-testid="inbound-action-blocked">
-      <AlertTriangle aria-hidden="true" />
-      <AlertTitle>Thao tác chưa sẵn sàng</AlertTitle>
+    <Alert variant={isTerminal ? 'destructive' : 'warning'} data-testid="inbound-action-blocked">
+      {isTerminal ? <Ban aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
+      <AlertTitle>{isTerminal ? 'Chứng từ đã hủy' : 'Thao tác chưa sẵn sàng'}</AlertTitle>
       <AlertDescription className="font-medium text-foreground">{message}</AlertDescription>
     </Alert>
   );
@@ -125,7 +133,7 @@ export function InboundLineConsole({
         ) : null}
       </div>
       {(isTerminal || !isSummaryOpen) && blockedMessage ? (
-        <InboundBlockedActionHelper message={blockedMessage} />
+        <InboundBlockedActionHelper message={blockedMessage} isTerminal={isTerminal} />
       ) : null}
       {renderDiscrepancyTrigger ? (
         <div className="space-y-1" data-testid="inbound-discrepancy-trigger">
