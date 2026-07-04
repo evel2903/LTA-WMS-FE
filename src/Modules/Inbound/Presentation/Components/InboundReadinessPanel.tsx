@@ -28,7 +28,7 @@ function getReadinessStatus(readiness: ReceivingReadiness | null, isReadinessLoa
   // stop like Blocked), so it gets its own lead-in instead of falling through to
   // the raw BE reason string the way Blocked does (IFB-05).
   if (readiness.decision === 'ApprovalRequired') {
-    return `Cần phê duyệt readiness: ${readiness.reason}`;
+    return `Cần phê duyệt sẵn sàng: ${readiness.reason}`;
   }
   return readiness.reason;
 }
@@ -44,17 +44,17 @@ function getReadinessHelper({
   InboundReadinessPanelProps,
   'gateInDone' | 'hasPlan' | 'isPending' | 'isReadinessLoading' | 'readiness' | 'reasonCode'
 >) {
-  if (!hasPlan) return 'Chưa có chứng từ nhập kho để kiểm tra readiness.';
+  if (!hasPlan) return 'Chưa có chứng từ nhập kho để kiểm tra sẵn sàng.';
   if (isPending) return 'Đang gửi yêu cầu ghi đè kiểm tra sẵn sàng.';
   if (isReadinessLoading) return 'Đang kiểm tra sẵn sàng; vui lòng chờ kết quả mới nhất.';
   if (readiness?.allowed || readiness?.overrideAccepted) {
-    return 'Readiness đã đạt; không cần ghi đè.';
+    return 'Sẵn sàng đã đạt; không cần ghi đè.';
   }
   if (readiness?.gateInRequired && !readiness.gateInRecorded && !gateInDone) {
-    return 'Vào cổng chưa được ghi nhận; nhập mã lý do nếu cần ghi đè readiness.';
+    return 'Vào cổng chưa được ghi nhận; nhập mã lý do nếu cần ghi đè sẵn sàng.';
   }
   if (!reasonCode.trim()) return 'Nhập mã lý do để ghi đè kiểm tra sẵn sàng.';
-  return 'Sẵn sàng gửi yêu cầu ghi đè readiness.';
+  return 'Sẵn sàng gửi yêu cầu ghi đè kiểm tra sẵn sàng.';
 }
 
 export function InboundReadinessPanel({
@@ -92,7 +92,7 @@ export function InboundReadinessPanel({
   return (
     <Card data-testid="inbound-readiness-panel">
       <CardHeader>
-        <CardTitle className="text-base">Kiểm tra sẵn sàng / override</CardTitle>
+        <CardTitle className="text-base">Kiểm tra sẵn sàng / ghi đè</CardTitle>
       </CardHeader>
       <CardContent>
         <form className="space-y-3" onSubmit={onSubmit}>
