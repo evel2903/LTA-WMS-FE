@@ -20,6 +20,7 @@ export interface DetailPageShellProps {
   stateTitle?: string;
   stateMessage?: string;
   stateAction?: ReactNode;
+  contentAriaLabel?: string;
   className?: string;
   contentClassName?: string;
 }
@@ -37,6 +38,7 @@ export function DetailPageShell({
   stateTitle,
   stateMessage,
   stateAction,
+  contentAriaLabel,
   className,
   contentClassName,
 }: DetailPageShellProps) {
@@ -75,7 +77,7 @@ export function DetailPageShell({
         ) : null}
       </header>
 
-      <section className={cn('space-y-4', contentClassName)} aria-label={`${title} detail`}>
+      <section className={cn('space-y-4', contentClassName)} aria-label={contentAriaLabel ?? `${title} detail`}>
         <PageStateBoundary state={state} title={stateTitle} message={stateMessage} action={stateAction}>
           {children}
         </PageStateBoundary>

@@ -2,11 +2,11 @@ import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDat
 import { LocationProfileStatusBadge } from '@modules/MasterData/Presentation/Components/LocationProfileStatusBadge';
 
 const POLICY_GROUPS = [
-  ['Capacity', 'capacityPolicy'],
-  ['Eligibility', 'eligibilityPolicy'],
-  ['Mix', 'mixPolicy'],
-  ['Compliance', 'compliancePolicy'],
-  ['Operation', 'operationPolicy'],
+  ['Chính sách sức chứa', 'capacityPolicy'],
+  ['Chính sách điều kiện sử dụng', 'eligibilityPolicy'],
+  ['Chính sách trộn hàng', 'mixPolicy'],
+  ['Chính sách tuân thủ', 'compliancePolicy'],
+  ['Chính sách vận hành', 'operationPolicy'],
 ] as const;
 
 function PolicyBlock({ label, value }: { label: string; value: Record<string, unknown> }) {
@@ -37,7 +37,7 @@ export function LocationProfileDetailPanel({ profile }: { profile: LocationProfi
           <div>{profile.locationType}</div>
         </div>
         <div>
-          <div className="text-muted-foreground text-xs">Version</div>
+          <div className="text-muted-foreground text-xs">Phiên bản</div>
           <div>{profile.version}</div>
         </div>
       </div>

@@ -15,6 +15,8 @@ export interface ListPageShellProps {
   stateTitle?: string;
   stateMessage?: string;
   stateAction?: ReactNode;
+  filtersAriaLabel?: string;
+  contentAriaLabel?: string;
   className?: string;
   contentClassName?: string;
 }
@@ -30,6 +32,8 @@ export function ListPageShell({
   stateTitle,
   stateMessage,
   stateAction,
+  filtersAriaLabel,
+  contentAriaLabel,
   className,
   contentClassName,
 }: ListPageShellProps) {
@@ -53,12 +57,12 @@ export function ListPageShell({
       </header>
 
       {filters != null && canShowControls ? (
-        <section className="border-border bg-card rounded-lg border p-4" aria-label={`${title} filters`}>
+        <section className="border-border bg-card rounded-lg border p-4" aria-label={filtersAriaLabel ?? `${title} filters`}>
           {filters}
         </section>
       ) : null}
 
-      <section className={cn('space-y-4', contentClassName)} aria-label={`${title} list`}>
+      <section className={cn('space-y-4', contentClassName)} aria-label={contentAriaLabel ?? `${title} list`}>
         <PageStateBoundary state={state} title={stateTitle} message={stateMessage} action={stateAction}>
           <div className="min-w-0 overflow-x-auto">{children}</div>
         </PageStateBoundary>

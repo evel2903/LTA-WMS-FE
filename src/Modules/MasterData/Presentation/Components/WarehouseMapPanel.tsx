@@ -239,7 +239,7 @@ function binCode(location: SiteLocationTree): string {
 function physicalAddressLabel(location: SiteLocationTree): string | null {
   if (location.type !== 'location') return null;
 
-  return `Dãy ${aisleCode(location)} · Kệ/Shelf ${rackCode(location)} · Tầng ${floorCode(location)} · Ô/bin ${binCode(location)}`;
+  return `Dãy ${aisleCode(location)} · Kệ ${rackCode(location)} · Tầng ${floorCode(location)} · Ô ${binCode(location)}`;
 }
 
 function physicalNumericParts(code: string): number[] {
@@ -261,7 +261,9 @@ function compareAddressPart(left: string, right: string): number {
 
 function locationOrder(location: SiteLocationTree): number {
   if (location.type !== 'location') return 0;
-  return location.entity.pickSequence ?? location.entity.putawaySequence ?? 0;
+  return [location.entity.pickSequence, location.entity.putawaySequence].find(
+    (order) => typeof order === 'number' && order > 0,
+  ) ?? 0;
 }
 
 function warehouseCounts(warehouse: SiteLocationTree): { zones: number; locations: number } {
@@ -503,7 +505,7 @@ export function WarehouseMapPanel({ nodes, selectedNode, onSelect }: WarehouseMa
                     <LegendDot className="bg-amber-500" label="Bị khóa" />
                     <LegendDot className="bg-sky-500" label="Bảo trì" />
                     <span className="ml-auto text-[11px] text-muted-foreground">
-                      Mỗi ô = 1 vị trí vật lý · Dãy · Kệ/Shelf · Tầng · Ô/bin
+                      Mỗi ô = 1 vị trí vật lý · Dãy · Kệ · Tầng · Ô
                     </span>
                   </div>
                 </>

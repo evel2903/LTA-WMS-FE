@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -315,7 +315,7 @@ describe('Site & Location Tree components', () => {
     );
 
     expect(html).toContain('Dãy A-EXP · Tầng L-EXP');
-    expect(html).toContain('Dãy A-EXP · Kệ/Shelf R-EXP · Tầng L-EXP · Ô/bin B-EXP');
+    expect(html).toContain('Dãy A-EXP · Kệ R-EXP · Tầng L-EXP · Ô B-EXP');
     expect(html).not.toContain('Dãy 999');
   });
 
@@ -364,8 +364,8 @@ describe('Site & Location Tree components', () => {
       <WarehouseMapPanel nodes={legacyTree} selectedNode={legacyLocation} onSelect={() => undefined} />,
     );
 
-    expect(html).toContain('bin 03');
-    expect(html).not.toContain('bin 00');
+    expect(html).toContain('Ô 03');
+    expect(html).not.toContain('Ô 00');
   });
 
   it('calls onSelect with the selected zone and location from the map', () => {
@@ -735,9 +735,21 @@ describe('Site & Location Tree components', () => {
     expect(html).toContain('A-01-01');
     expect(html).toContain('Chỉ đọc');
     expect(html).toContain('BIN-STD');
+    expect(html).toContain('Mã hệ thống');
+    expect(html).toContain('Mã vị trí');
+    expect(html).toContain('Tên vị trí');
+    expect(html).toContain('Loại vị trí');
+    expect(html).toContain('Hồ sơ vị trí');
+    expect(html).toContain('Vị trí');
     expect(html).toContain('chính sách sức chứa');
     expect(html).toContain('chính sách trộn');
     expect(html).toContain('chính sách vận hành');
+    expect(html).not.toContain('>Code<');
+    expect(html).not.toContain('>Name<');
+    expect(html).not.toContain('>Type<');
+    expect(html).not.toContain('>Profile<');
+    expect(html).not.toContain('Kệ/Shelf');
+    expect(html).not.toContain('Ô/bin');
   });
 
   it('renders physical address inputs in the location form', () => {
@@ -764,9 +776,9 @@ describe('Site & Location Tree components', () => {
     expect(screen.getByText('Thông tin cơ bản')).not.toBeNull();
     expect(screen.getByText('Địa chỉ vật lý')).not.toBeNull();
     expect(screen.getByLabelText('Dãy')).toHaveProperty('value', 'A01');
-    expect(screen.getByLabelText('Kệ/Shelf')).toHaveProperty('value', 'R01');
+    expect(screen.getByLabelText('Kệ')).toHaveProperty('value', 'R01');
     expect(screen.getByLabelText('Tầng')).toHaveProperty('value', 'L01');
-    expect(screen.getByLabelText('Ô/bin')).toHaveProperty('value', 'B01');
+    expect(screen.getByLabelText('Ô')).toHaveProperty('value', 'B01');
   });
 
   it('maps each status to a distinct badge variant', () => {
@@ -779,6 +791,7 @@ describe('Site & Location Tree components', () => {
   it('renders the create form inside the empty state so the first Site can be created', () => {
     const html = renderToStaticMarkup(
       <SiteLocationTreePageView
+        mode="master"
         state="empty"
         nodes={[]}
         selectedNode={null}
@@ -795,16 +808,18 @@ describe('Site & Location Tree components', () => {
 
   it('does not render the legacy tree panel in the ready page view', () => {
     render(
-      <SiteLocationTreePageView
-        state="ready"
-        nodes={tree}
-        selectedNode={tree[0]?.children[0] ?? null}
-        locationProfiles={[profile]}
-        canCreate
-        canEdit
-        formPanel={<div>READY_FORM_PANEL</div>}
-        onSelect={() => undefined}
-      />,
+      <MemoryRouter>
+        <SiteLocationTreePageView
+          state="ready"
+          nodes={tree}
+          selectedNode={tree[0]?.children[0] ?? null}
+          locationProfiles={[profile]}
+          canCreate
+          canEdit
+          formPanel={<div>READY_FORM_PANEL</div>}
+          onSelect={() => undefined}
+        />
+      </MemoryRouter>,
     );
 
     expect(screen.queryByText('Cây kho và vị trí')).toBeNull();
@@ -921,6 +936,8 @@ describe('Site & Location Tree components', () => {
     expect(screen.getByRole('heading', { name: 'Danh sách kho' })).not.toBeNull();
     expect(screen.getByLabelText('Lọc site')).not.toBeNull();
     expect(screen.getByRole('columnheader', { name: 'Mã kho' })).not.toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Hành động' })).not.toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Action' })).toBeNull();
     expect(screen.getAllByText('WH-01')).not.toHaveLength(0);
     expect(screen.getAllByText('Tier 1 Warehouse')).not.toHaveLength(0);
 
@@ -928,6 +945,340 @@ describe('Site & Location Tree components', () => {
     if (!mapLink) throw new Error('Missing warehouse map action');
     expect(mapLink.getAttribute('href')).toBe('/foundation/locations/wh-1/map');
     expect(screen.queryByText(/tồn kho/i)).toBeNull();
+  });
+
+  it('keeps legacy physical address values visible when editing from the physical location table without persisting fallback on no-op submit', async () => {
+    const mutations = mockMasterDataMutations();
+    const legacyTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
+    const legacyLocation = legacyTree[0]?.children[0]?.children[0]?.children[0];
+    if (legacyLocation?.type !== 'location') {
+      throw new Error('Expected location fixture');
+    }
+    legacyLocation.label = 'A-01-02-03-04 - Legacy location';
+    legacyLocation.entity = {
+      ...legacyLocation.entity,
+      locationCode: 'A-01-02-03-04',
+      locationName: 'Legacy location',
+      aisleCode: null,
+      rackCode: null,
+      levelCode: null,
+      binCode: null,
+      pickSequence: null,
+      putawaySequence: null,
+    };
+    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+      data: legacyTree,
+      isLoading: false,
+      error: null,
+    });
+    physicalCatalogMocks.useMasterDataMutations.mockReturnValue(mutations);
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="locations" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getAllByRole('cell', { name: '01' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('cell', { name: '02' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('cell', { name: '03' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('cell', { name: '04' }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sửa' })[0]);
+
+    const dialog = screen.getByRole('dialog', { name: 'Cập nhật vị trí vật lý' });
+    expect(within(dialog).getByLabelText('Dãy')).toHaveProperty('value', '01');
+    expect(within(dialog).getByLabelText('Kệ')).toHaveProperty('value', '02');
+    expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', '03');
+    expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', '04');
+
+    fireEvent.change(within(dialog).getByLabelText('Mã lý do'), { target: { value: 'RC-MD-CREATE' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
+
+    await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));
+    const submitted = mutations.updateLocation.mutate.mock.calls[0]?.[0] as {
+      id: string;
+      input: {
+        aisleCode?: string | null;
+        rackCode?: string | null;
+        levelCode?: string | null;
+        binCode?: string | null;
+        reasonCode?: string | null;
+      };
+    };
+    expect(submitted.id).toBe('loc-1');
+    expect(submitted.input.aisleCode).toBeUndefined();
+    expect(submitted.input.rackCode).toBeUndefined();
+    expect(submitted.input.levelCode).toBeUndefined();
+    expect(submitted.input.binCode).toBeUndefined();
+    expect(submitted.input.reasonCode).toBe('RC-MD-CREATE');
+  });
+
+  it('preserves unchanged explicit physical address values on no-op edit submit', async () => {
+    const mutations = mockMasterDataMutations();
+    const explicitTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
+    const explicitLocation = explicitTree[0]?.children[0]?.children[0]?.children[0];
+    if (explicitLocation?.type !== 'location') {
+      throw new Error('Expected location fixture');
+    }
+    explicitLocation.entity = {
+      ...explicitLocation.entity,
+      aisleCode: ' A01 ',
+      rackCode: ' R01 ',
+      levelCode: ' L01 ',
+      binCode: ' B01 ',
+    };
+    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+      data: explicitTree,
+      isLoading: false,
+      error: null,
+    });
+    physicalCatalogMocks.useMasterDataMutations.mockReturnValue(mutations);
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="locations" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sửa' })[0]);
+
+    const dialog = screen.getByRole('dialog', { name: 'Cập nhật vị trí vật lý' });
+    expect(within(dialog).getByLabelText('Dãy')).toHaveProperty('value', 'A01');
+    expect(within(dialog).getByLabelText('Kệ')).toHaveProperty('value', 'R01');
+    expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', 'L01');
+    expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', 'B01');
+
+    fireEvent.change(within(dialog).getByLabelText('Mã lý do'), { target: { value: 'RC-MD-CREATE' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
+
+    await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));
+    const submitted = mutations.updateLocation.mutate.mock.calls[0]?.[0] as {
+      input: {
+        aisleCode?: string | null;
+        rackCode?: string | null;
+        levelCode?: string | null;
+        binCode?: string | null;
+      };
+    };
+    expect(submitted.input.aisleCode).toBe(' A01 ');
+    expect(submitted.input.rackCode).toBe(' R01 ');
+    expect(submitted.input.levelCode).toBe(' L01 ');
+    expect(submitted.input.binCode).toBe(' B01 ');
+  });
+
+  it('uses legacy physical address fallback in the detail panel', () => {
+    const legacyTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
+    const legacyLocation = legacyTree[0]?.children[0]?.children[0]?.children[0];
+    if (legacyLocation?.type !== 'location') {
+      throw new Error('Expected location fixture');
+    }
+    legacyLocation.entity = {
+      ...legacyLocation.entity,
+      locationCode: 'A-11-22-33-44',
+      aisleCode: null,
+      rackCode: null,
+      levelCode: null,
+      binCode: null,
+      pickSequence: null,
+      putawaySequence: null,
+    };
+
+    render(<SiteLocationDetailPanel selectedNode={legacyLocation} locationProfiles={[profile]} canEdit />);
+
+    expect(screen.getByText('Dãy')).not.toBeNull();
+    expect(screen.getByText('Kệ')).not.toBeNull();
+    expect(screen.getByText('Tầng')).not.toBeNull();
+    expect(screen.getByText('Ô')).not.toBeNull();
+    expect(screen.getAllByText('11').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('22').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('33').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('44').length).toBeGreaterThan(0);
+  });
+
+  it('uses putaway sequence fallback when pick sequence is zero', () => {
+    const legacyTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
+    const legacyLocation = legacyTree[0]?.children[0]?.children[0]?.children[0];
+    if (legacyLocation?.type !== 'location') {
+      throw new Error('Expected location fixture');
+    }
+    legacyLocation.entity = {
+      ...legacyLocation.entity,
+      locationCode: 'LEGACY',
+      aisleCode: null,
+      rackCode: null,
+      levelCode: null,
+      binCode: null,
+      pickSequence: 0,
+      putawaySequence: 7,
+    };
+
+    render(<SiteLocationDetailPanel selectedNode={legacyLocation} locationProfiles={[profile]} canEdit />);
+
+    expect(screen.getAllByText('07').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('surfaces missing active location profile setup before creating physical locations', () => {
+    physicalCatalogMocks.useLocationProfiles.mockReturnValue({
+      data: { items: [] },
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="locations" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Thiếu hồ sơ vị trí đang hoạt động')).not.toBeNull();
+    expect(screen.getByRole('link', { name: 'Quản lý hồ sơ vị trí' }).getAttribute('href')).toBe(
+      '/foundation/location-profiles',
+    );
+    expect(screen.queryByRole('button', { name: 'Tạo vị trí vật lý' })).toBeNull();
+  });
+
+  it('surfaces active location profile query errors before creating physical locations', () => {
+    physicalCatalogMocks.useLocationProfiles.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('profile query failed'),
+    });
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="locations" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Không thể tải hồ sơ vị trí')).not.toBeNull();
+    expect(screen.getByText('Không thể tải danh sách hồ sơ vị trí đang hoạt động.')).not.toBeNull();
+    expect(screen.getByRole('link', { name: 'Mở danh mục hồ sơ vị trí' }).getAttribute('href')).toBe(
+      '/foundation/location-profiles',
+    );
+    expect(screen.queryByRole('button', { name: 'Tạo vị trí vật lý' })).toBeNull();
+  });
+
+  it('uses selected parent scope when explaining empty warehouse setup', () => {
+    const scopedTree = [
+      ...tree,
+      {
+        id: 'site-2',
+        type: 'site' as const,
+        label: 'SITE-02 - Empty Site',
+        status: 'Active' as const,
+        entity: {
+          id: 'site-2',
+          siteCode: 'SITE-02',
+          siteName: 'Empty Site',
+          status: 'Active' as const,
+          sourceSystem: null,
+          referenceId: null,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          createdBy: null,
+          updatedBy: null,
+        },
+        children: [],
+      },
+    ];
+    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+      data: scopedTree,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="warehouses" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Site'), { target: { value: 'site-2' } });
+
+    expect(screen.getByText('Tạo kho đầu tiên cho site đang chọn trước khi mở sơ đồ cấu trúc.')).not.toBeNull();
+  });
+
+  it('does not offer zone creation when the selected site has no warehouse in scope', () => {
+    const scopedTree = [
+      ...tree,
+      {
+        id: 'site-2',
+        type: 'site' as const,
+        label: 'SITE-02 - Empty Site',
+        status: 'Active' as const,
+        entity: {
+          id: 'site-2',
+          siteCode: 'SITE-02',
+          siteName: 'Empty Site',
+          status: 'Active' as const,
+          sourceSystem: null,
+          referenceId: null,
+          createdAt: profile.createdAt,
+          updatedAt: profile.updatedAt,
+          createdBy: null,
+          updatedBy: null,
+        },
+        children: [],
+      },
+    ];
+    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+      data: scopedTree,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="zones" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Site'), { target: { value: 'site-2' } });
+
+    expect(screen.getByText('Tạo kho trước khi thêm zone.')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tạo zone' })).toBeNull();
+  });
+
+  it('scopes zone creation to the selected warehouse filter', () => {
+    const scopedTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
+    const site = scopedTree[0];
+    const firstWarehouse = site?.children[0];
+    if (site?.type !== 'site' || firstWarehouse?.type !== 'warehouse') {
+      throw new Error('Expected site and warehouse fixture');
+    }
+    site.children.push({
+      ...firstWarehouse,
+      id: 'wh-2',
+      label: 'WH-02 - Secondary Warehouse',
+      entity: {
+        ...firstWarehouse.entity,
+        id: 'wh-2',
+        warehouseCode: 'WH-02',
+        warehouseName: 'Secondary Warehouse',
+      },
+      children: [],
+    });
+    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
+      data: scopedTree,
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="zones" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Kho'), { target: { value: 'wh-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo zone' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Tạo zone' });
+    const warehouseSelect = within(dialog).getByLabelText<HTMLSelectElement>('Kho');
+    expect(warehouseSelect.value).toBe('wh-2');
+    expect(within(dialog).getByRole('option', { name: 'WH-02 - Secondary Warehouse' })).not.toBeNull();
+    expect(within(dialog).queryByRole('option', { name: 'WH-01 - Tier 1 Warehouse' })).toBeNull();
   });
 
   it('renders active warehouse catalog map actions with warehouse-specific labels', () => {
@@ -942,6 +1293,23 @@ describe('Site & Location Tree components', () => {
     expect(mapLinks.length).toBeGreaterThan(0);
     expect(mapLinks[0]?.getAttribute('href')).toBe('/foundation/locations/wh-1/map');
     expect(screen.queryByRole('link', { name: 'Sơ đồ' })).toBeNull();
+  });
+
+  it('localizes physical structure location headers and avoids English action/profile labels', () => {
+    render(
+      <MemoryRouter>
+        <PhysicalStructureCatalogPage mode="locations" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('columnheader', { name: 'Kệ' })).not.toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Ô' })).not.toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Hồ sơ vị trí' })).not.toBeNull();
+    expect(screen.getByRole('columnheader', { name: 'Hành động' })).not.toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Kệ/Shelf' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Ô/bin' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Profile' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Action' })).toBeNull();
   });
 
   it('keeps master filter controls constrained so the site select cannot overlap search', () => {
@@ -1019,6 +1387,7 @@ describe('Site & Location Tree components', () => {
 
     const backLink = screen.getByRole('link', { name: 'Quay lại danh sách kho' });
     expect(backLink.getAttribute('href')).toBe('/foundation/locations');
+    expect(screen.getByLabelText('Sơ đồ cấu trúc kho chi tiết')).not.toBeNull();
     expect(screen.getByText('Sơ đồ kho tổng')).not.toBeNull();
     expect(screen.queryByRole('heading', { name: 'Cấu hình vật lý' })).toBeNull();
     expect(screen.queryByRole('columnheader', { name: 'Mã vị trí' })).toBeNull();
@@ -1061,55 +1430,78 @@ describe('Site & Location Tree components', () => {
   it('renders loading, empty, API error, and permission denied states', () => {
     expect(
       renderToStaticMarkup(
-        <SiteLocationTreePageView
-          state="loading"
-          nodes={[]}
-          selectedNode={null}
-          locationProfiles={[]}
-          canCreate
-          canEdit
-          onSelect={() => undefined}
-        />,
+        <MemoryRouter>
+          <SiteLocationTreePageView
+            state="loading"
+            nodes={[]}
+            selectedNode={null}
+            locationProfiles={[]}
+            canCreate
+            canEdit
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>,
       ),
     ).toContain('Đang tải sơ đồ site và vị trí');
     expect(
       renderToStaticMarkup(
-        <SiteLocationTreePageView
-          state="empty"
-          nodes={[]}
-          selectedNode={null}
-          locationProfiles={[]}
-          canCreate
-          canEdit
-          onSelect={() => undefined}
-        />,
+        <MemoryRouter>
+          <SiteLocationTreePageView
+            state="empty"
+            nodes={[]}
+            selectedNode={null}
+            locationProfiles={[]}
+            canCreate
+            canEdit
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>,
       ),
-    ).toContain('Tạo site');
+    ).toContain('Chưa có cấu trúc kho');
     expect(
       renderToStaticMarkup(
-        <SiteLocationTreePageView
-          state="error"
-          errorMessage="Backend unavailable"
-          nodes={[]}
-          selectedNode={null}
-          locationProfiles={[]}
-          canCreate={false}
-          canEdit={false}
-          onSelect={() => undefined}
-        />,
+        <MemoryRouter>
+          <SiteLocationTreePageView
+            state="empty"
+            nodes={[]}
+            selectedNode={null}
+            locationProfiles={[]}
+            canCreate
+            canEdit
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>,
+      ),
+    ).toContain('Về danh sách kho');
+    expect(
+      renderToStaticMarkup(
+        <MemoryRouter>
+          <SiteLocationTreePageView
+            state="error"
+            errorMessage="Backend unavailable"
+            nodes={[]}
+            selectedNode={null}
+            locationProfiles={[]}
+            canCreate={false}
+            canEdit={false}
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>,
       ),
     ).toContain('Backend unavailable');
     expect(
       renderToStaticMarkup(
-        <SiteLocationTreePageView
-          state="denied"
-          nodes={[]}
-          selectedNode={null}
-          locationProfiles={[]}
-          canCreate={false}
-          canEdit={false}
-          onSelect={() => undefined}
-        />,
+        <MemoryRouter>
+          <SiteLocationTreePageView
+            state="denied"
+            nodes={[]}
+            selectedNode={null}
+            locationProfiles={[]}
+            canCreate={false}
+            canEdit={false}
+            onSelect={() => undefined}
+          />
+        </MemoryRouter>,
       ),
     ).toContain('Không có quyền');
   });

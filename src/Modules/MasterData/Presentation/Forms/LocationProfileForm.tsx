@@ -99,31 +99,31 @@ export function LocationProfileForm({
 
       <div className="grid gap-3 md:grid-cols-2">
         <PolicyTextarea
-          label="Capacity policy"
+          label="Chính sách sức chứa"
           disabled={disabled}
           registration={form.register('capacityPolicyJson')}
           error={errors.capacityPolicyJson?.message}
         />
         <PolicyTextarea
-          label="Eligibility policy"
+          label="Chính sách điều kiện sử dụng"
           disabled={disabled}
           registration={form.register('eligibilityPolicyJson')}
           error={errors.eligibilityPolicyJson?.message}
         />
         <PolicyTextarea
-          label="Mix policy"
+          label="Chính sách trộn hàng"
           disabled={disabled}
           registration={form.register('mixPolicyJson')}
           error={errors.mixPolicyJson?.message}
         />
         <PolicyTextarea
-          label="Compliance policy"
+          label="Chính sách tuân thủ"
           disabled={disabled}
           registration={form.register('compliancePolicyJson')}
           error={errors.compliancePolicyJson?.message}
         />
         <PolicyTextarea
-          label="Operation policy"
+          label="Chính sách vận hành"
           disabled={disabled}
           registration={form.register('operationPolicyJson')}
           error={errors.operationPolicyJson?.message}
