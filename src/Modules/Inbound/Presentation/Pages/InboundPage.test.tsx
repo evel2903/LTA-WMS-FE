@@ -1423,6 +1423,57 @@ describe('InboundPage', () => {
     expect(document.activeElement).toBe(submitButton);
   });
 
+  it('wraps focus at the disclosure toggle when the submit button is disabled, instead of escaping the dialog (IFB-10 live-flow regression)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-focus-trap-disabled');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
+
+    // Deliberately leave the form UNFILLED — the submit button stays disabled
+    // and is therefore excluded from the `:not([disabled])` focusable query,
+    // and the technical-details disclosure stays collapsed. This is the exact
+    // state a real browser walkthrough found broken: without `summary` in the
+    // selector and without filtering out collapsed-<details> descendants,
+    // "last" silently resolved to the hidden idempotency input, the trap's
+    // boundary check never matched the visible last element (the disclosure
+    // toggle), and Tab escaped the dialog entirely in a real browser (jsdom
+    // has no native Tab-driven focus traversal, so this specific regression
+    // was invisible to every prior test in this file).
+    const submitButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
+    const closeButton = within(dialog).getByRole('button', { name: 'Đóng báo sai lệch' });
+    expect(submitButton).toHaveProperty('disabled', true);
+    expect(dialog.querySelector('details')?.hasAttribute('open')).toBe(false);
+
+    const disclosureToggle = within(dialog).getByText('Chi tiết kỹ thuật');
+    disclosureToggle.focus();
+    expect(document.activeElement).toBe(disclosureToggle);
+    fireEvent.keyDown(disclosureToggle, { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(disclosureToggle);
+  });
+
   it('shows a visually distinct terminal state for a Cancelled document, not the routine blocked state (IFB-07)', async () => {
     const fake = new FakeRepository([
       makePlan({
