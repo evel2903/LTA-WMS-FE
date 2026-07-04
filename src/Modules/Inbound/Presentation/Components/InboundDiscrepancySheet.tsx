@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 
 import { AlertTriangle, X } from 'lucide-react';
@@ -127,10 +127,38 @@ export function InboundDiscrepancySheet({
     ? `${formatQuantity(confirmedReceiptLine.actualQuantity)} ${confirmedReceiptLine.uomCode ?? ''}`.trim()
     : 'Chưa có dữ liệu thực nhận trong phiên này';
 
+  // Focus-restore-on-close is NOT handled here: `onClose` (wired to
+  // `closeDiscrepancyOverlay` in InboundDetailPage.tsx) always navigates back
+  // to the receiving route and focuses `actionPanelRef` (the always-visible
+  // line console) via its own effect — a deliberate, fixed target rather than
+  // "whatever had focus before," since this modal opens via a ROUTE (a direct
+  // URL load has no "previous focus" to return to). Adding a second, competing
+  // restore-focus-on-unmount effect here would race that existing mechanism.
+  const dialogRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
@@ -153,6 +181,7 @@ export function InboundDiscrepancySheet({
         onClick={onClose}
       />
       <section
+        ref={dialogRef}
         aria-labelledby="inbound-discrepancy-title"
         aria-modal="true"
         className="relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-xl border bg-card shadow-lg md:max-w-2xl md:rounded-md"

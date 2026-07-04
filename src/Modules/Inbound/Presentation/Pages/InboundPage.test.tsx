@@ -1320,6 +1320,109 @@ describe('InboundPage', () => {
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
+  it('traps Tab/Shift+Tab focus inside the discrepancy modal (IFB-10)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-focus-trap');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
+
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
+    await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
+    await actor.type(screen.getByLabelText('Khóa idempotency sai lệch'), 'discrepancy-focus-trap');
+    const submitButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
+    // Two "Đóng báo sai lệch" buttons exist (the invisible click-outside
+    // overlay + the header's real close button) — scope to the dialog itself
+    // to get the header one, the actual first focusable element in tab order.
+    const closeButton = within(dialog).getByRole('button', { name: 'Đóng báo sai lệch' });
+    await waitFor(() => expect(submitButton).toHaveProperty('disabled', false));
+
+    // Tab forward from the LAST focusable element wraps back to the FIRST
+    // (the header close button) instead of escaping the dialog.
+    submitButton.focus();
+    expect(document.activeElement).toBe(submitButton);
+    fireEvent.keyDown(submitButton, { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    // Shift+Tab from the FIRST focusable element wraps back to the LAST.
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(submitButton);
+
+    // Trap is scoped to the open dialog only — closing it removes the listener.
+    await actor.click(closeButton);
+    expect(screen.queryByTestId('inbound-discrepancy-overlay')).toBeNull();
+  });
+
+  it('traps focus correctly even with the technical-details disclosure left collapsed (IFB-10)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.clear(screen.getByLabelText('Số lượng thực nhận'));
+    await actor.type(screen.getByLabelText('Số lượng thực nhận'), '14');
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-focus-trap-collapsed');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
+    await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
+
+    // Fill required fields to enable the submit button WITHOUT opening the
+    // technical-details disclosure that wraps the idempotency-key input — the
+    // key already has a non-empty default, so this is the realistic "operator
+    // never bothered to expand it" path. The idempotency input is still
+    // present in the DOM (querySelectorAll has no concept of a collapsed
+    // <details>'s content being unreachable), but it's not the LAST element —
+    // the submit button structurally follows the whole <details> block — so
+    // the trap's first/last boundary detection is unaffected either way.
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/collapsed');
+    const submitButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
+    const closeButton = within(dialog).getByRole('button', { name: 'Đóng báo sai lệch' });
+    await waitFor(() => expect(submitButton).toHaveProperty('disabled', false));
+    expect(dialog.querySelector('details')?.hasAttribute('open')).toBe(false);
+
+    submitButton.focus();
+    fireEvent.keyDown(submitButton, { key: 'Tab' });
+    expect(document.activeElement).toBe(closeButton);
+
+    fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(submitButton);
+  });
+
   it('shows a visually distinct terminal state for a Cancelled document, not the routine blocked state (IFB-07)', async () => {
     const fake = new FakeRepository([
       makePlan({
