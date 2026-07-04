@@ -1345,8 +1345,10 @@ describe('InboundPage', () => {
 
     // Every step that had NOT cleared before cancellation reads as `cancelled`,
     // never the routine amber `blocked` state a live, recoverable step would show.
+    // `findByTestId` (not the sync `getByTestId`) because the readiness query can
+    // still be settling on a later tick than the gate-in assertion above.
     for (const key of ['receiving', 'qc', 'lpn', 'release']) {
-      const step = screen.getByTestId(`inbound-workflow-step-${key}`);
+      const step = await screen.findByTestId(`inbound-workflow-step-${key}`);
       expect(step.textContent).toContain('Đã hủy');
       expect(step.textContent).not.toContain('Bị chặn');
     }
