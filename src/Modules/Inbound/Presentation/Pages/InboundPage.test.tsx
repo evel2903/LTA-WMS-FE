@@ -912,6 +912,73 @@ describe('InboundPage', () => {
     expect(within(details).getByText('RULE-IN-GATE-01')).toBeTruthy();
   });
 
+  it('shows inline, durable errors (not just the transient toast) for start-receiving-session and confirm-receipt-line failures, with the real backend message (IFB-06)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.startReceivingSession.mockRejectedValueOnce(
+      new ApiError({
+        status: 400,
+        code: 'BUSINESS_RULE',
+        message: 'Receiving session already closed for this plan.',
+      }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(
+      await screen.findByText('Receiving session already closed for this plan.'),
+    ).toBeTruthy();
+
+    // Retry succeeds so the flow can reach the confirm-receipt-line form.
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    fake.confirmReceiptLine.mockRejectedValueOnce(
+      new ApiError({
+        status: 400,
+        code: 'BUSINESS_RULE',
+        message: 'Actual quantity must be greater than zero.',
+      }),
+    );
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-err');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+    expect(await screen.findByText('Actual quantity must be greater than zero.')).toBeTruthy();
+  });
+
+  it('shows an inline error for a failed readiness override, with the real backend message (IFB-06)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    fake.validateReadiness.mockImplementation((_id, input) =>
+      input?.attemptOverride
+        ? Promise.reject(
+            new ApiError({
+              status: 403,
+              code: 'FORBIDDEN',
+              message: 'Reason code RC-V1-HANDOFF is not authorized for this action.',
+            }),
+          )
+        : Promise.resolve(fake.readiness),
+    );
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1/receiving');
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
+
+    expect(
+      await screen.findByText('Reason code RC-V1-HANDOFF is not authorized for this action.'),
+    ).toBeTruthy();
+  });
+
   it('exposes non-active step descriptions via aria-describedby without changing the accessible name', async () => {
     const fake = new FakeRepository([makePlan()]);
     repo.current = fake;
@@ -1756,6 +1823,89 @@ describe('InboundPage', () => {
       false,
     );
   }, 15_000);
+
+  it('shows the real backend message inline for a failed QC evaluation, not the old generic hard-coded copy (IFB-06)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.evaluateQcTask.mockRejectedValueOnce(
+      new ApiError({
+        status: 400,
+        code: 'BUSINESS_RULE',
+        message: 'Receipt line has already been evaluated for QC.',
+      }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-qc-err');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-err');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
+
+    expect(await screen.findByText('Receipt line has already been evaluated for QC.')).toBeTruthy();
+    expect(screen.queryByText('Không thể đánh giá QC.')).toBeNull();
+  });
+
+  it('shows the real backend message inline for a failed QC result recording, not the old generic hard-coded copy (IFB-06)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.recordQcResult.mockRejectedValueOnce(
+      new ApiError({
+        status: 409,
+        code: 'BUSINESS_RULE',
+        message: 'QC result has already been recorded for this task.',
+      }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    await expectReadinessAllowed();
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-qc-result-err');
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Xác nhận nhận hàng' }).closest('form') as HTMLFormElement,
+    );
+
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    await actor.click(screen.getByLabelText('Bắt buộc QC'));
+    await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency tác vụ QC'), 'qc-task-result-err');
+    await actor.click(screen.getByRole('button', { name: 'Đánh giá QC' }));
+    expect(await screen.findByText(/QC PendingQc \/ PENDING_QC \/ Forced/i)).toBeTruthy();
+
+    const recordButton = screen.getByRole('button', { name: 'Ghi nhận kết quả QC' });
+    await openTechnicalDetails(actor, 'inbound-qc-result-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency kết quả QC'));
+    await actor.type(screen.getByLabelText('Khóa idempotency kết quả QC'), 'qc-result-err');
+    await waitFor(() => expect(recordButton).toHaveProperty('disabled', false));
+    fireEvent.submit(recordButton.closest('form') as HTMLFormElement);
+
+    expect(
+      await screen.findByText('QC result has already been recorded for this task.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Không thể ghi nhận kết quả QC.')).toBeNull();
+  });
 
   it('evaluates QC skipped after a confirmed receipt line', async () => {
     const actor = userEvent.setup();

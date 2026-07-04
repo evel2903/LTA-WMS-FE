@@ -25,8 +25,8 @@ interface InboundQcPanelProps {
   canRecordQcResult: boolean;
   confirmedReceiptLine: ReceiptLine | null;
   evaluatedQcTask: QcTask | null;
-  hasEvaluateQcTaskError: boolean;
-  hasRecordQcResultError: boolean;
+  evaluateQcTaskErrorMessage: string | null;
+  recordQcResultErrorMessage: string | null;
   isEvaluateQcTaskPending: boolean;
   isRecordQcResultPending: boolean;
   onQcAcceptedQuantityChange: (value: string) => void;
@@ -141,8 +141,8 @@ export function InboundQcPanel({
   canRecordQcResult,
   confirmedReceiptLine,
   evaluatedQcTask,
-  hasEvaluateQcTaskError,
-  hasRecordQcResultError,
+  evaluateQcTaskErrorMessage,
+  recordQcResultErrorMessage,
   isEvaluateQcTaskPending,
   isRecordQcResultPending,
   onQcAcceptedQuantityChange,
@@ -461,11 +461,11 @@ export function InboundQcPanel({
             Kết quả QC {qcResult.resultStatus} / mục tiêu {qcResult.targetInventoryStatusCode}
           </p>
         )}
-        {hasEvaluateQcTaskError ? (
-          <p className="text-sm text-destructive">Không thể đánh giá QC.</p>
+        {evaluateQcTaskErrorMessage ? (
+          <p className="text-sm text-destructive">{evaluateQcTaskErrorMessage}</p>
         ) : null}
-        {hasRecordQcResultError ? (
-          <p className="text-sm text-destructive">Không thể ghi nhận kết quả QC.</p>
+        {recordQcResultErrorMessage ? (
+          <p className="text-sm text-destructive">{recordQcResultErrorMessage}</p>
         ) : null}
       </CardContent>
     </Card>
