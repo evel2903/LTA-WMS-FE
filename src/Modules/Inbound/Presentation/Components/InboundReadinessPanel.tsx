@@ -23,6 +23,12 @@ function getReadinessStatus(readiness: ReceivingReadiness | null, isReadinessLoa
   if (!readiness) return 'Chưa có kết quả kiểm tra sẵn sàng.';
   if (readiness.overrideAccepted) return 'Ghi đè đã được chấp nhận.';
   if (readiness.allowed) return 'Điều kiện tiếp nhận đã sẵn sàng.';
+  // ApprovalRequired is recoverable via the override control below (not a hard
+  // stop like Blocked), so it gets its own lead-in instead of falling through to
+  // the raw BE reason string the way Blocked does (IFB-05).
+  if (readiness.decision === 'ApprovalRequired') {
+    return `Cần phê duyệt readiness: ${readiness.reason}`;
+  }
   return readiness.reason;
 }
 

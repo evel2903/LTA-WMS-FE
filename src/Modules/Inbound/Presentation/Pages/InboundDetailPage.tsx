@@ -494,6 +494,10 @@ export function InboundDetailPage() {
     selected?.gateInAt || selected?.gateInStatus === 'Recorded' || readiness?.gateInRecorded,
   );
   const readinessDone = Boolean(readiness?.allowed || readiness?.overrideAccepted);
+  // Single source of truth for "readiness resolved ApprovalRequired and hasn't been
+  // overridden yet" — reused by the stepper state, the step description, and the
+  // console header title so the three can't silently diverge (IFB-05).
+  const readinessApprovalRequired = !readinessDone && readiness?.decision === 'ApprovalRequired';
   const readinessBusy = readinessQuery.isLoading || readinessQuery.isFetching;
   const canCreate = Boolean(
     sourceSystem.trim() &&
@@ -693,7 +697,7 @@ export function InboundDetailPage() {
               ? 'Dòng tiếp nhận có sai lệch, cần điều phối trước khi QC.'
               : 'Đã xác nhận ít nhất một dòng tiếp nhận.'
             : 'Sẵn sàng quét và xác nhận dòng hàng.'
-          : readiness?.decision === 'ApprovalRequired'
+          : readinessApprovalRequired
             ? 'Readiness cần phê duyệt — nhập mã lý do để ghi đè.'
             : 'Đang bị chặn bởi kiểm tra sẵn sàng.',
       state: resolveWorkflowStepState(
@@ -702,7 +706,7 @@ export function InboundDetailPage() {
         receivingDone && !needsDiscrepancyRouting,
         !readinessDone,
         false,
-        !readinessDone && readiness?.decision === 'ApprovalRequired',
+        readinessApprovalRequired,
       ),
     },
     {
@@ -1273,7 +1277,9 @@ export function InboundDetailPage() {
       : activeWorkflowStep === 'receiving'
         ? readinessDone
           ? 'Tiếp nhận hàng'
-          : 'Tiếp nhận đang bị chặn'
+          : readinessApprovalRequired
+            ? 'Tiếp nhận cần phê duyệt readiness'
+            : 'Tiếp nhận đang bị chặn'
         : activeWorkflowStep === 'qc'
           ? 'QC'
           : activeWorkflowStep === 'lpn'

@@ -894,6 +894,18 @@ describe('InboundPage', () => {
     ).toBeNull();
     // The override control stays available — ApprovalRequired is recoverable, not a dead end.
     expect(screen.getByTestId('inbound-readiness-panel')).toBeTruthy();
+    // The panel's own status text must not read the same as a hard Blocked case.
+    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
+      'Cần phê duyệt readiness',
+    );
+    // The console header title (a separate piece of on-screen copy) must agree with
+    // the stepper instead of still saying the generic "đang bị chặn".
+    expect(screen.getByTestId('inbound-console-step-action').textContent).toContain(
+      'cần phê duyệt readiness',
+    );
+    expect(screen.getByTestId('inbound-console-step-action').textContent).not.toContain(
+      'đang bị chặn',
+    );
 
     const details = await openTechnicalDetails(actor, 'inbound-technical-details');
     expect(within(details).getByText('Cần phê duyệt')).toBeTruthy();
