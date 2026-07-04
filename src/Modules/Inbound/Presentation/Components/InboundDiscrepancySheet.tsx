@@ -144,11 +144,23 @@ export function InboundDiscrepancySheet({
         return;
       }
       if (event.key !== 'Tab' || !dialogRef.current) return;
+      // `summary` is a native, always-tabbable disclosure toggle regardless of
+      // its <details>'s open/closed state, but it's never matched by the rest
+      // of this selector -- omitting it left the last REAL tab stop (when the
+      // submit button is disabled, e.g. the form isn't filled in yet) as
+      // whichever hidden field the collapsed "Chi tiết kỹ thuật" disclosure
+      // wraps, which the browser can't actually focus -- the trap's boundary
+      // check then never matched, so Tab silently escaped the dialog (live
+      // bug found via a real browser walkthrough, not caught by the unit
+      // tests, which always filled the form first).
       const focusable = Array.from(
         dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
         ),
-      );
+      ).filter((el) => {
+        const closedDetails = el.closest('details:not([open])');
+        return !closedDetails || el === closedDetails.querySelector(':scope > summary');
+      });
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
