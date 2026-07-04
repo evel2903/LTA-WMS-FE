@@ -720,7 +720,7 @@ export function InboundDetailPage() {
               : 'Đã xác nhận ít nhất một dòng tiếp nhận.'
             : 'Sẵn sàng quét và xác nhận dòng hàng.'
           : readinessApprovalRequired
-            ? 'Readiness cần phê duyệt — nhập mã lý do để ghi đè.'
+            ? 'Cần phê duyệt sẵn sàng — nhập mã lý do để ghi đè.'
             : 'Đang bị chặn bởi kiểm tra sẵn sàng.',
       state: resolveWorkflowStepState(
         'receiving',
@@ -1305,7 +1305,7 @@ export function InboundDetailPage() {
         ? readinessDone
           ? 'Tiếp nhận hàng'
           : readinessApprovalRequired
-            ? 'Tiếp nhận cần phê duyệt readiness'
+            ? 'Tiếp nhận cần phê duyệt sẵn sàng'
             : 'Tiếp nhận đang bị chặn'
         : activeWorkflowStep === 'qc'
           ? 'QC'
