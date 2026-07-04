@@ -14,6 +14,7 @@ interface InboundReadinessPanelProps {
   isReadinessLoading: boolean;
   onReasonCodeChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  overrideErrorMessage: string | null;
   readiness: ReceivingReadiness | null;
   reasonCode: string;
 }
@@ -63,6 +64,7 @@ export function InboundReadinessPanel({
   isReadinessLoading,
   onReasonCodeChange,
   onSubmit,
+  overrideErrorMessage,
   readiness,
   reasonCode,
 }: InboundReadinessPanelProps) {
@@ -139,6 +141,9 @@ export function InboundReadinessPanel({
           >
             Ghi đè kiểm tra sẵn sàng
           </button>
+          {overrideErrorMessage ? (
+            <p className="text-sm text-destructive">{overrideErrorMessage}</p>
+          ) : null}
         </form>
       </CardContent>
     </Card>

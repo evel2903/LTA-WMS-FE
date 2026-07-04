@@ -123,6 +123,14 @@ function formatDateTime(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+// Durable inline error text for a mutation, instead of relying solely on the
+// transient toast (IFB-06) — prefers the real backend message, falls back to a
+// generic per-action message, and is `null` (no paragraph rendered) when idle.
+function toPanelErrorMessage(error: unknown, fallback: string): string | null {
+  if (!error) return null;
+  return error instanceof ApiError ? error.message : fallback;
+}
+
 function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0 rounded-md border bg-background px-3 py-2">
@@ -1613,6 +1621,10 @@ export function InboundDetailPage() {
                 isReadinessLoading={readinessBusy}
                 onReasonCodeChange={setReadinessReasonCode}
                 onSubmit={submitOverride}
+                overrideErrorMessage={toPanelErrorMessage(
+                  mutations.validateReadiness.error,
+                  'Không thể ghi đè kiểm tra sẵn sàng.',
+                )}
                 readiness={readiness}
                 reasonCode={readinessReasonCode}
               />
@@ -1622,9 +1634,17 @@ export function InboundDetailPage() {
               <InboundReceivingPanel
                 canConfirmReceiptLine={canConfirmReceiptLine}
                 canStartReceiving={canStartReceiving}
+                confirmReceiptLineErrorMessage={toPanelErrorMessage(
+                  mutations.confirmReceiptLine.error,
+                  'Không thể xác nhận nhận hàng.',
+                )}
                 hasPlan={Boolean(selected)}
                 isConfirmReceiptLinePending={mutations.confirmReceiptLine.isPending}
                 isStartReceivingPending={mutations.startReceivingSession.isPending}
+                startReceivingErrorMessage={toPanelErrorMessage(
+                  mutations.startReceivingSession.error,
+                  'Không thể bắt đầu phiên tiếp nhận.',
+                )}
                 onReceiptActualQuantityChange={setReceiptActualQuantity}
                 onReceiptIdempotencyKeyChange={setReceiptIdempotencyKey}
                 onReceiptManualConfirmChange={setReceiptManualConfirm}
@@ -1654,8 +1674,14 @@ export function InboundDetailPage() {
                 canRecordQcResult={canRecordQcResult}
                 confirmedReceiptLine={confirmedReceiptLine}
                 evaluatedQcTask={evaluatedQcTask}
-                hasEvaluateQcTaskError={Boolean(mutations.evaluateQcTask.error)}
-                hasRecordQcResultError={Boolean(mutations.recordQcResult.error)}
+                evaluateQcTaskErrorMessage={toPanelErrorMessage(
+                  mutations.evaluateQcTask.error,
+                  'Không thể đánh giá QC.',
+                )}
+                recordQcResultErrorMessage={toPanelErrorMessage(
+                  mutations.recordQcResult.error,
+                  'Không thể ghi nhận kết quả QC.',
+                )}
                 isEvaluateQcTaskPending={mutations.evaluateQcTask.isPending}
                 isRecordQcResultPending={mutations.recordQcResult.isPending}
                 onQcAcceptedQuantityChange={setQcAcceptedQuantity}
@@ -1723,13 +1749,10 @@ export function InboundDetailPage() {
                   receivingSession={receivingSession ?? null}
                   releaseAttemptLabelOverride={releaseAttemptLabelOverride}
                   releaseCurrentLocationCode={releaseCurrentLocationCode}
-                  releaseErrorMessage={
-                    mutations.releaseInboundToPutaway.error instanceof ApiError
-                      ? mutations.releaseInboundToPutaway.error.message
-                      : mutations.releaseInboundToPutaway.error
-                        ? 'Không thể phát hành sang cất hàng.'
-                        : null
-                  }
+                  releaseErrorMessage={toPanelErrorMessage(
+                    mutations.releaseInboundToPutaway.error,
+                    'Không thể phát hành sang cất hàng.',
+                  )}
                   releaseEvidenceRefs={releaseEvidenceRefs}
                   releaseIdempotencyKey={releaseIdempotencyKey}
                   releaseReasonCode={releaseReasonCode}

@@ -16,9 +16,11 @@ import type {
 interface InboundReceivingPanelProps {
   canConfirmReceiptLine: boolean;
   canStartReceiving: boolean;
+  confirmReceiptLineErrorMessage: string | null;
   hasPlan: boolean;
   isConfirmReceiptLinePending: boolean;
   isStartReceivingPending: boolean;
+  startReceivingErrorMessage: string | null;
   onReceiptActualQuantityChange: (value: string) => void;
   onReceiptIdempotencyKeyChange: (value: string) => void;
   onReceiptManualConfirmChange: (value: boolean) => void;
@@ -111,9 +113,11 @@ function formatQuantity(value: number) {
 export function InboundReceivingPanel({
   canConfirmReceiptLine,
   canStartReceiving,
+  confirmReceiptLineErrorMessage,
   hasPlan,
   isConfirmReceiptLinePending,
   isStartReceivingPending,
+  startReceivingErrorMessage,
   onReceiptActualQuantityChange,
   onReceiptIdempotencyKeyChange,
   onReceiptManualConfirmChange,
@@ -205,6 +209,9 @@ export function InboundReceivingPanel({
               {receivingSession.isDuplicate ? ' đã dùng lại' : ' đã sẵn sàng'}.
             </p>
           )}
+          {startReceivingErrorMessage ? (
+            <p className="text-sm text-destructive">{startReceivingErrorMessage}</p>
+          ) : null}
         </form>
 
         <form className="space-y-3" onSubmit={onSubmitReceiptLine}>
@@ -322,6 +329,9 @@ export function InboundReceivingPanel({
                 : ''}
             </p>
           )}
+          {confirmReceiptLineErrorMessage ? (
+            <p className="text-sm text-destructive">{confirmReceiptLineErrorMessage}</p>
+          ) : null}
         </form>
       </CardContent>
     </Card>
