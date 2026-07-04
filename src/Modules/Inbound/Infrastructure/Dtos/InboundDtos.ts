@@ -121,11 +121,12 @@ export interface ValidateReceivingReadinessRequestDto {
 export interface ReceivingReadinessDto {
   Allowed: boolean;
   Blocked: boolean;
-  Decision: 'Allowed' | 'Blocked' | 'OverrideAccepted';
+  Decision: 'Allowed' | 'Blocked' | 'ApprovalRequired' | 'OverrideAccepted';
   GateInRequired: boolean;
   GateInRecorded: boolean;
   OverrideAccepted: boolean;
   Reason: string;
+  RuleCode?: string | null;
   InboundPlanId?: string;
   BusinessReference?: string;
 }

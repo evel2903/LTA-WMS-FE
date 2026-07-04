@@ -9,6 +9,7 @@ import type {
   QcResultDto,
   QcTaskDto,
   ReceiptLineDto,
+  ReceivingReadinessDto,
   ReceivingSessionDto,
 } from '@modules/Inbound/Infrastructure/Dtos/InboundDtos';
 import { InboundMapper } from '@modules/Inbound/Infrastructure/Mappers/InboundMapper';
@@ -348,6 +349,48 @@ describe('InboundMapper', () => {
       AttemptOverride: true,
       ReasonCode: 'RC-V1-HANDOFF',
     });
+  });
+
+  it('maps an ApprovalRequired readiness decision and its ruleCode into the domain object (IFB-05)', () => {
+    const approvalRequiredDto: ReceivingReadinessDto = {
+      Allowed: false,
+      Blocked: true,
+      Decision: 'ApprovalRequired',
+      GateInRequired: true,
+      GateInRecorded: false,
+      OverrideAccepted: false,
+      Reason: 'Gate-in requires approval before receiving.',
+      RuleCode: 'RULE-IN-GATE-01',
+      InboundPlanId: 'inbound-plan-1',
+      BusinessReference: 'ERP:ASN:ASN-10001',
+    };
+
+    expect(InboundMapper.toReadiness(approvalRequiredDto)).toEqual({
+      allowed: false,
+      blocked: true,
+      decision: 'ApprovalRequired',
+      gateInRequired: true,
+      gateInRecorded: false,
+      overrideAccepted: false,
+      reason: 'Gate-in requires approval before receiving.',
+      ruleCode: 'RULE-IN-GATE-01',
+      inboundPlanId: 'inbound-plan-1',
+      businessReference: 'ERP:ASN:ASN-10001',
+    });
+  });
+
+  it('defaults ruleCode to null when the backend omits it', () => {
+    const blockedDto: ReceivingReadinessDto = {
+      Allowed: false,
+      Blocked: true,
+      Decision: 'Blocked',
+      GateInRequired: true,
+      GateInRecorded: false,
+      OverrideAccepted: false,
+      Reason: 'Gate-in is required before receiving.',
+    };
+
+    expect(InboundMapper.toReadiness(blockedDto).ruleCode).toBeNull();
   });
 
   it('maps receiving session and receipt line DTOs into domain objects', () => {

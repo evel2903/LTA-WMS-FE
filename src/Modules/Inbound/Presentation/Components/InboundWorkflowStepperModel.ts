@@ -7,7 +7,7 @@ export type InboundWorkflowStepKey =
   | 'lpn'
   | 'release';
 
-export type InboundWorkflowStepState = 'done' | 'active' | 'waiting' | 'blocked' | 'skipped';
+export type InboundWorkflowStepState = 'done' | 'active' | 'waiting' | 'blocked' | 'approval' | 'skipped';
 
 export interface InboundWorkflowStep {
   key: InboundWorkflowStepKey;

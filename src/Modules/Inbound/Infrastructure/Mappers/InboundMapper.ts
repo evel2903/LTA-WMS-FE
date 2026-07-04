@@ -140,6 +140,7 @@ export const InboundMapper = {
       gateInRecorded: dto.GateInRecorded,
       overrideAccepted: dto.OverrideAccepted,
       reason: dto.Reason,
+      ruleCode: dto.RuleCode ?? null,
       inboundPlanId: dto.InboundPlanId,
       businessReference: dto.BusinessReference,
     };

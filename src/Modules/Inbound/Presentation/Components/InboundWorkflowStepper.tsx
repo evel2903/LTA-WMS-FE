@@ -1,4 +1,4 @@
-import { Check, CircleDashed, Lock, Play } from 'lucide-react';
+import { Check, CircleDashed, Lock, Play, UserCheck } from 'lucide-react';
 
 import { cn } from '@shared/Utils/Cn';
 import type {
@@ -11,6 +11,7 @@ const stateLabels: Record<InboundWorkflowStepState, string> = {
   active: 'Đang xử lý',
   waiting: 'Đang chờ',
   blocked: 'Bị chặn',
+  approval: 'Cần phê duyệt',
   skipped: 'Không yêu cầu',
 };
 
@@ -21,16 +22,21 @@ const stateCircleIcon: Record<InboundWorkflowStepState, typeof Check | null> = {
   active: Play,
   waiting: null,
   blocked: Lock,
+  approval: UserCheck,
   skipped: CircleDashed,
 };
 
 // Status circle tint, kept consistent with the per-state palette used elsewhere
 // in the console (emerald = done, primary = active, sky = skipped, muted = rest).
+// `approval` gets its own violet tint, distinct from `blocked`'s amber — a rule
+// resolving ApprovalRequired is recoverable via the override control already on
+// screen, not a hard stop, so it must not read as the same "locked" state.
 const stateCircleClass: Record<InboundWorkflowStepState, string> = {
   done: 'border-emerald-500 bg-emerald-500 text-white',
   active: 'border-primary bg-primary text-primary-foreground',
   waiting: 'border-border bg-background text-muted-foreground',
   blocked: 'border-amber-300 bg-amber-50 text-amber-700',
+  approval: 'border-violet-300 bg-violet-50 text-violet-700',
   skipped: 'border-sky-300 bg-sky-50 text-sky-700',
 };
 
@@ -40,6 +46,7 @@ const stateTextClass: Record<InboundWorkflowStepState, string> = {
   active: 'text-primary',
   waiting: 'text-muted-foreground',
   blocked: 'text-amber-700',
+  approval: 'text-violet-700',
   skipped: 'text-sky-700',
 };
 
