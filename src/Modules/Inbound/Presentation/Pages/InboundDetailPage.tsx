@@ -532,8 +532,17 @@ export function InboundDetailPage() {
       !mutations.validateReadiness.isPending &&
       readinessReasonCode.trim(),
   );
+  // `!receivingSession` is enforced here (the source-of-truth predicate), not
+  // only by the panel unmounting the button once a session exists (IFB-08) —
+  // otherwise a future caller reading canStartReceiving directly could
+  // silently reintroduce a double-start.
   const canStartReceiving = Boolean(
-    selected && !isCancelledTerminal && readinessDone && !readinessBusy && receivingSessionKey.trim(),
+    selected &&
+      !isCancelledTerminal &&
+      !receivingSession &&
+      readinessDone &&
+      !readinessBusy &&
+      receivingSessionKey.trim(),
   );
   const canConfirmReceiptLine = Boolean(
     !isCancelledTerminal &&
