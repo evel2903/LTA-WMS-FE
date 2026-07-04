@@ -28,8 +28,10 @@ export interface LookupSelectProps {
 
 // `w-full min-w-0` is essential: a native <select> defaults to min-width:auto (sizes to its
 // widest option), which overflows narrow grid columns and visually overlaps the next field.
+// `h-10` (not h-9): 40px RF touch-target floor for warehouse-floor operators on
+// handheld/tablet devices (IFB-09).
 const selectClassName =
-  'h-9 w-full min-w-0 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
+  'h-10 w-full min-w-0 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
 
 export function LookupSelect({
   id,

@@ -81,4 +81,10 @@ describe('LookupSelect', () => {
     renderSelect({ isError: true, options: [] });
     expect(screen.getByText('Lỗi tải.')).toBeTruthy();
   });
+
+  it('renders at the 40px RF touch-target floor, not the 36px default (IFB-09)', () => {
+    const { select } = renderSelect();
+    expect(select.className).toContain('h-10');
+    expect(select.className).not.toContain('h-9');
+  });
 });

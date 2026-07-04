@@ -316,7 +316,7 @@ export function InboundQcPanel({
                   name="qcResultStatus"
                   value={qcResultStatus}
                   onChange={(event) => onQcResultStatusChange(event.target.value as QcResultStatus)}
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                  className="min-h-10 rounded-md border bg-background px-3 py-2 text-sm"
                   disabled={qcResultDisabled}
                 >
                   {QC_RESULT_STATUSES.map((status) => (
@@ -335,7 +335,7 @@ export function InboundQcPanel({
                   onChange={(event) =>
                     onQcDispositionCodeChange(event.target.value as QcDispositionCode)
                   }
-                  className="rounded-md border bg-background px-3 py-2 text-sm"
+                  className="min-h-10 rounded-md border bg-background px-3 py-2 text-sm"
                   disabled={qcResultDisabled}
                 >
                   {QC_DISPOSITION_CODES.map((code) => (

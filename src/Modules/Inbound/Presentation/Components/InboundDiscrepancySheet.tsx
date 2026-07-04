@@ -220,7 +220,7 @@ export function InboundDiscrepancySheet({
                 onChange={(event) =>
                   onDiscrepancyTypeChange(event.target.value as InboundDiscrepancyType)
                 }
-                className="rounded-md border bg-background px-3 py-2 text-sm"
+                className="min-h-10 rounded-md border bg-background px-3 py-2 text-sm"
                 disabled={!confirmedReceiptLine}
               >
                 {INBOUND_DISCREPANCY_TYPES.map((type) => (
