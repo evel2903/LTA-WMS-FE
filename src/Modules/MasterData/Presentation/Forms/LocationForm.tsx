@@ -17,6 +17,8 @@ import {
   type LocationFormValues,
 } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
 
+export type LocationFormDirtyFields = Partial<Record<keyof LocationFormValues, boolean | object>>;
+
 interface LocationFormProps {
   warehouseId?: string;
   zoneId?: string;
@@ -26,7 +28,7 @@ interface LocationFormProps {
   disabled?: boolean;
   pending?: boolean;
   submitLabel: string;
-  onSubmit: (values: LocationFormValues) => void;
+  onSubmit: (values: LocationFormValues, dirtyFields: LocationFormDirtyFields) => void;
 }
 
 function ManageProfilesLink() {
@@ -106,7 +108,10 @@ export function LocationForm({
   }
 
   return (
-    <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
+    <form
+      className="grid gap-3"
+      onSubmit={form.handleSubmit((values) => onSubmit(values, form.formState.dirtyFields))}
+    >
       <input type="hidden" {...form.register('warehouseId')} />
       <input type="hidden" {...form.register('zoneId')} />
       <input type="hidden" {...form.register('parentLocationId')} />
@@ -158,7 +163,7 @@ export function LocationForm({
             <Input disabled={disabled} {...form.register('aisleCode')} />
           </label>
           <label className="grid gap-1 text-sm">
-            Kệ/Shelf
+            Kệ
             <Input disabled={disabled} {...form.register('rackCode')} />
           </label>
           <label className="grid gap-1 text-sm">
@@ -166,7 +171,7 @@ export function LocationForm({
             <Input disabled={disabled} {...form.register('levelCode')} />
           </label>
           <label className="grid gap-1 text-sm">
-            Ô/bin
+            Ô
             <Input disabled={disabled} {...form.register('binCode')} />
           </label>
         </div>

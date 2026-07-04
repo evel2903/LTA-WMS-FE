@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '@app/Config/Routes';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IMasterDataRepository } from '@modules/MasterData/Application/Interfaces/IMasterDataRepository';
+import { MASTER_DATA_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/MasterDataConstants';
 import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import type {
   CreateLocationProfileInput,
@@ -35,8 +36,18 @@ vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
 import { LocationProfileCatalogPage } from '@modules/MasterData/Presentation/Pages/LocationProfileCatalogPage';
 import { LocationProfileDetailPage } from '@modules/MasterData/Presentation/Pages/LocationProfileDetailPage';
 
-function page<T>(items: T[]): PaginatedResponse<T> {
-  return { items, page: 1, pageSize: 100, totalItems: items.length, totalPages: 1 };
+function page<T>(items: T[], pageNumber = 1, pageSize = 100): PaginatedResponse<T> {
+  const totalItems = items.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const start = (pageNumber - 1) * pageSize;
+
+  return {
+    items: items.slice(start, start + pageSize),
+    page: pageNumber,
+    pageSize,
+    totalItems,
+    totalPages,
+  };
 }
 
 function makeProfile(overrides: Partial<LocationProfile> = {}): LocationProfile {
@@ -72,16 +83,14 @@ class FakeRepository implements Partial<IMasterDataRepository> {
     const status = filter?.status;
     const profileCode = filter?.profileCode?.toLowerCase();
     const locationType = filter?.locationType?.toLowerCase();
-    return Promise.resolve(
-      page(
-        this.items.filter((item) => {
-          if (status && item.status !== status) return false;
-          if (profileCode && !item.profileCode.toLowerCase().includes(profileCode)) return false;
-          if (locationType && !item.locationType.toLowerCase().includes(locationType)) return false;
-          return true;
-        }),
-      ),
-    );
+    const filtered = this.items.filter((item) => {
+      if (status && item.status !== status) return false;
+      if (profileCode && !item.profileCode.toLowerCase().includes(profileCode)) return false;
+      if (locationType && !item.locationType.toLowerCase().includes(locationType)) return false;
+      return true;
+    });
+
+    return Promise.resolve(page(filtered, filter?.page ?? 1, filter?.pageSize ?? 100));
   });
 
   getLocationProfile = vi.fn((id: string) =>
@@ -167,7 +176,7 @@ describe('LocationProfileCatalogPage (A10)', () => {
     await actor.type(await screen.findByLabelText('Mã hồ sơ'), 'BIN-STD');
     await actor.type(screen.getByLabelText('Tên hồ sơ'), 'Standard Bin');
     await actor.type(screen.getByLabelText('Loại vị trí'), 'Bin');
-    fireEvent.change(screen.getByLabelText('Capacity policy'), {
+    fireEvent.change(screen.getByLabelText('Chính sách sức chứa'), {
       target: { value: '{ "maxQty": 100 }' },
     });
     await actor.click(screen.getByRole('button', { name: 'Tạo hồ sơ' }));
@@ -182,6 +191,10 @@ describe('LocationProfileCatalogPage (A10)', () => {
       ),
     );
     await screen.findByRole('heading', { name: 'BIN-STD' });
+    expect(screen.getByText('Phiên bản')).toBeTruthy();
+    expect(screen.getAllByText('Chính sách sức chứa').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Capacity')).toBeNull();
+    expect(screen.queryByLabelText('Capacity policy')).toBeNull();
 
     await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
     const updateButton = await screen.findByRole('button', { name: 'Cập nhật hồ sơ' });
@@ -209,7 +222,86 @@ describe('LocationProfileCatalogPage (A10)', () => {
         expect.objectContaining({ status: 'Inactive' }),
       ),
     );
-    await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Không hoạt động').length).toBeGreaterThan(0));
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull();
+  });
+
+  it('renders the catalog with Vietnamese filters, status, and pagination copy', async () => {
+    const fake = new FakeRepository([makeProfile()]);
+    repo.current = fake as unknown as IMasterDataRepository;
+    renderPage();
+
+    expect((await screen.findAllByText('BIN-STD')).length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText('VD: BIN-STD')).toBeTruthy();
+    expect(screen.getByPlaceholderText('VD: Ô chứa')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('e.g. BIN-STD')).toBeNull();
+    expect(screen.queryByPlaceholderText('e.g. Bin')).toBeNull();
+    expect(screen.getByText('Trang 1 / 1')).toBeTruthy();
+    expect(screen.getAllByText('Đang hoạt động').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Active')).toBeNull();
+    expect(
+      screen
+        .getAllByRole('button', { name: /BIN-STD/ })
+        .some((button) => button.className.includes('bg-card')),
+    ).toBe(true);
+  });
+
+  it('shows first-run empty guidance with a create action before any location profile exists', async () => {
+    const fake = new FakeRepository([]);
+    repo.current = fake as unknown as IMasterDataRepository;
+    renderPage();
+
+    expect(await screen.findByText('Chưa có hồ sơ vị trí')).toBeTruthy();
+    expect(screen.getByText('Tạo hồ sơ vị trí đầu tiên trước khi gán hồ sơ cho vị trí vật lý.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Tạo hồ sơ vị trí' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.LOCATION_PROFILE_NEW,
+    );
+  });
+
+  it('returns to a valid page instead of showing first-run empty when the current page exceeds total pages', async () => {
+    const actor = userEvent.setup();
+    const pageOneItems = Array.from({ length: 50 }, (_, index) =>
+      makeProfile({
+        id: `profile-${index}`,
+        profileCode: `BIN-${String(index).padStart(3, '0')}`,
+      }),
+    );
+    const remaining = makeProfile({ id: 'profile-remaining', profileCode: 'BIN-REMAINING' });
+    let sawOutOfRangePage = false;
+    const listLocationProfiles = vi.fn((filter?: MasterDataListFilter) => {
+      if (filter?.page === 2) {
+        sawOutOfRangePage = true;
+        return Promise.resolve({
+          items: [],
+          page: 2,
+          pageSize: MASTER_DATA_DEFAULT_PAGE_SIZE,
+          totalItems: 1,
+          totalPages: 1,
+        });
+      }
+
+      return Promise.resolve(
+        sawOutOfRangePage
+          ? page([remaining], 1, MASTER_DATA_DEFAULT_PAGE_SIZE)
+          : {
+              items: pageOneItems,
+              page: 1,
+              pageSize: MASTER_DATA_DEFAULT_PAGE_SIZE,
+              totalItems: 51,
+              totalPages: 2,
+            },
+      );
+    });
+    repo.current = { listLocationProfiles } as unknown as IMasterDataRepository;
+    renderPage();
+
+    expect((await screen.findAllByText('BIN-000')).length).toBeGreaterThan(0);
+    await actor.click(screen.getByRole('button', { name: 'Tiếp' }));
+
+    await waitFor(() =>
+      expect(listLocationProfiles.mock.calls.some(([filter]) => filter?.page === 2)).toBe(true),
+    );
+    await waitFor(() => expect(screen.getAllByText('BIN-REMAINING').length).toBeGreaterThan(0));
+    expect(screen.queryByText('Chưa có hồ sơ vị trí')).toBeNull();
   });
 });

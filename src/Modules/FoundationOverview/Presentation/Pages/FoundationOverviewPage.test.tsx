@@ -235,7 +235,7 @@ describe('FoundationOverviewPage (C17)', () => {
 
     expect(await screen.findByText('Mức sẵn sàng dữ liệu chủ')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Tổng quan nền tảng' })).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Tổng quan nền tảng list' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Tổng quan nền tảng danh sách' })).toBeTruthy();
     expect(screen.getAllByText('Thiếu cấu hình').length).toBeGreaterThan(0);
     expect(screen.queryByText('Missing')).toBeNull();
     expect(screen.getByText('WH-A')).toBeTruthy();

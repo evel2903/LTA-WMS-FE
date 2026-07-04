@@ -4,6 +4,7 @@ import type { LocationProfile } from '@modules/MasterData/Domain/Types/MasterDat
 import type { SiteLocationTree } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { LocationProfileConstraintsPanel } from '@modules/MasterData/Presentation/Components/LocationProfileConstraintsPanel';
 import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
+import { physicalFieldDisplay } from '@modules/MasterData/Presentation/Components/PhysicalAddressFallback';
 
 function DetailRow({ label, value }: { label: string; value: string | number | boolean | null | undefined }) {
   return (
@@ -14,42 +15,57 @@ function DetailRow({ label, value }: { label: string; value: string | number | b
   );
 }
 
+function nodeTypeLabel(type: SiteLocationTree['type']): string {
+  switch (type) {
+    case 'site':
+      return 'Điểm vận hành';
+    case 'warehouse':
+      return 'Kho';
+    case 'zone':
+      return 'Khu vực';
+    case 'location':
+      return 'Vị trí';
+    default:
+      return type;
+  }
+}
+
 function renderEntityDetails(node: SiteLocationTree) {
   switch (node.type) {
     case 'site':
       return (
         <>
-          <DetailRow label="Code" value={node.entity.siteCode} />
-          <DetailRow label="Name" value={node.entity.siteName} />
+          <DetailRow label="Mã site" value={node.entity.siteCode} />
+          <DetailRow label="Tên site" value={node.entity.siteName} />
         </>
       );
     case 'warehouse':
       return (
         <>
-          <DetailRow label="Code" value={node.entity.warehouseCode} />
-          <DetailRow label="Name" value={node.entity.warehouseName} />
-          <DetailRow label="Type" value={node.entity.warehouseTypeCode} />
+          <DetailRow label="Mã kho" value={node.entity.warehouseCode} />
+          <DetailRow label="Tên kho" value={node.entity.warehouseName} />
+          <DetailRow label="Loại kho" value={node.entity.warehouseTypeCode} />
         </>
       );
     case 'zone':
       return (
         <>
-          <DetailRow label="Code" value={node.entity.zoneCode} />
-          <DetailRow label="Name" value={node.entity.zoneName} />
-          <DetailRow label="Type" value={node.entity.zoneType} />
+          <DetailRow label="Mã zone" value={node.entity.zoneCode} />
+          <DetailRow label="Tên zone" value={node.entity.zoneName} />
+          <DetailRow label="Loại zone" value={node.entity.zoneType} />
         </>
       );
     case 'location':
       return (
         <>
-          <DetailRow label="Code" value={node.entity.locationCode} />
-          <DetailRow label="Name" value={node.entity.locationName} />
-          <DetailRow label="Type" value={node.entity.locationType} />
-          <DetailRow label="Dãy" value={node.entity.aisleCode} />
-          <DetailRow label="Kệ/Shelf" value={node.entity.rackCode} />
-          <DetailRow label="Tầng" value={node.entity.levelCode} />
-          <DetailRow label="Ô/bin" value={node.entity.binCode} />
-          <DetailRow label="Profile" value={node.entity.locationProfileId} />
+          <DetailRow label="Mã vị trí" value={node.entity.locationCode} />
+          <DetailRow label="Tên vị trí" value={node.entity.locationName} />
+          <DetailRow label="Loại vị trí" value={node.entity.locationType} />
+          <DetailRow label="Dãy" value={physicalFieldDisplay(node.entity, 'aisle', '-')} />
+          <DetailRow label="Kệ" value={physicalFieldDisplay(node.entity, 'rack', '-')} />
+          <DetailRow label="Tầng" value={physicalFieldDisplay(node.entity, 'level', '-')} />
+          <DetailRow label="Ô" value={physicalFieldDisplay(node.entity, 'bin', '-')} />
+          <DetailRow label="Hồ sơ vị trí" value={node.entity.locationProfileId} />
           <DetailRow label="Sức chứa" value={node.entity.capacityQty} />
           <DetailRow label="Trộn SKU" value={node.entity.mixSkuPolicy} />
         </>
@@ -95,7 +111,7 @@ export function SiteLocationDetailPanel({
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div>
           <CardTitle className="text-base">{selectedNode.label}</CardTitle>
-          <div className="text-muted-foreground mt-1 text-xs uppercase">{selectedNode.type}</div>
+          <div className="text-muted-foreground mt-1 text-xs uppercase">{nodeTypeLabel(selectedNode.type)}</div>
         </div>
         <div className="flex items-center gap-2">
           {!canEdit && <span className="text-muted-foreground text-xs font-medium">Chỉ đọc</span>}
@@ -110,7 +126,7 @@ export function SiteLocationDetailPanel({
           </Alert>
         )}
         <div className="space-y-2">
-          <DetailRow label="ID" value={selectedNode.entity.id} />
+          <DetailRow label="Mã hệ thống" value={selectedNode.entity.id} />
           {renderEntityDetails(selectedNode)}
           <DetailRow label="Cập nhật lúc" value={selectedNode.entity.updatedAt} />
         </div>

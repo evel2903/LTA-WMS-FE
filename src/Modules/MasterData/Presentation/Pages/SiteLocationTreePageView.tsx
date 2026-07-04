@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
+import { DetailPageShell, type PageBoundaryState } from '@shared/Components/Page';
 import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
@@ -91,6 +92,60 @@ function renderDeferredPanel(panel: DeferredPanel | undefined, onComplete: () =>
   return typeof panel === 'function' ? panel(onComplete) : panel;
 }
 
+function toDetailPageState(state: SiteLocationTreePageState): PageBoundaryState | null {
+  switch (state) {
+    case 'loading':
+      return 'loading';
+    case 'error':
+      return 'error';
+    case 'denied':
+      return 'forbidden';
+    case 'not-found':
+      return 'notFound';
+    case 'empty':
+      return 'empty';
+    case 'ready':
+      return null;
+    default:
+      return null;
+  }
+}
+
+function detailStateCopy(
+  state: SiteLocationTreePageState,
+  errorMessage?: string,
+): { title?: string; message?: string } {
+  switch (state) {
+    case 'loading':
+      return {
+        title: 'Đang tải sơ đồ site và vị trí',
+        message: 'Màn hình đang tải cấu trúc vật lý của kho đang chọn.',
+      };
+    case 'error':
+      return {
+        title: 'Không thể tải sơ đồ site và vị trí',
+        message: errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.',
+      };
+    case 'denied':
+      return {
+        title: 'Không có quyền',
+        message: 'Bạn không có quyền đọc sơ đồ site và vị trí trong phạm vi này.',
+      };
+    case 'not-found':
+      return {
+        title: 'Không tìm thấy kho',
+        message: 'Kho trong đường dẫn không còn tồn tại hoặc bạn không có quyền xem cấu trúc vật lý của kho này.',
+      };
+    case 'empty':
+      return {
+        title: 'Chưa có cấu trúc kho',
+        message: 'Tạo site và kho ở danh sách kho trước khi mở sơ đồ cấu trúc vật lý.',
+      };
+    default:
+      return {};
+  }
+}
+
 export function SiteLocationTreePageView({
   mode = 'detail',
   state,
@@ -107,6 +162,31 @@ export function SiteLocationTreePageView({
 }: SiteLocationTreePageViewProps) {
   const [siteModalOpen, setSiteModalOpen] = useState(false);
   const [warehouseModalOpen, setWarehouseModalOpen] = useState(false);
+
+  if (mode === 'detail' && state !== 'ready') {
+    const detailState = toDetailPageState(state);
+    const { title, message } = detailStateCopy(state, errorMessage);
+
+    return (
+      <DetailPageShell
+        title="Sơ đồ cấu trúc kho"
+        subtitle="Xem khu vực và vị trí vật lý của kho đang chọn."
+        backTo={ROUTES.FOUNDATION.LOCATIONS}
+        backLabel="Quay lại danh sách kho"
+        contentAriaLabel="Sơ đồ cấu trúc kho chi tiết"
+        state={detailState}
+        stateTitle={title}
+        stateMessage={message}
+        stateAction={
+          state === 'empty' ? (
+            <Button asChild variant="outline">
+              <Link to={ROUTES.FOUNDATION.LOCATIONS}>Về danh sách kho</Link>
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  }
 
   if (state === 'denied') {
     return (
@@ -253,13 +333,13 @@ export function SiteLocationTreePageView({
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        mode="detail"
-        canCreate={canCreate}
-        onCreateSite={() => setSiteModalOpen(true)}
-        onCreateWarehouse={() => setWarehouseModalOpen(true)}
-      />
+    <DetailPageShell
+      title="Sơ đồ cấu trúc kho"
+      subtitle="Xem khu vực và vị trí vật lý của kho đang chọn."
+      backTo={ROUTES.FOUNDATION.LOCATIONS}
+      backLabel="Quay lại danh sách kho"
+      contentAriaLabel="Sơ đồ cấu trúc kho chi tiết"
+    >
       <WarehouseMapPanel nodes={nodes} selectedNode={selectedNode} onSelect={onSelect} />
 
       <SiteLocationDetailPanel
@@ -267,7 +347,7 @@ export function SiteLocationTreePageView({
         locationProfiles={locationProfiles}
         canEdit={canEdit}
       />
-    </div>
+    </DetailPageShell>
   );
 }
 
@@ -396,7 +476,7 @@ function WarehouseMasterList({ nodes, canCreate }: { nodes: SiteLocationTree[]; 
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right">Khu</TableHead>
                   <TableHead className="text-right">Vị trí vật lý</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead className="text-right">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

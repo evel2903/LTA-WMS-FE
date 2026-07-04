@@ -228,6 +228,7 @@ export function FoundationOverviewPage() {
       state={state}
       stateTitle={stateCopy.title}
       stateMessage={stateCopy.message}
+      contentAriaLabel="Tổng quan nền tảng danh sách"
     >
       {overview ? (
         <>

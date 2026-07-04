@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ListPageShell } from '@shared/Components/Page';
-import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
@@ -31,7 +31,16 @@ import type {
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
-import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
+import {
+  explicitPhysicalField,
+  fallbackPhysicalField,
+  locationWithPhysicalFallback,
+  physicalFieldDisplay,
+  physicalFilterValue,
+  type PhysicalAddressPart,
+} from '@modules/MasterData/Presentation/Components/PhysicalAddressFallback';
+import { LocationForm, type LocationFormDirtyFields } from '@modules/MasterData/Presentation/Forms/LocationForm';
+import type { LocationFormValues } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
 import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
 import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseForm';
 import { ZoneForm } from '@modules/MasterData/Presentation/Forms/ZoneForm';
@@ -145,52 +154,39 @@ function statusLabel(status: string): string {
   }
 }
 
-type PhysicalAddressPart = 'aisle' | 'rack' | 'level' | 'bin';
-
-function explicitPhysicalField(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
-
 function physicalField(location: Location, part: PhysicalAddressPart): string {
-  return physicalFilterValue(location, part) || 'Chưa cấu hình';
+  return physicalFieldDisplay(location, part);
 }
 
-function physicalFilterValue(location: Location, part: PhysicalAddressPart): string {
-  const explicit =
-    part === 'aisle'
-      ? explicitPhysicalField(location.aisleCode)
-      : part === 'rack'
-        ? explicitPhysicalField(location.rackCode)
-        : part === 'level'
-          ? explicitPhysicalField(location.levelCode)
-          : explicitPhysicalField(location.binCode);
+const physicalFormFields = [
+  { field: 'aisleCode', part: 'aisle' },
+  { field: 'rackCode', part: 'rack' },
+  { field: 'levelCode', part: 'level' },
+  { field: 'binCode', part: 'bin' },
+] as const satisfies ReadonlyArray<{ field: keyof Pick<LocationFormValues, 'aisleCode' | 'rackCode' | 'levelCode' | 'binCode'>; part: PhysicalAddressPart }>;
 
-  return explicit ?? fallbackPhysicalField(location, part) ?? '';
-}
+function preserveUnchangedPhysicalFallbacks(
+  values: LocationFormValues,
+  original: Location,
+  dirtyFields: LocationFormDirtyFields,
+): LocationFormValues {
+  const next: LocationFormValues = { ...values };
 
-function fallbackPhysicalField(location: Location, part: PhysicalAddressPart): string | null {
-  const parts = physicalNumericParts(location.locationCode);
-  const order = positiveLocationOrder(location);
-  const value =
-    part === 'aisle'
-      ? parts[0]
-      : part === 'rack'
-        ? (parts[1] ?? order)
-        : part === 'level'
-          ? (parts[2] ?? (parts.length > 0 ? 1 : null))
-          : (parts[3] ?? order ?? parts[1] ?? (parts.length > 0 ? 1 : null));
+  physicalFormFields.forEach(({ field, part }) => {
+    const originalValue = original[field];
+    const explicitValue = explicitPhysicalField(originalValue);
+    const fallbackValue = fallbackPhysicalField(original, part);
+    if (!dirtyFields[field]) {
+      if (!explicitValue && fallbackValue && next[field] === fallbackValue) {
+        next[field] = undefined;
+      }
+      if (explicitValue && next[field] === explicitValue && originalValue !== explicitValue) {
+        next[field] = originalValue ?? undefined;
+      }
+    }
+  });
 
-  return value == null ? null : String(value).padStart(2, '0');
-}
-
-function physicalNumericParts(code: string): number[] {
-  return (code.match(/\d+/g) ?? []).map((part) => Number(part)).filter(Number.isFinite);
-}
-
-function positiveLocationOrder(location: Location): number | null {
-  const order = location.pickSequence ?? location.putawaySequence ?? null;
-  return typeof order === 'number' && order > 0 ? order : null;
+  return next;
 }
 
 function normalized(value: string): string {
@@ -319,6 +315,7 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
   const mutations = useMasterDataMutations();
   const nodes = treeQuery.data ?? EMPTY_SITE_LOCATION_TREE;
   const apiError = treeQuery.error instanceof ApiError ? treeQuery.error : null;
+  const profileApiError = profilesQuery.error instanceof ApiError ? profilesQuery.error : null;
   const sites = useMemo(() => siteRows(nodes), [nodes]);
   const warehouses = useMemo(() => warehouseRows(nodes), [nodes]);
   const zones = useMemo(() => zoneRows(nodes), [nodes]);
@@ -340,6 +337,55 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
   const [createSiteId, setCreateSiteId] = useState('');
   const [createWarehouseId, setCreateWarehouseId] = useState('');
   const [createZoneId, setCreateZoneId] = useState('');
+  const siteScopeRows = useMemo(
+    () => (siteFilter === 'all' ? sites : sites.filter(({ site }) => site.id === siteFilter)),
+    [siteFilter, sites],
+  );
+  const warehouseScopeRows = useMemo(
+    () => warehouses.filter(({ site }) => siteFilter === 'all' || site.id === siteFilter),
+    [siteFilter, warehouses],
+  );
+  const warehouseCreateRows = useMemo(
+    () =>
+      warehouseFilter === 'all'
+        ? warehouseScopeRows
+        : warehouseScopeRows.filter(({ warehouse }) => warehouse.id === warehouseFilter),
+    [warehouseFilter, warehouseScopeRows],
+  );
+  const zoneScopeRows = useMemo(
+    () =>
+      zones.filter(
+        ({ site, warehouse }) =>
+          (siteFilter === 'all' || site.id === siteFilter) &&
+          (warehouseFilter === 'all' || warehouse.id === warehouseFilter),
+      ),
+    [siteFilter, warehouseFilter, zones],
+  );
+  const locationScopeRows = useMemo(
+    () =>
+      locations.filter(
+        ({ site, warehouse, zone }) =>
+          (siteFilter === 'all' || site.id === siteFilter) &&
+          (warehouseFilter === 'all' || warehouse.id === warehouseFilter) &&
+          (zoneFilter === 'all' || zone.id === zoneFilter),
+      ),
+    [locations, siteFilter, warehouseFilter, zoneFilter],
+  );
+  const siteTableRows = filterSiteRows(sites, searchTerm, statusFilter);
+  const warehouseTableRows = filterWarehouseRows(warehouses, searchTerm, statusFilter, siteFilter);
+  const zoneTableRows = filterZoneRows(zones, searchTerm, statusFilter, siteFilter, warehouseFilter);
+  const locationTableRows = filterLocationRows(
+    locations,
+    searchTerm,
+    statusFilter,
+    siteFilter,
+    warehouseFilter,
+    zoneFilter,
+    aisleFilter,
+    rackFilter,
+  );
+  const locationProfileQueryError =
+    mode === 'locations' && !profilesQuery.isLoading && Boolean(profilesQuery.error);
 
   useEffect(() => {
     setSearchTerm('');
@@ -358,23 +404,23 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
 
   useEffect(() => {
     setCreateSiteId((current) =>
-      current && sites.some(({ site }) => site.id === current) ? current : (sites[0]?.site.id ?? ''),
+      current && siteScopeRows.some(({ site }) => site.id === current) ? current : (siteScopeRows[0]?.site.id ?? ''),
     );
-  }, [sites]);
+  }, [siteScopeRows]);
 
   useEffect(() => {
     setCreateWarehouseId((current) =>
-      current && warehouses.some(({ warehouse }) => warehouse.id === current)
+      current && warehouseCreateRows.some(({ warehouse }) => warehouse.id === current)
         ? current
-        : (warehouses[0]?.warehouse.id ?? ''),
+        : (warehouseCreateRows[0]?.warehouse.id ?? ''),
     );
-  }, [warehouses]);
+  }, [warehouseCreateRows]);
 
   useEffect(() => {
     setCreateZoneId((current) =>
-      current && zones.some(({ zone }) => zone.id === current) ? current : (zones[0]?.zone.id ?? ''),
+      current && zoneScopeRows.some(({ zone }) => zone.id === current) ? current : (zoneScopeRows[0]?.zone.id ?? ''),
     );
-  }, [zones]);
+  }, [zoneScopeRows]);
 
   const handleSiteFilter = (value: string) => {
     setSiteFilter(value);
@@ -418,13 +464,14 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         ? 'Quản lý kho bằng bảng và mở sơ đồ cấu trúc vật lý khi cần xem chi tiết.'
         : mode === 'zones'
           ? 'Quản lý zone theo kho bằng bảng; sơ đồ hóa zone sẽ làm ở story sau.'
-          : 'Quản lý dãy, kệ/shelf, tầng và ô/bin của từng vị trí bằng bảng.';
+          : 'Quản lý dãy, kệ, tầng và ô của từng vị trí bằng bảng.';
   const canCreate =
     !apiError?.isForbidden &&
-    (mode === 'sites' ||
-      (mode === 'warehouses' && sites.length > 0) ||
-      (mode === 'zones' && warehouses.length > 0) ||
-      (mode === 'locations' && zones.length > 0));
+    !locationProfileQueryError &&
+      (mode === 'sites' ||
+      (mode === 'warehouses' && siteScopeRows.length > 0) ||
+      (mode === 'zones' && warehouseCreateRows.length > 0) ||
+      (mode === 'locations' && zoneScopeRows.length > 0 && locationProfiles.length > 0));
 
   const commonFilters = (
     <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px] md:items-end">
@@ -463,6 +510,72 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
       Tạo {title.toLocaleLowerCase('vi-VN')}
     </Button>
   ) : null;
+  const missingLocationProfiles =
+    mode === 'locations' && !profilesQuery.isLoading && !locationProfileQueryError && locationProfiles.length === 0;
+  const locationProfileErrorMessage =
+    profileApiError?.message ?? 'Không thể tải danh sách hồ sơ vị trí đang hoạt động.';
+  const siteEmptyMessage =
+    sites.length === 0
+      ? 'Tạo site đầu tiên trước khi thêm kho, zone và vị trí vật lý.'
+      : 'Không có site phù hợp với bộ lọc hiện tại.';
+  const warehouseEmptyMessage =
+    sites.length === 0
+      ? 'Tạo site trước khi thêm kho.'
+      : warehouseScopeRows.length === 0
+        ? siteFilter === 'all'
+          ? 'Tạo kho đầu tiên cho site đã có trước khi mở sơ đồ cấu trúc.'
+          : 'Tạo kho đầu tiên cho site đang chọn trước khi mở sơ đồ cấu trúc.'
+        : 'Không có kho phù hợp với bộ lọc hiện tại.';
+  const zoneEmptyMessage =
+    warehouseScopeRows.length === 0
+      ? 'Tạo kho trước khi thêm zone.'
+      : zoneScopeRows.length === 0
+        ? warehouseFilter === 'all'
+          ? 'Tạo zone cho kho trong phạm vi đang chọn trước khi thêm vị trí vật lý.'
+          : 'Tạo zone cho kho đang chọn trước khi thêm vị trí vật lý.'
+        : 'Không có zone phù hợp với bộ lọc hiện tại.';
+  const locationEmptyMessage = (() => {
+    if (locationProfileQueryError) return locationProfileErrorMessage;
+    if (warehouseScopeRows.length === 0 && missingLocationProfiles) {
+      return 'Tạo kho, zone và hồ sơ vị trí trước khi thêm vị trí vật lý.';
+    }
+    if (warehouseScopeRows.length === 0) return 'Tạo kho trước khi thêm zone và vị trí vật lý.';
+    if (zoneScopeRows.length === 0 && missingLocationProfiles) {
+      return 'Tạo zone và hồ sơ vị trí trước khi thêm vị trí vật lý.';
+    }
+    if (zoneScopeRows.length === 0) return 'Tạo zone trước khi thêm vị trí vật lý.';
+    if (missingLocationProfiles) return 'Tạo hoặc kích hoạt hồ sơ vị trí trước khi thêm vị trí vật lý.';
+    if (locationScopeRows.length === 0) {
+      return zoneFilter === 'all'
+        ? 'Tạo vị trí vật lý đầu tiên cho zone trong phạm vi đang chọn.'
+        : 'Tạo vị trí vật lý đầu tiên cho zone đang chọn.';
+    }
+    return 'Không có vị trí phù hợp với bộ lọc hiện tại.';
+  })();
+  const missingLocationProfileBanner = missingLocationProfiles ? (
+    <Alert role="status" variant="warning">
+      <AlertTitle>Thiếu hồ sơ vị trí đang hoạt động</AlertTitle>
+      <AlertDescription>
+        Tạo hoặc kích hoạt hồ sơ vị trí trước khi thêm vị trí vật lý mới.
+      </AlertDescription>
+      <AlertAction>
+        <Button asChild size="sm" variant="outline">
+          <Link to={ROUTES.FOUNDATION.LOCATION_PROFILES}>Quản lý hồ sơ vị trí</Link>
+        </Button>
+      </AlertAction>
+    </Alert>
+  ) : null;
+  const locationProfileErrorBanner = locationProfileQueryError ? (
+    <Alert role="alert" variant="destructive">
+      <AlertTitle>Không thể tải hồ sơ vị trí</AlertTitle>
+      <AlertDescription>{locationProfileErrorMessage}</AlertDescription>
+      <AlertAction>
+        <Button asChild size="sm" variant="outline">
+          <Link to={ROUTES.FOUNDATION.LOCATION_PROFILES}>Mở danh mục hồ sơ vị trí</Link>
+        </Button>
+      </AlertAction>
+    </Alert>
+  ) : null;
 
   return (
     <>
@@ -499,37 +612,36 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         state={pageState}
         stateTitle={pageState === 'forbidden' ? 'Không có quyền' : undefined}
         stateMessage={apiError?.message ?? (treeQuery.error ? 'Không thể tải dữ liệu cấu trúc vật lý.' : undefined)}
+        filtersAriaLabel={`${title} bộ lọc`}
+        contentAriaLabel={`${title} danh sách`}
       >
+        {locationProfileErrorBanner}
+        {missingLocationProfileBanner}
         {mode === 'sites' ? (
           <SiteTable
-            rows={filterSiteRows(sites, searchTerm, statusFilter)}
+            rows={siteTableRows}
+            emptyMessage={siteEmptyMessage}
             onEdit={(site) => setEditingSite(site.entity)}
           />
         ) : null}
         {mode === 'warehouses' ? (
           <WarehouseTable
-            rows={filterWarehouseRows(warehouses, searchTerm, statusFilter, siteFilter)}
+            rows={warehouseTableRows}
+            emptyMessage={warehouseEmptyMessage}
             onEdit={(warehouse) => setEditingWarehouse(warehouse.entity)}
           />
         ) : null}
         {mode === 'zones' ? (
           <ZoneTable
-            rows={filterZoneRows(zones, searchTerm, statusFilter, siteFilter, warehouseFilter)}
+            rows={zoneTableRows}
+            emptyMessage={zoneEmptyMessage}
             onEdit={(zone) => setEditingZone(zone.entity)}
           />
         ) : null}
         {mode === 'locations' ? (
           <LocationTable
-            rows={filterLocationRows(
-              locations,
-              searchTerm,
-              statusFilter,
-              siteFilter,
-              warehouseFilter,
-              zoneFilter,
-              aisleFilter,
-              rackFilter,
-            )}
+            rows={locationTableRows}
+            emptyMessage={locationEmptyMessage}
             locationProfiles={locationProfiles}
             onEdit={(location) => setEditingLocation(location.entity)}
           />
@@ -540,9 +652,9 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         mode={mode}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        sites={sites}
-        warehouses={warehouses}
-        zones={zones}
+        sites={mode === 'warehouses' ? siteScopeRows : sites}
+        warehouses={mode === 'zones' ? warehouseCreateRows : mode === 'locations' ? warehouseScopeRows : warehouses}
+        zones={mode === 'locations' ? zoneScopeRows : zones}
         locationProfiles={locationProfiles}
         warehouseTypes={warehouseTypes}
         createSiteId={createSiteId}
@@ -601,13 +713,16 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         {editingLocation ? (
           <LocationForm
             key={editingLocation.id}
-            initialValue={editingLocation}
+            initialValue={locationWithPhysicalFallback(editingLocation)}
             locationProfiles={locationProfiles}
             submitLabel="Cập nhật vị trí"
             pending={mutations.updateLocation.isPending}
-            onSubmit={(values) =>
+            onSubmit={(values, dirtyFields) =>
               mutations.updateLocation.mutate(
-                { id: editingLocation.id, input: values },
+                {
+                  id: editingLocation.id,
+                  input: preserveUnchangedPhysicalFallbacks(values, editingLocation, dirtyFields),
+                },
                 { onSuccess: () => setEditingLocation(null) },
               )
             }
@@ -967,8 +1082,16 @@ function filterLocationRows(
   });
 }
 
-function SiteTable({ rows, onEdit }: { rows: SiteRow[]; onEdit: (site: SiteNode) => void }) {
-  if (rows.length === 0) return <EmptyTableMessage message="Không có site phù hợp." />;
+function SiteTable({
+  rows,
+  emptyMessage,
+  onEdit,
+}: {
+  rows: SiteRow[];
+  emptyMessage: string;
+  onEdit: (site: SiteNode) => void;
+}) {
+  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
 
   return (
     <ResponsiveTable
@@ -982,7 +1105,7 @@ function SiteTable({ rows, onEdit }: { rows: SiteRow[]; onEdit: (site: SiteNode)
               <TableHead className="text-right">Kho</TableHead>
               <TableHead className="text-right">Zone</TableHead>
               <TableHead className="text-right">Vị trí</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1018,8 +1141,16 @@ function SiteTable({ rows, onEdit }: { rows: SiteRow[]; onEdit: (site: SiteNode)
   );
 }
 
-function WarehouseTable({ rows, onEdit }: { rows: WarehouseRow[]; onEdit: (warehouse: WarehouseNode) => void }) {
-  if (rows.length === 0) return <EmptyTableMessage message="Không có kho phù hợp." />;
+function WarehouseTable({
+  rows,
+  emptyMessage,
+  onEdit,
+}: {
+  rows: WarehouseRow[];
+  emptyMessage: string;
+  onEdit: (warehouse: WarehouseNode) => void;
+}) {
+  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
 
   return (
     <ResponsiveTable
@@ -1034,7 +1165,7 @@ function WarehouseTable({ rows, onEdit }: { rows: WarehouseRow[]; onEdit: (wareh
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Zone</TableHead>
               <TableHead className="text-right">Vị trí</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1091,8 +1222,16 @@ function WarehouseTable({ rows, onEdit }: { rows: WarehouseRow[]; onEdit: (wareh
   );
 }
 
-function ZoneTable({ rows, onEdit }: { rows: ZoneRow[]; onEdit: (zone: ZoneNode) => void }) {
-  if (rows.length === 0) return <EmptyTableMessage message="Không có zone phù hợp." />;
+function ZoneTable({
+  rows,
+  emptyMessage,
+  onEdit,
+}: {
+  rows: ZoneRow[];
+  emptyMessage: string;
+  onEdit: (zone: ZoneNode) => void;
+}) {
+  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
 
   return (
     <ResponsiveTable
@@ -1107,7 +1246,7 @@ function ZoneTable({ rows, onEdit }: { rows: ZoneRow[]; onEdit: (zone: ZoneNode)
               <TableHead>Loại</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead className="text-right">Vị trí</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1146,15 +1285,17 @@ function ZoneTable({ rows, onEdit }: { rows: ZoneRow[]; onEdit: (zone: ZoneNode)
 
 function LocationTable({
   rows,
+  emptyMessage,
   locationProfiles,
   onEdit,
 }: {
   rows: LocationRow[];
+  emptyMessage: string;
   locationProfiles: LocationProfile[];
   onEdit: (location: LocationNode) => void;
 }) {
   const profileLabels = new Map(locationProfiles.map((profile) => [profile.id, profile.profileCode]));
-  if (rows.length === 0) return <EmptyTableMessage message="Không có vị trí phù hợp." />;
+  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
 
   return (
     <ResponsiveTable
@@ -1166,11 +1307,11 @@ function LocationTable({
               <TableHead>Zone</TableHead>
               <TableHead>Mã vị trí</TableHead>
               <TableHead>Dãy</TableHead>
-              <TableHead>Kệ/Shelf</TableHead>
+              <TableHead>Kệ</TableHead>
               <TableHead>Tầng</TableHead>
-              <TableHead>Ô/bin</TableHead>
-              <TableHead>Profile</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>Ô</TableHead>
+              <TableHead>Hồ sơ vị trí</TableHead>
+              <TableHead className="text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1208,7 +1349,7 @@ function LocationTable({
               <dd className="font-medium">{physicalField(row.location.entity, 'aisle')}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Kệ/Shelf</dt>
+              <dt className="text-muted-foreground">Kệ</dt>
               <dd className="font-medium">{physicalField(row.location.entity, 'rack')}</dd>
             </div>
             <div>
@@ -1216,7 +1357,7 @@ function LocationTable({
               <dd className="font-medium">{physicalField(row.location.entity, 'level')}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Ô/bin</dt>
+              <dt className="text-muted-foreground">Ô</dt>
               <dd className="font-medium">{physicalField(row.location.entity, 'bin')}</dd>
             </div>
           </dl>
