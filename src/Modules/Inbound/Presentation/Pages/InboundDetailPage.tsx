@@ -687,7 +687,12 @@ export function InboundDetailPage() {
                 ? 'Cần xác nhận LPN/SSCC trước khi release vì cấu hình đang yêu cầu LPN.'
                 : null
           : null);
-  const workflowSteps: InboundWorkflowStep[] = [
+  // A Cancelled (terminal) doc overrides every not-yet-cleared step to its own
+  // `cancelled` state in one place, instead of threading `isCancelledTerminal`
+  // through resolveWorkflowStepState's 5 call sites — steps already `done`
+  // (or `skipped`) keep that state so history recorded before cancellation is
+  // preserved (IFB-07).
+  const rawWorkflowSteps: InboundWorkflowStep[] = [
     {
       key: 'gate-in',
       label: 'Vào cổng',
@@ -745,6 +750,11 @@ export function InboundDetailPage() {
       ),
     },
   ];
+  const workflowSteps: InboundWorkflowStep[] = isCancelledTerminal
+    ? rawWorkflowSteps.map((step) =>
+        step.state === 'done' || step.state === 'skipped' ? step : { ...step, state: 'cancelled' },
+      )
+    : rawWorkflowSteps;
   const completedSummaryStep = workflowSteps.find((step) => step.key === completedSummaryStepKey);
   const activeWorkflowStepLabel =
     workflowSteps.find((step) => step.key === activeWorkflowStep)?.label ?? 'Chưa xác định';

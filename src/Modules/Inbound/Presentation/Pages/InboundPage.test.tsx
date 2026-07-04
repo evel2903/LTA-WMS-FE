@@ -1320,6 +1320,38 @@ describe('InboundPage', () => {
     expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
+  it('shows a visually distinct terminal state for a Cancelled document, not the routine blocked state (IFB-07)', async () => {
+    const fake = new FakeRepository([
+      makePlan({
+        status: 'Cancelled',
+        gateInStatus: 'Recorded',
+        gateInAt: '2026-06-22T09:00:00.000Z',
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+
+    renderPage('/inbound/inbound-plan-1');
+
+    // The terminal banner uses its own destructive title/copy, not the generic
+    // "routine block" title reused for a recoverable step.
+    expect(await screen.findByText('Chứng từ đã hủy')).toBeTruthy();
+    expect(screen.queryByText('Thao tác chưa sẵn sàng')).toBeNull();
+
+    // Gate-in already happened before cancellation — its `done` state (a fact of
+    // history) is preserved, not overwritten to `cancelled`.
+    const gateInStep = await screen.findByTestId('inbound-workflow-step-gate-in');
+    expect(gateInStep.textContent).toContain('Hoàn tất');
+
+    // Every step that had NOT cleared before cancellation reads as `cancelled`,
+    // never the routine amber `blocked` state a live, recoverable step would show.
+    for (const key of ['receiving', 'qc', 'lpn', 'release']) {
+      const step = screen.getByTestId(`inbound-workflow-step-${key}`);
+      expect(step.textContent).toContain('Đã hủy');
+      expect(step.textContent).not.toContain('Bị chặn');
+    }
+  });
+
   it('blocks QC deep-link until a receipt line is confirmed', async () => {
     const fake = new FakeRepository([makePlan()]);
     allowReceiving(fake);

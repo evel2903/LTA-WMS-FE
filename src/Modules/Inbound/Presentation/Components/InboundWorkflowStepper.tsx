@@ -1,4 +1,4 @@
-import { Check, CircleDashed, Lock, Play, UserCheck } from 'lucide-react';
+import { Ban, Check, CircleDashed, Lock, Play, UserCheck } from 'lucide-react';
 
 import { cn } from '@shared/Utils/Cn';
 import type {
@@ -13,6 +13,7 @@ const stateLabels: Record<InboundWorkflowStepState, string> = {
   blocked: 'Bị chặn',
   approval: 'Cần phê duyệt',
   skipped: 'Không yêu cầu',
+  cancelled: 'Đã hủy',
 };
 
 // Icon shown inside the status circle. `waiting` has no glyph (the step number is
@@ -24,6 +25,7 @@ const stateCircleIcon: Record<InboundWorkflowStepState, typeof Check | null> = {
   blocked: Lock,
   approval: UserCheck,
   skipped: CircleDashed,
+  cancelled: Ban,
 };
 
 // Status circle tint, kept consistent with the per-state palette used elsewhere
@@ -31,6 +33,8 @@ const stateCircleIcon: Record<InboundWorkflowStepState, typeof Check | null> = {
 // `approval` gets its own violet tint, distinct from `blocked`'s amber — a rule
 // resolving ApprovalRequired is recoverable via the override control already on
 // screen, not a hard stop, so it must not read as the same "locked" state.
+// `cancelled` gets its own rose tint, distinct from both — a Cancelled (terminal)
+// doc is permanently dead, not a recoverable block (IFB-07).
 const stateCircleClass: Record<InboundWorkflowStepState, string> = {
   done: 'border-emerald-500 bg-emerald-500 text-white',
   active: 'border-primary bg-primary text-primary-foreground',
@@ -38,6 +42,7 @@ const stateCircleClass: Record<InboundWorkflowStepState, string> = {
   blocked: 'border-amber-300 bg-amber-50 text-amber-700',
   approval: 'border-violet-300 bg-violet-50 text-violet-700',
   skipped: 'border-sky-300 bg-sky-50 text-sky-700',
+  cancelled: 'border-rose-300 bg-rose-50 text-rose-700',
 };
 
 // State-text tint shown under each label.
@@ -48,6 +53,7 @@ const stateTextClass: Record<InboundWorkflowStepState, string> = {
   blocked: 'text-amber-700',
   approval: 'text-violet-700',
   skipped: 'text-sky-700',
+  cancelled: 'text-rose-700',
 };
 
 interface InboundWorkflowStepperProps {
