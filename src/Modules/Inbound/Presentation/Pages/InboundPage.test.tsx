@@ -867,6 +867,51 @@ describe('InboundPage', () => {
     }
   });
 
+  it('shows a distinct approval-required stepper state (not the generic Blocked lock) when readiness resolves ApprovalRequired, and surfaces ruleCode in technical details (IFB-05)', async () => {
+    const fake = new FakeRepository([
+      makePlan({ gateInStatus: 'Recorded', gateInAt: '2026-06-22T09:00:00.000Z' }),
+    ]);
+    fake.readiness = {
+      ...fake.readiness,
+      allowed: false,
+      blocked: true,
+      decision: 'ApprovalRequired',
+      gateInRecorded: true,
+      overrideAccepted: false,
+      reason: 'Gate-in requires approval before receiving.',
+      ruleCode: 'RULE-IN-GATE-01',
+    };
+    repo.current = fake;
+    const actor = userEvent.setup();
+    renderPage('/inbound/inbound-plan-1');
+
+    expect(await screen.findByTestId('inbound-workflow-step-receiving')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('inbound-workflow-step-receiving')).getByText('Cần phê duyệt'),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId('inbound-workflow-step-receiving')).queryByText('Bị chặn'),
+    ).toBeNull();
+    // The override control stays available — ApprovalRequired is recoverable, not a dead end.
+    expect(screen.getByTestId('inbound-readiness-panel')).toBeTruthy();
+    // The panel's own status text must not read the same as a hard Blocked case.
+    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
+      'Cần phê duyệt readiness',
+    );
+    // The console header title (a separate piece of on-screen copy) must agree with
+    // the stepper instead of still saying the generic "đang bị chặn".
+    expect(screen.getByTestId('inbound-console-step-action').textContent).toContain(
+      'cần phê duyệt readiness',
+    );
+    expect(screen.getByTestId('inbound-console-step-action').textContent).not.toContain(
+      'đang bị chặn',
+    );
+
+    const details = await openTechnicalDetails(actor, 'inbound-technical-details');
+    expect(within(details).getByText('Cần phê duyệt')).toBeTruthy();
+    expect(within(details).getByText('RULE-IN-GATE-01')).toBeTruthy();
+  });
+
   it('exposes non-active step descriptions via aria-describedby without changing the accessible name', async () => {
     const fake = new FakeRepository([makePlan()]);
     repo.current = fake;

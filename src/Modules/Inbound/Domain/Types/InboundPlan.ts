@@ -97,11 +97,12 @@ export interface InboundLineImportPreview {
 export interface ReceivingReadiness {
   allowed: boolean;
   blocked: boolean;
-  decision: 'Allowed' | 'Blocked' | 'OverrideAccepted';
+  decision: 'Allowed' | 'Blocked' | 'ApprovalRequired' | 'OverrideAccepted';
   gateInRequired: boolean;
   gateInRecorded: boolean;
   overrideAccepted: boolean;
   reason: string;
+  ruleCode?: string | null;
   inboundPlanId?: string;
   businessReference?: string;
 }

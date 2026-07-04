@@ -32,6 +32,8 @@ const OPERATIONAL_LABELS: Record<string, string> = {
   NotRecorded: 'Chưa ghi nhận',
   Recorded: 'Đã ghi nhận',
   OverrideAccepted: 'Đã chấp nhận ghi đè',
+  Allowed: 'Được phép',
+  ApprovalRequired: 'Cần phê duyệt',
   Open: 'Đang mở',
   Discrepancy: 'Sai lệch',
   QuantityVariance: 'Chênh lệch số lượng',
