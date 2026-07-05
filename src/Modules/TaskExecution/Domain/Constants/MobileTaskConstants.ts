@@ -20,5 +20,12 @@ export const MOBILE_SCAN_TYPES = [
   'Package',
   'Load',
   'ManualEntry',
+  'Lot',
+  'Serial',
+  'ExpiryDate',
 ] as const;
+
+// Subset of MOBILE_SCAN_TYPES that get their own dedicated input on
+// TaskExecutionDetailPage instead of the generic scan-type dropdown (IDC-06).
+export const DEDICATED_IDENTITY_SCAN_TYPES = ['Lot', 'Serial', 'ExpiryDate'] as const;
 export const MOBILE_SCAN_RESULTS = ['Accepted', 'Rejected', 'ManualOverrideAccepted'] as const;

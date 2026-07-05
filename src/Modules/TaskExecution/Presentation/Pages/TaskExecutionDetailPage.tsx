@@ -11,7 +11,10 @@ import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOpera
 import { useCurrentUser } from '@modules/Auth/Application/UseCases/UseCurrentUser';
 import { useMobileTaskMutations } from '@modules/TaskExecution/Application/Commands/UseMobileTaskMutations';
 import { useMobileTask } from '@modules/TaskExecution/Application/Queries/UseMobileTasks';
-import { MOBILE_SCAN_TYPES } from '@modules/TaskExecution/Domain/Constants/MobileTaskConstants';
+import {
+  DEDICATED_IDENTITY_SCAN_TYPES,
+  MOBILE_SCAN_TYPES,
+} from '@modules/TaskExecution/Domain/Constants/MobileTaskConstants';
 import type {
   MobileScanEvent,
   MobileScanType,
@@ -103,6 +106,19 @@ function optionalScanMatches(
   return scanMatchesExpected(scan, expected, key);
 }
 
+// Prefers a dedicated Lot/Serial/ExpiryDate scan-type when present (IDC-06);
+// falls back to the legacy Item-scan-embedded GS1 value otherwise.
+function identityScanMatches(
+  dedicatedScan: MobileScanEvent | null,
+  itemScan: MobileScanEvent | null,
+  expected: string | number | null,
+  itemParsedKey: string,
+): boolean {
+  if (expected === null) return true;
+  if (dedicatedScan) return scanMatchesExpected(dedicatedScan, expected);
+  return optionalScanMatches(itemScan, expected, itemParsedKey);
+}
+
 function acceptedScanSummary(scans: Partial<Record<MobileScanType, MobileScanEvent>>): string {
   const labels = Object.entries(scans)
     .filter(([, scan]) => scan?.result === 'Accepted')
@@ -119,6 +135,9 @@ export function TaskExecutionDetailPage() {
   const [deviceCode, setDeviceCode] = useState('');
   const [scanType, setScanType] = useState<MobileScanType>('Item');
   const [scanValue, setScanValue] = useState('');
+  const [lotScanValue, setLotScanValue] = useState('');
+  const [serialScanValue, setSerialScanValue] = useState('');
+  const [expiryScanValue, setExpiryScanValue] = useState('');
   const [manualEntry, setManualEntry] = useState(false);
   const [reasonCode, setReasonCode] = useState('');
   const [confirmReasonCode, setConfirmReasonCode] = useState(DEFAULT_PICK_CONFIRM_REASON);
@@ -191,14 +210,17 @@ export function TaskExecutionDetailPage() {
   const expectedLot = task ? payloadValue(task, 'LotNumber') : null;
   const expectedSerial = task ? payloadValue(task, 'SerialNumber') : null;
   const expectedExpiry = task ? payloadValue(task, 'ExpiryDate') : null;
+  const lotScan = acceptedScans.Lot ?? null;
+  const serialScan = acceptedScans.Serial ?? null;
+  const expiryScan = acceptedScans.ExpiryDate ?? null;
   const hasPickEvidence = Boolean(
     scanMatchesExpected(acceptedScans.Location ?? null, expectedSourceLocationId) &&
     scanMatchesExpected(itemScan, expectedSkuId) &&
     (scanMatchesExpected(quantityScan, expectedQuantity) ||
       scanMatchesExpected(itemScan, expectedQuantity, 'Quantity')) &&
-    optionalScanMatches(itemScan, expectedLot, 'LotNumber') &&
-    optionalScanMatches(itemScan, expectedSerial, 'Serial') &&
-    optionalScanMatches(itemScan, expectedExpiry, 'ExpiryDate') &&
+    identityScanMatches(lotScan, itemScan, expectedLot, 'LotNumber') &&
+    identityScanMatches(serialScan, itemScan, expectedSerial, 'Serial') &&
+    identityScanMatches(expiryScan, itemScan, expectedExpiry, 'ExpiryDate') &&
     (scanHasQuantity(quantityScan) || scanHasQuantity(itemScan)),
   );
   const canConfirmPick = Boolean(
@@ -229,6 +251,41 @@ export function TaskExecutionDetailPage() {
     exceptionEvidenceRef.trim().length > 0,
   );
 
+  // The dedicated Lot/Serial/ExpiryDate fields are direct-value entry, not a
+  // scan-override — they must not inherit the shared "Nhập tay" toggle meant
+  // for the Item/Location/Quantity barcode flow (IDC-06 review fix).
+  function submitScan(type: MobileScanType, rawValue: string, onDone?: () => void, manualEntryOverride?: boolean) {
+    if (!task) return;
+    const effectiveManualEntry = manualEntryOverride ?? manualEntry;
+    setLatestScan(null);
+    mutations.recordScan.mutate(
+      {
+        id: task.id,
+        input: {
+          scanType: type,
+          rawValue: rawValue.trim(),
+          manualEntry: effectiveManualEntry,
+          reasonCode: effectiveManualEntry ? reasonCode.trim() : undefined,
+          deviceCode: deviceCode || undefined,
+          sessionId: task.sessionId || undefined,
+        },
+      },
+      {
+        onSuccess: (scan) => {
+          setLatestScan(scan);
+          setAcceptedScans((current) => {
+            if (scan.result === 'Accepted') return { ...current, [scan.scanType]: scan };
+            const next = { ...current };
+            delete next[scan.scanType];
+            return next;
+          });
+          onDone?.();
+        },
+        onError: () => setLatestScan(null),
+      },
+    );
+  }
+
   useEffect(() => {
     if (action && !TASK_ACTIONS.has(action)) {
       void navigate(ROUTES.MOBILE.TASK_DETAIL(id ?? ''), { replace: true });
@@ -240,6 +297,9 @@ export function TaskExecutionDetailPage() {
     setAcceptedScans({});
     setLastConfirmMessage(null);
     setScanValue('');
+    setLotScanValue('');
+    setSerialScanValue('');
+    setExpiryScanValue('');
     setManualEntry(false);
     setReasonCode('');
     setConfirmReasonCode(DEFAULT_PICK_CONFIRM_REASON);
@@ -415,7 +475,9 @@ export function TaskExecutionDetailPage() {
                     value={scanType}
                     onChange={(event) => setScanType(event.target.value as MobileScanType)}
                   >
-                    {MOBILE_SCAN_TYPES.map((type) => (
+                    {MOBILE_SCAN_TYPES.filter(
+                      (type) => !(DEDICATED_IDENTITY_SCAN_TYPES as readonly string[]).includes(type),
+                    ).map((type) => (
                       <option key={type} value={type}>
                         {vietnameseOperationalLabel(type)}
                       </option>
@@ -430,6 +492,66 @@ export function TaskExecutionDetailPage() {
                     placeholder="(01)01234567890128"
                   />
                 </label>
+                {expectedLot ? (
+                  <label className="grid gap-1 text-sm">
+                    Quét lô
+                    <div className="flex gap-2">
+                      <Input
+                        value={lotScanValue}
+                        onChange={(event) => setLotScanValue(event.target.value)}
+                        placeholder={String(expectedLot)}
+                      />
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!canOperateScan || !lotScanValue.trim() || mutations.recordScan.isPending}
+                        onClick={() => submitScan('Lot', lotScanValue, () => setLotScanValue(''), false)}
+                      >
+                        Xác nhận
+                      </button>
+                    </div>
+                  </label>
+                ) : null}
+                {expectedSerial ? (
+                  <label className="grid gap-1 text-sm">
+                    Quét serial
+                    <div className="flex gap-2">
+                      <Input
+                        value={serialScanValue}
+                        onChange={(event) => setSerialScanValue(event.target.value)}
+                        placeholder={String(expectedSerial)}
+                      />
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!canOperateScan || !serialScanValue.trim() || mutations.recordScan.isPending}
+                        onClick={() => submitScan('Serial', serialScanValue, () => setSerialScanValue(''), false)}
+                      >
+                        Xác nhận
+                      </button>
+                    </div>
+                  </label>
+                ) : null}
+                {expectedExpiry ? (
+                  <label className="grid gap-1 text-sm">
+                    Quét hạn dùng
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={expiryScanValue}
+                        onChange={(event) => setExpiryScanValue(event.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!canOperateScan || !expiryScanValue.trim() || mutations.recordScan.isPending}
+                        onClick={() => submitScan('ExpiryDate', expiryScanValue, () => setExpiryScanValue(''), false)}
+                      >
+                        Xác nhận
+                      </button>
+                    </div>
+                  </label>
+                ) : null}
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -452,38 +574,7 @@ export function TaskExecutionDetailPage() {
                   type="button"
                   className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={!canRecordScan || mutations.recordScan.isPending}
-                  onClick={() => {
-                    setLatestScan(null);
-                    mutations.recordScan.mutate(
-                      {
-                        id: task.id,
-                        input: {
-                          scanType,
-                          rawValue: scanValue.trim(),
-                          manualEntry,
-                          reasonCode: manualEntry ? reasonCode.trim() : undefined,
-                          deviceCode: deviceCode || undefined,
-                          sessionId: task.sessionId || undefined,
-                        },
-                      },
-                      {
-                        onSuccess: (scan) => {
-                          setLatestScan(scan);
-                          setAcceptedScans((current) => {
-                            if (scan.result === 'Accepted')
-                              return { ...current, [scan.scanType]: scan };
-                            const next = { ...current };
-                            delete next[scan.scanType];
-                            return next;
-                          });
-                          setScanValue('');
-                        },
-                        onError: () => {
-                          setLatestScan(null);
-                        },
-                      },
-                    );
-                  }}
+                  onClick={() => submitScan(scanType, scanValue, () => setScanValue(''))}
                 >
                   Ghi nhận quét
                 </button>
