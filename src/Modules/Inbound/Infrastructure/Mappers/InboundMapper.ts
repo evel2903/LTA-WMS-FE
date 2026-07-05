@@ -189,6 +189,9 @@ export const InboundMapper = {
       reasonNote: dto.ReasonNote,
       scanEvidenceJson: dto.ScanEvidenceJson,
       discrepancySignals: dto.DiscrepancySignals ?? [],
+      lotNumber: dto.LotNumber,
+      expiryDate: dto.ExpiryDate,
+      serialNumber: dto.SerialNumber,
       idempotencyKey: dto.IdempotencyKey,
       receivedAt: dto.ReceivedAt,
       receivedBy: dto.ReceivedBy,
@@ -445,6 +448,9 @@ export const InboundMapper = {
       ManualConfirm: input.manualConfirm,
       ReasonCode: input.reasonCode,
       ReasonNote: input.reasonNote,
+      LotNumber: input.lotNumber,
+      ExpiryDate: input.expiryDate,
+      SerialNumber: input.serialNumber,
       IdempotencyKey: input.idempotencyKey,
       ScanEvidence: input.scanEvidence
         ? removeEmpty({

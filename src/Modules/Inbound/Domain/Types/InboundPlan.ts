@@ -162,6 +162,9 @@ export interface ReceiptLine {
   reasonNote: string | null;
   scanEvidenceJson: Record<string, unknown> | null;
   discrepancySignals: ReceiptLineDiscrepancySignal[];
+  lotNumber: string | null;
+  expiryDate: string | null;
+  serialNumber: string | null;
   idempotencyKey: string;
   receivedAt: string;
   receivedBy: string | null;

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/
 import { Input } from '@shared/Components/Ui/Input';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
+import { useSku } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import {
   useInboundOperationalState,
   useInboundPlan,
@@ -344,6 +345,9 @@ export function InboundDetailPage() {
   const [receiptRawScan, setReceiptRawScan] = useState('');
   const [receiptManualConfirm, setReceiptManualConfirm] = useState(false);
   const [receiptReasonCode, setReceiptReasonCode] = useState('');
+  const [receiptLotNumber, setReceiptLotNumber] = useState('');
+  const [receiptExpiryDate, setReceiptExpiryDate] = useState('');
+  const [receiptSerialNumber, setReceiptSerialNumber] = useState('');
   const [receiptIdempotencyKey, setReceiptIdempotencyKey] = useState(() => `receipt-${Date.now()}`);
   const [discrepancyType, setDiscrepancyType] =
     useState<InboundDiscrepancyType>('QuantityVariance');
@@ -424,6 +428,10 @@ export function InboundDetailPage() {
     () => selected?.lines.find((line) => line.id === selectedLineId) ?? selected?.lines[0] ?? null,
     [selected?.lines, selectedLineId],
   );
+  const selectedSku = useSku(selectedLine?.skuId ?? null).data ?? null;
+  const skuLotControlled = selectedSku?.lotControlled ?? false;
+  const skuExpiryControlled = selectedSku?.expiryControlled ?? false;
+  const skuSerialControlled = selectedSku?.serialControlled ?? false;
   const lastConfirmedLine = mutations.confirmReceiptLine.data;
   const mutationConfirmedReceiptLine =
     lastConfirmedLine &&
@@ -550,7 +558,10 @@ export function InboundDetailPage() {
     selectedLine &&
     Number(receiptActualQuantity) > 0 &&
     receiptIdempotencyKey.trim() &&
-    (receiptManualConfirm ? receiptReasonCode.trim() : receiptRawScan.trim()),
+    (receiptManualConfirm ? receiptReasonCode.trim() : receiptRawScan.trim()) &&
+    (!skuLotControlled || receiptLotNumber.trim()) &&
+    (!skuExpiryControlled || receiptExpiryDate.trim()) &&
+    (!skuSerialControlled || receiptSerialNumber.trim()),
   );
   const discrepancyEvidenceRefList = useMemo(
     () =>
@@ -1073,6 +1084,9 @@ export function InboundDetailPage() {
           actualQuantity: Number(receiptActualQuantity),
           manualConfirm: receiptManualConfirm,
           reasonCode: receiptManualConfirm ? receiptReasonCode.trim() : null,
+          lotNumber: skuLotControlled ? receiptLotNumber.trim() : null,
+          expiryDate: skuExpiryControlled ? receiptExpiryDate.trim() : null,
+          serialNumber: skuSerialControlled ? receiptSerialNumber.trim() : null,
           idempotencyKey: receiptIdempotencyKey.trim(),
           scanEvidence: receiptManualConfirm
             ? null
@@ -1088,6 +1102,9 @@ export function InboundDetailPage() {
         onSuccess: (line) => {
           setReceiptRawScan('');
           setReceiptReasonCode('');
+          setReceiptLotNumber('');
+          setReceiptExpiryDate('');
+          setReceiptSerialNumber('');
           setReceiptIdempotencyKey(`receipt-${selectedLine.id}-${Date.now()}`);
           setDiscrepancyType(line.discrepancySignals[0] ?? 'QuantityVariance');
           setQcTaskIdempotencyKey(`qc-task-${line.id}-${Date.now()}`);
@@ -1669,6 +1686,9 @@ export function InboundDetailPage() {
                 onReceiptManualConfirmChange={setReceiptManualConfirm}
                 onReceiptRawScanChange={setReceiptRawScan}
                 onReceiptReasonCodeChange={setReceiptReasonCode}
+                onReceiptLotNumberChange={setReceiptLotNumber}
+                onReceiptExpiryDateChange={setReceiptExpiryDate}
+                onReceiptSerialNumberChange={setReceiptSerialNumber}
                 onReceivingDeviceCodeChange={setReceivingDeviceCode}
                 onReceivingSessionKeyChange={setReceivingSessionKey}
                 onSubmitReceiptLine={submitReceiptLine}
@@ -1679,6 +1699,12 @@ export function InboundDetailPage() {
                 receiptManualConfirm={receiptManualConfirm}
                 receiptRawScan={receiptRawScan}
                 receiptReasonCode={receiptReasonCode}
+                receiptLotNumber={receiptLotNumber}
+                receiptExpiryDate={receiptExpiryDate}
+                receiptSerialNumber={receiptSerialNumber}
+                skuLotControlled={skuLotControlled}
+                skuExpiryControlled={skuExpiryControlled}
+                skuSerialControlled={skuSerialControlled}
                 readinessDone={readinessDone}
                 receivingDeviceCode={receivingDeviceCode}
                 receivingSession={receivingSession ?? null}

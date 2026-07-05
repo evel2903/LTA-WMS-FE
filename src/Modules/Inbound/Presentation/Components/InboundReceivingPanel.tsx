@@ -26,6 +26,9 @@ interface InboundReceivingPanelProps {
   onReceiptManualConfirmChange: (value: boolean) => void;
   onReceiptRawScanChange: (value: string) => void;
   onReceiptReasonCodeChange: (value: string) => void;
+  onReceiptLotNumberChange: (value: string) => void;
+  onReceiptExpiryDateChange: (value: string) => void;
+  onReceiptSerialNumberChange: (value: string) => void;
   onReceivingDeviceCodeChange: (value: string) => void;
   onReceivingSessionKeyChange: (value: string) => void;
   onSubmitReceiptLine: (event: FormEvent<HTMLFormElement>) => void;
@@ -36,6 +39,12 @@ interface InboundReceivingPanelProps {
   receiptManualConfirm: boolean;
   receiptRawScan: string;
   receiptReasonCode: string;
+  receiptLotNumber: string;
+  receiptExpiryDate: string;
+  receiptSerialNumber: string;
+  skuLotControlled: boolean;
+  skuExpiryControlled: boolean;
+  skuSerialControlled: boolean;
   readinessDone: boolean;
   receivingDeviceCode: string;
   receivingSession: ReceivingSession | null;
@@ -71,6 +80,12 @@ function getReceiptLineHelper({
   receiptManualConfirm,
   receiptRawScan,
   receiptReasonCode,
+  receiptLotNumber,
+  receiptExpiryDate,
+  receiptSerialNumber,
+  skuLotControlled,
+  skuExpiryControlled,
+  skuSerialControlled,
   receivingSession,
   selectedLine,
 }: {
@@ -80,6 +95,12 @@ function getReceiptLineHelper({
   receiptManualConfirm: boolean;
   receiptRawScan: string;
   receiptReasonCode: string;
+  receiptLotNumber: string;
+  receiptExpiryDate: string;
+  receiptSerialNumber: string;
+  skuLotControlled: boolean;
+  skuExpiryControlled: boolean;
+  skuSerialControlled: boolean;
   receivingSession: ReceivingSession | null;
   selectedLine: InboundPlanLine | null;
 }) {
@@ -92,6 +113,11 @@ function getReceiptLineHelper({
   }
   if (!receiptManualConfirm && !receiptRawScan.trim()) {
     return 'Cần quét mã hàng hoặc bật xác nhận thủ công kèm mã lý do.';
+  }
+  if (skuLotControlled && !receiptLotNumber.trim()) return 'SKU này yêu cầu nhập số lô.';
+  if (skuExpiryControlled && !receiptExpiryDate.trim()) return 'SKU này yêu cầu nhập hạn dùng.';
+  if (skuSerialControlled && !receiptSerialNumber.trim()) {
+    return 'SKU này yêu cầu nhập số serial.';
   }
   if (!receiptIdempotencyKey.trim()) return 'Cần khóa idempotency để xác nhận dòng.';
   return 'Sẵn sàng xác nhận nhận hàng.';
@@ -123,6 +149,9 @@ export function InboundReceivingPanel({
   onReceiptManualConfirmChange,
   onReceiptRawScanChange,
   onReceiptReasonCodeChange,
+  onReceiptLotNumberChange,
+  onReceiptExpiryDateChange,
+  onReceiptSerialNumberChange,
   onReceivingDeviceCodeChange,
   onReceivingSessionKeyChange,
   onSubmitReceiptLine,
@@ -133,6 +162,12 @@ export function InboundReceivingPanel({
   receiptManualConfirm,
   receiptRawScan,
   receiptReasonCode,
+  receiptLotNumber,
+  receiptExpiryDate,
+  receiptSerialNumber,
+  skuLotControlled,
+  skuExpiryControlled,
+  skuSerialControlled,
   readinessDone,
   receivingDeviceCode,
   receivingSession,
@@ -162,6 +197,12 @@ export function InboundReceivingPanel({
     receiptManualConfirm,
     receiptRawScan,
     receiptReasonCode,
+    receiptLotNumber,
+    receiptExpiryDate,
+    receiptSerialNumber,
+    skuLotControlled,
+    skuExpiryControlled,
+    skuSerialControlled,
     receivingSession,
     selectedLine,
   });
@@ -277,6 +318,40 @@ export function InboundReceivingPanel({
               disabled={receiptManualConfirm}
             />
           </label>
+          {skuLotControlled ? (
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-lot-number">
+              Số lô
+              <Input
+                id="inbound-receipt-lot-number"
+                name="receiptLotNumber"
+                value={receiptLotNumber}
+                onChange={(event) => onReceiptLotNumberChange(event.target.value)}
+              />
+            </label>
+          ) : null}
+          {skuExpiryControlled ? (
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-expiry-date">
+              Hạn dùng
+              <Input
+                id="inbound-receipt-expiry-date"
+                name="receiptExpiryDate"
+                type="date"
+                value={receiptExpiryDate}
+                onChange={(event) => onReceiptExpiryDateChange(event.target.value)}
+              />
+            </label>
+          ) : null}
+          {skuSerialControlled ? (
+            <label className="grid gap-1 text-sm" htmlFor="inbound-receipt-serial-number">
+              Số serial
+              <Input
+                id="inbound-receipt-serial-number"
+                name="receiptSerialNumber"
+                value={receiptSerialNumber}
+                onChange={(event) => onReceiptSerialNumberChange(event.target.value)}
+              />
+            </label>
+          ) : null}
           {/* Manual-confirm toggle + its gated reason code pair into 2 columns only at
               2xl (single column below); these two are adjacent in the original order so
               pairing preserves the linear operate flow. */}
