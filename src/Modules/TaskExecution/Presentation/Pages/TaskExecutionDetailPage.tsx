@@ -251,8 +251,12 @@ export function TaskExecutionDetailPage() {
     exceptionEvidenceRef.trim().length > 0,
   );
 
-  function submitScan(type: MobileScanType, rawValue: string, onDone?: () => void) {
+  // The dedicated Lot/Serial/ExpiryDate fields are direct-value entry, not a
+  // scan-override — they must not inherit the shared "Nhập tay" toggle meant
+  // for the Item/Location/Quantity barcode flow (IDC-06 review fix).
+  function submitScan(type: MobileScanType, rawValue: string, onDone?: () => void, manualEntryOverride?: boolean) {
     if (!task) return;
+    const effectiveManualEntry = manualEntryOverride ?? manualEntry;
     setLatestScan(null);
     mutations.recordScan.mutate(
       {
@@ -260,8 +264,8 @@ export function TaskExecutionDetailPage() {
         input: {
           scanType: type,
           rawValue: rawValue.trim(),
-          manualEntry,
-          reasonCode: manualEntry ? reasonCode.trim() : undefined,
+          manualEntry: effectiveManualEntry,
+          reasonCode: effectiveManualEntry ? reasonCode.trim() : undefined,
           deviceCode: deviceCode || undefined,
           sessionId: task.sessionId || undefined,
         },
@@ -501,7 +505,7 @@ export function TaskExecutionDetailPage() {
                         type="button"
                         className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={!canOperateScan || !lotScanValue.trim() || mutations.recordScan.isPending}
-                        onClick={() => submitScan('Lot', lotScanValue, () => setLotScanValue(''))}
+                        onClick={() => submitScan('Lot', lotScanValue, () => setLotScanValue(''), false)}
                       >
                         Xác nhận
                       </button>
@@ -521,7 +525,7 @@ export function TaskExecutionDetailPage() {
                         type="button"
                         className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={!canOperateScan || !serialScanValue.trim() || mutations.recordScan.isPending}
-                        onClick={() => submitScan('Serial', serialScanValue, () => setSerialScanValue(''))}
+                        onClick={() => submitScan('Serial', serialScanValue, () => setSerialScanValue(''), false)}
                       >
                         Xác nhận
                       </button>
@@ -533,15 +537,15 @@ export function TaskExecutionDetailPage() {
                     Quét hạn dùng
                     <div className="flex gap-2">
                       <Input
+                        type="date"
                         value={expiryScanValue}
                         onChange={(event) => setExpiryScanValue(event.target.value)}
-                        placeholder={String(expectedExpiry)}
                       />
                       <button
                         type="button"
                         className="shrink-0 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={!canOperateScan || !expiryScanValue.trim() || mutations.recordScan.isPending}
-                        onClick={() => submitScan('ExpiryDate', expiryScanValue, () => setExpiryScanValue(''))}
+                        onClick={() => submitScan('ExpiryDate', expiryScanValue, () => setExpiryScanValue(''), false)}
                       >
                         Xác nhận
                       </button>

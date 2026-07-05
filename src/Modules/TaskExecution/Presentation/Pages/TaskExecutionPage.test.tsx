@@ -523,6 +523,44 @@ describe('TaskExecution list/detail pages', () => {
     await waitFor(() => expect(fake.confirmPickTask).toHaveBeenCalledWith('task-a', expect.any(Object)));
   });
 
+  it('does not carry the shared "Nhập tay" toggle into a dedicated Lot/Serial/Expiry submission (IDC-06 review fix)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          Quantity: 5,
+          SerialNumber: 'SN-1',
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+
+    // Operator ticks manual-entry for the (unrelated) shared Item-scan override flow.
+    await actor.click(screen.getByLabelText('Nhập thủ công'));
+
+    await actor.type(await screen.findByLabelText('Quét serial'), 'SN-1');
+    await actor.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+    await waitFor(() =>
+      expect(fake.recordScan).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({ scanType: 'Serial', rawValue: 'SN-1', manualEntry: false }),
+      ),
+    );
+  });
+
   it('reports pick exception and requests substitution from the detail route', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([
