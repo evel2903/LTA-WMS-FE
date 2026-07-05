@@ -184,6 +184,9 @@ export interface ConfirmReceiptLineRequestDto {
   ManualConfirm?: boolean;
   ReasonCode?: string | null;
   ReasonNote?: string | null;
+  LotNumber?: string | null;
+  ExpiryDate?: string | null;
+  SerialNumber?: string | null;
   IdempotencyKey: string;
   ScanEvidence?: ReceiptLineScanEvidenceDto | null;
 }
@@ -207,6 +210,9 @@ export interface ReceiptLineDto {
   ReasonNote: string | null;
   ScanEvidenceJson: Record<string, unknown> | null;
   DiscrepancySignals: ReceiptLineDiscrepancySignal[];
+  LotNumber: string | null;
+  ExpiryDate: string | null;
+  SerialNumber: string | null;
   IdempotencyKey: string;
   ReceivedAt: string;
   ReceivedBy: string | null;

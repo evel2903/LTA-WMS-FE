@@ -21,6 +21,7 @@ import type {
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
+import type { Sku } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import type {
   CaptureInboundDiscrepancyInput,
   ConfirmInboundLpnInput,
@@ -56,6 +57,7 @@ const catalogRepo = vi.hoisted(() => ({
     listOwners: ReturnType<typeof vi.fn>;
     listUoms: ReturnType<typeof vi.fn>;
     listSkus: ReturnType<typeof vi.fn>;
+    getSku: ReturnType<typeof vi.fn>;
   },
 }));
 vi.mock('@modules/MasterData/Infrastructure/Repositories/CatalogRepositoryInstance', () => ({
@@ -109,6 +111,42 @@ const DEFAULT_RAW_SCAN = '01012345678901281726010110LOT-A';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
+}
+
+// Default: no control flags on, so pre-existing receiving-flow tests (which don't
+// fill Lot/Expiry/Serial) keep passing. IDC-03 tests override per-flag.
+function skuFixture(overrides: Partial<Sku> = {}): Sku {
+  return {
+    id: 'sku-1',
+    skuCode: 'SKU-A',
+    skuName: 'Coca-Cola lon 330ml',
+    defaultOwnerId: 'owner-1',
+    itemClass: 'BEVERAGE',
+    itemStatus: 'Active',
+    baseUomId: 'uom-1',
+    inventoryUomId: 'uom-1',
+    lotControlled: false,
+    expiryControlled: false,
+    serialControlled: false,
+    ownerControlled: false,
+    lpnControlled: false,
+    temperatureControlled: false,
+    dgControlled: false,
+    customsControlled: false,
+    qcRequired: false,
+    bondedFlag: false,
+    temperatureClass: null,
+    dgClass: null,
+    shelfLifeDays: 365,
+    minRemainingShelfLifeDays: 30,
+    sourceSystem: null,
+    referenceId: null,
+    createdAt: '2026-06-22T08:00:00.000Z',
+    updatedAt: '2026-06-22T08:00:00.000Z',
+    createdBy: null,
+    updatedBy: null,
+    ...overrides,
+  };
 }
 
 function setLookupRepositories() {
@@ -255,6 +293,7 @@ function setLookupRepositories() {
         ]),
       ),
     ),
+    getSku: vi.fn((id: string) => Promise.resolve(skuFixture({ id }))),
   };
   masterDataRepo.current = {
     listWarehouses: vi.fn(() =>
@@ -535,6 +574,9 @@ class FakeRepository implements Partial<IInboundRepository> {
         reasonNote: input.reasonNote ?? null,
         scanEvidenceJson: input.scanEvidence ? { RawValue: input.scanEvidence.rawValue } : null,
         discrepancySignals: input.actualQuantity === 12 ? [] : ['QuantityVariance'],
+        lotNumber: input.lotNumber ?? null,
+        expiryDate: input.expiryDate ?? null,
+        serialNumber: input.serialNumber ?? null,
         idempotencyKey: input.idempotencyKey,
         receivedAt: '2026-06-22T09:10:00.000Z',
         receivedBy: 'test-admin',
@@ -1806,6 +1848,252 @@ describe('InboundPage', () => {
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
   }, 15_000);
 
+  it('shows and requires Số lô when the selected SKU is lotControlled, and passes it to confirmReceiptLine (IDC-03)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id, lotControlled: true })),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    expect(await screen.findByLabelText('Số lô')).toBeTruthy();
+    expect(screen.queryByLabelText('Hạn dùng')).toBeNull();
+    expect(screen.queryByLabelText('Số serial')).toBeNull();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    expect(confirmButton).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'yêu cầu nhập số lô',
+    );
+
+    await actor.type(screen.getByLabelText('Số lô'), 'LOT-XYZ');
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+    const [, receiptInput] = fake.confirmReceiptLine.mock.calls[0];
+    expect(receiptInput).toMatchObject({ lotNumber: 'LOT-XYZ', expiryDate: null, serialNumber: null });
+  }, 15_000);
+
+  it('shows and requires Hạn dùng when the selected SKU is expiryControlled, and passes it to confirmReceiptLine (IDC-03)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id, expiryControlled: true })),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    expect(screen.queryByLabelText('Số lô')).toBeNull();
+    const expiryInput = await screen.findByLabelText('Hạn dùng');
+    expect(expiryInput).toHaveProperty('type', 'date');
+    expect(screen.queryByLabelText('Số serial')).toBeNull();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    expect(confirmButton).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'yêu cầu nhập hạn dùng',
+    );
+
+    fireEvent.change(expiryInput, { target: { value: '2027-01-31' } });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+    const [, receiptInput] = fake.confirmReceiptLine.mock.calls[0];
+    expect(receiptInput).toMatchObject({
+      lotNumber: null,
+      expiryDate: '2027-01-31',
+      serialNumber: null,
+    });
+  }, 15_000);
+
+  it('shows and requires Số serial when the selected SKU is serialControlled, and passes it to confirmReceiptLine (IDC-03)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id, serialControlled: true })),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    expect(screen.queryByLabelText('Số lô')).toBeNull();
+    expect(screen.queryByLabelText('Hạn dùng')).toBeNull();
+    expect(await screen.findByLabelText('Số serial')).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    expect(confirmButton).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'yêu cầu nhập số serial',
+    );
+
+    await actor.type(screen.getByLabelText('Số serial'), 'SN-0001');
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+    const [, receiptInput] = fake.confirmReceiptLine.mock.calls[0];
+    expect(receiptInput).toMatchObject({
+      lotNumber: null,
+      expiryDate: null,
+      serialNumber: 'SN-0001',
+    });
+  }, 15_000);
+
+  it('shows no Lot/Expiry/Serial inputs when the SKU has no identity control flags (IDC-03 regression)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await waitFor(() => expect(catalogRepo.current.getSku).toHaveBeenCalledWith('sku-1'));
+    expect(screen.queryByLabelText('Số lô')).toBeNull();
+    expect(screen.queryByLabelText('Hạn dùng')).toBeNull();
+    expect(screen.queryByLabelText('Số serial')).toBeNull();
+  }, 15_000);
+
+  it('does not leak a Lot value typed for one line into a different line after switching (IDC-03 review fix)', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id, lotControlled: true })),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(await screen.findByLabelText('Số lô'), 'LOT-LINE-1');
+    expect(screen.getByLabelText('Số lô')).toHaveProperty('value', 'LOT-LINE-1');
+
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    await waitFor(() => expect(catalogRepo.current.getSku).toHaveBeenCalledWith('sku-2'));
+    expect(await screen.findByLabelText('Số lô')).toHaveProperty('value', '');
+  }, 15_000);
+
+  it('blocks confirm-receipt until the SKU control flags finish loading, instead of failing open (IDC-03 review fix)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    let resolveSku: (sku: Sku) => void = () => {};
+    catalogRepo.current.getSku.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSku = resolve;
+        }),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    expect(confirmButton).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'Đang tải quy định',
+    );
+
+    resolveSku(skuFixture({ id: 'sku-1' }));
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+
+    // catalogRepo.current is shared mutable module state reused by later tests
+    // that don't call setLookupRepositories() themselves — restore the default
+    // immediately-resolving behavior so this test's never-resolving override
+    // doesn't hang every subsequent test's useSku call.
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id })),
+    );
+  }, 15_000);
+
   it('collapses the start-receiving form to a read-only summary once a session exists, leaving a single primary action (IFB-08)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
@@ -2479,6 +2767,9 @@ describe('InboundPage', () => {
       reasonNote: null,
       scanEvidenceJson: { RawValue: 'wrong-sku-barcode' },
       discrepancySignals: ['WrongSku'],
+      lotNumber: null,
+      expiryDate: null,
+      serialNumber: null,
       idempotencyKey: 'receipt-line-wrong-sku',
       receivedAt: '2026-06-22T09:10:00.000Z',
       receivedBy: 'test-admin',

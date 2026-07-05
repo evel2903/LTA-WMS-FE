@@ -82,6 +82,9 @@ export interface ConfirmReceiptLineInput {
   manualConfirm?: boolean;
   reasonCode?: string | null;
   reasonNote?: string | null;
+  lotNumber?: string | null;
+  expiryDate?: string | null;
+  serialNumber?: string | null;
   idempotencyKey: string;
   scanEvidence?: ReceiptLineScanEvidenceInput | null;
 }

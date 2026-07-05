@@ -95,6 +95,9 @@ const receiptLineDto: ReceiptLineDto = {
   ReasonNote: 'Barcode unreadable',
   ScanEvidenceJson: null,
   DiscrepancySignals: ['QuantityVariance'],
+  LotNumber: 'LOT-A1',
+  ExpiryDate: '2027-01-31',
+  SerialNumber: 'SN-0001',
   IdempotencyKey: 'receipt-line-1',
   ReceivedAt: '2026-06-22T09:10:00.000Z',
   ReceivedBy: 'user-1',
@@ -407,6 +410,9 @@ describe('InboundMapper', () => {
       status: 'Discrepancy',
       discrepancySignals: ['QuantityVariance'],
       manualConfirm: true,
+      lotNumber: 'LOT-A1',
+      expiryDate: '2027-01-31',
+      serialNumber: 'SN-0001',
     });
   });
 
