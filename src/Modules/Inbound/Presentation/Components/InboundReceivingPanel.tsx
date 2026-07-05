@@ -42,6 +42,7 @@ interface InboundReceivingPanelProps {
   receiptLotNumber: string;
   receiptExpiryDate: string;
   receiptSerialNumber: string;
+  skuFlagsLoading: boolean;
   skuLotControlled: boolean;
   skuExpiryControlled: boolean;
   skuSerialControlled: boolean;
@@ -83,6 +84,7 @@ function getReceiptLineHelper({
   receiptLotNumber,
   receiptExpiryDate,
   receiptSerialNumber,
+  skuFlagsLoading,
   skuLotControlled,
   skuExpiryControlled,
   skuSerialControlled,
@@ -98,6 +100,7 @@ function getReceiptLineHelper({
   receiptLotNumber: string;
   receiptExpiryDate: string;
   receiptSerialNumber: string;
+  skuFlagsLoading: boolean;
   skuLotControlled: boolean;
   skuExpiryControlled: boolean;
   skuSerialControlled: boolean;
@@ -106,6 +109,7 @@ function getReceiptLineHelper({
 }) {
   if (!receivingSession) return 'Cần bắt đầu phiên tiếp nhận trước khi xác nhận dòng.';
   if (!selectedLine) return 'Chưa có dòng nhập kho để xác nhận.';
+  if (skuFlagsLoading) return 'Đang tải quy định lô/hạn dùng/serial của SKU.';
   if (isPending) return 'Đang xác nhận nhận hàng.';
   if (Number(receiptActualQuantity) <= 0) return 'Số lượng thực nhận phải lớn hơn 0.';
   if (receiptManualConfirm && !receiptReasonCode.trim()) {
@@ -165,6 +169,7 @@ export function InboundReceivingPanel({
   receiptLotNumber,
   receiptExpiryDate,
   receiptSerialNumber,
+  skuFlagsLoading,
   skuLotControlled,
   skuExpiryControlled,
   skuSerialControlled,
@@ -200,6 +205,7 @@ export function InboundReceivingPanel({
     receiptLotNumber,
     receiptExpiryDate,
     receiptSerialNumber,
+    skuFlagsLoading,
     skuLotControlled,
     skuExpiryControlled,
     skuSerialControlled,

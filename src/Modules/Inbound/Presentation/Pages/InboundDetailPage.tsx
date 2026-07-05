@@ -428,10 +428,16 @@ export function InboundDetailPage() {
     () => selected?.lines.find((line) => line.id === selectedLineId) ?? selected?.lines[0] ?? null,
     [selected?.lines, selectedLineId],
   );
-  const selectedSku = useSku(selectedLine?.skuId ?? null).data ?? null;
+  const selectedSkuQuery = useSku(selectedLine?.skuId ?? null);
+  const selectedSku = selectedSkuQuery.data ?? null;
   const skuLotControlled = selectedSku?.lotControlled ?? false;
   const skuExpiryControlled = selectedSku?.expiryControlled ?? false;
   const skuSerialControlled = selectedSku?.serialControlled ?? false;
+  // Fail closed while the SKU's control flags are still loading (IDC-03 dual
+  // review): defaulting flags to false during the fetch window would let a
+  // fast operator submit before a lotControlled/expiryControlled/serialControlled
+  // SKU's required fields are known to be required.
+  const skuFlagsLoading = Boolean(selectedLine?.skuId) && selectedSkuQuery.isPending;
   const lastConfirmedLine = mutations.confirmReceiptLine.data;
   const mutationConfirmedReceiptLine =
     lastConfirmedLine &&
@@ -556,6 +562,7 @@ export function InboundDetailPage() {
     !isCancelledTerminal &&
     receivingSession &&
     selectedLine &&
+    !skuFlagsLoading &&
     Number(receiptActualQuantity) > 0 &&
     receiptIdempotencyKey.trim() &&
     (receiptManualConfirm ? receiptReasonCode.trim() : receiptRawScan.trim()) &&
@@ -989,6 +996,17 @@ export function InboundDetailPage() {
     selectedInitialExpectedQuantity,
     selectedInitialLineId,
   ]);
+
+  // Switching the operator-selected line within the same plan (line rail click)
+  // does NOT retrigger the effect above (keyed on the plan's first line, not the
+  // active selection) — without this, a Lot/Expiry/Serial value typed for one
+  // line could silently carry over and be submitted for a different line's SKU
+  // (IDC-03 dual review).
+  useEffect(() => {
+    setReceiptLotNumber('');
+    setReceiptExpiryDate('');
+    setReceiptSerialNumber('');
+  }, [selectedLine?.id]);
 
   function updateLine(id: number, patch: Partial<DraftLine>) {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -1702,6 +1720,7 @@ export function InboundDetailPage() {
                 receiptLotNumber={receiptLotNumber}
                 receiptExpiryDate={receiptExpiryDate}
                 receiptSerialNumber={receiptSerialNumber}
+                skuFlagsLoading={skuFlagsLoading}
                 skuLotControlled={skuLotControlled}
                 skuExpiryControlled={skuExpiryControlled}
                 skuSerialControlled={skuSerialControlled}

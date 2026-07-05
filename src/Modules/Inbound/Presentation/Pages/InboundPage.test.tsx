@@ -2005,6 +2005,95 @@ describe('InboundPage', () => {
     expect(screen.queryByLabelText('Số serial')).toBeNull();
   }, 15_000);
 
+  it('does not leak a Lot value typed for one line into a different line after switching (IDC-03 review fix)', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id, lotControlled: true })),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(await screen.findByLabelText('Số lô'), 'LOT-LINE-1');
+    expect(screen.getByLabelText('Số lô')).toHaveProperty('value', 'LOT-LINE-1');
+
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    await waitFor(() => expect(catalogRepo.current.getSku).toHaveBeenCalledWith('sku-2'));
+    expect(await screen.findByLabelText('Số lô')).toHaveProperty('value', '');
+  }, 15_000);
+
+  it('blocks confirm-receipt until the SKU control flags finish loading, instead of failing open (IDC-03 review fix)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    repo.current = fake;
+    setLookupRepositories();
+    let resolveSku: (sku: Sku) => void = () => {};
+    catalogRepo.current.getSku.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSku = resolve;
+        }),
+    );
+    renderPage();
+
+    await screen.findByText(/Dấu vết CoreFlow: core-flow-1/i);
+    await expectReadinessAllowed();
+    await openTechnicalDetails(actor, 'inbound-receiving-session-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa phiên tiếp nhận'));
+    await actor.type(screen.getByLabelText('Khóa phiên tiếp nhận'), 'dock-1:user-1');
+    await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
+    expect(await screen.findByText(/Phiếu tiếp nhận ASN-10001-RCPT đã sẵn sàng/i)).toBeTruthy();
+
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
+    await actor.clear(screen.getByLabelText('Khóa idempotency'));
+    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-1');
+
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    expect(confirmButton).toHaveProperty('disabled', true);
+    expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
+      'Đang tải quy định',
+    );
+
+    resolveSku(skuFixture({ id: 'sku-1' }));
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+
+    // catalogRepo.current is shared mutable module state reused by later tests
+    // that don't call setLookupRepositories() themselves — restore the default
+    // immediately-resolving behavior so this test's never-resolving override
+    // doesn't hang every subsequent test's useSku call.
+    catalogRepo.current.getSku.mockImplementation((id: string) =>
+      Promise.resolve(skuFixture({ id })),
+    );
+  }, 15_000);
+
   it('collapses the start-receiving form to a read-only summary once a session exists, leaving a single primary action (IFB-08)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makePlan()]);
