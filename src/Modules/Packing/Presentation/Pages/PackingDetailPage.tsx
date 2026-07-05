@@ -96,7 +96,14 @@ function PackageSummary({ pack }: { pack: Package }) {
             <span>Số lượng {content.quantity}</span>
             <span>{content.uomCode ?? content.uomId}</span>
             <span>{content.inventoryStatusCode ?? 'Chưa có trạng thái tồn kho'}</span>
-            <span>{content.lotNumber ?? content.serialNumber ?? content.expiryDate ?? 'Chưa có dữ liệu lô'}</span>
+            <span className="space-y-0.5">
+              {content.lotNumber ? <div>Lô: {content.lotNumber}</div> : null}
+              {content.serialNumber ? <div>Serial: {content.serialNumber}</div> : null}
+              {content.expiryDate ? <div>Hạn dùng: {content.expiryDate}</div> : null}
+              {!content.lotNumber && !content.serialNumber && !content.expiryDate ? (
+                <div>Chưa có dữ liệu lô</div>
+              ) : null}
+            </span>
           </div>
         ))}
       </div>
