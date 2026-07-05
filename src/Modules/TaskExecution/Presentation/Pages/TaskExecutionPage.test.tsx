@@ -142,7 +142,10 @@ class FakeRepository implements Partial<ITaskExecutionRepository> {
         rawValue: input.rawValue,
         deviceCode: input.deviceCode ?? null,
         sessionId: input.sessionId ?? null,
-        normalizedValue: input.scanType === 'Quantity' ? input.rawValue : '01234567890128',
+        normalizedValue:
+          input.scanType === 'Quantity' || input.scanType === 'Lot' || input.scanType === 'Serial' || input.scanType === 'ExpiryDate'
+            ? input.rawValue
+            : '01234567890128',
         resolvedObjectId:
           input.scanType === 'Location' ? 'loc-source' : input.scanType === 'Item' ? 'sku-1' : null,
         result: input.rawValue.includes('wrong') ? 'Rejected' : 'Accepted',
@@ -409,6 +412,115 @@ describe('TaskExecution list/detail pages', () => {
       ),
     );
     expect(await screen.findByText('Đã ghi nhận xác nhận lấy hàng')).toBeTruthy();
+  });
+
+  it('shows dedicated Lô/Serial/Hạn dùng scan inputs only for the fields the pick task expects (IDC-06 AC1-3)', async () => {
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          Quantity: 5,
+          SerialNumber: 'SN-1',
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+    expect(await screen.findByLabelText('Quét serial')).toBeTruthy();
+    expect(screen.queryByLabelText('Quét lô')).toBeNull();
+    expect(screen.queryByLabelText('Quét hạn dùng')).toBeNull();
+  });
+
+  it('shows no dedicated Lô/Serial/Hạn dùng inputs when the pick task has no such expectation (IDC-06 AC3 regression)', async () => {
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          Quantity: 5,
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+    expect(screen.queryByLabelText('Quét lô')).toBeNull();
+    expect(screen.queryByLabelText('Quét serial')).toBeNull();
+    expect(screen.queryByLabelText('Quét hạn dùng')).toBeNull();
+  });
+
+  it('confirms a pick task using the dedicated Serial scan input, not the shared Item scan field (IDC-06 AC1, AC5)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeTask({
+        taskType: 'Pick',
+        taskStatus: 'Claimed',
+        assignedUserId: 'current-user',
+        sourceDocumentType: 'PickTask',
+        sourceDocumentId: 'pick-task-1',
+        sourceDocumentCode: 'PT-001',
+        taskPayload: {
+          PickTaskId: 'pick-task-1',
+          SourceLocationId: 'loc-source',
+          SkuId: 'sku-1',
+          SkuCode: 'SKU-1',
+          Quantity: 5,
+          SerialNumber: 'SN-1',
+          TargetReference: 'SHIP_TO:CUST-1',
+        },
+      }),
+    ]);
+    setCurrentUser();
+    repo.current = fake;
+    renderDetailPage('/mobile/tasks/task-a/confirm');
+
+    await screen.findByText('Kỳ vọng thực hiện lấy hàng');
+
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Location');
+    await actor.type(screen.getByLabelText('Giá trị quét'), 'loc-source');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
+    await screen.findByText(/Lượt quét được chấp nhận/i);
+
+    await actor.selectOptions(screen.getByLabelText('Loại quét'), 'Item');
+    await actor.type(screen.getByLabelText('Giá trị quét'), '(01)01234567890128(30)5');
+    await actor.click(screen.getByRole('button', { name: 'Ghi nhận quét' }));
+
+    await actor.type(await screen.findByLabelText('Quét serial'), 'SN-1');
+    await actor.click(screen.getByRole('button', { name: 'Xác nhận' }));
+
+    await waitFor(() =>
+      expect(fake.recordScan).toHaveBeenCalledWith(
+        'task-a',
+        expect.objectContaining({ scanType: 'Serial', rawValue: 'SN-1' }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Xác nhận lấy hàng' })).toHaveProperty(
+        'disabled',
+        false,
+      ),
+    );
+    await actor.click(screen.getByRole('button', { name: 'Xác nhận lấy hàng' }));
+
+    await waitFor(() => expect(fake.confirmPickTask).toHaveBeenCalledWith('task-a', expect.any(Object)));
   });
 
   it('reports pick exception and requests substitution from the detail route', async () => {
