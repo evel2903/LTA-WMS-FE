@@ -346,4 +346,66 @@ describe('Packing list/detail pages', () => {
     const readyButton = screen.getByRole('button', { name: /^Sẵn sàng staging$/i });
     expect((readyButton as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('shows Lot/Serial/Expiry on 3 separate labeled lines when all three are present (IDC-04)', () => {
+    const pack = makePackage();
+    vi.mocked(usePackage).mockReturnValue({
+      data: {
+        ...pack,
+        contents: [{ ...pack.contents[0], lotNumber: 'LOT-1', serialNumber: 'SN-1', expiryDate: '2027-01-31' }],
+      },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof usePackage>);
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/packing/:id" element={<PackingDetailPage />} />
+      </Routes>,
+      ['/packing/package-1'],
+    );
+
+    expect(screen.getByText('Lô: LOT-1')).toBeTruthy();
+    expect(screen.getByText('Serial: SN-1')).toBeTruthy();
+    expect(screen.getByText('Hạn dùng: 2027-01-31')).toBeTruthy();
+    expect(screen.queryByText('Chưa có dữ liệu lô')).toBeNull();
+  });
+
+  it('shows only the Lô line when only lotNumber is present (IDC-04 regression, default fixture)', () => {
+    renderWithRouter(
+      <Routes>
+        <Route path="/packing/:id" element={<PackingDetailPage />} />
+      </Routes>,
+      ['/packing/package-1'],
+    );
+
+    expect(screen.getByText('Lô: LOT-1')).toBeTruthy();
+    expect(screen.queryByText(/^Serial:/)).toBeNull();
+    expect(screen.queryByText(/^Hạn dùng:/)).toBeNull();
+    expect(screen.queryByText('Chưa có dữ liệu lô')).toBeNull();
+  });
+
+  it('shows the empty-state copy when Lot/Serial/Expiry are all absent (IDC-04)', () => {
+    const pack = makePackage();
+    vi.mocked(usePackage).mockReturnValue({
+      data: {
+        ...pack,
+        contents: [{ ...pack.contents[0], lotNumber: null, serialNumber: null, expiryDate: null }],
+      },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof usePackage>);
+
+    renderWithRouter(
+      <Routes>
+        <Route path="/packing/:id" element={<PackingDetailPage />} />
+      </Routes>,
+      ['/packing/package-1'],
+    );
+
+    expect(screen.getByText('Chưa có dữ liệu lô')).toBeTruthy();
+    expect(screen.queryByText(/^Lô:/)).toBeNull();
+    expect(screen.queryByText(/^Serial:/)).toBeNull();
+    expect(screen.queryByText(/^Hạn dùng:/)).toBeNull();
+  });
 });
