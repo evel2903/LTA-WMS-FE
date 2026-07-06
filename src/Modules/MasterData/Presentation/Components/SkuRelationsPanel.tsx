@@ -50,8 +50,13 @@ import {
   mergeSelectedOption,
   type SelectOption,
 } from '@modules/MasterData/Presentation/Forms/SelectOptions';
+import { displayMasterDataStatus } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 
 const selectClass = 'h-9 rounded-md border bg-transparent px-3 text-sm';
+const masterDataStatusOptions = MASTER_DATA_STATUSES.map((status) => ({
+  value: status,
+  label: displayMasterDataStatus(status),
+}));
 
 interface SkuRelationsPanelProps {
   skuId: string;
@@ -115,7 +120,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           columns={[
             { header: 'Mã', render: (pack) => pack.packCode },
             { header: 'Tên', render: (pack) => pack.packName },
-            { header: 'UOM', render: (pack) => optionLabel(uomOptions, pack.uomId) },
+            { header: 'Đơn vị tính', render: (pack) => optionLabel(uomOptions, pack.uomId) },
             { header: 'Số lượng', render: (pack) => pack.quantityPerPack },
             { header: 'Trạng thái', render: (pack) => <MasterDataStatusBadge status={pack.status} /> },
           ]}
@@ -177,7 +182,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
           columns={[
             { header: 'Giá trị', render: (barcode) => barcode.barcodeValue },
             { header: 'Loại', render: (barcode) => barcode.barcodeType },
-            { header: 'UOM', render: (barcode) => optionLabel(uomOptions, barcode.uomId) },
+            { header: 'Đơn vị tính', render: (barcode) => optionLabel(uomOptions, barcode.uomId) },
             { header: 'Quy cách', render: (barcode) => barcode.packCode ?? '-' },
             {
               header: 'Hiệu lực',
@@ -420,47 +425,77 @@ function RelationSection<T extends { id: string }>({
           <AlertDescription>Quan hệ này đang ở chế độ chỉ đọc.</AlertDescription>
         </Alert>
       )}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.header}>{column.header}</TableHead>
-            ))}
-            <TableHead className="w-12">Chỉnh sửa</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {state ? (
-            <TableRow>
-              <TableCell colSpan={columns.length + 1}>
-                <Alert role={state.role} variant={state.variant}>
-                  <AlertDescription>{state.message}</AlertDescription>
-                </Alert>
-              </TableCell>
-            </TableRow>
-          ) : (
-            rows.map((row) => (
-              <TableRow key={rowKey(row)}>
-                {columns.map((column) => (
-                  <TableCell key={column.header}>{column.render(row)}</TableCell>
+      {state ? (
+        <Alert role={state.role} variant={state.variant}>
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
+      ) : (
+        <>
+          <div className="border-border bg-card hidden rounded-lg border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {columns.map((column) => (
+                    <TableHead key={column.header}>{column.header}</TableHead>
+                  ))}
+                  <TableHead className="w-12">Chỉnh sửa</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={rowKey(row)}>
+                    {columns.map((column) => (
+                      <TableCell key={column.header}>{column.render(row)}</TableCell>
+                    ))}
+                    <TableCell>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        title={`Chỉnh sửa ${title}`}
+                        aria-label={`Chỉnh sửa ${title}`}
+                        disabled={disabled}
+                        onClick={() => onEdit(row)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-                <TableCell>
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-2 md:hidden" data-sku-relation-mobile-list>
+            {rows.map((row) => (
+              <article
+                key={rowKey(row)}
+                className="border-border bg-card grid gap-3 rounded-lg border p-3"
+                data-sku-relation-mobile-row
+              >
+                {columns.map((column) => (
+                  <div key={column.header} className="grid min-w-0 gap-1">
+                    <span className="text-muted-foreground text-xs font-medium">{column.header}</span>
+                    <div className="min-w-0 break-words text-sm">{column.render(row)}</div>
+                  </div>
+                ))}
+                <div className="flex justify-end">
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
                     title={`Chỉnh sửa ${title}`}
+                    aria-label={`Chỉnh sửa ${title}`}
                     disabled={disabled}
                     onClick={() => onEdit(row)}
                   >
                     <Pencil className="size-4" />
                   </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
       {form}
     </section>
   );
@@ -515,7 +550,7 @@ function PackForm({
           <Input disabled={disabled} {...form.register('packName')} />
         </Field>
         <SelectField
-          label="UOM"
+          label="Đơn vị tính"
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.uomId?.message}
@@ -527,7 +562,7 @@ function PackForm({
         <SelectField
           label="Trạng thái"
           disabled={disabled}
-          options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
+          options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
@@ -615,7 +650,7 @@ function BarcodeForm({
           <Input disabled={disabled} {...form.register('barcodeType')} />
         </Field>
         <SelectField
-          label="UOM"
+          label="Đơn vị tính"
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.uomId?.message}
@@ -633,7 +668,7 @@ function BarcodeForm({
         <SelectField
           label="Trạng thái"
           disabled={disabled}
-          options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
+          options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
@@ -737,7 +772,7 @@ function ConversionForm({
         <SelectField
           label="Trạng thái"
           disabled={disabled}
-          options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
+          options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />
@@ -825,7 +860,7 @@ function CoverageForm({
         <SelectField
           label="Trạng thái"
           disabled={disabled}
-          options={MASTER_DATA_STATUSES.map((status) => ({ value: status, label: status }))}
+          options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
           {...form.register('status')}
         />

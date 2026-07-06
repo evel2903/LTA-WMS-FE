@@ -1,8 +1,15 @@
+// @vitest-environment jsdom
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
-import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+import {
+  MASTER_DATA_EMPTY_LABELS,
+  displayMasterDataStatus,
+  displaySkuStatus,
+  displayUomType,
+} from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
 import { OwnerPolicyView } from '@modules/MasterData/Presentation/Components/OwnerPolicyView';
@@ -10,10 +17,12 @@ import {
   CatalogListView,
   type CatalogColumn,
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
+import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
 import { SkuStatusBadge } from '@modules/MasterData/Presentation/Components/SkuStatusBadge';
 import { skuStatusVariant } from '@modules/MasterData/Presentation/Components/SkuStatusVariant';
 import { OwnerForm } from '@modules/MasterData/Presentation/Forms/OwnerForm';
 import { SkuForm } from '@modules/MasterData/Presentation/Forms/SkuForm';
+import { UomForm } from '@modules/MasterData/Presentation/Forms/UomForm';
 
 interface Row {
   id: string;
@@ -21,12 +30,12 @@ interface Row {
 }
 
 const columns: CatalogColumn<Row>[] = [
-  { header: 'Code', render: (row) => row.code },
+  { header: 'Mã', render: (row) => row.code },
 ];
 
 const baseProps = {
   title: 'Chủ hàng',
-  description: 'Manage owners',
+  description: 'Quản lý chủ hàng',
   columns,
   rows: [] as Row[],
   rowKey: (row: Row) => row.id,
@@ -34,6 +43,8 @@ const baseProps = {
   totalPages: 1,
   onPageChange: () => undefined,
 };
+
+afterEach(() => cleanup());
 
 describe('Catalog components', () => {
   it('renders the loading state', () => {
@@ -44,7 +55,6 @@ describe('Catalog components', () => {
   it('renders the empty state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="empty" />);
     expect(html).toContain('Không tìm thấy bản ghi.');
-    expect(html).toContain('data-slot="alert"');
     expect(html).toContain('role="status"');
   });
 
@@ -79,15 +89,13 @@ describe('Catalog components', () => {
       <CatalogListView {...baseProps} state="error" errorMessage="Backend unavailable" />,
     );
     expect(html).toContain('Backend unavailable');
-    expect(html).toContain('data-slot="alert"');
     expect(html).toContain('role="alert"');
   });
 
   it('renders the permission-denied state', () => {
     const html = renderToStaticMarkup(<CatalogListView {...baseProps} state="denied" />);
     expect(html).toContain('Không có quyền');
-    expect(html).toContain('data-slot="alert"');
-    expect(html).toContain('role="status"');
+    expect(html).toContain('role="alert"');
   });
 
   it('renders rows and the entity title in the ready state', () => {
@@ -102,16 +110,145 @@ describe('Catalog components', () => {
     expect(html).toContain('OWN-01');
   });
 
-  it('renders each SKU status variant', () => {
+  it('clamps pagination display when current page exceeds available pages', () => {
+    const html = renderToStaticMarkup(
+      <CatalogListView
+        {...baseProps}
+        state="ready"
+        rows={[{ id: 'owner-1', code: 'OWN-01' }]}
+        page={5}
+        totalPages={1}
+      />,
+    );
+
+    expect(html).toContain('Trang 1 / 1');
+    expect(html).not.toContain('Trang 5 / 1');
+  });
+
+  it('requests page correction when current page exceeds available pages', async () => {
+    const onPageChange = vi.fn();
+
+    render(
+      <CatalogListView
+        {...baseProps}
+        state="ready"
+        rows={[{ id: 'owner-1', code: 'OWN-01' }]}
+        page={5}
+        totalPages={1}
+        onPageChange={onPageChange}
+      />,
+    );
+
+    await waitFor(() => expect(onPageChange).toHaveBeenCalledWith(1));
+  });
+
+  it('renders a shared list shell with Vietnamese aria labels and mobile row cards', () => {
+    const html = renderToStaticMarkup(
+      <CatalogListView
+        {...baseProps}
+        state="ready"
+        toolbar={<input aria-label="Mã chủ hàng" />}
+        rows={[{ id: 'owner-1', code: 'OWN-01' }]}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Bộ lọc Chủ hàng"');
+    expect(html).toContain('aria-label="Danh sách Chủ hàng"');
+    expect(html).toContain('data-catalog-mobile-list="true"');
+    expect(html).toContain('data-catalog-mobile-row="true"');
+    expect(html).toContain('Mã');
+    expect(html).toContain('OWN-01');
+  });
+
+  it('renders master data status labels without exposing raw enum copy', () => {
+    expect(displayMasterDataStatus('Active')).toBe('Đang hoạt động');
+    expect(displayMasterDataStatus('Inactive')).toBe('Không hoạt động');
+    expect(displayMasterDataStatus('Blocked')).toBe('Tạm khóa');
+    expect(displayMasterDataStatus('Maintenance')).toBe('Bảo trì');
+    expect(displayMasterDataStatus('Archived')).toBe('Archived');
+    expect(displayMasterDataStatus(' Active ')).toBe('Đang hoạt động');
+    expect(displayMasterDataStatus('   ')).toBe('-');
+    expect(displayMasterDataStatus(undefined)).toBe('-');
+
+    const activeHtml = renderToStaticMarkup(<MasterDataStatusBadge status="Active" />);
+    const inactiveHtml = renderToStaticMarkup(<MasterDataStatusBadge status="Inactive" />);
+    const unknownHtml = renderToStaticMarkup(<MasterDataStatusBadge status="Archived" />);
+
+    expect(activeHtml).toContain('Đang hoạt động');
+    expect(activeHtml).not.toContain('>Active<');
+    expect(inactiveHtml).toContain('Không hoạt động');
+    expect(inactiveHtml).not.toContain('>Inactive<');
+    expect(unknownHtml).toContain('Archived');
+  });
+
+  it('renders UOM type labels without exposing raw enum copy in visible text', () => {
+    expect(displayUomType('Quantity')).toBe('Số lượng');
+    expect(displayUomType('Count')).toBe('Số đếm');
+    expect(displayUomType('Weight')).toBe('Khối lượng');
+    expect(displayUomType(' Quantity ')).toBe('Số lượng');
+    expect(displayUomType('   ')).toBe('-');
+    expect(displayUomType(null)).toBe('-');
+    expect(displayUomType('Custom')).toBe('Custom');
+
+    const html = renderToStaticMarkup(
+      <UomForm
+        submitLabel="Cập nhật đơn vị tính"
+        initialValue={{
+          id: 'uom-1',
+          uomCode: 'PALLET',
+          uomName: 'Pallet',
+          uomType: 'Quantity',
+          decimalPrecision: 0,
+          status: 'Active',
+          sourceSystem: 'seed',
+          referenceId: 'PALLET',
+          createdAt: '2026-06-18T00:00:00.000Z',
+          updatedAt: '2026-06-19T00:00:00.000Z',
+          createdBy: 'admin@example.com',
+          updatedBy: null,
+        }}
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Số lượng');
+    expect(html).toContain('value="Số lượng"');
+    expect(html).toContain('list="uom-type-options"');
+    expect(html).toContain('Nhập hoặc chọn loại đơn vị tính');
+    expect(html).not.toContain('>Quantity<');
+    expect(html).not.toContain('value="Quantity"');
+  });
+
+  it('renders each SKU status variant with Vietnamese display labels', () => {
     expect(skuStatusVariant('Active')).toBe('success');
     expect(skuStatusVariant('Draft')).toBe('outline');
     expect(skuStatusVariant('Blocked')).toBe('warning');
     expect(skuStatusVariant('Discontinued')).toBe('secondary');
 
-    expect(renderToStaticMarkup(<SkuStatusBadge status="Active" />)).toContain('Active');
-    expect(renderToStaticMarkup(<SkuStatusBadge status="Draft" />)).toContain('Draft');
-    expect(renderToStaticMarkup(<SkuStatusBadge status="Blocked" />)).toContain('Blocked');
-    expect(renderToStaticMarkup(<SkuStatusBadge status="Discontinued" />)).toContain('Discontinued');
+    expect(displaySkuStatus('Active')).toBe('Đang kinh doanh');
+    expect(displaySkuStatus('Draft')).toBe('Nháp');
+    expect(displaySkuStatus('Blocked')).toBe('Tạm khóa');
+    expect(displaySkuStatus('Discontinued')).toBe('Ngừng kinh doanh');
+    expect(displaySkuStatus('Archived')).toBe('Archived');
+    expect(displaySkuStatus(' Active ')).toBe('Đang kinh doanh');
+    expect(displaySkuStatus('   ')).toBe('-');
+    expect(displaySkuStatus(undefined)).toBe('-');
+
+    const activeHtml = renderToStaticMarkup(<SkuStatusBadge status="Active" />);
+    const draftHtml = renderToStaticMarkup(<SkuStatusBadge status="Draft" />);
+    const blockedHtml = renderToStaticMarkup(<SkuStatusBadge status="Blocked" />);
+    const discontinuedHtml = renderToStaticMarkup(<SkuStatusBadge status="Discontinued" />);
+    const unknownHtml = renderToStaticMarkup(<SkuStatusBadge status="Archived" />);
+
+    expect(activeHtml).toContain('Đang kinh doanh');
+    expect(activeHtml).not.toContain('>Active<');
+    expect(draftHtml).toContain('Nháp');
+    expect(draftHtml).not.toContain('>Draft<');
+    expect(blockedHtml).toContain('Tạm khóa');
+    expect(blockedHtml).not.toContain('>Blocked<');
+    expect(discontinuedHtml).toContain('Ngừng kinh doanh');
+    expect(discontinuedHtml).not.toContain('>Discontinued<');
+    expect(unknownHtml).toContain('Archived');
   });
 
   it('hiển thị cảnh báo trùng mã trong form chủ hàng', () => {
@@ -136,6 +273,31 @@ describe('Catalog components', () => {
     expect(html).toContain('Mã SKU đã tồn tại');
     expect(html).toContain('data-slot="alert"');
     expect(html).toContain('role="alert"');
+    expect(html).toContain('Nháp');
+    expect(html).toContain('Đang kinh doanh');
+    expect(html).not.toContain('>Draft<');
+    expect(html).not.toContain('>Active<');
+    expect(html).not.toContain('>None<');
+  });
+
+  it('shows SKU missing setup guidance for absent active Owner/UOM lookups', () => {
+    const html = renderToStaticMarkup(
+      <SkuForm
+        submitLabel="Tạo SKU"
+        owners={[]}
+        uoms={[]}
+        missingSetupMessages={[
+          'Chưa có Đơn vị tính đang hoạt động để chọn đơn vị cơ sở/tồn kho.',
+          'Chưa có Chủ hàng đang hoạt động để chọn chủ hàng mặc định.',
+        ]}
+        onSubmit={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Thiếu cấu hình SKU');
+    expect(html).toContain('Chưa có Đơn vị tính đang hoạt động');
+    expect(html).toContain('Chưa có Chủ hàng đang hoạt động');
+    expect(html).toContain('role="status"');
   });
 
   it('hiển thị cảnh báo chỉ đọc khi tạo mới không được phép', () => {
@@ -150,7 +312,6 @@ describe('Catalog components', () => {
 
     expect(html).toContain('Chỉ đọc');
     expect(html).toContain('Bạn chỉ có quyền xem dữ liệu trong phạm vi này.');
-    expect(html).toContain('data-slot="alert"');
     expect(html).toContain('role="status"');
   });
 

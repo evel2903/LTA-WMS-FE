@@ -15,7 +15,11 @@ import {
   PARTNER_STATUSES,
   PARTNER_TYPES,
 } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
-import { PARTNER_EMPTY_LABEL_VI } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
+import {
+  PARTNER_EMPTY_LABEL_VI,
+  displayPartnerStatus,
+  displayPartnerType,
+} from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 import type { Partner, PartnerStatus, PartnerType } from '@modules/PartnerMaster/Domain/Types/Partner';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
@@ -70,7 +74,7 @@ export function PartnerMasterPage() {
       ),
     },
     { header: 'Tên', render: (partner) => partner.partnerName },
-    { header: 'Loại', render: (partner) => partner.partnerType },
+    { header: 'Loại', render: (partner) => displayPartnerType(partner.partnerType) },
     { header: 'Trạng thái', render: (partner) => <PartnerStatusBadge status={partner.status} /> },
     { header: 'Tham chiếu ngoài', render: (partner) => partner.externalReference },
   ];
@@ -136,7 +140,7 @@ export function PartnerMasterPage() {
               <option value="All">Tất cả</option>
               {PARTNER_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {displayPartnerType(type)}
                 </option>
               ))}
             </select>
@@ -152,7 +156,7 @@ export function PartnerMasterPage() {
               <option value="All">Tất cả</option>
               {PARTNER_STATUSES.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {displayPartnerStatus(item)}
                 </option>
               ))}
             </select>

@@ -6,6 +6,10 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { PARTNER_STATUSES, PARTNER_TYPES } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
 import type { Partner } from '@modules/PartnerMaster/Domain/Types/Partner';
+import {
+  displayPartnerStatus,
+  displayPartnerType,
+} from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   partnerDeactivateSchema,
@@ -20,6 +24,7 @@ interface PartnerFormProps {
   pending?: boolean;
   deactivatePending?: boolean;
   submitLabel: string;
+  partnerTypeEditable?: boolean;
   conflict?: string;
   onSubmit: (values: PartnerFormValues) => void;
   onDeactivate?: (values: PartnerDeactivateValues) => void;
@@ -31,6 +36,7 @@ export function PartnerForm({
   pending = false,
   deactivatePending = false,
   submitLabel,
+  partnerTypeEditable = true,
   conflict,
   onSubmit,
   onDeactivate,
@@ -52,6 +58,7 @@ export function PartnerForm({
     defaultValues: { reasonCode: '' },
   });
   const deactivateReasonCode = deactivateForm.watch('reasonCode');
+  const partnerTypeValue = form.watch('partnerType');
 
   return (
     <form
@@ -73,18 +80,28 @@ export function PartnerForm({
           <span className="text-destructive text-xs">{form.formState.errors.partnerName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">Loại đối tác<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('partnerType')}
-        >
-          {PARTNER_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </label>
+      {partnerTypeEditable ? (
+        <label className="grid gap-1 text-sm">Loại đối tác<select
+            className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            disabled={disabled}
+            {...form.register('partnerType')}
+          >
+            {PARTNER_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {displayPartnerType(type)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <div className="grid gap-1 text-sm">
+          <span>Loại đối tác</span>
+          <input type="hidden" {...form.register('partnerType')} />
+          <p className="border-border bg-muted text-foreground rounded-md border px-3 py-2">
+            {displayPartnerType(partnerTypeValue)}
+          </p>
+        </div>
+      )}
       <label className="grid gap-1 text-sm">Trạng thái<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
@@ -92,7 +109,7 @@ export function PartnerForm({
         >
           {PARTNER_STATUSES.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {displayPartnerStatus(status)}
             </option>
           ))}
         </select>

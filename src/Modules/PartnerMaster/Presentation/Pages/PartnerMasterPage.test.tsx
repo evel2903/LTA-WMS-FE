@@ -37,6 +37,10 @@ vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
 import { PartnerMasterPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterPage';
 import { PartnerMasterDetailPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage';
 import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
+import {
+  displayPartnerStatus,
+  displayPartnerType,
+} from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -156,11 +160,30 @@ describe('PartnerMasterPage', () => {
     const activeHtml = renderToStaticMarkup(<PartnerStatusBadge status="Active" />);
     const inactiveHtml = renderToStaticMarkup(<PartnerStatusBadge status="Inactive" />);
 
+    expect(displayPartnerStatus('Active')).toBe('Đang hoạt động');
+    expect(displayPartnerStatus('Inactive')).toBe('Ngừng hoạt động');
+    expect(displayPartnerType('Supplier')).toBe('Nhà cung cấp');
+    expect(displayPartnerType('Customer')).toBe('Khách hàng');
+    expect(displayPartnerType('Carrier')).toBe('Đơn vị vận chuyển');
+    expect(displayPartnerStatus(' Active ')).toBe('Đang hoạt động');
+    expect(displayPartnerStatus('   ')).toBe('-');
+    expect(displayPartnerStatus('Suspended')).toBe('Suspended');
+    expect(displayPartnerStatus(undefined)).toBe('-');
+    expect(displayPartnerType(' Supplier ')).toBe('Nhà cung cấp');
+    expect(displayPartnerType('   ')).toBe('-');
+    expect(displayPartnerType('Broker')).toBe('Broker');
+    expect(displayPartnerType(undefined)).toBe('-');
+
     expect(activeHtml).toContain('data-slot="badge"');
-    expect(activeHtml).toContain('Active');
+    expect(activeHtml).toContain('Đang hoạt động');
+    expect(activeHtml).not.toContain('>Active<');
 
     expect(inactiveHtml).toContain('data-slot="badge"');
-    expect(inactiveHtml).toContain('Inactive');
+    expect(inactiveHtml).toContain('Ngừng hoạt động');
+    expect(inactiveHtml).not.toContain('>Inactive<');
+
+    const unknownHtml = renderToStaticMarkup(<PartnerStatusBadge status="Suspended" />);
+    expect(unknownHtml).toContain('Suspended');
   });
 
   it('creates, edits and deactivates Supplier/Customer/Carrier through the repository', async () => {
@@ -192,6 +215,8 @@ describe('PartnerMasterPage', () => {
     await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
     const updateButton = await screen.findByRole('button', { name: 'Cập nhật đối tác' });
     const editForm = updateButton.closest('form') as HTMLFormElement;
+    expect(within(editForm).queryByLabelText('Loại đối tác')).toBeNull();
+    expect(within(editForm).getByText('Nhà cung cấp')).toBeTruthy();
     await actor.clear(within(editForm).getByLabelText('Tên đối tác'));
     await actor.type(within(editForm).getByLabelText('Tên đối tác'), 'Acme Supplier Updated');
     await actor.click(updateButton);
@@ -202,6 +227,7 @@ describe('PartnerMasterPage', () => {
         expect.objectContaining({ partnerName: 'Acme Supplier Updated' }),
       ),
     );
+    expect(fake.update.mock.calls[0]?.[1]).not.toHaveProperty('partnerType');
     expect(await screen.findByDisplayValue('Acme Supplier Updated')).toBeTruthy();
 
     await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
@@ -213,7 +239,7 @@ describe('PartnerMasterPage', () => {
     await waitFor(() =>
       expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-CANCEL' }),
     );
-    await waitFor(() => expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Ngừng hoạt động').length).toBeGreaterThan(0));
   });
 
   it('shows read-only denied behavior when list is forbidden', async () => {
@@ -237,7 +263,7 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
-    await screen.findByRole('button', { name: 'SUP-001' });
+    expect((await screen.findAllByRole('button', { name: 'SUP-001' })).length).toBeGreaterThan(0);
     await actor.type(screen.getByLabelText('Lọc tên đối tác'), 'Acme');
 
     await waitFor(() =>
