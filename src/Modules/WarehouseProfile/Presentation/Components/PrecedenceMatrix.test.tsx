@@ -6,7 +6,11 @@ import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/R
 import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGroup';
 import { PrecedenceMatrix } from '@modules/WarehouseProfile/Presentation/Components/PrecedenceMatrix';
 
-function rule(id: string, tier: RuleDefinition['precedenceTier'], mode: RuleDefinition['controlMode']): RuleDefinition {
+function rule(
+  id: string,
+  tier: RuleDefinition['precedenceTier'],
+  mode: RuleDefinition['controlMode'],
+): RuleDefinition {
   return {
     id,
     ruleCode: id.toUpperCase(),
@@ -76,19 +80,31 @@ describe('PRECEDENCE_ORDER constant', () => {
 describe('PrecedenceMatrix', () => {
   it('renders all six tiers in the fixed order regardless of incoming data order', () => {
     // Rules supplied OUT of precedence order to prove the matrix does not sort by data.
-    const rules = [rule('opt', 'OPTIMIZATION', 'AUTO_SUGGESTION'), rule('comp', 'COMPLIANCE', 'HARD_BLOCK')];
-    const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />);
-
-    const indices = ['Tuân thủ', 'Toàn vẹn', 'Vật lý', 'Chủ hàng / Hợp đồng', 'Vận hành', 'Tối ưu'].map(
-      (label) => html.indexOf(label),
+    const rules = [
+      rule('opt', 'OPTIMIZATION', 'AUTO_SUGGESTION'),
+      rule('comp', 'COMPLIANCE', 'HARD_BLOCK'),
+    ];
+    const html = renderToStaticMarkup(
+      <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />,
     );
+
+    const indices = [
+      'Tuân thủ',
+      'Toàn vẹn',
+      'Vật lý',
+      'Chủ hàng / Hợp đồng',
+      'Vận hành',
+      'Tối ưu',
+    ].map((label) => html.indexOf(label));
     // Every label present and strictly increasing => fixed top-to-bottom order.
     expect(indices.every((value) => value >= 0)).toBe(true);
     expect([...indices].sort((a, b) => a - b)).toEqual(indices);
   });
 
   it('exposes NO reorder / drag / sort control on the tiers', () => {
-    const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[]} groups={groups} />);
+    const html = renderToStaticMarkup(
+      <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[]} groups={groups} />,
+    );
     expect(html.toLowerCase()).not.toContain('draggable');
     expect(html.toLowerCase()).not.toContain('reorder');
     expect(html).not.toContain('aria-roledescription="sortable"');
@@ -98,8 +114,13 @@ describe('PrecedenceMatrix', () => {
   });
 
   it('groups each rule under its tier and shows its control-mode label', () => {
-    const rules = [rule('comp', 'COMPLIANCE', 'HARD_BLOCK'), rule('owner', 'OWNER_CONTRACT', 'APPROVAL_REQUIRED')];
-    const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />);
+    const rules = [
+      rule('comp', 'COMPLIANCE', 'HARD_BLOCK'),
+      rule('owner', 'OWNER_CONTRACT', 'APPROVAL_REQUIRED'),
+    ];
+    const html = renderToStaticMarkup(
+      <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={rules} groups={groups} />,
+    );
 
     expect(html).toContain('COMP'); // rule code
     expect(html).toContain('Chặn cứng');
@@ -108,8 +129,26 @@ describe('PrecedenceMatrix', () => {
   });
 
   it('shows an empty hint for a tier with no rules', () => {
-    const html = renderToStaticMarkup(<PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[]} groups={groups} />);
+    const html = renderToStaticMarkup(
+      <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[]} groups={groups} />,
+    );
     expect(html).toContain('Không có quy tắc trong tầng này.');
+  });
+
+  it('does not hide rules whose precedence tier is outside the current FE mapping', () => {
+    const unknownRule = rule(
+      'custom',
+      'CUSTOM_TIER' as RuleDefinition['precedenceTier'],
+      'CUSTOM_MODE' as RuleDefinition['controlMode'],
+    );
+    const html = renderToStaticMarkup(
+      <PrecedenceMatrix tiers={PRECEDENCE_ORDER} rules={[unknownRule]} groups={groups} />,
+    );
+
+    expect(html).toContain('Tầng chưa hỗ trợ');
+    expect(html).toContain('CUSTOM');
+    expect(html).toContain('Tầng ưu tiên chưa hỗ trợ (CUSTOM_TIER)');
+    expect(html).toContain('Chế độ kiểm soát chưa hỗ trợ (CUSTOM_MODE)');
   });
 
   it('renders the condition + action JSON read-only for each rule (Finding #3 / OQ3)', () => {
@@ -130,5 +169,9 @@ describe('PrecedenceMatrix', () => {
     // It is a static display, not an editable control.
     expect(html).not.toContain('<textarea');
     expect(html).not.toContain('contenteditable');
+    // Long JSON should stay inside the panel with controlled wrapping/scroll.
+    expect(html).toContain('max-w-full');
+    expect(html).toContain('whitespace-pre-wrap');
+    expect(html).toContain('break-words');
   });
 });

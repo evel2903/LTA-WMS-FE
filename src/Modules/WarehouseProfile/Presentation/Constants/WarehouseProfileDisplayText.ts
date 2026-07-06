@@ -1,4 +1,5 @@
 import type {
+  AssignmentType,
   RuleControlMode,
   RulePrecedenceTier,
   SkippedReason,
@@ -29,6 +30,11 @@ export const VI_CONTROL_MODE_LABELS: Record<RuleControlMode, string> = {
   AUTO_SUGGESTION: 'Gợi ý tự động',
 };
 
+export const VI_ASSIGNMENT_TYPE_LABELS: Record<AssignmentType, string> = {
+  WAREHOUSE_TYPE: 'Loại kho',
+  WAREHOUSE: 'Kho cụ thể',
+};
+
 export const VI_SKIPPED_REASON_LABELS: Record<SkippedReason, string> = {
   LOWER_TIER: 'Tầng ưu tiên thấp hơn',
   LESS_SPECIFIC: 'Phạm vi kém cụ thể hơn',
@@ -37,6 +43,61 @@ export const VI_SKIPPED_REASON_LABELS: Record<SkippedReason, string> = {
   SHADOWED_BY_COMPLIANCE_HARD_BLOCK: 'Bị chặn bởi quy tắc tuân thủ chặn cứng',
 };
 
-export function viSkippedReasonLabel(reason: SkippedReason): string {
-  return VI_SKIPPED_REASON_LABELS[reason] ?? reason;
+function rawEnumFallback(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function unsupportedValueLabel(
+  value: string | null | undefined,
+  label: string,
+  emptyLabel = 'Chưa xác định',
+): string {
+  const normalized = rawEnumFallback(value);
+  return normalized ? `${label} chưa hỗ trợ (${normalized})` : emptyLabel;
+}
+
+export function viPrecedenceTierLabel(tier: string | null | undefined): string {
+  const normalized = rawEnumFallback(tier);
+  if (!normalized) return 'Chưa xác định';
+  return (
+    VI_PRECEDENCE_TIER_LABELS[normalized as RulePrecedenceTier] ??
+    unsupportedValueLabel(normalized, 'Tầng ưu tiên')
+  );
+}
+
+export function viPrecedenceTierDescription(tier: string | null | undefined): string {
+  const normalized = rawEnumFallback(tier);
+  if (!normalized) return 'Chưa có mô tả tầng ưu tiên.';
+  return (
+    VI_PRECEDENCE_TIER_DESCRIPTIONS[normalized as RulePrecedenceTier] ??
+    'Tầng ưu tiên này chưa có trong mapping hiển thị của FE.'
+  );
+}
+
+export function viControlModeLabel(mode: string | null | undefined): string {
+  const normalized = rawEnumFallback(mode);
+  if (!normalized) return 'Chưa xác định';
+  return (
+    VI_CONTROL_MODE_LABELS[normalized as RuleControlMode] ??
+    unsupportedValueLabel(normalized, 'Chế độ kiểm soát')
+  );
+}
+
+export function viAssignmentTypeLabel(type: string | null | undefined): string {
+  const normalized = rawEnumFallback(type);
+  if (!normalized) return 'Chưa xác định';
+  return (
+    VI_ASSIGNMENT_TYPE_LABELS[normalized as AssignmentType] ??
+    unsupportedValueLabel(normalized, 'Loại gán')
+  );
+}
+
+export function viSkippedReasonLabel(reason: string | null | undefined): string {
+  const normalized = rawEnumFallback(reason);
+  if (!normalized) return 'Chưa xác định';
+  return (
+    VI_SKIPPED_REASON_LABELS[normalized as SkippedReason] ??
+    unsupportedValueLabel(normalized, 'Lý do bỏ qua')
+  );
 }

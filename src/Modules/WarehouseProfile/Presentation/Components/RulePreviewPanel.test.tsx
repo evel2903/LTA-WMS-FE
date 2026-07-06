@@ -6,14 +6,31 @@ import { RulePreviewPanel } from '@modules/WarehouseProfile/Presentation/Compone
 
 function basePreview(overrides: Partial<RulePreview> = {}): RulePreview {
   return {
-    winner: { ruleCode: 'NO-MIX', ruleName: 'No mixing', precedenceTier: 'COMPLIANCE', controlMode: 'HARD_BLOCK' },
+    winner: {
+      ruleCode: 'NO-MIX',
+      ruleName: 'No mixing',
+      precedenceTier: 'COMPLIANCE',
+      controlMode: 'HARD_BLOCK',
+    },
     allowed: false,
     approvalRequired: false,
-    controlMode: { mode: 'HARD_BLOCK', isHardBlock: true, approvalRequired: false, warning: null, suggestion: null },
+    controlMode: {
+      mode: 'HARD_BLOCK',
+      isHardBlock: true,
+      approvalRequired: false,
+      warning: null,
+      suggestion: null,
+    },
     skippedRules: [],
     conflicts: [],
     reasonReadiness: { requiresReason: true, requiresEvidence: false, allowOverride: false },
-    actorContext: { actorUserId: null, action: null, objectType: null, objectId: null, reasonCode: null },
+    actorContext: {
+      actorUserId: null,
+      action: null,
+      objectType: null,
+      objectId: null,
+      reasonCode: null,
+    },
     ...overrides,
   };
 }
@@ -80,9 +97,37 @@ describe('RulePreviewPanel', () => {
     expect(noConflict).toContain('Không phát hiện xung đột.');
   });
 
+  it('renders conflict fallbacks when scope, winner, or nested rules are empty', () => {
+    const html = renderToStaticMarkup(
+      <RulePreviewPanel
+        preview={basePreview({
+          conflicts: [
+            {
+              precedenceTier: 'PHYSICAL',
+              scopeKey: '',
+              winnerRuleCode: '',
+              rules: [],
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain('Phạm vi: Tất cả');
+    expect(html).toContain('Quy tắc thắng: Chưa xác định');
+    expect(html).toContain('Không có quy tắc trong xung đột này.');
+  });
+
   it('distinguishes a hard block control mode', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
     expect(html).toContain('Chặn cứng');
+  });
+
+  it('uses Vietnamese copy for the control-mode result', () => {
+    const html = renderToStaticMarkup(<RulePreviewPanel preview={basePreview()} />);
+
+    expect(html).toContain('Kết quả kiểm soát');
+    expect(html).not.toContain('Outcome');
   });
 
   it('distinguishes an approval-required control mode', () => {
@@ -91,7 +136,13 @@ describe('RulePreviewPanel', () => {
         preview={basePreview({
           allowed: true,
           approvalRequired: true,
-          controlMode: { mode: 'APPROVAL_REQUIRED', isHardBlock: false, approvalRequired: true, warning: null, suggestion: null },
+          controlMode: {
+            mode: 'APPROVAL_REQUIRED',
+            isHardBlock: false,
+            approvalRequired: true,
+            warning: null,
+            suggestion: null,
+          },
         })}
       />,
     );
@@ -144,6 +195,30 @@ describe('RulePreviewPanel', () => {
     expect(html).not.toContain('<textarea');
   });
 
+  it('renders actor context metadata when backend returns it', () => {
+    const html = renderToStaticMarkup(
+      <RulePreviewPanel
+        preview={basePreview({
+          actorContext: {
+            actorUserId: 'user-123',
+            action: 'Override',
+            objectType: 'Rule',
+            objectId: 'RULE-001',
+            reasonCode: 'RC-OVERRIDE',
+          },
+        })}
+      />,
+    );
+
+    expect(html).toContain('Ngữ cảnh tác nhân');
+    expect(html).toContain('Người thực hiện');
+    expect(html).toContain('user-123');
+    expect(html).toContain('Override');
+    expect(html).toContain('Rule');
+    expect(html).toContain('RULE-001');
+    expect(html).toContain('RC-OVERRIDE');
+  });
+
   it('renders a loading state when loading is true', () => {
     const html = renderToStaticMarkup(<RulePreviewPanel preview={null} loading />);
     expect(html).toContain('Đang chạy preview');
@@ -163,7 +238,9 @@ describe('RulePreviewPanel', () => {
   });
 
   it('renders an error message when supplied', () => {
-    const html = renderToStaticMarkup(<RulePreviewPanel preview={null} errorMessage="Preview không thành công" />);
+    const html = renderToStaticMarkup(
+      <RulePreviewPanel preview={null} errorMessage="Preview không thành công" />,
+    );
     expect(html).toContain('Preview không thành công');
     expect(html).toContain('role="alert"');
     expect(html).toContain('min-h-28');

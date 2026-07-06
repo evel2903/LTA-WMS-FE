@@ -394,4 +394,47 @@ describe('WarehouseProfileMapper.toPreview (B4 RulePreviewResult)', () => {
     expect(preview.controlMode.warning).toEqual({ message: 'Heads up', ruleCode: 'WARN-1' });
     expect(preview.controlMode.suggestion).toEqual({ message: 'Try B', ruleCode: 'SUG-1' });
   });
+
+  it('does not throw when a conflict payload omits its nested Rules array', () => {
+    const preview = WarehouseProfileMapper.toPreview({
+      ...previewDto,
+      Conflicts: [
+        {
+          PrecedenceTier: 'PHYSICAL',
+          ScopeKey: '',
+          WinnerRuleCode: '',
+        },
+      ],
+    } as unknown as RulePreviewResultDto);
+
+    expect(preview.conflicts[0]).toMatchObject({
+      precedenceTier: 'PHYSICAL',
+      scopeKey: '',
+      winnerRuleCode: '',
+      rules: [],
+    });
+  });
+
+  it('skips null conflict entries and null nested rules defensively', () => {
+    const preview = WarehouseProfileMapper.toPreview({
+      ...previewDto,
+      Conflicts: [
+        null,
+        {
+          PrecedenceTier: 'PHYSICAL',
+          ScopeKey: 'DC|wh-1',
+          WinnerRuleCode: 'CAP-1',
+          Rules: [
+            null,
+            { RuleCode: 'CAP-1', RuleName: 'Capacity rule', ControlMode: 'HARD_BLOCK' },
+          ],
+        },
+      ],
+    } as unknown as RulePreviewResultDto);
+
+    expect(preview.conflicts).toHaveLength(1);
+    expect(preview.conflicts[0]?.rules).toEqual([
+      { ruleCode: 'CAP-1', ruleName: 'Capacity rule', controlMode: 'HARD_BLOCK' },
+    ]);
+  });
 });

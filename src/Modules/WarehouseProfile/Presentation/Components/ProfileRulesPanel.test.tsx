@@ -78,6 +78,26 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
     expect(html).toContain('Gỡ bỏ');
   });
 
+  it('wraps long attached rule identifiers inside the membership list', () => {
+    const html = renderToStaticMarkup(
+      <ProfileRulesPanel
+        profileRules={[profileRule()]}
+        ruleDefinitions={[
+          ruleDef({
+            ruleCode: 'RULE-WITH-A-VERY-LONG-CODE-THAT-SHOULD-WRAP',
+            ruleName: 'Tên quy tắc rất dài để kiểm tra không làm tràn ngang danh sách membership',
+          }),
+        ]}
+        onAdd={() => undefined}
+        onRemove={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('RULE-WITH-A-VERY-LONG-CODE-THAT-SHOULD-WRAP');
+    expect(html).toContain('min-w-0');
+    expect(html).toContain('break-words');
+  });
+
   it('renders an attach control offering only rules NOT already attached', () => {
     const html = renderToStaticMarkup(
       <ProfileRulesPanel
@@ -109,6 +129,21 @@ describe('ProfileRulesPanel (Finding #2 — profile-rule assignment UI)', () => 
     );
     expect(html).toContain('Chưa gắn quy tắc nào.');
     expect(html).toContain('role="status"');
+  });
+
+  it('keeps the add action disabled when there is no attachable rule', () => {
+    const html = renderToStaticMarkup(
+      <ProfileRulesPanel
+        profileRules={[profileRule({ ruleDefinitionId: 'rule-1' })]}
+        ruleDefinitions={[ruleDef({ id: 'rule-1' })]}
+        onAdd={() => undefined}
+        onRemove={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Chọn quy tắc...');
+    expect(html).toContain('disabled');
+    expect(html).not.toContain('<option value="rule-1"');
   });
 
   it('disables the attach + remove controls when read-only', () => {

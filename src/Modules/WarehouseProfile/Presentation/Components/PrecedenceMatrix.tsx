@@ -4,8 +4,8 @@ import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/R
 import type { RuleGroup } from '@modules/WarehouseProfile/Domain/Entities/RuleGroup';
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
 import {
-  VI_PRECEDENCE_TIER_DESCRIPTIONS,
-  VI_PRECEDENCE_TIER_LABELS,
+  viPrecedenceTierDescription,
+  viPrecedenceTierLabel,
 } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface PrecedenceMatrixProps {
@@ -25,6 +25,8 @@ interface PrecedenceMatrixProps {
  */
 export function PrecedenceMatrix({ tiers, rules, groups }: PrecedenceMatrixProps) {
   const groupName = (id: string) => groups.find((group) => group.id === id)?.groupName ?? null;
+  const knownTiers = new Set(tiers.map((tier) => tier.tier));
+  const unknownTierRules = rules.filter((rule) => !knownTiers.has(rule.precedenceTier));
 
   return (
     <div className="space-y-3">
@@ -35,48 +37,80 @@ export function PrecedenceMatrix({ tiers, rules, groups }: PrecedenceMatrixProps
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <span className="text-muted-foreground tabular-nums">{index + 1}.</span>
-                {VI_PRECEDENCE_TIER_LABELS[tier.tier]}
+                {viPrecedenceTierLabel(tier.tier)}
               </CardTitle>
               <p className="text-muted-foreground text-sm">
-                {VI_PRECEDENCE_TIER_DESCRIPTIONS[tier.tier]}
+                {viPrecedenceTierDescription(tier.tier)}
               </p>
             </CardHeader>
             <CardContent className="space-y-2">
               {tierRules.length === 0 ? (
                 <p className="text-muted-foreground text-sm">Không có quy tắc trong tầng này.</p>
               ) : (
-                <ul className="space-y-2">
-                  {tierRules.map((rule) => (
-                    <li
-                      key={rule.id}
-                      className="space-y-2 rounded-md border px-3 py-2 text-sm"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="space-x-2">
-                          <span className="font-medium">{rule.ruleCode}</span>
-                          <span className="text-muted-foreground">{rule.ruleName}</span>
-                          {groupName(rule.ruleGroupId) && (
-                            <span className="text-muted-foreground text-xs">
-                              ({groupName(rule.ruleGroupId)})
-                            </span>
-                          )}
-                        </span>
-                        <ControlModeBadge mode={rule.controlMode} />
-                      </div>
-                      {/* Condition / action JSON — READ-ONLY display only (OQ3); no editor. */}
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <RuleJson label="Điều kiện" value={rule.conditionJson} />
-                        <RuleJson label="Hành động" value={rule.actionJson} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <RuleList rules={tierRules} groupName={groupName} />
               )}
             </CardContent>
           </Card>
         );
       })}
+
+      {unknownTierRules.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tầng chưa hỗ trợ</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Các quy tắc này dùng tầng ưu tiên chưa có trong bản hiển thị hiện tại. Hệ thống vẫn
+              hiển thị để người vận hành kiểm tra dữ liệu trả về.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <RuleList rules={unknownTierRules} groupName={groupName} showTier />
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+function RuleList({
+  rules,
+  groupName,
+  showTier = false,
+}: {
+  rules: RuleDefinition[];
+  groupName: (id: string) => string | null;
+  showTier?: boolean;
+}) {
+  return (
+    <ul className="space-y-2">
+      {rules.map((rule) => {
+        const displayGroupName = groupName(rule.ruleGroupId);
+        return (
+          <li key={rule.id} className="space-y-2 rounded-md border px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="min-w-0 space-x-2 break-words">
+                <span className="font-medium">{rule.ruleCode}</span>
+                <span className="text-muted-foreground">{rule.ruleName}</span>
+                {displayGroupName && (
+                  <span className="text-muted-foreground text-xs">({displayGroupName})</span>
+                )}
+                {showTier && (
+                  <span className="text-muted-foreground text-xs">
+                    ({viPrecedenceTierLabel(rule.precedenceTier)})
+                  </span>
+                )}
+              </span>
+              <ControlModeBadge mode={rule.controlMode} />
+            </div>
+            {/* Condition / action JSON — READ-ONLY display only (OQ3); no editor. */}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <RuleJson label="Điều kiện" value={rule.conditionJson} />
+              <RuleJson label="Hành động" value={rule.actionJson} />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -93,7 +127,7 @@ function RuleJson({ label, value }: { label: string; value: Record<string, unkno
       {isEmpty ? (
         <p className="text-muted-foreground text-xs">—</p>
       ) : (
-        <pre className="bg-muted/40 overflow-x-auto rounded-md p-2 text-xs">
+        <pre className="bg-muted/40 max-w-full overflow-x-auto whitespace-pre-wrap break-words rounded-md p-2 text-xs">
           {JSON.stringify(value, null, 2)}
         </pre>
       )}

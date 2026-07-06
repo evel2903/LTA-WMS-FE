@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type { RuleDefinition } from '@modules/WarehouseProfile/Domain/Entities/RuleDefinition';
 import type { WarehouseProfileRule } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileRule';
-import { VI_CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
+import { viControlModeLabel } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface ProfileRulesPanelProps {
   /** Rules currently attached to the selected profile (`GET :id/rules`). */
@@ -41,6 +41,13 @@ export function ProfileRulesPanel({
   const definitionById = (id: string) => ruleDefinitions.find((rule) => rule.id === id) ?? null;
   const attachedIds = new Set(profileRules.map((rule) => rule.ruleDefinitionId));
   const attachable = ruleDefinitions.filter((rule) => !attachedIds.has(rule.id));
+  const selectedRule = attachable.find((rule) => rule.id === selectedRuleId) ?? null;
+
+  useEffect(() => {
+    if (selectedRuleId && !selectedRule) {
+      setSelectedRuleId('');
+    }
+  }, [selectedRuleId, selectedRule]);
 
   return (
     <div className="space-y-3">
@@ -63,14 +70,16 @@ export function ProfileRulesPanel({
             return (
               <li
                 key={profileRule.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
               >
-                <span className="space-x-2">
-                  <span className="font-medium">{def?.ruleCode ?? profileRule.ruleDefinitionId}</span>
-                  {def && <span className="text-muted-foreground">{def.ruleName}</span>}
+                <span className="min-w-0 flex-1 space-x-2 break-words">
+                  <span className="break-words font-medium">
+                    {def?.ruleCode ?? profileRule.ruleDefinitionId}
+                  </span>
+                  {def && <span className="text-muted-foreground break-words">{def.ruleName}</span>}
                   {def && (
                     <span className="text-muted-foreground text-xs">
-                      ({VI_CONTROL_MODE_LABELS[def.controlMode]})
+                      ({viControlModeLabel(def.controlMode)})
                     </span>
                   )}
                 </span>
@@ -80,7 +89,9 @@ export function ProfileRulesPanel({
                   size="sm"
                   disabled={!canEdit || pendingRemove}
                   onClick={() => onRemove(profileRule.id)}
-                >Gỡ bỏ</Button>
+                >
+                  Gỡ bỏ
+                </Button>
               </li>
             );
           })}
@@ -88,7 +99,9 @@ export function ProfileRulesPanel({
       )}
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="grid flex-1 gap-1 text-sm">Gắn quy tắc<select
+        <label className="grid flex-1 gap-1 text-sm">
+          Gắn quy tắc
+          <select
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={!canEdit || attachable.length === 0}
             value={selectedRuleId}
@@ -104,13 +117,15 @@ export function ProfileRulesPanel({
         </label>
         <Button
           type="button"
-          disabled={!canEdit || pendingAdd || !selectedRuleId}
+          disabled={!canEdit || pendingAdd || !selectedRule}
           onClick={() => {
-            if (!selectedRuleId) return;
-            onAdd(selectedRuleId);
+            if (!selectedRule) return;
+            onAdd(selectedRule.id);
             setSelectedRuleId('');
           }}
-        >Thêm quy tắc</Button>
+        >
+          Thêm quy tắc
+        </Button>
       </div>
     </div>
   );

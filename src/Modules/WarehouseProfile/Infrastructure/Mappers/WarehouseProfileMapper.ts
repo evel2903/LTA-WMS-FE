@@ -23,7 +23,9 @@ import type {
   DeactivateWarehouseProfileRequestDto,
   PagedWarehouseProfileDto,
   PreviewRuleResolutionRequestDto,
+  ConflictRuleViewDto,
   RuleDefinitionDto,
+  RuleConflictViewDto,
   RuleGroupDto,
   RulePreviewResultDto,
   UpdateWarehouseProfileRequestDto,
@@ -43,6 +45,10 @@ function removeEmpty<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, item]) => item !== undefined && item !== null),
   ) as T;
+}
+
+function isPresent<T>(value: T | null | undefined): value is T {
+  return value !== null && value !== undefined;
 }
 
 export const WarehouseProfileMapper = {
@@ -238,16 +244,20 @@ export const WarehouseProfileMapper = {
         controlMode: rule.ControlMode,
         reason: rule.Reason,
       })),
-      conflicts: (dto.Conflicts ?? []).map((conflict) => ({
-        precedenceTier: conflict.PrecedenceTier,
-        scopeKey: conflict.ScopeKey,
-        winnerRuleCode: conflict.WinnerRuleCode,
-        rules: conflict.Rules.map((rule) => ({
-          ruleCode: rule.RuleCode,
-          ruleName: rule.RuleName,
-          controlMode: rule.ControlMode,
+      conflicts: ((dto.Conflicts ?? []) as Array<RuleConflictViewDto | null | undefined>)
+        .filter(isPresent)
+        .map((conflict) => ({
+          precedenceTier: conflict.PrecedenceTier,
+          scopeKey: conflict.ScopeKey ?? '',
+          winnerRuleCode: conflict.WinnerRuleCode ?? '',
+          rules: ((conflict.Rules ?? []) as Array<ConflictRuleViewDto | null | undefined>)
+            .filter(isPresent)
+            .map((rule) => ({
+              ruleCode: rule.RuleCode,
+              ruleName: rule.RuleName,
+              controlMode: rule.ControlMode,
+            })),
         })),
-      })),
       reasonReadiness: dto.ReasonReadiness
         ? {
             requiresReason: dto.ReasonReadiness.RequiresReason,
