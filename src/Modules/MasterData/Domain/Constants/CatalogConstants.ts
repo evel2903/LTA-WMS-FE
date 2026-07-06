@@ -25,9 +25,9 @@ export const SKU_CONTROL_FLAGS: readonly SkuControlFlag[] = [
   { key: 'expiryControlled', label: 'Kiểm soát hạn dùng' },
   { key: 'serialControlled', label: 'Kiểm soát serial' },
   { key: 'ownerControlled', label: 'Kiểm soát chủ hàng' },
-  { key: 'lpnControlled', label: 'Kiểm soát LPN' },
+  { key: 'lpnControlled', label: 'Kiểm soát LPN (chưa có)' },
   { key: 'temperatureControlled', label: 'Kiểm soát nhiệt độ' },
   { key: 'dgControlled', label: 'Kiểm soát hàng nguy hiểm' },
-  { key: 'customsControlled', label: 'Kiểm soát hải quan' },
+  { key: 'customsControlled', label: 'Kiểm soát hải quan (chưa có)' },
   { key: 'qcRequired', label: 'Yêu cầu QC' },
 ];

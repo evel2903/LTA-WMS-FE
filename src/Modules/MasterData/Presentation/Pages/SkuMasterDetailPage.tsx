@@ -13,41 +13,15 @@ import {
   useSku,
 } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
-import type { CreateSkuInput } from '@modules/MasterData/Domain/Types/CatalogQuery';
+import type { Owner, Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
 import { SkuRelationsPanel } from '@modules/MasterData/Presentation/Components/SkuRelationsPanel';
 import { SkuStatusBadge } from '@modules/MasterData/Presentation/Components/SkuStatusBadge';
-import type { SkuFormValues } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
 import { SkuForm } from '@modules/MasterData/Presentation/Forms/SkuForm';
+import type { SkuFormValues } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
 
 interface SkuMasterDetailPageProps {
   mode: 'create' | 'detail' | 'edit';
-}
-
-function toSkuInput(values: SkuFormValues): CreateSkuInput {
-  return {
-    skuCode: values.skuCode,
-    skuName: values.skuName,
-    itemClass: values.itemClass,
-    itemStatus: values.itemStatus,
-    baseUomId: values.baseUomId,
-    inventoryUomId: values.inventoryUomId,
-    defaultOwnerId: values.defaultOwnerId || null,
-    lotControlled: values.lotControlled,
-    expiryControlled: values.expiryControlled,
-    serialControlled: values.serialControlled,
-    ownerControlled: values.ownerControlled,
-    lpnControlled: values.lpnControlled,
-    temperatureControlled: values.temperatureControlled,
-    dgControlled: values.dgControlled,
-    customsControlled: values.customsControlled,
-    qcRequired: values.qcRequired,
-    bondedFlag: values.bondedFlag,
-    temperatureClass: values.temperatureClass || null,
-    dgClass: values.dgClass || null,
-    shelfLifeDays: values.shelfLifeDays ?? null,
-    minRemainingShelfLifeDays: values.minRemainingShelfLifeDays ?? null,
-  };
 }
 
 export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
@@ -64,12 +38,24 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
 
   const apiError = skuQuery.error instanceof ApiError ? skuQuery.error : null;
   const submitForbidden = submitError instanceof ApiError && submitError.isForbidden;
-  const canEdit = !apiError?.isForbidden && !submitForbidden;
-  const canMutate = canEdit && (isCreate || isEdit);
   const sku = skuQuery.data;
   const owners = ownersQuery.data?.items ?? [];
   const uoms = uomsQuery.data?.items ?? [];
   const warehouses = warehousesQuery.data?.items ?? [];
+  const ownerLookupLoading = ownersQuery.isLoading;
+  const uomLookupLoading = uomsQuery.isLoading;
+  const setupMessages = buildSkuSetupMessages({
+    ownerLookupLoading,
+    uomLookupLoading,
+    owners,
+    ownerError: ownersQuery.error,
+    uoms,
+    uomError: uomsQuery.error,
+  });
+  const setupBlocksSubmit = uomLookupLoading || Boolean(uomsQuery.error) || (!uomLookupLoading && uoms.length === 0);
+  const canEdit = !apiError?.isForbidden && !submitForbidden;
+  const canMutate = canEdit && (isCreate || isEdit) && !setupBlocksSubmit;
+  const pending = mutations.createSku.isPending || mutations.updateSku.isPending;
 
   if (!isCreate && skuQuery.isLoading) {
     return <DetailPageShell title="Chi tiết SKU" state="loading" backTo={ROUTES.FOUNDATION.MASTER_DATA.SKUS} />;
@@ -96,6 +82,34 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
 
   const existingSku = sku as NonNullable<typeof sku>;
   const title = isCreate ? 'Tạo SKU' : existingSku.skuCode;
+  const formTitle = isCreate ? 'Tạo SKU' : 'Hành động SKU';
+  const formDescription = isCreate
+    ? 'Tạo dữ liệu chủ SKU trực tiếp trong WMS khi chưa có ERP upstream.'
+    : 'Cập nhật thuộc tính SKU và giữ audit path dữ liệu chủ hiện có.';
+  const setupStateMessage = setupBlocksSubmit
+    ? setupMessages[0] ?? 'Cần cấu hình đơn vị tính active trước khi tạo hoặc cập nhật SKU.'
+    : undefined;
+
+  const handleCreate = (values: SkuFormValues) =>
+    mutations.createSku.mutate(values, {
+      onError: setSubmitError,
+      onSuccess: (created) => {
+        setSubmitError(null);
+        void navigate(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(created.id));
+      },
+    });
+
+  const handleUpdate = (values: SkuFormValues) =>
+    mutations.updateSku.mutate(
+      { id: existingSku.id, input: values },
+      {
+        onError: setSubmitError,
+        onSuccess: (updated) => {
+          setSubmitError(null);
+          void navigate(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(updated.id));
+        },
+      },
+    );
 
   return (
     <DetailPageShell
@@ -105,7 +119,7 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
       backLabel="Quay lại SKU"
       status={!isCreate ? <SkuStatusBadge status={existingSku.itemStatus} /> : null}
       actions={
-        !isCreate ? (
+        !isCreate && !isEdit && canEdit ? (
           <Button asChild size="sm" variant="outline">
             <Link to={ROUTES.FOUNDATION.MASTER_DATA.SKU_EDIT(existingSku.id)}>Chỉnh sửa SKU</Link>
           </Button>
@@ -114,53 +128,25 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
       state={canEdit ? null : 'readOnly'}
     >
       <ActionPanel
-        title={isCreate ? 'Tạo SKU' : 'Hành động SKU'}
-        description="Thay đổi dùng mutation và audit path dữ liệu chủ hiện có."
-        state={mutations.createSku.isPending || mutations.updateSku.isPending ? 'pending' : 'idle'}
-        governanceState={canMutate ? undefined : 'readOnly'}
+        title={formTitle}
+        description={formDescription}
+        state={pending ? 'pending' : setupBlocksSubmit ? 'disabled' : 'idle'}
+        stateTitle={setupBlocksSubmit ? 'Thiếu cấu hình SKU' : undefined}
+        stateMessage={setupStateMessage}
+        governanceState={!canEdit ? 'readOnly' : undefined}
       >
-        {isCreate ? (
-          <SkuForm
-            owners={owners}
-            uoms={uoms}
-            submitLabel="Tạo SKU"
-            disabled={!canMutate}
-            pending={mutations.createSku.isPending}
-            conflict={conflictMessage(submitError) ?? undefined}
-            onSubmit={(values) =>
-              mutations.createSku.mutate(toSkuInput(values), {
-                onError: setSubmitError,
-                onSuccess: (created) => {
-                  setSubmitError(null);
-                  void navigate(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(created.id));
-                },
-              })
-            }
-          />
-        ) : (
-          <SkuForm
-            key={`sku-${existingSku.id}-${existingSku.updatedAt ?? ''}`}
-            initialValue={existingSku}
-            owners={owners}
-            uoms={uoms}
-            submitLabel="Cập nhật SKU"
-            disabled={!canMutate}
-            pending={mutations.updateSku.isPending}
-            conflict={conflictMessage(submitError) ?? undefined}
-            onSubmit={(values) =>
-              mutations.updateSku.mutate(
-                { id: existingSku.id, input: toSkuInput(values) },
-                {
-                  onError: setSubmitError,
-                  onSuccess: (updated) => {
-                    setSubmitError(null);
-                    void navigate(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(updated.id));
-                  },
-                },
-              )
-            }
-          />
-        )}
+        <SkuForm
+          key={isCreate ? 'sku-create' : `sku-${existingSku.id}-${existingSku.updatedAt ?? ''}`}
+          initialValue={isCreate ? undefined : existingSku}
+          owners={owners}
+          uoms={uoms}
+          submitLabel={isCreate ? 'Tạo SKU' : 'Cập nhật SKU'}
+          disabled={!canMutate}
+          pending={pending}
+          missingSetupMessages={setupMessages}
+          conflict={conflictMessage(submitError) ?? undefined}
+          onSubmit={isCreate ? handleCreate : handleUpdate}
+        />
       </ActionPanel>
 
       {!isCreate ? (
@@ -171,9 +157,51 @@ export function SkuMasterDetailPage({ mode }: SkuMasterDetailPageProps) {
             createdBy={existingSku.createdBy}
             updatedBy={existingSku.updatedBy}
           />
-          <SkuRelationsPanel skuId={existingSku.id} uoms={uoms} warehouses={warehouses} canEdit={canEdit} />
+          <SkuRelationsPanel
+            skuId={existingSku.id}
+            uoms={uoms}
+            warehouses={warehouses}
+            canEdit={canEdit}
+          />
         </>
       ) : null}
     </DetailPageShell>
   );
+}
+
+function buildSkuSetupMessages({
+  ownerLookupLoading,
+  uomLookupLoading,
+  owners,
+  ownerError,
+  uoms,
+  uomError,
+}: {
+  ownerLookupLoading: boolean;
+  uomLookupLoading: boolean;
+  owners: Owner[];
+  ownerError: unknown;
+  uoms: Uom[];
+  uomError: unknown;
+}) {
+  const messages: string[] = [];
+  if (uomLookupLoading) {
+    messages.push('Đang tải danh sách đơn vị tính active trước khi cho phép submit SKU.');
+  }
+  if (uomError) {
+    messages.push('Không thể tải đơn vị tính active; cần UOM active để chọn đơn vị tính cơ sở và tồn kho.');
+  }
+  if (!uomLookupLoading && !uomError && uoms.length === 0) {
+    messages.push('Cần ít nhất một đơn vị tính active trước khi tạo hoặc cập nhật SKU.');
+  }
+  if (ownerLookupLoading) {
+    messages.push('Đang tải danh sách chủ hàng active; có thể tạo SKU không gắn chủ hàng mặc định.');
+  }
+  if (ownerError) {
+    messages.push('Không thể tải chủ hàng active; có thể tạo SKU không gắn chủ hàng mặc định.');
+  }
+  if (!ownerLookupLoading && !ownerError && owners.length === 0) {
+    messages.push('Chưa có chủ hàng active; chỉ bật kiểm soát chủ hàng sau khi có chủ hàng mặc định.');
+  }
+  return messages;
 }

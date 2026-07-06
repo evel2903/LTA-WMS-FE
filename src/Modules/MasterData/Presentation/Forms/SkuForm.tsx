@@ -10,7 +10,10 @@ import {
   skuFormSchema,
   type SkuFormValues,
 } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
-import { SKU_CONTROL_FLAG_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+import {
+  SKU_CONTROL_FLAG_LABELS,
+  displaySkuStatus,
+} from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { mergeSelectedOption } from '@modules/MasterData/Presentation/Forms/SelectOptions';
 
 interface SkuFormProps {
@@ -20,6 +23,8 @@ interface SkuFormProps {
   disabled?: boolean;
   pending?: boolean;
   submitLabel: string;
+  missingSetupMessages?: string[];
+  showSubmit?: boolean;
   /** Inline 409-conflict message surfaced next to the code field (AC3). */
   conflict?: string;
   onSubmit: (values: SkuFormValues) => void;
@@ -32,6 +37,8 @@ export function SkuForm({
   disabled = false,
   pending = false,
   submitLabel,
+  missingSetupMessages,
+  showSubmit = true,
   conflict,
   onSubmit,
 }: SkuFormProps) {
@@ -73,9 +80,22 @@ export function SkuForm({
   const baseUomOptions = mergeSelectedOption(uomOptions, initialValue?.baseUomId);
   const inventoryUomOptions = mergeSelectedOption(uomOptions, initialValue?.inventoryUomId);
   const defaultOwnerOptions = mergeSelectedOption(ownerOptions, initialValue?.defaultOwnerId);
+  const setupMessages = missingSetupMessages ?? [];
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
+      {setupMessages.length > 0 ? (
+        <Alert role="status" variant="warning">
+          <AlertDescription>
+            <span className="font-medium">Thiếu cấu hình SKU</span>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              {setupMessages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <label className="grid gap-1 text-sm">Mã SKU<Input disabled={disabled} {...form.register('skuCode')} />
         {errors.skuCode && <span className="text-destructive text-xs">{errors.skuCode.message}</span>}
       </label>
@@ -99,7 +119,7 @@ export function SkuForm({
         >
           {SKU_STATUSES.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {displaySkuStatus(status)}
             </option>
           ))}
         </select>
@@ -141,7 +161,7 @@ export function SkuForm({
           disabled={disabled}
           {...form.register('defaultOwnerId')}
         >
-          <option value="">None</option>
+          <option value="">Không chọn</option>
           {defaultOwnerOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -191,9 +211,11 @@ export function SkuForm({
         />
       </label>
 
-      <Button type="submit" disabled={disabled || pending}>
-        {submitLabel}
-      </Button>
+      {showSubmit ? (
+        <Button type="submit" disabled={disabled || pending}>
+          {submitLabel}
+        </Button>
+      ) : null}
     </form>
   );
 }
