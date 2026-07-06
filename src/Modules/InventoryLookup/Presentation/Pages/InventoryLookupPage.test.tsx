@@ -25,6 +25,13 @@ vi.mock('@modules/MasterData/Infrastructure/Repositories/CatalogRepositoryInstan
   },
 }));
 
+const masterDataRepo = vi.hoisted(() => ({ current: { listWarehouses: vi.fn() } }));
+vi.mock('@modules/MasterData/Infrastructure/Repositories/MasterDataRepositoryInstance', () => ({
+  get masterDataRepository() {
+    return masterDataRepo.current;
+  },
+}));
+
 import { InventoryLookupPage } from '@modules/InventoryLookup/Presentation/Pages/InventoryLookupPage';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
@@ -65,6 +72,21 @@ function setSkuOptions() {
   );
 }
 
+function setWarehouseOptions() {
+  masterDataRepo.current.listWarehouses = vi.fn(() =>
+    Promise.resolve(
+      page([
+        {
+          id: 'warehouse-1',
+          warehouseCode: 'WH-01',
+          warehouseName: 'Kho HCM',
+          status: 'Active',
+        },
+      ]),
+    ),
+  );
+}
+
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -81,6 +103,7 @@ afterEach(() => cleanup());
 describe('InventoryLookupPage', () => {
   it('does not call the lookup API until a SKU is chosen', async () => {
     setSkuOptions();
+    setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() => Promise.resolve(page([])));
     renderPage();
 
@@ -90,6 +113,7 @@ describe('InventoryLookupPage', () => {
 
   it('lists serial/lot results once a SKU is selected', async () => {
     setSkuOptions();
+    setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
     const actor = userEvent.setup();
     renderPage();
@@ -110,6 +134,7 @@ describe('InventoryLookupPage', () => {
 
   it('debounces the serial filter and forwards it (with lot filter undefined) to the query', async () => {
     setSkuOptions();
+    setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
     const actor = userEvent.setup();
     renderPage();
@@ -133,6 +158,7 @@ describe('InventoryLookupPage', () => {
 
   it('shows an empty state when the selected SKU has no matching serial/lot rows', async () => {
     setSkuOptions();
+    setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() => Promise.resolve(page<InventorySerialLookupItem>([])));
     const actor = userEvent.setup();
     renderPage();
@@ -144,8 +170,54 @@ describe('InventoryLookupPage', () => {
     expect(screen.getByText('Không có serial/lô nào khớp bộ lọc hiện tại.')).toBeTruthy();
   });
 
+  it('forwards the warehouse filter to the query', async () => {
+    setSkuOptions();
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await screen.findByTestId('inventory-lookup-row-dimension-1');
+
+    await screen.findByRole('option', { name: /WH-01/i });
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+
+    await waitFor(() =>
+      expect(lookupRepo.current.list).toHaveBeenCalledWith(
+        expect.objectContaining({ skuId: 'sku-1', warehouseId: 'warehouse-1' }),
+      ),
+    );
+  });
+
+  it('shows pagination controls and requests the next page on click', async () => {
+    setSkuOptions();
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() =>
+      Promise.resolve({ items: [makeItem()], page: 1, pageSize: 20, totalItems: 40, totalPages: 2 }),
+    );
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await screen.findByTestId('inventory-lookup-row-dimension-1');
+
+    expect(screen.getByText('Trang 1 / 2 — 40 kết quả')).toBeTruthy();
+    const prevButton = screen.getByRole('button', { name: 'Trước' });
+    expect(prevButton).toHaveProperty('disabled', true);
+
+    await actor.click(screen.getByRole('button', { name: 'Tiếp' }));
+
+    await waitFor(() =>
+      expect(lookupRepo.current.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })),
+    );
+  });
+
   it('shows a forbidden state when the lookup call is rejected with 403', async () => {
     setSkuOptions();
+    setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() =>
       Promise.reject(
         new ApiError({ status: 403, code: 'FORBIDDEN', message: 'Bạn không có quyền tra cứu tồn kho.' }),

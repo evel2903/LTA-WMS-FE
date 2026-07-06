@@ -16,6 +16,7 @@ import {
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
+import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
 import { useInventorySerialLookup } from '@modules/InventoryLookup/Application/Queries/UseInventorySerialLookup';
 import type { InventorySerialLookupItem } from '@modules/InventoryLookup/Domain/Entities/InventorySerialLookupItem';
 
@@ -97,8 +98,10 @@ function InventoryLookupItemTable({ items }: { items: InventorySerialLookupItem[
 
 export function InventoryLookupPage() {
   const [skuId, setSkuId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
   const [serialFilter, setSerialFilter] = useState('');
   const [lotFilter, setLotFilter] = useState('');
+  const [page, setPage] = useState(1);
   const debouncedSerial = useDebouncedValue(serialFilter, 250);
   const debouncedLot = useDebouncedValue(lotFilter, 250);
 
@@ -112,11 +115,22 @@ export function InventoryLookupPage() {
     [skuQuery.data?.items],
   );
 
+  const warehouseQuery = useActiveWarehouses();
+  const warehouseOptions = useMemo(
+    () =>
+      (warehouseQuery.data?.items ?? []).map((warehouse) => ({
+        value: warehouse.id,
+        label: `${warehouse.warehouseCode} - ${warehouse.warehouseName}`,
+      })),
+    [warehouseQuery.data?.items],
+  );
+
   const query = useInventorySerialLookup({
     skuId: skuId || undefined,
+    warehouseId: warehouseId || undefined,
     serialNumber: debouncedSerial || undefined,
     lotNumber: debouncedLot || undefined,
-    page: 1,
+    page,
   });
   const items = useMemo(() => query.data?.items ?? [], [query.data?.items]);
   const apiError = query.error instanceof ApiError ? query.error : null;
@@ -131,6 +145,26 @@ export function InventoryLookupPage() {
           : items.length === 0
             ? 'empty'
             : null;
+
+  function handleSkuIdChange(value: string) {
+    setSkuId(value);
+    setPage(1);
+  }
+
+  function handleWarehouseIdChange(value: string) {
+    setWarehouseId(value);
+    setPage(1);
+  }
+
+  function handleSerialFilterChange(value: string) {
+    setSerialFilter(value);
+    setPage(1);
+  }
+
+  function handleLotFilterChange(value: string) {
+    setLotFilter(value);
+    setPage(1);
+  }
 
   return (
     <ListPageShell
@@ -148,7 +182,7 @@ export function InventoryLookupPage() {
         </Button>
       }
       filters={
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <LookupSelect
             id="inventory-lookup-sku-id"
             name="skuId"
@@ -160,13 +194,28 @@ export function InventoryLookupPage() {
             isError={skuQuery.isError}
             emptyMessage="Chưa có SKU active để chọn."
             errorMessage="Không tải được danh sách SKU."
-            onChange={setSkuId}
+            onChange={handleSkuIdChange}
+          />
+          <LookupSelect
+            id="inventory-lookup-warehouse-id"
+            name="warehouseId"
+            label="Kho"
+            value={warehouseId}
+            placeholder="Tất cả kho"
+            optional
+            disabled={!skuId}
+            options={warehouseOptions}
+            isLoading={warehouseQuery.isLoading}
+            isError={warehouseQuery.isError}
+            emptyMessage="Chưa có kho active để chọn."
+            errorMessage="Không tải được danh sách kho."
+            onChange={handleWarehouseIdChange}
           />
           <label className="grid gap-1 text-sm">
             Lọc số serial
             <Input
               value={serialFilter}
-              onChange={(event) => setSerialFilter(event.target.value)}
+              onChange={(event) => handleSerialFilterChange(event.target.value)}
               placeholder="SN-0001"
               disabled={!skuId}
             />
@@ -175,7 +224,7 @@ export function InventoryLookupPage() {
             Lọc số lô
             <Input
               value={lotFilter}
-              onChange={(event) => setLotFilter(event.target.value)}
+              onChange={(event) => handleLotFilterChange(event.target.value)}
               placeholder="LOT-0001"
               disabled={!skuId}
             />
@@ -206,6 +255,33 @@ export function InventoryLookupPage() {
               : state === 'empty'
                 ? 'Không có serial/lô nào khớp bộ lọc hiện tại.'
                 : undefined
+      }
+      pagination={
+        state === null ? (
+          <div className="flex w-full items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">
+              Trang {query.data?.page ?? 1} / {query.data?.totalPages ?? 1} — {query.data?.totalItems ?? 0} kết quả
+            </span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Trước
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page >= (query.data?.totalPages ?? 1)}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Tiếp
+              </Button>
+            </div>
+          </div>
+        ) : null
       }
     >
       {/* Mobile (< md): card grid — easier to tap. Hidden from md up. */}
