@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { inventorySerialLookupQueryKeys } from '@modules/InventoryLookup/Application/Queries/InventorySerialLookupQueryKeys';
 import type { InventorySerialLookupFilter } from '@modules/InventoryLookup/Domain/Types/InventorySerialLookupQuery';
@@ -13,5 +13,6 @@ export function useInventorySerialLookup(filter: InventorySerialLookupFilter) {
     queryKey: inventorySerialLookupQueryKeys.list(filter),
     queryFn: () => inventorySerialLookupRepository.list(filter),
     enabled: Boolean(filter.skuId),
+    placeholderData: keepPreviousData,
   });
 }

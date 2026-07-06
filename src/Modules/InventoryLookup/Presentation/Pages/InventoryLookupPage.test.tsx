@@ -191,6 +191,89 @@ describe('InventoryLookupPage', () => {
     );
   });
 
+  it('resets warehouse/serial/lot filters when the SKU selection changes', async () => {
+    catalogRepo.current.listSkus = vi.fn(() =>
+      Promise.resolve(
+        page([
+          { id: 'sku-1', skuCode: 'SKU-A', skuName: 'Cuộn cáp mạng', itemStatus: 'Active' },
+          { id: 'sku-2', skuCode: 'SKU-B', skuName: 'Ống nhựa', itemStatus: 'Active' },
+        ]),
+      ),
+    );
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await screen.findByTestId('inventory-lookup-row-dimension-1');
+
+    await screen.findByRole('option', { name: /WH-01/i });
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await actor.type(screen.getByLabelText('Lọc số serial'), 'SN-0001');
+
+    await waitFor(() =>
+      expect(lookupRepo.current.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skuId: 'sku-1',
+          warehouseId: 'warehouse-1',
+          serialNumber: 'SN-0001',
+        }),
+      ),
+    );
+
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-2');
+
+    await waitFor(() =>
+      expect(lookupRepo.current.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skuId: 'sku-2',
+          warehouseId: undefined,
+          serialNumber: undefined,
+          lotNumber: undefined,
+        }),
+      ),
+    );
+    expect(screen.getByLabelText('Kho')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Lọc số serial')).toHaveProperty('value', '');
+  });
+
+  it('does not combine the new SKU with the old, not-yet-debounced serial filter (debounce reset)', async () => {
+    catalogRepo.current.listSkus = vi.fn(() =>
+      Promise.resolve(
+        page([
+          { id: 'sku-1', skuCode: 'SKU-A', skuName: 'Cuộn cáp mạng', itemStatus: 'Active' },
+          { id: 'sku-2', skuCode: 'SKU-B', skuName: 'Ống nhựa', itemStatus: 'Active' },
+        ]),
+      ),
+    );
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await actor.type(screen.getByLabelText('Lọc số serial'), 'SN-0001');
+    await waitFor(() =>
+      expect(lookupRepo.current.list).toHaveBeenCalledWith(
+        expect.objectContaining({ skuId: 'sku-1', serialNumber: 'SN-0001' }),
+      ),
+    );
+
+    lookupRepo.current.list.mockClear();
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-2');
+
+    // Checked without waiting for the debounce timer — every call fired as part of
+    // this SKU switch must already carry the reset filter, none should combine the
+    // new SKU with the previous SKU's still-debouncing serial text.
+    expect(lookupRepo.current.list.mock.calls.length).toBeGreaterThan(0);
+    for (const call of lookupRepo.current.list.mock.calls) {
+      expect(call[0]).toEqual(expect.objectContaining({ skuId: 'sku-2', serialNumber: undefined }));
+    }
+  });
+
   it('shows pagination controls and requests the next page on click', async () => {
     setSkuOptions();
     setWarehouseOptions();

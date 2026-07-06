@@ -25,7 +25,7 @@ function InventoryLookupItemCard({ item }: { item: InventorySerialLookupItem }) 
     <article className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold">{item.serialNumber ?? item.lotNumber ?? '—'}</h2>
+          <h2 className="truncate text-base font-semibold">{item.serialNumber || item.lotNumber || '—'}</h2>
           <p className="text-muted-foreground text-sm">
             {item.warehouseCode} - {item.locationCode}
           </p>
@@ -38,11 +38,11 @@ function InventoryLookupItemCard({ item }: { item: InventorySerialLookupItem }) 
       <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
         <div>
           <dt className="font-medium text-foreground">Serial</dt>
-          <dd>{item.serialNumber ?? '—'}</dd>
+          <dd>{item.serialNumber || '—'}</dd>
         </div>
         <div>
           <dt className="font-medium text-foreground">Lô</dt>
-          <dd>{item.lotNumber ?? '—'}</dd>
+          <dd>{item.lotNumber || '—'}</dd>
         </div>
         <div>
           <dt className="font-medium text-foreground">Hạn dùng</dt>
@@ -76,8 +76,8 @@ function InventoryLookupItemTable({ items }: { items: InventorySerialLookupItem[
       <TableBody>
         {items.map((item) => (
           <TableRow key={item.dimensionId} data-testid={`inventory-lookup-row-${item.dimensionId}`}>
-            <TableCell className="font-medium text-foreground">{item.serialNumber ?? '—'}</TableCell>
-            <TableCell>{item.lotNumber ?? '—'}</TableCell>
+            <TableCell className="font-medium text-foreground">{item.serialNumber || '—'}</TableCell>
+            <TableCell>{item.lotNumber || '—'}</TableCell>
             <TableCell>{item.expiryDate ?? '—'}</TableCell>
             <TableCell>{item.warehouseCode}</TableCell>
             <TableCell>{item.locationCode}</TableCell>
@@ -102,8 +102,8 @@ export function InventoryLookupPage() {
   const [serialFilter, setSerialFilter] = useState('');
   const [lotFilter, setLotFilter] = useState('');
   const [page, setPage] = useState(1);
-  const debouncedSerial = useDebouncedValue(serialFilter, 250);
-  const debouncedLot = useDebouncedValue(lotFilter, 250);
+  const debouncedSerial = useDebouncedValue(serialFilter, 250, skuId);
+  const debouncedLot = useDebouncedValue(lotFilter, 250, skuId);
 
   const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
   const skuOptions = useMemo(
@@ -148,6 +148,12 @@ export function InventoryLookupPage() {
 
   function handleSkuIdChange(value: string) {
     setSkuId(value);
+    // Reset the other filters too — a warehouse/serial/lot filter left over from a
+    // previous SKU could otherwise zero out results for the new SKU with no
+    // visible explanation.
+    setWarehouseId('');
+    setSerialFilter('');
+    setLotFilter('');
     setPage(1);
   }
 
