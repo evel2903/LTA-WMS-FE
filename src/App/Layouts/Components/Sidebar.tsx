@@ -18,6 +18,7 @@ import {
   PackagePlus,
   PackageSearch,
   Ruler,
+  ScanLine,
   Send,
   ShieldAlert,
   ShieldCheck,
@@ -60,6 +61,7 @@ const isSection = (child: NavChild): child is NavSection => 'section' in child;
 const NAV_ENTRIES: NavEntry[] = [
   { label: 'Bảng điều khiển', to: ROUTES.DASHBOARD, icon: LayoutDashboard },
   { label: 'Tồn kho', to: ROUTES.INVENTORY.ROOT, icon: Boxes },
+  { label: 'Tra cứu Serial/Lô', to: ROUTES.INVENTORY_LOOKUP.ROOT, icon: ScanLine },
   {
     label: 'Nền tảng',
     icon: Layers,

@@ -16,6 +16,9 @@ export const ROUTES = {
     ROOT: '/inventory',
     DETAIL: (id = ':id') => `/inventory/${id}`,
   },
+  INVENTORY_LOOKUP: {
+    ROOT: '/inventory-lookup',
+  },
   FOUNDATION: {
     ROOT: '/foundation',
     SITES: '/foundation/sites',

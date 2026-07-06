@@ -12,6 +12,7 @@ import { useSessionExpiry } from '@modules/Auth/Application/UseCases/UseSessionE
 import { authRoutes } from '@modules/Auth/Presentation/Routes/AuthRoutes';
 import { foundationOverviewRoutes } from '@modules/FoundationOverview/Presentation/Routes/FoundationOverviewRoutes';
 import { inventoryRoutes } from '@modules/Inventory/Presentation/Routes/InventoryRoutes';
+import { inventoryLookupRoutes } from '@modules/InventoryLookup/Presentation/Routes/InventoryLookupRoutes';
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { masterDataRoutes } from '@modules/MasterData/Presentation/Routes/MasterDataRoutes';
 import { warehouseProfileRoutes } from '@modules/WarehouseProfile/Presentation/Routes/WarehouseProfileRoutes';
@@ -67,6 +68,7 @@ const router = createBrowserRouter([
         children: [
           { path: ROUTES.DASHBOARD, element: <DashboardPage /> },
           ...inventoryRoutes,
+          ...inventoryLookupRoutes,
           ...foundationOverviewRoutes,
           ...masterDataRoutes,
           ...catalogRoutes,
