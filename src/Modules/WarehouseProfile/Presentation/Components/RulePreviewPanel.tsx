@@ -4,7 +4,8 @@ import type { RulePreview } from '@modules/WarehouseProfile/Domain/Entities/Rule
 import { ControlModeBadge } from '@modules/WarehouseProfile/Presentation/Components/ControlModeBadge';
 import {
   VI_CONTROL_MODE_LABELS,
-  VI_PRECEDENCE_TIER_LABELS,
+  viControlModeLabel,
+  viPrecedenceTierLabel,
   viSkippedReasonLabel,
 } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
@@ -16,13 +17,22 @@ interface RulePreviewPanelProps {
 
 const TOP_LEVEL_ALERT_CLASS_NAME = 'min-h-28 place-content-center py-10 text-center';
 
+function displayValue(value: string | null | undefined, emptyLabel = 'Chưa xác định'): string {
+  const normalized = value?.trim();
+  return normalized ? normalized : emptyLabel;
+}
+
 /**
  * Renders the B4 `RulePreviewResult` directly: winner, four-mode control summary,
  * skipped rules (with the reason enum LABELLED), conflicts (as DATA, not an
  * error), and read-only reason readiness. FE never recomputes any of this
  * (architecture 8.2) — it only displays what the backend returned.
  */
-export function RulePreviewPanel({ preview, loading = false, errorMessage }: RulePreviewPanelProps) {
+export function RulePreviewPanel({
+  preview,
+  loading = false,
+  errorMessage,
+}: RulePreviewPanelProps) {
   if (loading) {
     return (
       <Alert variant="info" role="status" className={TOP_LEVEL_ALERT_CLASS_NAME}>
@@ -50,7 +60,15 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
     );
   }
 
-  const { winner, controlMode, skippedRules, conflicts, reasonReadiness } = preview;
+  const { winner, controlMode, skippedRules, conflicts, reasonReadiness, actorContext } = preview;
+  const actorValues = [
+    actorContext.actorUserId,
+    actorContext.action,
+    actorContext.objectType,
+    actorContext.objectId,
+    actorContext.reasonCode,
+  ];
+  const hasActorContext = actorValues.some((value) => value?.trim());
 
   return (
     <div className="space-y-4">
@@ -67,8 +85,8 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
                 <span className="text-muted-foreground">{winner.ruleName}</span>
               </p>
               <p className="text-muted-foreground">
-                Tầng: {VI_PRECEDENCE_TIER_LABELS[winner.precedenceTier]} · Kiểm soát:{' '}
-                {VI_CONTROL_MODE_LABELS[winner.controlMode]}
+                Tầng: {viPrecedenceTierLabel(winner.precedenceTier)} · Kiểm soát:{' '}
+                {viControlModeLabel(winner.controlMode)}
               </p>
               <ControlModeBadge mode={winner.controlMode} />
             </div>
@@ -87,14 +105,14 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
           <p>
-            Outcome:{' '}
+            Kết quả kiểm soát:{' '}
             <span className="font-medium">
               {controlMode.isHardBlock
-                  ? VI_CONTROL_MODE_LABELS.HARD_BLOCK
+                ? VI_CONTROL_MODE_LABELS.HARD_BLOCK
                 : controlMode.approvalRequired
                   ? VI_CONTROL_MODE_LABELS.APPROVAL_REQUIRED
                   : controlMode.mode
-                    ? VI_CONTROL_MODE_LABELS[controlMode.mode]
+                    ? viControlModeLabel(controlMode.mode)
                     : 'Cho phép'}
             </span>
           </p>
@@ -136,7 +154,7 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
                     <span className="text-muted-foreground">{rule.ruleName}</span>
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {VI_PRECEDENCE_TIER_LABELS[rule.precedenceTier]} · Lý do:{' '}
+                    {viPrecedenceTierLabel(rule.precedenceTier)} · Lý do:{' '}
                     {viSkippedReasonLabel(rule.reason)}
                   </p>
                 </li>
@@ -158,26 +176,36 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
             </Alert>
           ) : (
             <ul className="space-y-3">
-              {conflicts.map((conflict) => (
+              {conflicts.map((conflict, index) => (
                 <li
-                  key={`${conflict.precedenceTier}-${conflict.scopeKey}`}
+                  key={`${conflict.precedenceTier}-${conflict.scopeKey || 'all'}-${index}`}
                   className="rounded-md border px-3 py-2"
                 >
                   <p className="text-muted-foreground text-xs">
-                    {VI_PRECEDENCE_TIER_LABELS[conflict.precedenceTier]} · Phạm vi:{' '}
-                    {conflict.scopeKey} · Quy tắc thắng: {conflict.winnerRuleCode}
+                    {viPrecedenceTierLabel(conflict.precedenceTier)} · Phạm vi:{' '}
+                    {displayValue(conflict.scopeKey, 'Tất cả')} · Quy tắc thắng:{' '}
+                    {displayValue(conflict.winnerRuleCode)}
                   </p>
-                  <ul className="mt-1 space-y-1">
-                    {conflict.rules.map((rule) => (
-                      <li key={rule.ruleCode} className="flex items-center justify-between gap-2">
-                        <span>
-                          <span className="font-medium">{rule.ruleCode}</span>{' '}
-                          <span className="text-muted-foreground">{rule.ruleName}</span>
-                        </span>
-                        <ControlModeBadge mode={rule.controlMode} />
-                      </li>
-                    ))}
-                  </ul>
+                  {conflict.rules.length === 0 ? (
+                    <Alert variant="info" role="status" className="mt-2">
+                      <AlertDescription>Không có quy tắc trong xung đột này.</AlertDescription>
+                    </Alert>
+                  ) : (
+                    <ul className="mt-1 space-y-1">
+                      {conflict.rules.map((rule) => (
+                        <li
+                          key={rule.ruleCode}
+                          className="flex min-w-0 flex-wrap items-center justify-between gap-2"
+                        >
+                          <span className="min-w-0 break-words">
+                            <span className="font-medium">{rule.ruleCode}</span>{' '}
+                            <span className="text-muted-foreground">{rule.ruleName}</span>
+                          </span>
+                          <ControlModeBadge mode={rule.controlMode} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
@@ -200,6 +228,42 @@ export function RulePreviewPanel({ preview, loading = false, errorMessage }: Rul
           ) : (
             <Alert variant="info" role="status">
               <AlertDescription>Không áp dụng.</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Ngữ cảnh tác nhân</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {hasActorContext ? (
+            <dl className="grid gap-1 text-muted-foreground sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <dt className="min-w-0 break-words">Người thực hiện</dt>
+              <dd className="min-w-0 break-words text-foreground">
+                {displayValue(actorContext.actorUserId)}
+              </dd>
+              <dt className="min-w-0 break-words">Hành động</dt>
+              <dd className="min-w-0 break-words text-foreground">
+                {displayValue(actorContext.action)}
+              </dd>
+              <dt className="min-w-0 break-words">Loại đối tượng</dt>
+              <dd className="min-w-0 break-words text-foreground">
+                {displayValue(actorContext.objectType)}
+              </dd>
+              <dt className="min-w-0 break-words">Mã đối tượng</dt>
+              <dd className="min-w-0 break-words text-foreground">
+                {displayValue(actorContext.objectId)}
+              </dd>
+              <dt className="min-w-0 break-words">Mã lý do</dt>
+              <dd className="min-w-0 break-words text-foreground">
+                {displayValue(actorContext.reasonCode)}
+              </dd>
+            </dl>
+          ) : (
+            <Alert variant="info" role="status">
+              <AlertDescription>Không có ngữ cảnh tác nhân.</AlertDescription>
             </Alert>
           )}
         </CardContent>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,11 +93,23 @@ const emptyPreview: RulePreview = {
   winner: null,
   allowed: true,
   approvalRequired: false,
-  controlMode: { mode: null, isHardBlock: false, approvalRequired: false, warning: null, suggestion: null },
+  controlMode: {
+    mode: null,
+    isHardBlock: false,
+    approvalRequired: false,
+    warning: null,
+    suggestion: null,
+  },
   skippedRules: [],
   conflicts: [],
   reasonReadiness: null,
-  actorContext: { actorUserId: null, action: null, objectType: null, objectId: null, reasonCode: null },
+  actorContext: {
+    actorUserId: null,
+    action: null,
+    objectType: null,
+    objectId: null,
+    reasonCode: null,
+  },
 };
 
 /** A fake repository whose stored profiles mutate, so list+detail re-fetches observe change. */
@@ -106,8 +118,8 @@ class FakeRepository implements Partial<IWarehouseProfileRepository> {
   constructor(initial: WarehouseProfile[]) {
     this.profiles = initial;
   }
-  listProfiles = vi.fn((): Promise<PaginatedResponse<WarehouseProfile>> =>
-    Promise.resolve(page(this.profiles)),
+  listProfiles = vi.fn(
+    (): Promise<PaginatedResponse<WarehouseProfile>> => Promise.resolve(page(this.profiles)),
   );
   getProfile = vi.fn((id: string): Promise<WarehouseProfile> => {
     const found = this.profiles.find((p) => p.id === id);
@@ -162,6 +174,11 @@ function renderPage(initialPath = ROUTES.FOUNDATION.WAREHOUSE_PROFILES) {
   );
 }
 
+async function clickProfileRow(user: ReturnType<typeof userEvent.setup>, profileCode = 'WP-01') {
+  const table = await screen.findByRole('table', { name: 'Danh sách hồ sơ kho dạng bảng' });
+  await user.click(within(table).getByRole('button', { name: profileCode }));
+}
+
 beforeEach(() => {
   // Reset module-local Zustand store between tests (selection must not leak).
   useWarehouseProfileStore.setState({
@@ -194,6 +211,21 @@ describe('WarehouseProfilesPage (AC5 states)', () => {
   });
 });
 
+describe('WarehouseProfilesPage mobile card selection', () => {
+  it('opens detail from the mobile card list path', async () => {
+    const user = userEvent.setup();
+    repo.current = new FakeRepository([
+      makeProfile({ status: 'DRAFT' }),
+    ]) as unknown as IWarehouseProfileRepository;
+    renderPage();
+
+    const cardList = await screen.findByRole('list', { name: 'Danh sách hồ sơ kho dạng thẻ' });
+    await user.click(within(cardList).getByRole('button', { name: /WP-01/ }));
+
+    expect(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' })).toBeTruthy();
+  });
+});
+
 describe('WarehouseProfilesPage detail refresh after activate (Finding #1)', () => {
   it('reflects the new ACTIVE status from the mounted detail query, even when the list row is stale', async () => {
     const user = userEvent.setup();
@@ -215,7 +247,7 @@ describe('WarehouseProfilesPage detail refresh after activate (Finding #1)', () 
     renderPage();
 
     // Select the only profile row.
-    await user.click(await screen.findByText('WP-01'));
+    await clickProfileRow(user);
     await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
 
     // The lifecycle panel shows the detail; Activate is enabled for a DRAFT.
@@ -251,7 +283,7 @@ describe('WarehouseProfilesPage conflict routing (AC5)', () => {
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage();
 
-    await user.click(await screen.findByText('WP-01'));
+    await clickProfileRow(user);
     await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
     await user.click(await screen.findByRole('button', { name: 'Kích hoạt' }));
 
@@ -323,7 +355,7 @@ describe('WarehouseProfilesPage rule assignment UI (Finding #2)', () => {
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage();
 
-    await user.click(await screen.findByText('WP-01'));
+    await clickProfileRow(user);
     await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
 
     // The rule panel renders with the attachable definition offered.
@@ -349,7 +381,7 @@ describe('WarehouseProfilesPage lifecycle error surfacing (Finding #4)', () => {
     repo.current = fake as unknown as IWarehouseProfileRepository;
     renderPage();
 
-    await user.click(await screen.findByText('WP-01'));
+    await clickProfileRow(user);
     await user.click(await screen.findByRole('link', { name: 'Chỉnh sửa hồ sơ' }));
     await user.click(await screen.findByRole('button', { name: 'Kích hoạt' }));
 

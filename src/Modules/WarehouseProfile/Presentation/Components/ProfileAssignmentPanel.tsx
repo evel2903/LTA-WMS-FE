@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/ale
 import type { WarehouseProfileAssignment } from '@modules/WarehouseProfile/Domain/Entities/WarehouseProfileAssignment';
 import type { AssignmentFormValues } from '@modules/WarehouseProfile/Presentation/Forms/WarehouseProfileFormSchema';
 import { AssignmentForm } from '@modules/WarehouseProfile/Presentation/Forms/AssignmentForm';
+import { viAssignmentTypeLabel } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 interface ProfileAssignmentPanelProps {
   assignments: WarehouseProfileAssignment[];
@@ -9,6 +10,33 @@ interface ProfileAssignmentPanelProps {
   pending?: boolean;
   conflict?: string;
   onCreate: (values: AssignmentFormValues) => void;
+}
+
+function firstKnownTarget(assignment: WarehouseProfileAssignment): string | null {
+  return assignment.warehouseId?.trim() || assignment.warehouseTypeCode?.trim() || null;
+}
+
+function assignmentTargetLabel(assignment: WarehouseProfileAssignment): {
+  text: string;
+  isWarning: boolean;
+} {
+  switch (assignment.assignmentType as string) {
+    case 'WAREHOUSE':
+      return {
+        text: assignment.warehouseId?.trim() || 'Thiếu mã kho',
+        isWarning: !assignment.warehouseId?.trim(),
+      };
+    case 'WAREHOUSE_TYPE':
+      return {
+        text: assignment.warehouseTypeCode?.trim() || 'Thiếu mã loại kho',
+        isWarning: !assignment.warehouseTypeCode?.trim(),
+      };
+    default:
+      return {
+        text: firstKnownTarget(assignment) ?? 'Loại gán chưa hỗ trợ',
+        isWarning: true,
+      };
+  }
 }
 
 export function ProfileAssignmentPanel({
@@ -33,19 +61,31 @@ export function ProfileAssignmentPanel({
         </Alert>
       ) : (
         <ul className="space-y-1 text-sm">
-          {assignments.map((assignment) => (
-            <li key={assignment.id} className="rounded-md border px-3 py-1">
-              <span className="font-medium">{assignment.assignmentType}</span>{' '}
-              <span className="text-muted-foreground">
-                {assignment.assignmentType === 'WAREHOUSE'
-                  ? assignment.warehouseId
-                  : assignment.warehouseTypeCode}
-              </span>
-            </li>
-          ))}
+          {assignments.map((assignment) => {
+            const target = assignmentTargetLabel(assignment);
+            return (
+              <li key={assignment.id} className="min-w-0 rounded-md border px-3 py-1 break-words">
+                <span className="inline-block min-w-0 break-words font-medium">
+                  {viAssignmentTypeLabel(assignment.assignmentType)}
+                </span>{' '}
+                <span
+                  className={`inline-block min-w-0 break-words ${
+                    target.isWarning ? 'text-warning' : 'text-muted-foreground'
+                  }`}
+                >
+                  {target.text}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
-      <AssignmentForm disabled={!canEdit} pending={pending} conflict={conflict} onSubmit={onCreate} />
+      <AssignmentForm
+        disabled={!canEdit}
+        pending={pending}
+        conflict={conflict}
+        onSubmit={onCreate}
+      />
     </div>
   );
 }

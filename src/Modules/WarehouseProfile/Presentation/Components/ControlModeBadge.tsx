@@ -1,6 +1,6 @@
 import { Badge } from '@shared/Components/Ui/Badge';
 import type { RuleControlMode } from '@modules/WarehouseProfile/Domain/Enums/WarehouseProfileEnums';
-import { VI_CONTROL_MODE_LABELS } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
+import { viControlModeLabel } from '@modules/WarehouseProfile/Presentation/Constants/WarehouseProfileDisplayText';
 
 type Variant = 'default' | 'secondary' | 'outline' | 'success' | 'warning';
 
@@ -12,6 +12,10 @@ const MODE_VARIANT: Record<RuleControlMode, Variant> = {
   AUTO_SUGGESTION: 'outline',
 };
 
-export function ControlModeBadge({ mode }: { mode: RuleControlMode }) {
-  return <Badge variant={MODE_VARIANT[mode]}>{VI_CONTROL_MODE_LABELS[mode]}</Badge>;
+function controlModeVariant(mode: string | null | undefined): Variant {
+  return MODE_VARIANT[mode as RuleControlMode] ?? 'outline';
+}
+
+export function ControlModeBadge({ mode }: { mode: string | null | undefined }) {
+  return <Badge variant={controlModeVariant(mode)}>{viControlModeLabel(mode)}</Badge>;
 }
