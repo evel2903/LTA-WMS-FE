@@ -3141,14 +3141,15 @@ describe('InboundPage', () => {
     expect(fake.confirmReceiptLine).not.toHaveBeenCalled();
   });
 
-  it('rehydrates the LATEST receipt line and its correlated QC result on reload (multi-row)', async () => {
-    const fake = new FakeRepository([makePlan()]);
-    allowReceiving(fake);
-    // Two receipt lines for the same plan line (re-receive); QC result is tied to the NEWER one.
-    // The derivation must pick the latest receipt line so the QC result correlates → stage = QC.
-    // First-match selection would pick `rl-old`, the QC result would not correlate, and the
-    // line would stay stuck at "Đã tiếp nhận".
-    fake.operationalState = {
+  // Shared fixture for the IDC-07 tests below: two receipt lines on the same plan line
+  // (re-receive / multi-unit serial capture), QC result correlated only to the newer one.
+  // Also serves the "latest wins by default" assertion previously covered by its own test —
+  // that assertion is now just the opening lines of the first IDC-07 test below, so a
+  // separate test asserting the identical fixture would be pure duplicate maintenance.
+  function multiReceiptLineOperationalState(
+    overrides: Partial<InboundOperationalState> = {},
+  ): InboundOperationalState {
+    return {
       inboundPlanId: 'inbound-plan-1',
       receivingSessions: [
         {
@@ -3199,12 +3200,155 @@ describe('InboundPage', () => {
       ],
       lpns: [],
       releases: [],
+      ...overrides,
+    };
+  }
+
+  it('IDC-07: renders a receipt-line rail when a plan line has multiple receipt lines and allows independently selecting each', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    // rl-old has no correlated QC result (stage stays "Đã tiếp nhận"), rl-new does (stage
+    // becomes "Đã QC") — the opening assertions below also cover "latest wins by default".
+    fake.operationalState = multiReceiptLineOperationalState();
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    const rail = await screen.findByTestId('inbound-receipt-line-rail');
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
+    expect(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute(
+      'aria-pressed',
+    )).toBe('true');
+
+    await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old'));
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain(
+      'Đã tiếp nhận',
+    );
+    expect(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old').getAttribute(
+      'aria-pressed',
+    )).toBe('true');
+
+    await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new'));
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
+  });
+
+  it('IDC-07: does not render the receipt-line rail when a plan line has only one receipt line', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = {
+      inboundPlanId: 'inbound-plan-1',
+      receivingSessions: [
+        { inboundPlanId: 'inbound-plan-1', receiptId: 'receipt-1' } as unknown as ReceivingSession,
+      ],
+      receiptLines: [
+        {
+          id: 'receipt-line-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          status: 'Received',
+          discrepancySignals: [],
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [],
+      releases: [],
     };
     repo.current = fake;
     renderPage('/inbound/inbound-plan-1');
 
-    const chip = await screen.findByTestId('inbound-line-stage-chip-line-1');
-    expect(chip.textContent).toContain('Đã QC');
-    expect(fake.recordQcResult).not.toHaveBeenCalled();
+    await screen.findByTestId('inbound-line-stage-chip-line-1');
+    expect(screen.queryByTestId('inbound-receipt-line-rail')).toBeNull();
+  });
+
+  it('IDC-07: resets the selected receipt line when a different plan line is selected', async () => {
+    const actor = userEvent.setup();
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 24,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState();
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    const rail = await screen.findByTestId('inbound-receipt-line-rail');
+    await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old'));
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain(
+      'Đã tiếp nhận',
+    );
+
+    // Switch to line-2 (no receipt lines yet) and back to line-1: the earlier explicit
+    // rl-old selection must not silently persist — line-1 should fall back to latest (rl-new).
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-2'));
+    expect(screen.queryByTestId('inbound-receipt-line-rail')).toBeNull();
+    await actor.click(screen.getByTestId('inbound-line-rail-button-line-1'));
+
+    // Re-derive the rail (not just the stage chip) to catch a regression where a stale
+    // filter (e.g. memoized on the wrong dependency) leaks line-2's empty receipt-line
+    // set into line-1's re-render instead of correctly re-showing both rl-old/rl-new.
+    const railAfterRoundTrip = await screen.findByTestId('inbound-receipt-line-rail');
+    expect(within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-old')).toBeTruthy();
+    expect(within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-new')).toBeTruthy();
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
+    expect(
+      screen.getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('IDC-07 dual review: an explicit rail selection remains actionable after a NEW receiving-confirm for the same plan line, instead of the rail silently getting stuck on the fresh mutation result', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState();
+    repo.current = fake;
+    // Force the `receiving` step explicitly: this fixture's default-latest (rl-new) already
+    // carries a recorded QC result, so the inferred step would otherwise advance past
+    // receiving — but the reviewed bug is specifically about the receiving panel and the
+    // rail being visible AT THE SAME TIME (both only require `activeWorkflowStep !== 'gate-in'`).
+    renderPage('/inbound/inbound-plan-1/receiving');
+    await expectReadinessAllowed();
+
+    // Submit a brand-new receiving-confirm for the SAME plan line (e.g. a 3rd unit in a
+    // multi-unit serial-controlled receive) — this seeds `mutations.confirmReceiptLine.data`,
+    // which used to unconditionally win the confirmedReceiptLine fallback chain forever
+    // (until a plan switch), permanently freezing the rail regardless of further clicks.
+    await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
+    const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
+    await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
+    fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
+    await waitFor(() => expect(fake.confirmReceiptLine).toHaveBeenCalledTimes(1));
+
+    // The rail must still be able to select a pre-existing receipt line after that —
+    // this is the exact scenario the dual review found broken: the click used to be
+    // silently ignored because the mutation cache kept winning over the rail selection.
+    const rail = await screen.findByTestId('inbound-receipt-line-rail');
+    await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old'));
+    expect(
+      within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old').getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain(
+      'Đã tiếp nhận',
+    );
+
+    await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new'));
+    expect(
+      within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
   });
 });

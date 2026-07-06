@@ -26,6 +26,7 @@ import { InboundLineRail } from '@modules/Inbound/Presentation/Components/Inboun
 import { deriveFocusedLineStage } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
+import { InboundReceiptLineRail } from '@modules/Inbound/Presentation/Components/InboundReceiptLineRail';
 import { InboundReceivingPanel } from '@modules/Inbound/Presentation/Components/InboundReceivingPanel';
 import { InboundReleasePutawayPanel } from '@modules/Inbound/Presentation/Components/InboundReleasePutawayPanel';
 import { InboundWorkflowStepper } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepper';
@@ -338,6 +339,9 @@ export function InboundDetailPage() {
   const [readinessReasonCode, setReadinessReasonCode] = useState('');
   const [readinessOverridePlanId, setReadinessOverridePlanId] = useState<string | null>(null);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  // IDC-07: which receipt line is active when a plan line has more than one
+  // (multi-unit serial-controlled receiving, see IFB-14). Null = "use latest".
+  const [selectedReceiptLineId, setSelectedReceiptLineId] = useState<string | null>(null);
   const [pendingLineFocusId, setPendingLineFocusId] = useState<string | null>(null);
   const [receivingSessionKey, setReceivingSessionKey] = useState('dock-1');
   const [receivingDeviceCode, setReceivingDeviceCode] = useState('rf-web');
@@ -445,14 +449,27 @@ export function InboundDetailPage() {
     lastConfirmedLine.inboundPlanLineId === selectedLine?.id
       ? lastConfirmedLine
       : null;
+  // IDC-07: a plan line can have more than one receipt line (multi-unit
+  // serial-controlled receiving forces one receiving-confirm call per
+  // physical unit — see IFB-14). Keep the full set so each is independently
+  // selectable instead of collapsing straight to the latest.
+  const receiptLinesForSelectedLine =
+    operationalState?.receiptLines.filter(
+      (line) => line.inboundPlanId === selected?.id && line.inboundPlanLineId === selectedLine?.id,
+    ) ?? [];
+  // IDC-07 dual review: `selectedReceiptLineId` must be the single source of
+  // truth once set — checking `mutationConfirmedReceiptLine` FIRST would let a
+  // fresh confirm-receiving submission silently override an operator's
+  // explicit rail pick of a DIFFERENT (older) receipt line on the same plan
+  // line, with the rail's own highlight flipping with no click to explain it.
+  // `mutationConfirmedReceiptLine` stays only as the bridge for the brief
+  // window before `operationalState` refetches and the new line's id becomes
+  // findable in `receiptLinesForSelectedLine` (see the effect below, which
+  // keeps `selectedReceiptLineId` in sync so the rail reflects reality).
   const confirmedReceiptLine =
+    receiptLinesForSelectedLine.find((line) => line.id === selectedReceiptLineId) ??
     mutationConfirmedReceiptLine ??
-    latestBy(
-      operationalState?.receiptLines.filter(
-        (line) => line.inboundPlanId === selected?.id && line.inboundPlanLineId === selectedLine?.id,
-      ),
-      (line) => line.receivedAt,
-    );
+    latestBy(receiptLinesForSelectedLine, (line) => line.receivedAt);
   const evaluatedQcTask =
     (mutations.evaluateQcTask.data &&
     confirmedReceiptLine?.id === mutations.evaluateQcTask.data.receiptLineId
@@ -1007,6 +1024,64 @@ export function InboundDetailPage() {
     setReceiptExpiryDate('');
     setReceiptSerialNumber('');
   }, [selectedLine?.id]);
+
+  // IDC-07 dual review: reset the receipt-line selection whenever the PLAN
+  // line changes, regardless of which path changed it (rail click, the
+  // discrepancy deep-link effect above, browser back/forward). Keying this on
+  // `selectedLine?.id` directly — rather than resetting it only inside the
+  // rail's own onSelect — means every current and future path that changes
+  // the focused plan line is covered by construction, the same fix shape
+  // already applied to Lot/Expiry/Serial above for the same class of gap.
+  useEffect(() => {
+    setSelectedReceiptLineId(null);
+  }, [selectedLine?.id]);
+
+  // IDC-07 dual review: a fresh confirm-receiving submission for the SAME
+  // plan line must become the operator's new explicit selection — not a
+  // silent bypass of whatever they had previously picked via the rail. Without
+  // this, `mutationConfirmedReceiptLine` (kept only as a stale-flicker bridge
+  // in `confirmedReceiptLine` below) would resolve to the new line while
+  // `selectedReceiptLineId` kept pointing at the old pick, and the two could
+  // permanently diverge once the mutation cache is later cleared elsewhere.
+  useEffect(() => {
+    const line = mutations.confirmReceiptLine.data;
+    if (line && line.inboundPlanId === selected?.id && line.inboundPlanLineId === selectedLine?.id) {
+      setSelectedReceiptLineId(line.id);
+    }
+  }, [mutations.confirmReceiptLine.data, selected?.id, selectedLine?.id]);
+
+  // IDC-07 dual review: QC/LPN/Release/discrepancy form fields must not carry
+  // over when the operator switches which receipt line is active (via the new
+  // rail) — otherwise a quantity/reason/evidence value typed while reviewing
+  // one receipt line could be silently submitted against a different one.
+  useEffect(() => {
+    setDiscrepancyReasonCode('');
+    setDiscrepancyReasonNote('');
+    setDiscrepancyEvidenceRefs('');
+    setQcForceRequired(false);
+    setQcTaskReasonCode('');
+    setQcTaskReasonNote('');
+    setQcTaskEvidenceRefs('');
+    setQcTaskIdempotencyKey(`qc-task-${confirmedReceiptLine?.id ?? 'none'}-${Date.now()}`);
+    setQcResultStatus('Passed');
+    setQcDispositionCode('Release');
+    setQcInspectedQuantity(String(confirmedReceiptLine?.actualQuantity ?? selectedInitialExpectedQuantity));
+    setQcAcceptedQuantity(String(confirmedReceiptLine?.actualQuantity ?? selectedInitialExpectedQuantity));
+    setQcRejectedQuantity('0');
+    setQcResultReasonCode('');
+    setQcResultReasonNote('');
+    setQcResultEvidenceRefs('');
+    setQcResultIdempotencyKey(`qc-result-${confirmedReceiptLine?.id ?? 'none'}-${Date.now()}`);
+    setLpnCode('');
+    setSsccCode('');
+    setLpnIdempotencyKey(`lpn-${confirmedReceiptLine?.id ?? 'none'}-${Date.now()}`);
+    setReleaseCurrentLocationCode('RECEIVING');
+    setReleaseRequireLpn(true);
+    setReleaseAttemptLabelOverride(false);
+    setReleaseReasonCode('');
+    setReleaseEvidenceRefs('');
+    setReleaseIdempotencyKey(`release-${confirmedReceiptLine?.id ?? 'none'}-${Date.now()}`);
+  }, [confirmedReceiptLine?.id, confirmedReceiptLine?.actualQuantity, selectedInitialExpectedQuantity]);
 
   function updateLine(id: number, patch: Partial<DraftLine>) {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
@@ -1629,6 +1704,7 @@ export function InboundDetailPage() {
               selectedLineId={selectedLine?.id ?? null}
               onSelect={(line) => {
                 setSelectedLineId(line.id);
+                setSelectedReceiptLineId(null);
                 setReceiptActualQuantity(String(line.expectedQuantity));
               }}
             />
@@ -1729,6 +1805,14 @@ export function InboundDetailPage() {
                 receivingSession={receivingSession ?? null}
                 receivingSessionKey={receivingSessionKey}
                 selectedLine={selectedLine}
+              />
+            )}
+
+            {activeWorkflowStep !== 'gate-in' && receiptLinesForSelectedLine.length > 1 && (
+              <InboundReceiptLineRail
+                receiptLines={receiptLinesForSelectedLine}
+                selectedReceiptLineId={confirmedReceiptLine?.id ?? null}
+                onSelect={setSelectedReceiptLineId}
               />
             )}
 
