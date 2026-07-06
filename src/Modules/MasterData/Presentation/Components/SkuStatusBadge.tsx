@@ -1,11 +1,11 @@
 import { Badge } from '@shared/Components/Ui/Badge';
 import { skuStatusVariant } from '@modules/MasterData/Presentation/Components/SkuStatusVariant';
-import type { SkuStatus } from '@modules/MasterData/Domain/Types/CatalogEntities';
+import { displaySkuStatus } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 
 interface SkuStatusBadgeProps {
-  status: SkuStatus;
+  status: string | null | undefined;
 }
 
 export function SkuStatusBadge({ status }: SkuStatusBadgeProps) {
-  return <Badge variant={skuStatusVariant(status)}>{status}</Badge>;
+  return <Badge variant={skuStatusVariant(status)}>{displaySkuStatus(status)}</Badge>;
 }

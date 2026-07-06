@@ -1,14 +1,23 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import type { Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import {
+  UOM_TYPE_OPTION_VALUES,
+  displayUomType,
+  toUomTypeRawValue,
+} from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+import {
   uomFormSchema,
   type UomFormValues,
 } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
+
+function toUomTypeDisplayValue(value: string | null | undefined) {
+  return value ? displayUomType(value) : '';
+}
 
 interface UomFormProps {
   initialValue?: Uom;
@@ -58,7 +67,27 @@ export function UomForm({
           <span className="text-destructive text-xs">{form.formState.errors.uomName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">Loại đơn vị tính<Input disabled={disabled} {...form.register('uomType')} />
+      <label className="grid gap-1 text-sm">Loại đơn vị tính<Controller
+          control={form.control}
+          name="uomType"
+          render={({ field }) => (
+            <Input
+              list="uom-type-options"
+              name={field.name}
+              ref={field.ref}
+              placeholder="Nhập hoặc chọn loại đơn vị tính"
+              disabled={disabled}
+              value={toUomTypeDisplayValue(field.value)}
+              onBlur={field.onBlur}
+              onChange={(event) => field.onChange(toUomTypeRawValue(event.target.value))}
+            />
+          )}
+        />
+        <datalist id="uom-type-options">
+          {UOM_TYPE_OPTION_VALUES.map((uomType) => (
+            <option key={uomType} value={displayUomType(uomType)} />
+          ))}
+        </datalist>
       </label>
       <label className="grid gap-1 text-sm">Số lẻ thập phân (0-6)<Input type="number" min={0} max={6} disabled={disabled} {...form.register('decimalPrecision')} />
         {form.formState.errors.decimalPrecision && (

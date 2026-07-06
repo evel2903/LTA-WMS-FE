@@ -7,7 +7,11 @@ import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useUoms } from '@modules/MasterData/Application/Queries/CatalogQueries';
-import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+import {
+  MASTER_DATA_EMPTY_LABELS,
+  displayUomType,
+  toUomTypeRawValue,
+} from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import type { Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import type { MasterDataStatus } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import {
@@ -26,7 +30,7 @@ export function UomMasterPage() {
   const [status, setStatus] = useState<StatusFilter>('All');
   const [uomTypeFilter, setUomTypeFilter] = useState('');
   const uomCode = useDebouncedValue(search, 300);
-  const uomType = useDebouncedValue(uomTypeFilter, 300);
+  const uomType = toUomTypeRawValue(useDebouncedValue(uomTypeFilter, 300));
 
   const query = useUoms({
     page,
@@ -61,8 +65,8 @@ export function UomMasterPage() {
       ),
     },
     { header: 'Tên', render: (uom) => uom.uomName },
-    { header: 'Type', render: (uom) => uom.uomType ?? '-' },
-    { header: 'Precision', render: (uom) => uom.decimalPrecision },
+    { header: 'Loại', render: (uom) => displayUomType(uom.uomType) },
+    { header: 'Số lẻ', render: (uom) => uom.decimalPrecision },
     { header: 'Trạng thái', render: (uom) => <MasterDataStatusBadge status={uom.status} /> },
   ];
 

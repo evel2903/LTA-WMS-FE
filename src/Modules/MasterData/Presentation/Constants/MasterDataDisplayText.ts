@@ -28,6 +28,16 @@ export const UOM_TYPE_LABELS: Record<string, string> = {
   Area: 'Diện tích',
 };
 
+const UOM_TYPE_LABEL_TO_VALUE = new Map<string, string>(
+  UOM_TYPE_OPTION_VALUES.flatMap((uomType): Array<[string, string]> => {
+    const label = UOM_TYPE_LABELS[uomType];
+    return [
+      [label, uomType],
+      [label.toLocaleLowerCase('vi'), uomType],
+    ];
+  }),
+);
+
 export const SKU_CONTROL_FLAG_LABELS: Record<SkuControlFlagKey, string> = {
   lotControlled: 'Kiểm soát lô',
   expiryControlled: 'Kiểm soát hạn dùng',
@@ -55,11 +65,13 @@ export const SKU_STATUS_LABELS: Record<SkuStatus, string> = {
 };
 
 function displayMappedValue(labels: Record<string, string>, value: string | null | undefined) {
-  if (!value) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
     return '-';
   }
 
-  return labels[value] ?? value;
+  return labels[normalized] ?? normalized;
 }
 
 export function displayMasterDataStatus(status: string | null | undefined) {
@@ -68,6 +80,18 @@ export function displayMasterDataStatus(status: string | null | undefined) {
 
 export function displayUomType(uomType: string | null | undefined) {
   return displayMappedValue(UOM_TYPE_LABELS, uomType);
+}
+
+export function toUomTypeRawValue(displayValue: string | null | undefined) {
+  const normalized = displayValue?.trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  return UOM_TYPE_LABEL_TO_VALUE.get(normalized) ??
+    UOM_TYPE_LABEL_TO_VALUE.get(normalized.toLocaleLowerCase('vi')) ??
+    normalized;
 }
 
 export function displaySkuStatus(status: string | null | undefined) {

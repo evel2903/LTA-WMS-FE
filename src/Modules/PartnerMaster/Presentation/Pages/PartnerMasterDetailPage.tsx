@@ -9,6 +9,7 @@ import { conflictMessage } from '@modules/MasterData/Application/Commands/Catalo
 import { usePartnerMutations } from '@modules/PartnerMaster/Application/Commands/UsePartnerMutations';
 import { usePartner } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
+import { displayPartnerType } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 import { PartnerForm } from '@modules/PartnerMaster/Presentation/Forms/PartnerForm';
 
 interface PartnerMasterDetailPageProps {
@@ -66,7 +67,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
       summary={
         !isCreate ? (
           <>
-            <span>{existingPartner.partnerType}</span>
+            <span>{displayPartnerType(existingPartner.partnerType)}</span>
             <span>{existingPartner.externalReference}</span>
           </>
         ) : null
@@ -95,6 +96,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
         {isCreate ? (
           <PartnerForm
             submitLabel="Tạo đối tác"
+            partnerTypeEditable
             disabled={!canMutate}
             pending={mutations.createPartner.isPending}
             conflict={conflictMessage(submitError) ?? undefined}
@@ -113,6 +115,7 @@ export function PartnerMasterDetailPage({ mode }: PartnerMasterDetailPageProps) 
             key={`partner-${existingPartner.id}-${existingPartner.updatedAt ?? ''}`}
             initialValue={existingPartner}
             submitLabel="Cập nhật đối tác"
+            partnerTypeEditable={false}
             disabled={!canMutate}
             pending={mutations.updatePartner.isPending}
             deactivatePending={mutations.deactivatePartner.isPending}
