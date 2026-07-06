@@ -8,7 +8,10 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useActiveOwners, useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
-import { MASTER_DATA_EMPTY_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+import {
+  MASTER_DATA_EMPTY_LABELS,
+  displaySkuStatus,
+} from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import type { Sku, SkuStatus } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import {
   CatalogListView,
@@ -38,6 +41,7 @@ export function SkuMasterPage() {
   const skus = query.data?.items ?? [];
   const owners = ownersQuery.data?.items ?? [];
   const apiError = query.error instanceof ApiError ? query.error : null;
+  const canCreate = !apiError?.isForbidden;
   const state: CatalogListState = apiError?.isForbidden
     ? 'denied'
     : query.isLoading
@@ -47,7 +51,6 @@ export function SkuMasterPage() {
         : skus.length === 0
           ? 'empty'
           : 'ready';
-  const canCreate = !apiError?.isForbidden;
 
   const columns: CatalogColumn<Sku>[] = [
     {
@@ -69,7 +72,7 @@ export function SkuMasterPage() {
   return (
     <CatalogListView
       title="SKU"
-      description="Quản lý dữ liệu chủ SKU và cờ kiểm soát."
+      description="Quản lý dữ liệu chủ SKU, cờ kiểm soát và quan hệ đóng gói cho vận hành WMS."
       state={state}
       columns={columns}
       rows={skus}
@@ -77,9 +80,9 @@ export function SkuMasterPage() {
       page={page}
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
-      canCreate={canCreate}
       emptyLabel={MASTER_DATA_EMPTY_LABELS.skus}
       errorMessage={apiError?.message ?? (query.error ? 'Không thể tải SKU.' : undefined)}
+      canCreate={canCreate}
       headerAction={
         canCreate ? (
           <Button asChild size="sm">
@@ -109,7 +112,7 @@ export function SkuMasterPage() {
               <option value="All">Tất cả</option>
               {SKU_STATUSES.map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {displaySkuStatus(value)}
                 </option>
               ))}
             </select>
