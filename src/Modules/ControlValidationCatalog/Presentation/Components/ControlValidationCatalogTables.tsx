@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import {
@@ -13,7 +13,12 @@ import { cn } from '@shared/Utils/Cn';
 import type {
   ControlExceptionCatalogItem,
   ControlValidationCatalog,
+  ValidationRuleCatalogItem,
 } from '@modules/ControlValidationCatalog/Domain/Entities/ControlValidationCatalog';
+import {
+  controlActionAllowedLabel,
+  controlCategoryLabel,
+} from '@modules/ControlValidationCatalog/Domain/Constants/ControlValidationCatalogDisplayText';
 import {
   BooleanRequirement,
   CatalogImplementationStatusBadge,
@@ -71,8 +76,111 @@ function TabButton({
   );
 }
 
-function valueOrNa(value: string | null | undefined) {
-  return value && value.trim() ? value : 'Không áp dụng';
+function FieldLine({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 space-y-0.5">
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd className="min-w-0 break-words text-sm">{children}</dd>
+    </div>
+  );
+}
+
+function normalizeExceptionCode(controlExceptionCode: string | null | undefined) {
+  return controlExceptionCode?.trim() ?? '';
+}
+
+function findLinkedException(
+  controlExceptionCode: string | null | undefined,
+  exceptionsByCode: Map<string, ControlExceptionCatalogItem>,
+) {
+  const normalizedCode = normalizeExceptionCode(controlExceptionCode);
+  return normalizedCode ? exceptionsByCode.get(normalizedCode) : undefined;
+}
+
+function LinkedExceptionFallback({ controlExceptionCode }: { controlExceptionCode: string | null | undefined }) {
+  const normalizedCode = normalizeExceptionCode(controlExceptionCode);
+
+  if (normalizedCode) {
+    return (
+      <span className="text-destructive break-all text-xs">
+        Thiếu cấu hình {normalizedCode}
+      </span>
+    );
+  }
+
+  return <span className="text-muted-foreground">Không áp dụng</span>;
+}
+
+function ValidationRuleCard({
+  item,
+  linkedException,
+}: {
+  item: ValidationRuleCatalogItem;
+  linkedException?: ControlExceptionCatalogItem;
+}) {
+  return (
+    <article className="border-border bg-card text-card-foreground min-w-0 rounded-lg border p-3">
+      <div className="min-w-0 space-y-1">
+        <p className="break-all text-sm font-medium">{item.code}</p>
+        <p className="text-muted-foreground break-words text-xs">{item.description}</p>
+      </div>
+      <dl className="mt-3 grid gap-3">
+        <FieldLine label="Điều kiện kích hoạt">{item.trigger}</FieldLine>
+        <FieldLine label="Mức độ">
+          {linkedException ? (
+            <ControlSeverityBadge severity={linkedException.severity} />
+          ) : (
+            <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+          )}
+        </FieldLine>
+        <FieldLine label="Trạng thái mặc định">
+          {linkedException ? (
+            <ControlDefaultStateBadge state={linkedException.defaultState} />
+          ) : (
+            <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+          )}
+        </FieldLine>
+        <FieldLine label="Bằng chứng">
+          {linkedException ? (
+            <BooleanRequirement value={linkedException.evidenceRequired} label={`${item.code} bằng chứng`} />
+          ) : (
+            <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+          )}
+        </FieldLine>
+        <FieldLine label="Module sở hữu">{item.ownerModule}</FieldLine>
+        <FieldLine label="Trạng thái">
+          <CatalogImplementationStatusBadge status={item.implementationStatus} />
+        </FieldLine>
+      </dl>
+    </article>
+  );
+}
+
+function ControlExceptionCard({ item }: { item: ControlExceptionCatalogItem }) {
+  return (
+    <article className="border-border bg-card text-card-foreground min-w-0 rounded-lg border p-3">
+      <div className="min-w-0 space-y-1">
+        <p className="break-all text-sm font-medium">{item.code}</p>
+        <p className="text-muted-foreground break-words text-xs">{item.scenario}</p>
+      </div>
+      <dl className="mt-3 grid gap-3">
+        <FieldLine label="Nhóm">{controlCategoryLabel(item.category)}</FieldLine>
+        <FieldLine label="Mức độ">
+          <ControlSeverityBadge severity={item.severity} />
+        </FieldLine>
+        <FieldLine label="Trạng thái mặc định">
+          <ControlDefaultStateBadge state={item.defaultState} />
+        </FieldLine>
+        <FieldLine label="Bằng chứng">
+          <BooleanRequirement value={item.evidenceRequired} label={`${item.code} bằng chứng`} />
+        </FieldLine>
+        <FieldLine label="Hành động được phép">{controlActionAllowedLabel(item.actionAllowed)}</FieldLine>
+        <FieldLine label="Trạng thái">
+          <CatalogImplementationStatusBadge status={item.implementationStatus} />
+        </FieldLine>
+      </dl>
+    </article>
+  );
 }
 
 function ValidationRulesTable({
@@ -87,65 +195,74 @@ function ValidationRulesTable({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Mã</TableHead>
-            <TableHead>Mô tả</TableHead>
-            <TableHead>Điều kiện kích hoạt</TableHead>
-            <TableHead>Mức độ</TableHead>
-            <TableHead>Trạng thái mặc định</TableHead>
-            <TableHead>Bằng chứng</TableHead>
-            <TableHead>Chủ hàng</TableHead>
-            <TableHead>Trạng thái</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {catalog.validationRules.map((item) => {
-            const linkedException = item.controlExceptionCode
-              ? exceptionsByCode.get(item.controlExceptionCode)
-              : undefined;
-            return (
-              <TableRow key={item.code}>
-                <TableCell className="font-medium">{item.code}</TableCell>
-                <TableCell className="min-w-[240px]">{item.description}</TableCell>
-                <TableCell className="text-muted-foreground min-w-[180px] text-xs">
-                  {item.trigger}
-                </TableCell>
-                <TableCell>
-                  {linkedException ? (
-                    <ControlSeverityBadge severity={linkedException.severity} />
-                  ) : (
-                    <span className="text-muted-foreground">Không áp dụng</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {linkedException ? (
-                    <ControlDefaultStateBadge state={linkedException.defaultState} />
-                  ) : (
-                    <span className="text-muted-foreground">Không áp dụng</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {linkedException ? (
-                    <BooleanRequirement
-                      value={linkedException.evidenceRequired}
-                      label={`${item.code} bằng chứng`}
-                    />
-                  ) : (
-                    <span className="text-muted-foreground">Không áp dụng</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-xs">{item.ownerModule}</TableCell>
-                <TableCell>
-                  <CatalogImplementationStatusBadge status={item.implementationStatus} />
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+    <div className="min-w-0">
+      <div className="hidden overflow-x-auto md:block">
+        <Table className="min-w-[1040px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mã</TableHead>
+              <TableHead>Mô tả</TableHead>
+              <TableHead>Điều kiện kích hoạt</TableHead>
+              <TableHead>Mức độ</TableHead>
+              <TableHead>Trạng thái mặc định</TableHead>
+              <TableHead>Bằng chứng</TableHead>
+              <TableHead>Module sở hữu</TableHead>
+              <TableHead>Trạng thái</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {catalog.validationRules.map((item) => {
+              const linkedException = findLinkedException(item.controlExceptionCode, exceptionsByCode);
+              return (
+                <TableRow key={item.code}>
+                  <TableCell className="max-w-36 whitespace-normal break-all font-medium">{item.code}</TableCell>
+                  <TableCell className="min-w-[240px] whitespace-normal break-words">{item.description}</TableCell>
+                  <TableCell className="text-muted-foreground min-w-[180px] whitespace-normal break-words text-xs">
+                    {item.trigger}
+                  </TableCell>
+                  <TableCell>
+                    {linkedException ? (
+                      <ControlSeverityBadge severity={linkedException.severity} />
+                    ) : (
+                      <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {linkedException ? (
+                      <ControlDefaultStateBadge state={linkedException.defaultState} />
+                    ) : (
+                      <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {linkedException ? (
+                      <BooleanRequirement
+                        value={linkedException.evidenceRequired}
+                        label={`${item.code} bằng chứng`}
+                      />
+                    ) : (
+                      <LinkedExceptionFallback controlExceptionCode={item.controlExceptionCode} />
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-32 whitespace-normal break-words text-xs">{item.ownerModule}</TableCell>
+                  <TableCell>
+                    <CatalogImplementationStatusBadge status={item.implementationStatus} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {catalog.validationRules.map((item) => (
+          <ValidationRuleCard
+            key={item.code}
+            item={item}
+            linkedException={findLinkedException(item.controlExceptionCode, exceptionsByCode)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -156,43 +273,54 @@ function ControlExceptionsTable({ catalog }: { catalog: ControlValidationCatalog
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Mã</TableHead>
-            <TableHead>Kịch bản</TableHead>
-            <TableHead>Nhóm</TableHead>
-            <TableHead>Mức độ</TableHead>
-            <TableHead>Trạng thái mặc định</TableHead>
-            <TableHead>Bằng chứng</TableHead>
-            <TableHead>Action được phép</TableHead>
-            <TableHead>Trạng thái</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {catalog.controlExceptions.map((item) => (
-            <TableRow key={item.code}>
-              <TableCell className="font-medium">{item.code}</TableCell>
-              <TableCell className="min-w-[240px]">{item.scenario}</TableCell>
-              <TableCell className="text-muted-foreground text-xs">{item.category}</TableCell>
-              <TableCell>
-                <ControlSeverityBadge severity={item.severity} />
-              </TableCell>
-              <TableCell>
-                <ControlDefaultStateBadge state={item.defaultState} />
-              </TableCell>
-              <TableCell>
-                <BooleanRequirement value={item.evidenceRequired} label={`${item.code} bằng chứng`} />
-              </TableCell>
-              <TableCell className="text-xs">{valueOrNa(item.actionAllowed)}</TableCell>
-              <TableCell>
-                <CatalogImplementationStatusBadge status={item.implementationStatus} />
-              </TableCell>
+    <div className="min-w-0">
+      <div className="hidden overflow-x-auto md:block">
+        <Table className="min-w-[980px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Mã</TableHead>
+              <TableHead>Kịch bản</TableHead>
+              <TableHead>Nhóm</TableHead>
+              <TableHead>Mức độ</TableHead>
+              <TableHead>Trạng thái mặc định</TableHead>
+              <TableHead>Bằng chứng</TableHead>
+              <TableHead>Hành động được phép</TableHead>
+              <TableHead>Trạng thái</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {catalog.controlExceptions.map((item) => (
+              <TableRow key={item.code}>
+                <TableCell className="max-w-36 whitespace-normal break-all font-medium">{item.code}</TableCell>
+                <TableCell className="min-w-[240px] whitespace-normal break-words">{item.scenario}</TableCell>
+                <TableCell className="text-muted-foreground max-w-32 whitespace-normal break-words text-xs">
+                  {controlCategoryLabel(item.category)}
+                </TableCell>
+                <TableCell>
+                  <ControlSeverityBadge severity={item.severity} />
+                </TableCell>
+                <TableCell>
+                  <ControlDefaultStateBadge state={item.defaultState} />
+                </TableCell>
+                <TableCell>
+                  <BooleanRequirement value={item.evidenceRequired} label={`${item.code} bằng chứng`} />
+                </TableCell>
+                <TableCell className="max-w-40 whitespace-normal break-words text-xs">
+                  {controlActionAllowedLabel(item.actionAllowed)}
+                </TableCell>
+                <TableCell>
+                  <CatalogImplementationStatusBadge status={item.implementationStatus} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {catalog.controlExceptions.map((item) => (
+          <ControlExceptionCard key={item.code} item={item} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -203,7 +331,7 @@ export function ControlValidationCatalogTables({
 }: ControlValidationCatalogTablesProps) {
   const [activeTab, setActiveTab] = useState<CatalogTab>('validation');
   const exceptionsByCode = useMemo(
-    () => new Map(catalog.controlExceptions.map((item) => [item.code, item])),
+    () => new Map(catalog.controlExceptions.map((item) => [normalizeExceptionCode(item.code), item])),
     [catalog.controlExceptions],
   );
 

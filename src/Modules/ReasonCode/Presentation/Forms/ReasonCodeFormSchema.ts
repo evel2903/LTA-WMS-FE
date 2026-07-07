@@ -13,7 +13,14 @@ import {
 
 const optionalText = (max: number) =>
   z.preprocess(
-    (value) => (value === '' || value === null ? undefined : value),
+    (value) => {
+      if (value === null) return undefined;
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || undefined;
+      }
+      return value;
+    },
     z.string().trim().max(max).optional(),
   );
 
@@ -27,8 +34,8 @@ export const reasonCodeFormSchema = z
     reasonCode: z.string().trim().min(1, 'Cần mã lý do').max(60),
     reasonGroup: REASON_GROUP,
     description: optionalText(500),
-    appliesToActions: z.array(ACTION).min(1, 'Chọn ít nhất 1 action'),
-    appliesToObjects: z.array(OBJECT).min(1, 'Chọn ít nhất 1 object'),
+    appliesToActions: z.array(ACTION).min(1, 'Chọn ít nhất 1 hành động'),
+    appliesToObjects: z.array(OBJECT).min(1, 'Chọn ít nhất 1 loại đối tượng'),
     evidenceRequired: z.boolean(),
     approvalRequired: z.boolean(),
     allowedRoleCodes: z.array(ROLE),

@@ -65,11 +65,11 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
     repo.current = new FakeRepository() as unknown as IAccessControlRepository;
     renderPage();
 
-    // A (object, action) row from the catalog renders…
-    expect(await screen.findByText('Create')).toBeTruthy();
+    // A (object, action) row from the catalog renders with an operational label…
+    expect((await screen.findAllByText('Tạo mới')).length).toBeGreaterThan(0);
     // …and WMS Admin's Create-SKU cell is granted while QC's is not.
-    expect(screen.getByLabelText('WMS Admin có quyền Create SKU')).toBeTruthy();
-    expect(screen.getByLabelText('QC không có quyền Create SKU')).toBeTruthy();
+    expect(screen.getAllByLabelText('WMS Admin có quyền Tạo mới SKU').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('QC không có quyền Tạo mới SKU').length).toBeGreaterThan(0);
   });
 
   it('shows a permission-denied state when the permission catalog 403s (AC3)', async () => {
@@ -81,5 +81,49 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
     renderPage();
 
     expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+  });
+
+  it('treats non-ApiError role detail failures as an error state instead of false denials', async () => {
+    const fake = new FakeRepository();
+    fake.getRole = vi.fn((roleCode: RoleCode): Promise<RoleDetail> => {
+      if (roleCode === 'WMS_ADMIN') {
+        return Promise.reject(new Error('role detail mapper failed'));
+      }
+
+      return Promise.resolve({
+        roleCode,
+        roleName: roleCode,
+        description: null,
+        isSystem: true,
+        status: 'ACTIVE',
+        permissions: [perm('Read', 'SKU')],
+      });
+    });
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    expect(await screen.findByText('role detail mapper failed')).toBeTruthy();
+    expect(screen.queryByLabelText('WMS Admin không có quyền Tạo mới SKU')).toBeNull();
+  });
+
+  it('uses Vietnamese fallback labels when runtime permission metadata is blank', async () => {
+    const fake = new FakeRepository();
+    fake.listAllPermissions = vi.fn(() => Promise.resolve([perm('', '')]));
+    fake.getRole = vi.fn(
+      (roleCode: RoleCode): Promise<RoleDetail> =>
+        Promise.resolve({
+          roleCode,
+          roleName: roleCode,
+          description: null,
+          isSystem: true,
+          status: 'ACTIVE',
+          permissions: [],
+        }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    expect((await screen.findAllByText('Không xác định')).length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('WMS Admin không có quyền Không xác định').length).toBeGreaterThan(0);
   });
 });

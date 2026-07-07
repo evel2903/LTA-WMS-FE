@@ -44,6 +44,7 @@ export function AssignRoleForm({
       onSubmit={form.handleSubmit((values) => onSubmit({ roleCode: values.roleCode }))}
     >
       <label className="grid gap-1 text-sm">Vai trò<select
+          id="assign-role-code"
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('roleCode')}

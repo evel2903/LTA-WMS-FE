@@ -30,6 +30,21 @@ describe('FilterControlValidationCatalogUseCase', () => {
     });
     expect(byLinkedSeverity.validationRules.map((item) => item.code)).toEqual(['RBAC-VAL-02']);
 
+    const byLinkedEvidenceLabel = useCase.execute({
+      catalog: CONTROL_VALIDATION_SEED_CATALOG,
+      search: 'bằng chứng bắt buộc',
+    });
+    expect(byLinkedEvidenceLabel.validationRules.map((item) => item.code)).toEqual([
+      'RBAC-VAL-04',
+      'RBAC-VAL-05',
+    ]);
+
+    const byDisplayedCategory = useCase.execute({
+      catalog: CONTROL_VALIDATION_SEED_CATALOG,
+      search: 'Sửa dữ liệu thủ công',
+    });
+    expect(byDisplayedCategory.controlExceptions.map((item) => item.code)).toEqual(['CTRL-EX-09']);
+
     const byDeferred = useCase.execute({
       catalog: CONTROL_VALIDATION_SEED_CATALOG,
       search: 'DeferredV1Plus',
@@ -39,5 +54,30 @@ describe('FilterControlValidationCatalogUseCase', () => {
       'CTRL-EX-07',
       'CTRL-EX-09',
     ]);
+  });
+
+  it('matches linked exception metadata when CTRL-EX codes include surrounding whitespace', () => {
+    const useCase = new FilterControlValidationCatalogUseCase();
+    const catalog = {
+      validationRules: [
+        {
+          ...CONTROL_VALIDATION_SEED_CATALOG.validationRules[0],
+          controlExceptionCode: ' CTRL-EX-01 ',
+        },
+      ],
+      controlExceptions: [
+        {
+          ...CONTROL_VALIDATION_SEED_CATALOG.controlExceptions[0],
+          code: ' CTRL-EX-01 ',
+        },
+      ],
+    };
+
+    const result = useCase.execute({
+      catalog,
+      search: 'Từ chối phân quyền',
+    });
+
+    expect(result.validationRules.map((item) => item.code)).toEqual(['RBAC-VAL-01']);
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -15,7 +16,6 @@ import {
 } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 import type { UserSummary } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import { UserAssignmentPanel } from '@modules/AccessControl/Presentation/Components/UserAssignmentPanel';
-import { useState } from 'react';
 
 type UserAssignmentDetailMode = 'detail' | 'edit';
 
@@ -67,16 +67,24 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
     (roleError instanceof ApiError && roleError.isForbidden) ||
     (scopeError instanceof ApiError && scopeError.isForbidden);
   const canMutate = isEdit && !detailError?.isForbidden && !mutationForbidden;
+  const readOnlyMessage = isEdit
+    ? 'Bạn không có quyền chỉnh sửa phân quyền của người dùng này.'
+    : 'Đang ở chế độ xem chi tiết. Chọn Chỉnh sửa phân quyền để thay đổi vai trò hoặc phạm vi dữ liệu.';
   const state = detailState({
     userId,
     isLoading: effectiveQuery.isLoading || dataScopesQuery.isLoading,
     error: detailError ?? effectiveQuery.error ?? dataScopesQuery.error,
   });
 
+  useEffect(() => {
+    setRoleError(null);
+    setScopeError(null);
+  }, [userId, mode]);
+
   return (
     <DetailPageShell
       title={`${user.firstName} ${user.lastName}`.trim() || user.email}
-      subtitle="Rà soát quyền hiệu lực và phạm vi dữ liệu của người dùng trước khi mở action phân quyền."
+      subtitle="Rà soát quyền hiệu lực và phạm vi dữ liệu của người dùng trước khi mở thao tác phân quyền."
       backTo={ROUTES.FOUNDATION.ACCESS.USERS}
       backLabel="Quay lại người dùng"
       actions={
@@ -105,6 +113,7 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
           effective={effectiveQuery.data}
           dataScopes={dataScopesQuery.data ?? []}
           canManage={canMutate}
+          readOnlyMessage={readOnlyMessage}
           pending={{
             assignRole: mutations.assignRole.isPending,
             removeRole: mutations.removeRole.isPending,

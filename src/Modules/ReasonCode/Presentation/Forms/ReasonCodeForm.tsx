@@ -11,7 +11,6 @@ import {
   REASON_GROUPS,
   ROLE_CODES,
   type ActionCode,
-  type ReasonGroup,
   type ObjectType,
   type RoleCode,
 } from '@modules/ReasonCode/Domain/Enums/ReasonCodeEnums';
@@ -19,6 +18,13 @@ import {
   reasonCodeFormSchema,
   type ReasonCodeFormValues,
 } from '@modules/ReasonCode/Presentation/Forms/ReasonCodeFormSchema';
+import {
+  actionCodeLabel,
+  objectTypeLabel,
+  reasonCodeStatusLabel,
+  reasonGroupLabel,
+  roleCodeLabel,
+} from '@modules/ReasonCode/Presentation/Constants/ReasonCodeDisplayText';
 
 interface ReasonCodeFormProps {
   mode: 'create' | 'edit';
@@ -29,15 +35,6 @@ interface ReasonCodeFormProps {
   onSubmit: (values: ReasonCodeFormValues) => void;
 }
 
-const REASON_GROUP_LABELS_VI: Record<ReasonGroup, string> = {
-  RULE_OVERRIDE: 'Ghi đè quy tắc',
-  MASTER_DATA_CONFIG_CHANGE: 'Thay đổi dữ liệu chủ / cấu hình',
-  HOLD_RELEASE: 'Giữ / giải phóng',
-  INVENTORY_ADJUSTMENT: 'Điều chỉnh tồn kho',
-  INTEGRATION: 'Tích hợp',
-  MANUAL_FIX: 'Sửa thủ công',
-};
-
 /**
  * Controlled multi-checkbox group (value/onChange) — NOT register-based. RHF does not
  * reliably pre-check a checkbox group from a defaultValues array, which would drop an
@@ -45,38 +42,47 @@ const REASON_GROUP_LABELS_VI: Record<ReasonGroup, string> = {
  */
 function CheckboxGroup({
   legend,
+  name,
   options,
   value,
   disabled,
   error,
+  optionLabel,
   onChange,
 }: {
   legend: string;
+  name: string;
   options: readonly string[];
   value: string[];
   disabled?: boolean;
   error?: string;
+  optionLabel?: (option: string) => string;
   onChange: (next: string[]) => void;
 }) {
   const toggle = (option: string, checked: boolean) =>
     onChange(checked ? [...value, option] : value.filter((item) => item !== option));
 
   return (
-    <fieldset className="grid gap-1 rounded-md border p-3">
+    <fieldset className="grid min-w-0 gap-1 rounded-md border p-3">
       <legend className="text-muted-foreground px-1 text-xs">{legend}</legend>
-      <div className="grid max-h-40 grid-cols-2 gap-1 overflow-y-auto">
-        {options.map((option) => (
-          <label key={option} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              value={option}
-              disabled={disabled}
-              checked={value.includes(option)}
-              onChange={(event) => toggle(option, event.target.checked)}
-            />
-            {option}
-          </label>
-        ))}
+      <div className="grid max-h-40 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+        {options.map((option) => {
+          const inputId = `${name}-${option.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+          return (
+            <label key={option} className="flex min-w-0 items-center gap-2 text-sm">
+              <input
+                id={inputId}
+                name={name}
+                type="checkbox"
+                value={option}
+                disabled={disabled}
+                checked={value.includes(option)}
+                onChange={(event) => toggle(option, event.target.checked)}
+              />
+              <span className="min-w-0 break-words">{optionLabel?.(option) ?? option}</span>
+            </label>
+          );
+        })}
       </div>
       {error && <span className="text-destructive text-xs">{error}</span>}
     </fieldset>
@@ -119,7 +125,7 @@ export function ReasonCodeForm({
       <label className="grid gap-1 text-sm">
         Mã lý do
         {/* Code is immutable on edit (BE rejects changes) — render read-only. */}
-        <Input disabled={disabled || isEdit} readOnly={isEdit} {...form.register('reasonCode')} />
+        <Input id="reason-code-code" disabled={disabled || isEdit} readOnly={isEdit} {...form.register('reasonCode')} />
         {errors.reasonCode && (
           <span className="text-destructive text-xs">{errors.reasonCode.message}</span>
         )}
@@ -131,57 +137,64 @@ export function ReasonCodeForm({
       )}
 
       <label className="grid gap-1 text-sm">Nhóm<select
+          id="reason-code-group"
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}
           {...form.register('reasonGroup')}
         >
           {REASON_GROUPS.map((group) => (
             <option key={group} value={group}>
-              {REASON_GROUP_LABELS_VI[group]}
+              {reasonGroupLabel(group)}
             </option>
           ))}
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm">Mô tả<Input disabled={disabled} {...form.register('description')} />
+      <label className="grid gap-1 text-sm">Mô tả<Input id="reason-code-description" disabled={disabled} {...form.register('description')} />
       </label>
 
       <CheckboxGroup
-        legend="Áp dụng cho action"
+        legend="Áp dụng cho hành động"
+        name="appliesToActions"
         options={ACTION_CODES}
         value={actions}
         disabled={disabled}
         error={errors.appliesToActions?.message}
+        optionLabel={actionCodeLabel}
         onChange={(next) => form.setValue('appliesToActions', next as ActionCode[], { shouldValidate: true })}
       />
       <CheckboxGroup
-        legend="Áp dụng cho object type"
+        legend="Áp dụng cho loại đối tượng"
+        name="appliesToObjects"
         options={OBJECT_TYPES}
         value={objects}
         disabled={disabled}
         error={errors.appliesToObjects?.message}
+        optionLabel={objectTypeLabel}
         onChange={(next) => form.setValue('appliesToObjects', next as ObjectType[], { shouldValidate: true })}
       />
 
       <div className="flex flex-wrap gap-4">
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('evidenceRequired')} />Yêu cầu bằng chứng</label>
+          <input id="reason-code-evidence-required" type="checkbox" disabled={disabled} {...form.register('evidenceRequired')} />Yêu cầu bằng chứng</label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" disabled={disabled} {...form.register('approvalRequired')} />Yêu cầu phê duyệt</label>
+          <input id="reason-code-approval-required" type="checkbox" disabled={disabled} {...form.register('approvalRequired')} />Yêu cầu phê duyệt</label>
       </div>
 
       <CheckboxGroup
         legend="Vai trò được phép (để trống = không giới hạn)"
+        name="allowedRoleCodes"
         options={ROLE_CODES}
         value={roles}
         disabled={disabled}
+        optionLabel={roleCodeLabel}
         onChange={(next) => form.setValue('allowedRoleCodes', next as RoleCode[], { shouldValidate: true })}
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-1 text-sm">Hiệu lực từ<Input type="date" disabled={disabled} {...form.register('effectiveFrom')} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm">Hiệu lực từ<Input id="reason-code-effective-from" type="date" disabled={disabled} {...form.register('effectiveFrom')} />
         </label>
-        <label className="grid gap-1 text-sm">Hiệu lực đến<Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
+        <label className="grid gap-1 text-sm">Hiệu lực đến<Input id="reason-code-effective-to" type="date" disabled={disabled} {...form.register('effectiveTo')} />
           {errors.effectiveTo && (
             <span className="text-destructive text-xs">{errors.effectiveTo.message}</span>
           )}
@@ -191,12 +204,13 @@ export function ReasonCodeForm({
       {isEdit && (
         <div className="grid gap-1">
           <label className="grid gap-1 text-sm">Trạng thái<select
+              id="reason-code-status"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               disabled={disabled}
               {...form.register('status')}
             >
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="INACTIVE">Không hoạt động</option>
+              <option value="ACTIVE">{reasonCodeStatusLabel('ACTIVE')}</option>
+              <option value="INACTIVE">{reasonCodeStatusLabel('INACTIVE')}</option>
             </select>
           </label>
           {initialValue && (

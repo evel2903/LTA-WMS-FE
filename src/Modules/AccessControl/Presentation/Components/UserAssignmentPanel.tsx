@@ -8,7 +8,6 @@ import type {
 } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import {
   CORE_ROLE_CODES,
-  DATA_SCOPE_LABELS,
   ROLE_LABELS,
   type RoleCode,
 } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
@@ -18,6 +17,10 @@ import type {
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import { AssignRoleForm } from '@modules/AccessControl/Presentation/Forms/AssignRoleForm';
 import { AssignDataScopeForm } from '@modules/AccessControl/Presentation/Forms/AssignDataScopeForm';
+import {
+  dataScopeTypeLabel,
+  permissionActionObjectLabel,
+} from '@modules/AccessControl/Presentation/Constants/AccessControlDisplayText';
 
 interface PendingFlags {
   assignRole: boolean;
@@ -36,6 +39,7 @@ interface UserAssignmentPanelProps {
   effective?: EffectivePermissions;
   dataScopes: UserDataScope[];
   canManage: boolean;
+  readOnlyMessage?: string;
   pending: PendingFlags;
   conflicts: ConflictMessages;
   onAssignRole: (input: AssignRoleInput) => void;
@@ -54,6 +58,7 @@ export function UserAssignmentPanel({
   effective,
   dataScopes,
   canManage,
+  readOnlyMessage = 'Bạn không có quyền chỉnh sửa phân quyền của người dùng này.',
   pending,
   conflicts,
   onAssignRole,
@@ -71,11 +76,11 @@ export function UserAssignmentPanel({
         <h2 className="text-lg font-semibold">
           {`${user.firstName} ${user.lastName}`.trim() || user.email}
         </h2>
-        <p className="text-muted-foreground text-sm">{user.email}</p>
+        <p className="text-muted-foreground break-all text-sm">{user.email}</p>
         {!canManage && (
           <Alert variant="warning" role="status" className="mt-2">
             <AlertTitle>Chế độ chỉ đọc</AlertTitle>
-            <AlertDescription>Bạn không có quyền chỉnh sửa phân quyền của người dùng này.</AlertDescription>
+            <AlertDescription>{readOnlyMessage}</AlertDescription>
           </Alert>
         )}
       </div>
@@ -90,8 +95,8 @@ export function UserAssignmentPanel({
           <ul className="flex flex-wrap gap-2">
             {assignedRoles.map((role) => (
               <li key={role}>
-                <Badge variant="secondary" className="gap-2">
-                  {ROLE_LABELS[role]}
+                <Badge variant="secondary" className="max-w-full gap-2 whitespace-normal break-words">
+                  <span className="min-w-0 break-words">{ROLE_LABELS[role]}</span>
                   {canManage && (
                     <button
                       aria-label={`Gỡ vai trò ${ROLE_LABELS[role]}`}
@@ -127,15 +132,18 @@ export function UserAssignmentPanel({
             <AlertDescription>Chưa gán phạm vi dữ liệu nào.</AlertDescription>
           </Alert>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {dataScopes.map((scope) => (
-              <li key={scope.id} className="flex items-center gap-2 text-sm">
-                <Badge variant="outline">{DATA_SCOPE_LABELS[scope.scopeType]}</Badge>
-                <span className="text-muted-foreground">{scopeValueLabel(scope)}</span>
+              <li key={scope.id} className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+                <Badge variant="outline" className="max-w-full whitespace-normal break-words">
+                  {dataScopeTypeLabel(scope.scopeType)}
+                </Badge>
+                <span className="text-muted-foreground min-w-0 break-all">{scopeValueLabel(scope)}</span>
                 {canManage && (
                   <Button
                     size="sm"
                     variant="ghost"
+                    aria-label={`Gỡ phạm vi ${dataScopeTypeLabel(scope.scopeType)} ${scopeValueLabel(scope)}`}
                     disabled={pending.removeScope}
                     onClick={() => onRemoveScope(scope.id)}
                   >
@@ -164,10 +172,10 @@ export function UserAssignmentPanel({
             <AlertDescription>Không có quyền hiệu lực.</AlertDescription>
           </Alert>
         ) : (
-          <ul className="text-muted-foreground grid max-h-40 grid-cols-2 gap-x-4 overflow-y-auto text-xs">
+          <ul className="text-muted-foreground grid max-h-40 grid-cols-1 gap-2 overflow-y-auto text-xs sm:grid-cols-2">
             {effective?.permissions.map((permission) => (
-              <li key={permission.permissionCode}>
-                {permission.action} · {permission.objectType}
+              <li key={permission.permissionCode} className="min-w-0 break-words">
+                {permissionActionObjectLabel(permission.action, permission.objectType)}
               </li>
             ))}
           </ul>
