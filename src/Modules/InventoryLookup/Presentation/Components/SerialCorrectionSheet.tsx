@@ -43,6 +43,19 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
   } = useReasonCodeOptions({ action: 'Adjust', objectType: 'InventoryMovement' });
   const correctSerialNumber = useCorrectSerialNumber();
   const dialogRef = useRef<HTMLElement>(null);
+  // Captured at render time (before this component's own autoFocus commits) so
+  // closing restores focus to whatever triggered the sheet — the "Sửa serial"
+  // button, which (unlike IFB-10's route-triggered InboundDiscrepancySheet)
+  // stays mounted the whole time since this sheet opens via local state, not
+  // navigation.
+  const triggerElementRef = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null);
+
+  useEffect(() => {
+    const triggerElement = triggerElementRef.current;
+    return () => {
+      triggerElement?.focus();
+    };
+  }, []);
 
   const currentSerialLabel = item.serialNumber || '(chưa có)';
   const trimmedNewSerial = newSerialNumber.trim();
