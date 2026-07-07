@@ -32,7 +32,7 @@ export function UsersAssignmentsPage() {
   return (
     <ListPageShell
       title="Người dùng và phân quyền"
-      description="Quét danh sách người dùng trước khi mở trang chi tiết/action phân quyền riêng."
+      description="Quét danh sách người dùng trước khi mở trang chi tiết và thao tác phân quyền riêng."
       state={state}
       stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
       stateMessage={state === 'empty' ? 'Chưa có người dùng.' : (apiError?.message ?? 'Không thể tải người dùng.')}

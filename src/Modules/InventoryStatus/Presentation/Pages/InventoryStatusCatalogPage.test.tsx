@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -80,13 +80,26 @@ class FakeRepository implements Partial<IInventoryStatusRepository> {
   });
 }
 
-function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.INVENTORY_STATUS]) {
+function JumpButton({ label, to }: { label: string; to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      {label}
+    </button>
+  );
+}
+
+function renderPage(
+  initialEntries: string[] = [ROUTES.FOUNDATION.INVENTORY_STATUS],
+  jump?: { label: string; to: string },
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={initialEntries}>
+        {jump ? <JumpButton label={jump.label} to={jump.to} /> : null}
         <Routes>
           <Route path={ROUTES.FOUNDATION.INVENTORY_STATUS} element={<InventoryStatusCatalogPage />} />
           <Route
@@ -115,15 +128,19 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository([makeStatus({ hold: false })]);
     repo.current = fake;
-    renderPage();
+    const { container } = renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
+    const [openButton] = await screen.findAllByRole('button', {
+      name: 'Mở chi tiết trạng thái tồn kho AVAILABLE',
+    });
+    expect(container.querySelector('.overflow-x-auto table')).toBeTruthy();
+    await actor.click(openButton);
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa trạng thái' }));
     const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
 
     await actor.click(within(editForm).getByLabelText('Tạm giữ')); // off -> on
-    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do'), 'RC-MD-UPDATE');
+    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-MD-UPDATE');
     await actor.click(updateBtn);
 
     await waitFor(() =>
@@ -134,6 +151,39 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     );
     expect(await screen.findByRole('heading', { name: 'AVAILABLE' })).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('clears inline mutation error when navigating to another inventory status route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeStatus(),
+      makeStatus({ id: 'is2', statusCode: 'QUALITY_HOLD', displayName: 'Quality Hold', sortOrder: 20 }),
+    ]);
+    fake.update = vi.fn(() =>
+      Promise.reject(
+        new ApiError({
+          status: 400,
+          code: 'BUSINESS_RULE',
+          message: 'Reason code is required for this change.',
+        }),
+      ),
+    );
+    repo.current = fake;
+    renderPage([ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT('is1')], {
+      label: 'Open second inventory status',
+      to: ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT('is2'),
+    });
+
+    const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
+    const editForm = updateBtn.closest('form') as HTMLFormElement;
+    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-MD-UPDATE');
+    await actor.click(updateBtn);
+    expect(await screen.findByText('Cần mã lý do cho thay đổi này.')).toBeTruthy();
+
+    await actor.click(screen.getByRole('button', { name: 'Open second inventory status' }));
+
+    expect(await screen.findByRole('heading', { name: 'QUALITY_HOLD' })).toBeTruthy();
+    expect(screen.queryByText('Cần mã lý do cho thay đổi này.')).toBeNull();
   });
 
   it('shows a permission-denied state when the list 403s (AC4)', async () => {
@@ -160,11 +210,14 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'AVAILABLE' }));
+    const [openButton] = await screen.findAllByRole('button', {
+      name: 'Mở chi tiết trạng thái tồn kho AVAILABLE',
+    });
+    await actor.click(openButton);
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa trạng thái' }));
     const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do'), 'RC-WRONG');
+    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-WRONG');
     await actor.click(updateBtn);
 
     expect(await screen.findByText('Cần mã lý do cho thay đổi này.')).toBeTruthy();

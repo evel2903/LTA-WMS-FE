@@ -4,37 +4,47 @@ import type {
   ControlExceptionDefaultState,
   ControlExceptionSeverity,
 } from '@modules/ControlValidationCatalog/Domain/Entities/ControlValidationCatalog';
+import {
+  catalogImplementationStatusLabel,
+  controlDefaultStateLabel,
+  controlSeverityLabel,
+  requirementLabel,
+} from '@modules/ControlValidationCatalog/Domain/Constants/ControlValidationCatalogDisplayText';
 
 export function CatalogImplementationStatusBadge({
   status,
 }: {
   status: CatalogImplementationStatus;
 }) {
-  if (status === 'Implemented') {
-    return <Badge variant="success">Đã triển khai</Badge>;
-  }
-  if (status === 'DeferredToC9') {
-    return <Badge variant="warning">Dời sang C9</Badge>;
-  }
-  return <Badge variant="outline">Deferred V1+</Badge>;
+  const variant = status === 'Implemented' ? 'success' : status === 'DeferredToC9' ? 'warning' : 'outline';
+  return <Badge variant={variant}>{catalogImplementationStatusLabel(status)}</Badge>;
 }
 
 export function ControlSeverityBadge({ severity }: { severity: ControlExceptionSeverity }) {
-  return <Badge variant={severity === 'High' ? 'destructive' : 'warning'}>{severity}</Badge>;
+  return <Badge variant={severity === 'High' ? 'destructive' : 'warning'}>{controlSeverityLabel(severity)}</Badge>;
 }
 
 export function ControlDefaultStateBadge({ state }: { state: ControlExceptionDefaultState }) {
   const variant = state === 'Blocked' ? 'destructive' : state === 'Detected' ? 'warning' : 'outline';
-  return <Badge variant={variant}>{state}</Badge>;
+  return <Badge variant={variant}>{controlDefaultStateLabel(state)}</Badge>;
 }
 
-export function BooleanRequirement({ value, label }: { value: boolean; label: string }) {
+export function BooleanRequirement({
+  value,
+  label,
+}: {
+  value: boolean | null | undefined;
+  label: string;
+}) {
+  const displayLabel =
+    value === true ? 'Bắt buộc' : value === false ? 'Không bắt buộc' : requirementLabel(value);
+
   return (
     <span
-      aria-label={`${label}: ${value ? 'bắt buộc' : 'không bắt buộc'}`}
-      className={value ? 'font-medium' : 'text-muted-foreground'}
+      aria-label={`${label}: ${requirementLabel(value)}`}
+      className={value === true ? 'font-medium' : 'text-muted-foreground'}
     >
-      {value ? 'Bắt buộc' : 'Không bắt buộc'}
+      {displayLabel}
     </span>
   );
 }

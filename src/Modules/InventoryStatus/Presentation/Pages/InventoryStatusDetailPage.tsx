@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
+import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { inlineMessage } from '@modules/InventoryStatus/Application/Commands/InventoryStatusMutationError';
@@ -10,6 +11,7 @@ import { useInventoryStatusMutations } from '@modules/InventoryStatus/Applicatio
 import { useInventoryStatusDetail } from '@modules/InventoryStatus/Application/Queries/UseInventoryStatusQueries';
 import { InventoryStatusForm } from '@modules/InventoryStatus/Presentation/Forms/InventoryStatusForm';
 import type { InventoryStatusFormValues } from '@modules/InventoryStatus/Presentation/Forms/InventoryStatusFormSchema';
+import { masterDataStatusLabel } from '@modules/InventoryStatus/Presentation/Constants/InventoryStatusDisplayText';
 
 interface InventoryStatusDetailPageProps {
   mode: 'detail' | 'edit';
@@ -27,6 +29,10 @@ export function InventoryStatusDetailPage({ mode }: InventoryStatusDetailPagePro
   const canManage = !apiError?.isForbidden && !submitForbidden;
   const canMutate = canManage && mode === 'edit';
   const status = detailQuery.data;
+
+  useEffect(() => {
+    setSubmitError(null);
+  }, [id, mode]);
 
   if (detailQuery.isLoading) {
     return <DetailPageShell title="Chi tiết trạng thái tồn kho" state="loading" backTo={ROUTES.FOUNDATION.INVENTORY_STATUS} />;
@@ -81,15 +87,28 @@ export function InventoryStatusDetailPage({ mode }: InventoryStatusDetailPagePro
       subtitle="Cờ hành vi trạng thái tồn kho"
       backTo={ROUTES.FOUNDATION.INVENTORY_STATUS}
       backLabel="Quay lại trạng thái tồn kho"
+      status={
+        <Badge variant={status.status === 'Active' ? 'success' : 'outline'}>
+          {masterDataStatusLabel(status.status)}
+        </Badge>
+      }
       summary={
         <>
           <span>{status.stageGroup}</span>
-          <span>{status.status}</span>
+          <span>Thứ tự {status.sortOrder}</span>
         </>
       }
       actions={
         <Button asChild size="sm" variant="outline">
-          <Link to={ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT(status.id)}>Chỉnh sửa trạng thái</Link>
+          <Link
+            to={
+              mode === 'edit'
+                ? ROUTES.FOUNDATION.INVENTORY_STATUS_DETAIL(status.id)
+                : ROUTES.FOUNDATION.INVENTORY_STATUS_EDIT(status.id)
+            }
+          >
+            {mode === 'edit' ? 'Xem chi tiết' : 'Chỉnh sửa trạng thái'}
+          </Link>
         </Button>
       }
       state={canManage ? null : 'readOnly'}

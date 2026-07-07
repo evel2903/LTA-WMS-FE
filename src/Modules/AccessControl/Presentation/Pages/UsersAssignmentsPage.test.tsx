@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -42,6 +42,14 @@ const user: UserSummary = {
   createdAt: '2026-06-01',
 };
 
+const secondUser: UserSummary = {
+  id: 'u2',
+  firstName: 'Binh',
+  lastName: 'Tran',
+  email: 'binh@lta.vn',
+  createdAt: '2026-06-02',
+};
+
 /** Fake whose per-user roles/scopes mutate, so invalidated queries observe the change. */
 class FakeRepository implements Partial<IAccessControlRepository> {
   roles: RoleCode[] = [];
@@ -74,13 +82,26 @@ class FakeRepository implements Partial<IAccessControlRepository> {
   removeDataScope = vi.fn(() => Promise.resolve());
 }
 
-function renderPage(initialPath = ROUTES.FOUNDATION.ACCESS.USERS) {
+function JumpButton({ label, to }: { label: string; to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      {label}
+    </button>
+  );
+}
+
+function renderPage(
+  initialPath: string = ROUTES.FOUNDATION.ACCESS.USERS,
+  jump?: { label: string; to: string },
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[initialPath]}>
+        {jump ? <JumpButton label={jump.label} to={jump.to} /> : null}
         <Routes>
           <Route path={ROUTES.FOUNDATION.ACCESS.USERS} element={<UsersAssignmentsPage />} />
           <Route
@@ -103,6 +124,13 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
+async function openUserDetail(actor: ReturnType<typeof userEvent.setup>) {
+  const [openButton] = await screen.findAllByRole('button', {
+    name: 'Mở chi tiết phân quyền của Alice Nguyen',
+  });
+  await actor.click(openButton);
+}
+
 describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
   it('assigns a role and re-reads the user effective permissions (AC5)', async () => {
     const actor = userEvent.setup();
@@ -110,7 +138,9 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await actor.click(await screen.findByText('Alice Nguyen'));
+    await openUserDetail(actor);
+    expect(await screen.findByText(/Đang ở chế độ xem chi tiết/i)).toBeTruthy();
+    expect(screen.queryByText(/Bạn không có quyền chỉnh sửa/i)).toBeNull();
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
     expect(await screen.findByText('Chưa gán vai trò nào.')).toBeTruthy();
 
@@ -128,19 +158,44 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await actor.click(await screen.findByText('Alice Nguyen'));
+    await openUserDetail(actor);
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
     expect(await screen.findByText('Chưa gán phạm vi dữ liệu nào.')).toBeTruthy();
 
-    // IncludeAll satisfies the XOR validation without a value (default scopeType = WAREHOUSE).
-    await actor.click(await screen.findByLabelText(/IncludeAll/i));
+    // Áp dụng tất cả satisfies the XOR validation without a value (default scopeType = WAREHOUSE).
+    await actor.click(await screen.findByLabelText(/Áp dụng tất cả giá trị/i));
     await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
 
     // After invalidate→refetch the new scope renders in the panel as a removable row
-    // ("Gỡ" only appears for a listed scope; "Tất cả" is its includeAll value label).
-    expect(await screen.findByRole('button', { name: 'Gỡ' })).toBeTruthy();
+    // The remove button includes the scope context in its accessible name.
+    expect(await screen.findByRole('button', { name: /Gỡ phạm vi/i })).toBeTruthy();
     expect(await screen.findByText('Tất cả')).toBeTruthy();
     expect(fake.assignDataScope).toHaveBeenCalled();
+  });
+
+  it('clears hidden scope values when switching to include-all before submit', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    await openUserDetail(actor);
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
+
+    await actor.type(await screen.findByLabelText('Mã giá trị phạm vi'), 'WH-STALE');
+    await actor.click(await screen.findByLabelText(/Áp dụng tất cả giá trị/i));
+    await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
+
+    await waitFor(() =>
+      expect(fake.assignDataScope).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({
+          includeAll: true,
+          scopeValueCode: undefined,
+          scopeValueId: undefined,
+        }),
+      ),
+    );
   });
 
   it('shows a permission-denied detail state when effective-permissions 403s (AC3)', async () => {
@@ -152,7 +207,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await actor.click(await screen.findByText('Alice Nguyen'));
+    await openUserDetail(actor);
     expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 
@@ -167,13 +222,38 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await actor.click(await screen.findByText('Alice Nguyen'));
+    await openUserDetail(actor);
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa phân quyền' }));
-    // IncludeAll satisfies the XOR validation without a value.
-    await actor.click(await screen.findByLabelText(/IncludeAll/i));
+    // Áp dụng tất cả satisfies the XOR validation without a value.
+    await actor.click(await screen.findByLabelText(/Áp dụng tất cả giá trị/i));
     await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
 
     expect(await screen.findByText('Người dùng đã có phạm vi dữ liệu này')).toBeTruthy();
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('clears mutation conflict when navigating to another user assignment route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.listUsers = vi.fn(() => Promise.resolve(page([user, secondUser])));
+    fake.assignDataScope = vi.fn(() =>
+      Promise.reject(
+        new ApiError({ status: 409, code: 'CONFLICT', message: 'Người dùng đã có phạm vi dữ liệu này' }),
+      ),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage(ROUTES.FOUNDATION.ACCESS.USER_EDIT('u1'), {
+      label: 'Mở phân quyền user thứ hai',
+      to: ROUTES.FOUNDATION.ACCESS.USER_EDIT('u2'),
+    });
+
+    await actor.click(await screen.findByLabelText(/Áp dụng tất cả giá trị/i));
+    await actor.click(screen.getByRole('button', { name: 'Gán phạm vi' }));
+    expect(await screen.findByText('Người dùng đã có phạm vi dữ liệu này')).toBeTruthy();
+
+    await actor.click(screen.getByRole('button', { name: 'Mở phân quyền user thứ hai' }));
+
+    expect((await screen.findAllByRole('heading', { name: 'Binh Tran' })).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Người dùng đã có phạm vi dữ liệu này')).toBeNull();
   });
 });

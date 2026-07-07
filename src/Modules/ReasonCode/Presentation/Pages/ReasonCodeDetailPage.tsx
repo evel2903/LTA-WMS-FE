@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ActionPanel, DetailPageShell } from '@shared/Components/Page';
+import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { conflictMessage } from '@modules/ReasonCode/Application/Commands/ReasonCodeMutationError';
@@ -10,6 +11,10 @@ import { useReasonCodeMutations } from '@modules/ReasonCode/Application/Commands
 import { useReasonCodeDetail } from '@modules/ReasonCode/Application/Queries/UseReasonCodeQueries';
 import { ReasonCodeForm } from '@modules/ReasonCode/Presentation/Forms/ReasonCodeForm';
 import type { ReasonCodeFormValues } from '@modules/ReasonCode/Presentation/Forms/ReasonCodeFormSchema';
+import {
+  reasonCodeStatusLabel,
+  reasonGroupLabel,
+} from '@modules/ReasonCode/Presentation/Constants/ReasonCodeDisplayText';
 
 interface ReasonCodeDetailPageProps {
   mode: 'create' | 'detail' | 'edit';
@@ -29,6 +34,10 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
   const canManage = !apiError?.isForbidden && !submitForbidden;
   const canMutate = canManage && (isCreate || isEdit);
   const reasonCode = detailQuery.data;
+
+  useEffect(() => {
+    setSubmitError(null);
+  }, [id, mode]);
 
   if (!isCreate && detailQuery.isLoading) {
     return (
@@ -104,21 +113,23 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
       },
     );
 
+  const clearableOptional = (value: string | null | undefined) => value ?? '';
+
   const submitUpdate = (reasonCodeId: string, values: ReasonCodeFormValues) =>
     mutations.update.mutate(
       {
         id: reasonCodeId,
         input: {
           reasonGroup: values.reasonGroup,
-          description: values.description,
+          description: clearableOptional(values.description),
           appliesToActions: values.appliesToActions,
           appliesToObjects: values.appliesToObjects,
           evidenceRequired: values.evidenceRequired,
           approvalRequired: values.approvalRequired,
           allowedRoleCodes: values.allowedRoleCodes,
           status: values.status,
-          effectiveFrom: values.effectiveFrom,
-          effectiveTo: values.effectiveTo,
+          effectiveFrom: clearableOptional(values.effectiveFrom),
+          effectiveTo: clearableOptional(values.effectiveTo),
         },
       },
       {
@@ -139,7 +150,21 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
       subtitle="Danh mục quản trị mã lý do"
       backTo={ROUTES.FOUNDATION.REASON_CODES}
       backLabel="Quay lại mã lý do"
-      summary={!isCreate ? <span>Version {existingReasonCode.version}</span> : null}
+      status={
+        !isCreate ? (
+          <Badge variant={existingReasonCode.status === 'ACTIVE' ? 'success' : 'outline'}>
+            {reasonCodeStatusLabel(existingReasonCode.status)}
+          </Badge>
+        ) : null
+      }
+      summary={
+        !isCreate ? (
+          <>
+            <span>Phiên bản {existingReasonCode.version}</span>
+            <span>Nhóm: {reasonGroupLabel(existingReasonCode.reasonGroup)}</span>
+          </>
+        ) : null
+      }
       actions={
         !isCreate ? (
           <Button asChild size="sm" variant="outline">
@@ -171,6 +196,7 @@ export function ReasonCodeDetailPage({ mode }: ReasonCodeDetailPageProps) {
             initialValue={existingReasonCode}
             disabled={!canMutate}
             pending={mutations.update.isPending}
+            conflict={conflictMessage(submitError) ?? undefined}
             onSubmit={(values) => submitUpdate(existingReasonCode.id, values)}
           />
         )}

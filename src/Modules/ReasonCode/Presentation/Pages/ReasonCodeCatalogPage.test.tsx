@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -76,13 +76,26 @@ class FakeRepository implements Partial<IReasonCodeRepository> {
   });
 }
 
-function renderPage(initialEntries: string[] = [ROUTES.FOUNDATION.REASON_CODES]) {
+function JumpButton({ label, to }: { label: string; to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      {label}
+    </button>
+  );
+}
+
+function renderPage(
+  initialEntries: string[] = [ROUTES.FOUNDATION.REASON_CODES],
+  jump?: { label: string; to: string },
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={initialEntries}>
+        {jump ? <JumpButton label={jump.label} to={jump.to} /> : null}
         <Routes>
           <Route path={ROUTES.FOUNDATION.REASON_CODES} element={<ReasonCodeCatalogPage />} />
           <Route path={ROUTES.FOUNDATION.REASON_CODE_NEW} element={<ReasonCodeDetailPage mode="create" />} />
@@ -108,15 +121,44 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
-    const codeField = await screen.findByLabelText('Mã lý do');
+    const codeField = await screen.findByRole('textbox', { name: 'Mã lý do' });
     expect(codeField.tagName).toBe('INPUT');
     await actor.type(codeField, 'RC-NEW-1');
-    await actor.click(screen.getByLabelText('Update')); // an applies-to action
+    await actor.click(screen.getByLabelText('Cập nhật')); // an applies-to action
     await actor.click(screen.getByLabelText('SKU')); // an applies-to object
     await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
 
-    expect(await screen.findByText('RC-NEW-1')).toBeTruthy();
+    expect((await screen.findAllByText('RC-NEW-1')).length).toBeGreaterThan(0);
     expect(fake.create).toHaveBeenCalled();
+  });
+
+  it('omits a whitespace-only description when creating a reason code', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makeReasonCode()]);
+    repo.current = fake;
+    renderPage();
+
+    await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
+    await actor.type(await screen.findByRole('textbox', { name: 'Mã lý do' }), 'RC-BLANK-DESC');
+    await actor.type(screen.getByRole('textbox', { name: 'Mô tả' }), '   ');
+    await actor.click(screen.getByLabelText('Cập nhật'));
+    await actor.click(screen.getByLabelText('SKU'));
+    await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
+
+    await waitFor(() =>
+      expect(fake.create).toHaveBeenCalledWith(expect.objectContaining({ description: undefined })),
+    );
+  });
+
+  it('keeps the desktop table locally scrollable and shows unknown evidence state', async () => {
+    const fake = new FakeRepository([
+      makeReasonCode({ evidenceRequired: null as unknown as ReasonCode['evidenceRequired'] }),
+    ]);
+    repo.current = fake;
+    const { container } = renderPage();
+
+    expect((await screen.findAllByText('Không xác định')).length).toBeGreaterThan(0);
+    expect(container.querySelector('.overflow-x-auto table')).toBeTruthy();
   });
 
   it('inactivates a reason code via PATCH status=INACTIVE (AC2/AC5)', async () => {
@@ -125,19 +167,60 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'RC-ADJ-01' }));
+    const [openButton] = await screen.findAllByRole('button', { name: 'Mở chi tiết mã lý do RC-ADJ-01' });
+    await actor.click(openButton);
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa mã lý do' }));
     // Scope to the edit form — a 'Status' filter select also exists in the toolbar.
     const updateBtn = await screen.findByRole('button', { name: 'Cập nhật mã lý do' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(editForm).getByLabelText('Trạng thái'), 'INACTIVE');
+    const statusSelect = within(editForm).getByLabelText('Trạng thái');
+    await actor.selectOptions(statusSelect, 'INACTIVE');
+    expect(statusSelect).toBeInstanceOf(HTMLSelectElement);
+    if (!(statusSelect instanceof HTMLSelectElement)) {
+      throw new Error('Trạng thái field must be a select');
+    }
+    expect(statusSelect.value).toBe('INACTIVE');
     await actor.click(updateBtn);
 
     await waitFor(() =>
       expect(fake.update).toHaveBeenCalledWith('r1', expect.objectContaining({ status: 'INACTIVE' })),
     );
+    await screen.findByRole('heading', { name: 'RC-ADJ-01' });
+    expect(screen.getByText('Không hoạt động', { selector: '[data-slot="badge"]' })).toBeTruthy();
+  });
+
+  it('preserves blank edit fields so the mapper can clear them with null (AC8)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeReasonCode({
+        description: 'Needs cleanup',
+        effectiveFrom: '2026-07-01',
+        effectiveTo: '2026-07-31',
+      }),
+    ]);
+    repo.current = fake;
+    renderPage();
+
+    const [openButton] = await screen.findAllByRole('button', { name: 'Mở chi tiết mã lý do RC-ADJ-01' });
+    await actor.click(openButton);
+    await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa mã lý do' }));
+
+    const updateBtn = await screen.findByRole('button', { name: 'Cập nhật mã lý do' });
+    const editForm = updateBtn.closest('form') as HTMLFormElement;
+    const descriptionField = within(editForm).getByRole('textbox', { name: 'Mô tả' });
+    const effectiveFromField = within(editForm).getByLabelText('Hiệu lực từ');
+    const effectiveToField = within(editForm).getByLabelText('Hiệu lực đến');
+
+    await actor.clear(descriptionField);
+    await actor.clear(effectiveFromField);
+    await actor.clear(effectiveToField);
+    await actor.click(updateBtn);
+
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLSelectElement>('Trạng thái').value).toBe('INACTIVE'),
+      expect(fake.update).toHaveBeenCalledWith(
+        'r1',
+        expect.objectContaining({ description: '', effectiveFrom: '', effectiveTo: '' }),
+      ),
     );
   });
 
@@ -148,6 +231,13 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     expect((await screen.findAllByText(/không có quyền/i)).length).toBeGreaterThan(0);
+  });
+
+  it('shows a Vietnamese fallback when a reason code has no action scope', async () => {
+    repo.current = new FakeRepository([makeReasonCode({ appliesToActions: [] })]);
+    renderPage();
+
+    expect((await screen.findAllByText('Không áp dụng')).length).toBeGreaterThan(0);
   });
 
   it('does not fall back to create mode when selected detail fails without a list-row fallback', async () => {
@@ -178,13 +268,39 @@ describe('ReasonCodeCatalogPage (C13)', () => {
     renderPage();
 
     await actor.click(await screen.findByRole('link', { name: 'Tạo mã lý do' }));
-    await actor.type(await screen.findByLabelText('Mã lý do'), 'RC-DUP');
-    await actor.click(screen.getByLabelText('Update'));
+    await actor.type(await screen.findByRole('textbox', { name: 'Mã lý do' }), 'RC-DUP');
+    await actor.click(screen.getByLabelText('Cập nhật'));
     await actor.click(screen.getByLabelText('SKU'));
     await actor.click(screen.getByRole('button', { name: 'Tạo mã lý do' }));
 
     expect(await screen.findByText('Mã lý do đã tồn tại: RC-DUP')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('Mã lý do đã tồn tại: RC-DUP');
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('clears duplicate-code conflict when navigating to another reason code route', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([
+      makeReasonCode(),
+      makeReasonCode({ id: 'r2', reasonCode: 'RC-SECOND', version: 1 }),
+    ]);
+    fake.update = vi.fn(() =>
+      Promise.reject(
+        new ApiError({ status: 409, code: 'CONFLICT', message: 'Reason code already exists: RC-DUP' }),
+      ),
+    );
+    repo.current = fake;
+    renderPage([ROUTES.FOUNDATION.REASON_CODE_EDIT('r1')], {
+      label: 'Open second reason code',
+      to: ROUTES.FOUNDATION.REASON_CODE_EDIT('r2'),
+    });
+
+    await actor.click(await screen.findByRole('button', { name: 'Cập nhật mã lý do' }));
+    expect(await screen.findByText('Mã lý do đã tồn tại: RC-DUP')).toBeTruthy();
+
+    await actor.click(screen.getByRole('button', { name: 'Open second reason code' }));
+
+    expect(await screen.findByRole('heading', { name: 'RC-SECOND' })).toBeTruthy();
+    expect(screen.queryByText('Mã lý do đã tồn tại: RC-DUP')).toBeNull();
   });
 });
