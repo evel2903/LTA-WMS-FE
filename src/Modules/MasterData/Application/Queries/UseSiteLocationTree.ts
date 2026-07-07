@@ -15,8 +15,12 @@ export function useSiteLocationTree(filter: MasterDataListFilter = {}) {
   });
 }
 
-export function useActiveWarehouses() {
-  const filter: MasterDataListFilter = { status: 'Active', pageSize: MASTER_DATA_DEFAULT_PAGE_SIZE };
+export function useActiveWarehouses(warehouseNameSearch?: string) {
+  const filter: MasterDataListFilter = {
+    status: 'Active',
+    pageSize: MASTER_DATA_DEFAULT_PAGE_SIZE,
+    warehouseName: warehouseNameSearch?.trim() || undefined,
+  };
   return useQuery({
     queryKey: masterDataQueryKeys.warehouses(filter),
     queryFn: () => masterDataRepository.listWarehouses(filter),

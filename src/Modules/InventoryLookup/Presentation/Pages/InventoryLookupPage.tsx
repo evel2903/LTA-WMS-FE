@@ -5,6 +5,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
 import {
   Table,
   TableBody,
@@ -128,10 +129,12 @@ export function InventoryLookupPage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [serialFilter, setSerialFilter] = useState('');
   const [lotFilter, setLotFilter] = useState('');
+  const [warehouseSearch, setWarehouseSearch] = useState('');
   const [page, setPage] = useState(1);
   const [correctingItem, setCorrectingItem] = useState<InventorySerialLookupItem | null>(null);
   const debouncedSerial = useDebouncedValue(serialFilter, 250, skuId);
   const debouncedLot = useDebouncedValue(lotFilter, 250, skuId);
+  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch, 300);
 
   const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
   const skuOptions = useMemo(
@@ -143,7 +146,7 @@ export function InventoryLookupPage() {
     [skuQuery.data?.items],
   );
 
-  const warehouseQuery = useActiveWarehouses();
+  const warehouseQuery = useActiveWarehouses(debouncedWarehouseSearch);
   const warehouseOptions = useMemo(
     () =>
       (warehouseQuery.data?.items ?? []).map((warehouse) => ({
@@ -180,6 +183,7 @@ export function InventoryLookupPage() {
     // previous SKU could otherwise zero out results for the new SKU with no
     // visible explanation.
     setWarehouseId('');
+    setWarehouseSearch('');
     setSerialFilter('');
     setLotFilter('');
     setPage(1);
@@ -230,7 +234,7 @@ export function InventoryLookupPage() {
             errorMessage="Không tải được danh sách SKU."
             onChange={handleSkuIdChange}
           />
-          <LookupSelect
+          <SearchableLookupSelect
             id="inventory-lookup-warehouse-id"
             name="warehouseId"
             label="Kho"
@@ -244,6 +248,9 @@ export function InventoryLookupPage() {
             emptyMessage="Chưa có kho active để chọn."
             errorMessage="Không tải được danh sách kho."
             onChange={handleWarehouseIdChange}
+            searchValue={warehouseSearch}
+            onSearchChange={setWarehouseSearch}
+            searchPlaceholder="Tìm theo mã/tên kho..."
           />
           <label className="grid gap-1 text-sm">
             Lọc số serial

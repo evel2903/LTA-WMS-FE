@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/
 import { Input } from '@shared/Components/Ui/Input';
 import { downloadBlob } from '@shared/Utils/DownloadBlob';
 import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
+import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import {
   useActiveOwners,
@@ -43,7 +45,9 @@ export function InboundCreatePage() {
   const mutations = useInboundMutations();
   const supplierQuery = usePartners({ partnerType: 'Supplier', status: 'Active', pageSize: 100 });
   const ownerQuery = useActiveOwners();
-  const warehouseQuery = useActiveWarehouses();
+  const [warehouseSearch, setWarehouseSearch] = useState('');
+  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch, 300);
+  const warehouseQuery = useActiveWarehouses(debouncedWarehouseSearch);
   const warehouseProfileQuery = useWarehouseProfiles({ status: 'ACTIVE', pageSize: 100 });
   const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
   const uomQuery = useActiveUoms();
@@ -321,7 +325,7 @@ export function InboundCreatePage() {
               errorMessage="Không tải được danh sách chủ hàng."
               onChange={setOwnerId}
             />
-            <LookupSelect
+            <SearchableLookupSelect
               id="inbound-warehouse-id"
               name="warehouseId"
               label="Kho"
@@ -333,6 +337,9 @@ export function InboundCreatePage() {
               emptyMessage="Chưa có kho active để chọn."
               errorMessage="Không tải được danh sách kho."
               onChange={setWarehouseId}
+              searchValue={warehouseSearch}
+              onSearchChange={setWarehouseSearch}
+              searchPlaceholder="Tìm theo mã/tên kho..."
             />
             <LookupSelect
               id="inbound-warehouse-profile-id"
