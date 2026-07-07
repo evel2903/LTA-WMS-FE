@@ -1,5 +1,6 @@
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventorySerialLookupItem } from '@modules/InventoryLookup/Domain/Entities/InventorySerialLookupItem';
+import type { InventorySerialCorrectionRequest } from '@modules/InventoryLookup/Domain/Types/InventorySerialCorrectionRequest';
 import type { InventorySerialLookupFilter } from '@modules/InventoryLookup/Domain/Types/InventorySerialLookupQuery';
 
 /**
@@ -8,4 +9,5 @@ import type { InventorySerialLookupFilter } from '@modules/InventoryLookup/Domai
  */
 export interface IInventorySerialLookupRepository {
   list(filter: InventorySerialLookupFilter): Promise<PaginatedResponse<InventorySerialLookupItem>>;
+  correct(request: InventorySerialCorrectionRequest): Promise<void>;
 }

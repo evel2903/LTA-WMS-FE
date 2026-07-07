@@ -23,3 +23,11 @@ export interface PagedInventorySerialLookupDto {
     TotalPages: number;
   };
 }
+
+export interface CorrectSerialNumberRequestDto {
+  SourceDimensionId: string;
+  NewSerialNumber: string;
+  ReasonCode: string;
+  EvidenceRefs: string[];
+  IdempotencyKey: string;
+}

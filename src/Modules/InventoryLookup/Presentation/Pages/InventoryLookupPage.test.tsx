@@ -8,7 +8,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { InventorySerialLookupItem } from '@modules/InventoryLookup/Domain/Entities/InventorySerialLookupItem';
 
-const lookupRepo = vi.hoisted(() => ({ current: { list: vi.fn() } }));
+const lookupRepo = vi.hoisted(() => ({ current: { list: vi.fn(), correct: vi.fn() } }));
 vi.mock(
   '@modules/InventoryLookup/Infrastructure/Repositories/InventorySerialLookupRepositoryInstance',
   () => ({
@@ -17,6 +17,15 @@ vi.mock(
     },
   }),
 );
+
+// Reason-code dropdown (IDC-09 serial correction sheet): mock the options hook.
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: () => ({
+    options: [{ value: 'RC-V1-ADJUSTMENT', label: 'RC-V1-ADJUSTMENT — Điều chỉnh' }],
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 const catalogRepo = vi.hoisted(() => ({ current: { listSkus: vi.fn() } }));
 vi.mock('@modules/MasterData/Infrastructure/Repositories/CatalogRepositoryInstance', () => ({
@@ -314,5 +323,96 @@ describe('InventoryLookupPage', () => {
 
     expect(await screen.findByText('Từ chối quyền truy cập')).toBeTruthy();
     expect(screen.getByText('Bạn không có quyền tra cứu tồn kho.')).toBeTruthy();
+  });
+
+  describe('Sửa serial (IDC-09)', () => {
+    async function openSheetForFirstRow(actor: ReturnType<typeof userEvent.setup>) {
+      setSkuOptions();
+      setWarehouseOptions();
+      lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+      lookupRepo.current.correct = vi.fn(() => Promise.resolve());
+      renderPage();
+
+      await screen.findByRole('option', { name: /SKU-A/i });
+      await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+      await screen.findByTestId('inventory-lookup-row-dimension-1');
+      await actor.click(screen.getAllByRole('button', { name: 'Sửa serial' })[0]);
+      await screen.findByRole('dialog');
+    }
+
+    it('opens the correction sheet, submits a valid correction, and refreshes the lookup on success', async () => {
+      lookupRepo.current.correct = vi.fn(() => Promise.resolve());
+      const actor = userEvent.setup();
+      await openSheetForFirstRow(actor);
+
+      expect(screen.getByLabelText('Serial hiện tại')).toHaveProperty('value', 'SN-0001');
+      await actor.type(screen.getByLabelText('Serial mới'), 'SN-CORRECTED-1');
+      await screen.findByRole('option', { name: /RC-V1-ADJUSTMENT/i });
+      await actor.selectOptions(screen.getByLabelText('Mã lý do'), 'RC-V1-ADJUSTMENT');
+      await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://label-corrected-1');
+
+      await actor.click(screen.getByRole('button', { name: 'Gửi yêu cầu sửa serial' }));
+
+      await waitFor(() =>
+        expect(lookupRepo.current.correct).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dimensionId: 'dimension-1',
+            newSerialNumber: 'SN-CORRECTED-1',
+            reasonCode: 'RC-V1-ADJUSTMENT',
+            evidenceRefs: ['photo://label-corrected-1'],
+          }),
+        ),
+      );
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      // list() is called once on initial load, again on sheet-close invalidation.
+      await waitFor(() => expect(lookupRepo.current.list).toHaveBeenCalledTimes(2));
+    });
+
+    it('keeps submit disabled until new serial, reason code, and evidence are all filled', async () => {
+      const actor = userEvent.setup();
+      await openSheetForFirstRow(actor);
+
+      const submit = screen.getByRole('button', { name: 'Gửi yêu cầu sửa serial' });
+      expect(submit).toHaveProperty('disabled', true);
+
+      await actor.type(screen.getByLabelText('Serial mới'), 'SN-CORRECTED-1');
+      expect(submit).toHaveProperty('disabled', true);
+
+      await screen.findByRole('option', { name: /RC-V1-ADJUSTMENT/i });
+      await actor.selectOptions(screen.getByLabelText('Mã lý do'), 'RC-V1-ADJUSTMENT');
+      expect(submit).toHaveProperty('disabled', true);
+
+      await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://label-corrected-1');
+      expect(submit).toHaveProperty('disabled', false);
+    });
+
+    it('shows an inline error and keeps the sheet open when the correction request fails', async () => {
+      const actor = userEvent.setup();
+      await openSheetForFirstRow(actor);
+      lookupRepo.current.correct = vi.fn(() =>
+        Promise.reject(
+          new ApiError({ status: 409, code: 'CONFLICT', message: 'Serial mới đã tồn tại trên 1 đơn vị khác.' }),
+        ),
+      );
+
+      await actor.type(screen.getByLabelText('Serial mới'), 'SN-CORRECTED-1');
+      await screen.findByRole('option', { name: /RC-V1-ADJUSTMENT/i });
+      await actor.selectOptions(screen.getByLabelText('Mã lý do'), 'RC-V1-ADJUSTMENT');
+      await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://label-corrected-1');
+      await actor.click(screen.getByRole('button', { name: 'Gửi yêu cầu sửa serial' }));
+
+      expect(await screen.findByText('Serial mới đã tồn tại trên 1 đơn vị khác.')).toBeTruthy();
+      expect(screen.getByRole('dialog')).toBeTruthy();
+    });
+
+    it('closes the sheet on Escape without submitting', async () => {
+      const actor = userEvent.setup();
+      await openSheetForFirstRow(actor);
+
+      await actor.keyboard('{Escape}');
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(lookupRepo.current.correct).not.toHaveBeenCalled();
+    });
   });
 });
