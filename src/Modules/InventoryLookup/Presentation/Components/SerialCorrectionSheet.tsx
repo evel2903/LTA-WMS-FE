@@ -50,12 +50,16 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
   // navigation.
   const triggerElementRef = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null);
 
-  useEffect(() => {
-    const triggerElement = triggerElementRef.current;
-    return () => {
-      triggerElement?.focus();
-    };
-  }, []);
+  // Restoring focus from an unmount-effect cleanup fired on every real close, but also on
+  // React 18 StrictMode's dev-only mount→cleanup→remount dance — stealing focus back from the
+  // "Serial mới" input's autoFocus immediately after opening (caught via live-testing). Doing it
+  // here instead, from the same explicit action that closes the sheet, only ever runs once per
+  // real close and skips a trigger element removed from the DOM in the meantime (e.g. its row
+  // disappearing from a post-success refetch).
+  function closeAndRestoreFocus() {
+    if (triggerElementRef.current?.isConnected) triggerElementRef.current.focus();
+    onClose();
+  }
 
   const currentSerialLabel = item.serialNumber || '(chưa có)';
   const trimmedNewSerial = newSerialNumber.trim();
@@ -81,7 +85,7 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        closeAndRestoreFocus();
         return;
       }
       if (event.key !== 'Tab' || !dialogRef.current) return;
@@ -103,6 +107,7 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- closeAndRestoreFocus is a plain function recreated every render, not stateful; only onClose (via triggerElementRef closure) matters for identity.
   }, [onClose]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -119,7 +124,7 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
           .filter(Boolean),
         idempotencyKey: idempotencyKey.trim(),
       },
-      { onSuccess: onClose },
+      { onSuccess: closeAndRestoreFocus },
     );
   }
 
@@ -133,7 +138,7 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
         type="button"
         className="absolute inset-0 cursor-default"
         aria-label="Đóng sửa serial"
-        onClick={onClose}
+        onClick={closeAndRestoreFocus}
       />
       <section
         ref={dialogRef}
@@ -154,7 +159,7 @@ export function SerialCorrectionSheet({ item, onClose }: SerialCorrectionSheetPr
           <button
             type="button"
             className="grid size-10 shrink-0 place-items-center rounded-md border hover:bg-muted"
-            onClick={onClose}
+            onClick={closeAndRestoreFocus}
             aria-label="Đóng sửa serial"
           >
             <X className="size-4" />

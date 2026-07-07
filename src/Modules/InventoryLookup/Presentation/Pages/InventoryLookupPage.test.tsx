@@ -414,5 +414,30 @@ describe('InventoryLookupPage', () => {
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
       expect(lookupRepo.current.correct).not.toHaveBeenCalled();
     });
+
+    it('restores focus to the "Sửa serial" trigger button after closing (Escape and the X button)', async () => {
+      const actor = userEvent.setup();
+
+      setSkuOptions();
+      setWarehouseOptions();
+      lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+      renderPage();
+      await screen.findByRole('option', { name: /SKU-A/i });
+      await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+      await screen.findByTestId('inventory-lookup-row-dimension-1');
+      const trigger = screen.getAllByRole('button', { name: 'Sửa serial' })[0];
+
+      await actor.click(trigger);
+      await screen.findByRole('dialog');
+      await actor.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(document.activeElement).toBe(trigger);
+
+      await actor.click(trigger);
+      const dialog = await screen.findByRole('dialog');
+      await actor.click(within(dialog).getByRole('button', { name: 'Đóng sửa serial' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(document.activeElement).toBe(trigger);
+    });
   });
 });
