@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Pencil, RefreshCw } from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
@@ -18,9 +18,16 @@ import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
 import { useInventorySerialLookup } from '@modules/InventoryLookup/Application/Queries/UseInventorySerialLookup';
+import { SerialCorrectionSheet } from '@modules/InventoryLookup/Presentation/Components/SerialCorrectionSheet';
 import type { InventorySerialLookupItem } from '@modules/InventoryLookup/Domain/Entities/InventorySerialLookupItem';
 
-function InventoryLookupItemCard({ item }: { item: InventorySerialLookupItem }) {
+function InventoryLookupItemCard({
+  item,
+  onCorrect,
+}: {
+  item: InventorySerialLookupItem;
+  onCorrect: (item: InventorySerialLookupItem) => void;
+}) {
   return (
     <article className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
@@ -30,9 +37,17 @@ function InventoryLookupItemCard({ item }: { item: InventorySerialLookupItem }) 
             {item.warehouseCode} - {item.locationCode}
           </p>
         </div>
-        <span className="shrink-0 rounded-md border px-2 py-1 text-xs font-medium">
-          {item.inventoryStatusCode}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-md border px-2 py-1 text-xs font-medium">{item.inventoryStatusCode}</span>
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Sửa serial"
+            onClick={() => onCorrect(item)}
+          >
+            <Pencil className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
 
       <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
@@ -59,7 +74,13 @@ function InventoryLookupItemCard({ item }: { item: InventorySerialLookupItem }) 
   );
 }
 
-function InventoryLookupItemTable({ items }: { items: InventorySerialLookupItem[] }) {
+function InventoryLookupItemTable({
+  items,
+  onCorrect,
+}: {
+  items: InventorySerialLookupItem[];
+  onCorrect: (item: InventorySerialLookupItem) => void;
+}) {
   return (
     <Table data-testid="inventory-lookup-table">
       <TableHeader>
@@ -71,6 +92,7 @@ function InventoryLookupItemTable({ items }: { items: InventorySerialLookupItem[
           <TableHead>Vị trí</TableHead>
           <TableHead>Tồn / Khả dụng</TableHead>
           <TableHead>Trạng thái</TableHead>
+          <TableHead className="text-right">Thao tác</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -89,6 +111,11 @@ function InventoryLookupItemTable({ items }: { items: InventorySerialLookupItem[
                 {item.inventoryStatusCode}
               </span>
             </TableCell>
+            <TableCell className="text-right">
+              <Button variant="secondary" size="icon" aria-label="Sửa serial" onClick={() => onCorrect(item)}>
+                <Pencil className="size-4" aria-hidden="true" />
+              </Button>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -102,6 +129,7 @@ export function InventoryLookupPage() {
   const [serialFilter, setSerialFilter] = useState('');
   const [lotFilter, setLotFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [correctingItem, setCorrectingItem] = useState<InventorySerialLookupItem | null>(null);
   const debouncedSerial = useDebouncedValue(serialFilter, 250, skuId);
   const debouncedLot = useDebouncedValue(lotFilter, 250, skuId);
 
@@ -293,13 +321,20 @@ export function InventoryLookupPage() {
       {/* Mobile (< md): card grid — easier to tap. Hidden from md up. */}
       <div className="grid gap-3 md:hidden">
         {items.map((item) => (
-          <InventoryLookupItemCard key={item.dimensionId} item={item} />
+          <InventoryLookupItemCard key={item.dimensionId} item={item} onCorrect={setCorrectingItem} />
         ))}
       </div>
       {/* Desktop (>= md): dense table for scanning/column comparison. */}
       <div className="hidden md:block">
-        <InventoryLookupItemTable items={items} />
+        <InventoryLookupItemTable items={items} onCorrect={setCorrectingItem} />
       </div>
+      {correctingItem ? (
+        <SerialCorrectionSheet
+          key={correctingItem.dimensionId}
+          item={correctingItem}
+          onClose={() => setCorrectingItem(null)}
+        />
+      ) : null}
     </ListPageShell>
   );
 }

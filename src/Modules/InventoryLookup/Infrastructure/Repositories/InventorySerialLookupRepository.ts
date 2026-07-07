@@ -5,11 +5,15 @@ import {
   INVENTORY_LOOKUP_DEFAULT_PAGE_SIZE,
   INVENTORY_LOOKUP_MAX_PAGE_SIZE,
 } from '@modules/InventoryLookup/Domain/Constants/InventoryLookupConstants';
+import type { InventorySerialCorrectionRequest } from '@modules/InventoryLookup/Domain/Types/InventorySerialCorrectionRequest';
 import type { InventorySerialLookupFilter } from '@modules/InventoryLookup/Domain/Types/InventorySerialLookupQuery';
 import type { IInventorySerialLookupRepository } from '@modules/InventoryLookup/Application/Interfaces/IInventorySerialLookupRepository';
 import { INVENTORY_LOOKUP_ENDPOINTS } from '@modules/InventoryLookup/Infrastructure/Api/InventoryLookupEndpoints';
 import { InventoryLookupMapper } from '@modules/InventoryLookup/Infrastructure/Mappers/InventoryLookupMapper';
-import type { PagedInventorySerialLookupDto } from '@modules/InventoryLookup/Infrastructure/Dtos/InventoryLookupDtos';
+import type {
+  CorrectSerialNumberRequestDto,
+  PagedInventorySerialLookupDto,
+} from '@modules/InventoryLookup/Infrastructure/Dtos/InventoryLookupDtos';
 
 function pageSize(value?: number): number {
   if (!value || value < 1) return INVENTORY_LOOKUP_DEFAULT_PAGE_SIZE;
@@ -35,5 +39,16 @@ export class InventorySerialLookupRepository implements IInventorySerialLookupRe
       }),
     });
     return InventoryLookupMapper.toPaged(dto);
+  }
+
+  async correct(request: InventorySerialCorrectionRequest): Promise<void> {
+    const body: CorrectSerialNumberRequestDto = {
+      SourceDimensionId: request.dimensionId,
+      NewSerialNumber: request.newSerialNumber,
+      ReasonCode: request.reasonCode,
+      EvidenceRefs: request.evidenceRefs,
+      IdempotencyKey: request.idempotencyKey,
+    };
+    await this.http.post<unknown>(INVENTORY_LOOKUP_ENDPOINTS.CORRECT_SERIAL, body);
   }
 }
