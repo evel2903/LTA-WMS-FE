@@ -102,6 +102,8 @@ export function ProfileRulesPanel({
         <label className="grid flex-1 gap-1 text-sm">
           Gắn quy tắc
           <select
+            id="warehouse-profile-attach-rule"
+            name="ruleDefinitionId"
             className="h-9 rounded-md border bg-transparent px-3 text-sm"
             disabled={!canEdit || attachable.length === 0}
             value={selectedRuleId}
