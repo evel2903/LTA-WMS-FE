@@ -1,5 +1,6 @@
 import { Badge } from '@shared/Components/Ui/Badge';
 import type { ApprovalDecision } from '@modules/Approval/Domain/Enums/ApprovalEnums';
+import { approvalDecisionLabel } from '@modules/Approval/Presentation/Constants/ApprovalDisplayText';
 
 const VARIANT: Record<ApprovalDecision, 'default' | 'secondary' | 'outline' | 'success' | 'warning'> = {
   PENDING: 'warning',
@@ -7,12 +8,6 @@ const VARIANT: Record<ApprovalDecision, 'default' | 'secondary' | 'outline' | 's
   REJECTED: 'outline',
 };
 
-const DECISION_LABELS_VI: Record<ApprovalDecision, string> = {
-  PENDING: 'Chờ duyệt',
-  APPROVED: 'Đã phê duyệt',
-  REJECTED: 'Đã từ chối',
-};
-
 export function ApprovalDecisionBadge({ decision }: { decision: ApprovalDecision }) {
-  return <Badge variant={VARIANT[decision]}>{DECISION_LABELS_VI[decision]}</Badge>;
+  return <Badge variant={VARIANT[decision]}>{approvalDecisionLabel(decision)}</Badge>;
 }

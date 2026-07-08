@@ -12,6 +12,10 @@ import { useExceptionMutations } from '@modules/Compliance/Application/Commands/
 import { useExceptionDetail } from '@modules/Compliance/Application/Queries/UseComplianceQueries';
 import { ExceptionDetailPanel } from '@modules/Compliance/Presentation/Components/ExceptionDetailPanel';
 import { ExceptionStateBadge } from '@modules/Compliance/Presentation/Components/ExceptionStateBadge';
+import {
+  businessReferenceLabel,
+  exceptionSeverityLabel,
+} from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 type ExceptionDetailMode = 'detail' | 'action';
 
@@ -44,6 +48,8 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
   const apiError = detailQuery.error instanceof ApiError ? detailQuery.error : null;
   const isAction = mode === 'action';
   const canMutate = isAction && !apiError?.isForbidden;
+  const detailReadOnlyMessage =
+    'Route xem chi tiết chỉ hiển thị evidence. Mở vòng đời để thao tác.';
   const pending =
     mutations.logException.isPending ||
     mutations.assignException.isPending ||
@@ -68,8 +74,11 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
       summary={
         exceptionCase ? (
           <>
-            <span>Tham chiếu: {exceptionCase.referenceType} · {exceptionCase.referenceId}</span>
-            <span>Mức độ: {exceptionCase.severity}</span>
+            <span>
+              Tham chiếu:{' '}
+              {businessReferenceLabel(exceptionCase.referenceType, exceptionCase.referenceId)}
+            </span>
+            <span>Mức độ: {exceptionSeverityLabel(exceptionCase.severity)}</span>
           </>
         ) : null
       }
@@ -89,6 +98,7 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
       state={state}
       stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
       stateMessage={apiError?.message ?? 'Không thể tải hồ sơ ngoại lệ.'}
+      contentAriaLabel="Chi tiết hồ sơ ngoại lệ"
     >
       {exceptionCase ? (
         <ActionPanel
@@ -96,6 +106,7 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
           description="Chuyển trạng thái ngoại lệ giữ nguyên state, reason và audit behavior hiện có."
           state={pending ? 'pending' : 'idle'}
           governanceState={canMutate ? undefined : 'readOnly'}
+          governanceMessage={!isAction ? detailReadOnlyMessage : undefined}
         >
           <ExceptionDetailPanel
             key={exceptionCase.id}
@@ -103,7 +114,10 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
             canManage={canMutate}
             pending={pending}
             blocked={blockedMessage(actionError) ?? undefined}
-            onLog={(input) => mutations.logException.mutate({ id: exceptionCase.id, input }, runOptions)}
+            readOnlyMessage={!isAction ? detailReadOnlyMessage : undefined}
+            onLog={(input) =>
+              mutations.logException.mutate({ id: exceptionCase.id, input }, runOptions)
+            }
             onAssign={(input) =>
               mutations.assignException.mutate({ id: exceptionCase.id, input }, runOptions)
             }

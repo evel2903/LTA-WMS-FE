@@ -1,12 +1,18 @@
 import type { OverrideLog } from '@modules/OverrideLog/Domain/Entities/OverrideLog';
 import { OverrideControlModeBadge } from '@modules/OverrideLog/Presentation/Components/OverrideControlModeBadge';
 import { JsonBlock } from '@modules/OverrideLog/Presentation/Components/StateViews';
+import {
+  overrideActionLabel,
+  overrideTargetLabelFromParts,
+} from '@modules/OverrideLog/Presentation/Constants/OverrideLogDisplayText';
 
 function Field({ label, value }: { label: string; value: string | null }) {
+  const displayValue = value?.trim() || '—';
+
   return (
     <div className="grid gap-0.5">
       <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="text-sm break-words">{value ?? '—'}</span>
+      <span className="text-sm break-words">{displayValue}</span>
     </div>
   );
 }
@@ -22,18 +28,25 @@ export function OverrideLogDetailPanel({ log }: { log: OverrideLog }) {
         <span className="text-sm font-medium">{log.ruleCode}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Tạo lúc" value={new Date(log.createdAt).toLocaleString()} />
         <Field label="Người thực hiện" value={log.actorUserId} />
-        <Field label="Hành động" value={log.action} />
+        <Field label="Hành động" value={overrideActionLabel(log.action)} />
         <Field
           label="Đối tượng đích"
-          value={`${log.targetObjectType} · ${log.targetObjectCode ?? log.targetObjectId}`}
+          value={overrideTargetLabelFromParts(
+            log.targetObjectType,
+            log.targetObjectCode,
+            log.targetObjectId,
+          )}
         />
         <Field label="ID mã lý do" value={log.reasonCodeId} />
         <Field label="Ghi chú lý do" value={log.reasonNote} />
         <Field label="ID yêu cầu phê duyệt" value={log.approvalRequestId} />
-        <Field label="Bằng chứng" value={evidenceCount > 0 ? `${evidenceCount} tham chiếu` : 'không có'} />
+        <Field
+          label="Bằng chứng"
+          value={evidenceCount > 0 ? `${evidenceCount} tham chiếu` : 'Chưa có'}
+        />
         <Field label="Tham chiếu kiểm toán" value={log.auditRef} />
         <Field label="ID tương quan" value={log.correlationId} />
       </div>

@@ -47,9 +47,9 @@ export function OverrideLogStateView({ state, emptyLabel, errorMessage }: Overri
 /** Read-only JSON viewer for the override before/after snapshots (no editor — immutable). */
 export function JsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="grid gap-1">
+    <div className="min-w-0 grid gap-1">
       <span className="text-muted-foreground text-xs font-medium">{label}</span>
-      <pre className="bg-muted max-h-60 overflow-auto rounded-md p-2 text-xs">
+      <pre className="bg-muted max-h-60 max-w-full overflow-auto rounded-md p-2 text-xs whitespace-pre-wrap break-words">
         {value ? JSON.stringify(value, null, 2) : '—'}
       </pre>
     </div>

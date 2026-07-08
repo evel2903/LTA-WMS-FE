@@ -56,6 +56,18 @@ const log: OverrideLog = {
   createdAt: '2026-06-21T00:00:00.000Z',
 };
 
+const overrideRowButtonName = /Mở chi tiết nhật ký ghi đè quy tắc RULE-PUTAWAY-01/i;
+
+async function findOverrideRowButton(): Promise<HTMLButtonElement> {
+  return (
+    await screen.findAllByRole('button', { name: overrideRowButtonName })
+  )[0] as HTMLButtonElement;
+}
+
+function getOverrideRowButton(): HTMLButtonElement {
+  return screen.getAllByRole('button', { name: overrideRowButtonName })[0] as HTMLButtonElement;
+}
+
 class FakeRepository implements Partial<IOverrideLogRepository> {
   list = vi.fn(() => Promise.resolve(page([log])));
   getById = vi.fn((id: string) => Promise.resolve({ ...log, id }));
@@ -87,11 +99,15 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
+    expect(await findOverrideRowButton()).toBeTruthy();
+    expect(screen.getByLabelText('Bộ lọc nhật ký ghi đè')).toBeTruthy();
+    expect(screen.getByLabelText('Danh sách nhật ký ghi đè')).toBeTruthy();
     expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 }));
     expect(screen.queryByText('Trước thay đổi')).toBeNull();
+    expect(screen.getAllByText('Hồ sơ kho · WP-MAIN').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Yêu cầu phê duyệt').length).toBeGreaterThan(0);
 
-    await actor.click(screen.getByRole('button', { name: 'RULE-PUTAWAY-01' }));
+    await actor.click(await findOverrideRowButton());
 
     expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
     expect(screen.getByText('Sau thay đổi')).toBeTruthy();
@@ -100,7 +116,9 @@ describe('OverrideLogPage (C16)', () => {
     expect(fake.getById).toHaveBeenCalledWith('ov1');
 
     expect(
-      screen.queryByRole('button', { name: /create|new|edit|delete|save|update|approve|reject|override/i }),
+      screen.queryByRole('button', {
+        name: /create|new|edit|delete|save|update|approve|reject|override/i,
+      }),
     ).toBeNull();
     expect(screen.getByRole('link', { name: /quay lại nhật ký ghi đè/i })).toBeTruthy();
   });
@@ -142,14 +160,14 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage(`${ROUTES.FOUNDATION.OVERRIDES}?ruleId=rule-1&actorUserId=u1&page=2`);
 
-    await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' });
+    await findOverrideRowButton();
     await waitFor(() =>
       expect(fake.list).toHaveBeenCalledWith(
         expect.objectContaining({ page: 2, pageSize: 50, ruleId: 'rule-1', actorUserId: 'u1' }),
       ),
     );
 
-    await actor.click(screen.getByRole('button', { name: 'RULE-PUTAWAY-01' }));
+    await actor.click(await findOverrideRowButton());
 
     const backLink = await screen.findByRole('link', { name: /quay lại nhật ký ghi đè/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
@@ -163,9 +181,9 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage();
 
-    const rowButton = await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' });
+    const rowButton = await findOverrideRowButton();
     await actor.type(screen.getByLabelText('ID quy tắc'), 'rule-2');
-    expect((rowButton as HTMLButtonElement).disabled).toBe(true);
+    expect(rowButton.disabled).toBe(true);
     await actor.click(rowButton);
     expect(fake.getById).not.toHaveBeenCalled();
 
@@ -174,11 +192,13 @@ describe('OverrideLogPage (C16)', () => {
         expect.objectContaining({ ruleId: 'rule-2', page: 1, pageSize: 50 }),
       ),
     );
-    await waitFor(() => expect((rowButton as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(rowButton.disabled).toBe(false));
     await actor.click(rowButton);
 
     const backLink = await screen.findByRole('link', { name: /quay lại nhật ký ghi đè/i });
-    expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe('/foundation/overrides?ruleId=rule-2');
+    expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
+      '/foundation/overrides?ruleId=rule-2',
+    );
   });
 
   it('keeps preserved override rows disabled when a filtered refetch fails', async () => {
@@ -193,7 +213,7 @@ describe('OverrideLogPage (C16)', () => {
     repo.current = fake;
     renderPage();
 
-    expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
+    expect(await findOverrideRowButton()).toBeTruthy();
     await actor.type(screen.getByLabelText('ID quy tắc'), 'rule-2');
 
     await waitFor(() =>
@@ -201,18 +221,54 @@ describe('OverrideLogPage (C16)', () => {
         expect.objectContaining({ ruleId: 'rule-2', page: 1, pageSize: 50 }),
       ),
     );
-    const staleRow = screen.getByRole('button', { name: 'RULE-PUTAWAY-01' });
-    expect((staleRow as HTMLButtonElement).disabled).toBe(true);
+    const staleRow = getOverrideRowButton();
+    expect(staleRow.disabled).toBe(true);
     await actor.click(staleRow);
     expect(fake.getById).not.toHaveBeenCalled();
     expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('falls back to target id and reason code when override display fields are blank', async () => {
+    const fake = new FakeRepository();
+    fake.list = vi.fn(() =>
+      Promise.resolve(
+        page([{ ...log, targetObjectCode: ' ', reasonNote: ' ', reasonCodeId: 'rc-fallback' }]),
+      ),
+    );
+    repo.current = fake;
+    renderPage();
+
+    expect(
+      await screen.findAllByRole('button', {
+        name: /Mở chi tiết nhật ký ghi đè quy tắc RULE-PUTAWAY-01, đối tượng Hồ sơ kho · wp-1, người thực hiện u1, bản ghi ov1/i,
+      }),
+    ).toHaveLength(2);
+    expect(screen.getAllByText('Hồ sơ kho · wp-1')).toHaveLength(2);
+    expect(screen.getByText('rc-fallback')).toBeTruthy();
+    expect(screen.getByText('Lý do: rc-fallback')).toBeTruthy();
+  });
+
+  it('falls back to dash when override approval reference is blank', async () => {
+    const fake = new FakeRepository();
+    fake.list = vi.fn(() => Promise.resolve(page([{ ...log, approvalRequestId: ' ' }])));
+    repo.current = fake;
+    renderPage();
+
+    await findOverrideRowButton();
+    expect(screen.getByText('Phê duyệt: —')).toBeTruthy();
   });
 
   it('clamps an out-of-range override page back to the last available page', async () => {
     const fake = new FakeRepository();
     fake.list = vi.fn((filter?: OverrideLogFilter) => {
       if (filter?.page === 999) {
-        return Promise.resolve({ items: [], page: 999, pageSize: 50, totalItems: 1, totalPages: 2 });
+        return Promise.resolve({
+          items: [],
+          page: 999,
+          pageSize: 50,
+          totalItems: 1,
+          totalPages: 2,
+        });
       }
       return Promise.resolve({ ...page([log]), page: 2, totalPages: 2 });
     });
@@ -222,7 +278,7 @@ describe('OverrideLogPage (C16)', () => {
     await waitFor(() =>
       expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
     );
-    expect(await screen.findByRole('button', { name: 'RULE-PUTAWAY-01' })).toBeTruthy();
+    expect(await findOverrideRowButton()).toBeTruthy();
     expect(screen.getByText('Trang 2 / 2')).toBeTruthy();
   });
 
@@ -265,7 +321,13 @@ describe('OverrideLogPage (C16)', () => {
     const fake = new FakeRepository();
     fake.list = vi.fn((filter?: OverrideLogFilter) => {
       if (filter?.page === 999) {
-        return Promise.resolve({ items: [], page: 999, pageSize: 50, totalItems: 0, totalPages: 0 });
+        return Promise.resolve({
+          items: [],
+          page: 999,
+          pageSize: 50,
+          totalItems: 0,
+          totalPages: 0,
+        });
       }
       return Promise.resolve({ items: [], page: 1, pageSize: 50, totalItems: 0, totalPages: 0 });
     });
@@ -304,7 +366,9 @@ describe('OverrideLogPage (C16)', () => {
 
   it('shows a permission-required state when the list 403s (AC4)', async () => {
     const fake = new FakeRepository();
-    fake.list = vi.fn(() => Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'no' })));
+    fake.list = vi.fn(() =>
+      Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'no' })),
+    );
     repo.current = fake;
     renderPage();
 
@@ -315,7 +379,9 @@ describe('OverrideLogPage (C16)', () => {
   it('surfaces a detail error without rendering a list-row fallback', async () => {
     const fake = new FakeRepository();
     fake.getById = vi.fn(() =>
-      Promise.reject(new ApiError({ status: 500, code: 'UNKNOWN', message: 'Override detail failed' })),
+      Promise.reject(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Override detail failed' }),
+      ),
     );
     repo.current = fake;
     renderPage(ROUTES.FOUNDATION.OVERRIDE_DETAIL('ov1'));

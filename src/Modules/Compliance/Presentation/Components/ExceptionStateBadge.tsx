@@ -1,8 +1,6 @@
 import { Badge } from '@shared/Components/Ui/Badge';
-import {
-  EXCEPTION_STATE_LABELS,
-  type ExceptionState,
-} from '@modules/Compliance/Domain/Enums/ComplianceEnums';
+import type { ExceptionState } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
+import { exceptionStateLabel } from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 const VARIANT: Record<ExceptionState, 'default' | 'secondary' | 'outline' | 'success' | 'warning'> = {
   DETECTED: 'warning',
@@ -14,5 +12,5 @@ const VARIANT: Record<ExceptionState, 'default' | 'secondary' | 'outline' | 'suc
 };
 
 export function ExceptionStateBadge({ state }: { state: ExceptionState }) {
-  return <Badge variant={VARIANT[state]}>{EXCEPTION_STATE_LABELS[state]}</Badge>;
+  return <Badge variant={VARIANT[state]}>{exceptionStateLabel(state)}</Badge>;
 }

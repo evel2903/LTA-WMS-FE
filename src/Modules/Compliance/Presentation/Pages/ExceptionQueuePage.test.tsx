@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IComplianceRepository } from '@modules/Compliance/Application/Interfaces/IComplianceRepository';
 import type { ExceptionCase } from '@modules/Compliance/Domain/Entities/Compliance';
+import type { ExceptionListFilter } from '@modules/Compliance/Domain/Types/ComplianceTypes';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IComplianceRepository }));
 vi.mock('@modules/Compliance/Infrastructure/Repositories/ComplianceRepositoryInstance', () => ({
@@ -78,8 +79,14 @@ function renderPage(initialPath = ROUTES.FOUNDATION.EXCEPTIONS) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path={ROUTES.FOUNDATION.EXCEPTIONS} element={<ExceptionQueuePage />} />
-          <Route path={ROUTES.FOUNDATION.EXCEPTION_DETAIL()} element={<ExceptionDetailPage mode="detail" />} />
-          <Route path={ROUTES.FOUNDATION.EXCEPTION_ACTION()} element={<ExceptionDetailPage mode="action" />} />
+          <Route
+            path={ROUTES.FOUNDATION.EXCEPTION_DETAIL()}
+            element={<ExceptionDetailPage mode="detail" />}
+          />
+          <Route
+            path={ROUTES.FOUNDATION.EXCEPTION_ACTION()}
+            element={<ExceptionDetailPage mode="action" />}
+          />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -94,6 +101,17 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
+  async function findFirstExceptionRowButton(): Promise<HTMLButtonElement> {
+    const buttons = await screen.findAllByRole('button', {
+      name: /Mở chi tiết ngoại lệ CTRL-EX-01 cho tham chiếu ASN · asn-9, bản ghi e1/i,
+    });
+    return buttons[0] as HTMLButtonElement;
+  }
+
+  async function openFirstException(actor: ReturnType<typeof userEvent.setup>) {
+    await actor.click(await findFirstExceptionRowButton());
+  }
+
   it('drives a valid transition: DETECTED → Log → state re-read offers the next action (AC5)', async () => {
     const actor = userEvent.setup();
     const live = makeCase({ state: 'DETECTED' });
@@ -101,8 +119,12 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
+    expect(await screen.findByLabelText('Bộ lọc hàng đợi ngoại lệ')).toBeTruthy();
+    expect(screen.getByLabelText('Danh sách hàng đợi ngoại lệ')).toBeTruthy();
     // Select the only case via its Type cell (the row trigger).
-    await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    expect((await screen.findAllByText('Mới phát hiện')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Cao')).length).toBeGreaterThan(0);
+    await openFirstException(actor);
     await actor.click(await screen.findByRole('link', { name: 'Mở vòng đời' }));
     // DETECTED → the single legal action is "Log".
     await actor.click(await screen.findByRole('button', { name: 'Ghi log' }));
@@ -121,7 +143,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    await openFirstException(actor);
     expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
   });
 
@@ -132,7 +154,9 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     fake.listExceptions = vi
       .fn()
       .mockResolvedValueOnce({ ...page([live]), totalPages: 2 })
-      .mockRejectedValueOnce(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'scope denied' }));
+      .mockRejectedValueOnce(
+        new ApiError({ status: 403, code: 'FORBIDDEN', message: 'scope denied' }),
+      );
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
@@ -140,6 +164,77 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
 
     expect(await screen.findByText(/không có quyền/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Ghi log' })).toBeNull();
+  });
+
+  it('disables stale exception rows when a filtered refetch fails', async () => {
+    const actor = userEvent.setup();
+    const live = makeCase({ state: 'DETECTED' });
+    const fake = new FakeExceptionRepo(live);
+    fake.listExceptions = vi
+      .fn()
+      .mockResolvedValueOnce(page([live]))
+      .mockRejectedValueOnce(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'filter failed' }),
+      );
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    const staleRow = await findFirstExceptionRowButton();
+    await actor.type(screen.getByLabelText('Loại'), 'CTRL-OTHER');
+
+    await waitFor(() =>
+      expect(fake.listExceptions).toHaveBeenCalledWith(
+        expect.objectContaining({ exceptionType: 'CTRL-OTHER', page: 1 }),
+      ),
+    );
+    await waitFor(() => expect(staleRow.disabled).toBe(true));
+    await actor.click(staleRow);
+    expect(fake.getException).not.toHaveBeenCalled();
+  });
+
+  it('clamps an out-of-range exception page back to the last available page', async () => {
+    const actor = userEvent.setup();
+    const live = makeCase({ state: 'DETECTED' });
+    const fake = new FakeExceptionRepo(live);
+    fake.listExceptions = vi.fn((filter?: ExceptionListFilter) => {
+      if (filter?.page === 2) {
+        return Promise.resolve({ items: [], page: 2, pageSize: 20, totalItems: 1, totalPages: 1 });
+      }
+      return Promise.resolve({ ...page([live]), totalPages: 2 });
+    });
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: 'Tiếp' }));
+
+    await waitFor(() =>
+      expect(fake.listExceptions).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })),
+    );
+    await waitFor(() =>
+      expect(fake.listExceptions).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })),
+    );
+  });
+
+  it('uses non-blank fallback for blank exception assignee, reason and reference fields', async () => {
+    const fake = new FakeExceptionRepo(
+      makeCase({
+        assignedToUserId: ' ',
+        assignedRoleId: 'role-a',
+        reasonCodeId: ' ',
+        referenceType: ' ',
+        referenceId: ' ',
+      }),
+    );
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    expect(
+      await screen.findAllByRole('button', {
+        name: /Mở chi tiết ngoại lệ CTRL-EX-01 cho tham chiếu —, bản ghi e1/i,
+      }),
+    ).toHaveLength(2);
+    expect(screen.getAllByText('role-a').length).toBeGreaterThan(0);
+    expect(screen.getByText('Lý do: —')).toBeTruthy();
   });
 
   it('surfaces a lifecycle-blocked BUSINESS_RULE inline, not as a toast (AC4)', async () => {
@@ -157,7 +252,7 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: 'CTRL-EX-01' }));
+    await openFirstException(actor);
     await actor.click(await screen.findByRole('link', { name: 'Mở vòng đời' }));
     await actor.click(await screen.findByRole('button', { name: 'Xử lý' }));
 
@@ -166,6 +261,22 @@ describe('ExceptionQueuePage (C11 AC3 / AC4 / AC5)', () => {
       'Cần bằng chứng để xử lý loại ngoại lệ này',
     );
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('describes the detail route as route-level read-only, not permission denied', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeExceptionRepo(makeCase({ state: 'LOGGED' }));
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    await openFirstException(actor);
+
+    expect(
+      await screen.findAllByText(
+        'Route xem chi tiết chỉ hiển thị evidence. Mở vòng đời để thao tác.',
+      ),
+    ).toHaveLength(2);
+    expect(screen.queryByText('Chỉ đọc - bạn không có quyền thao tác.')).toBeNull();
   });
 });
 

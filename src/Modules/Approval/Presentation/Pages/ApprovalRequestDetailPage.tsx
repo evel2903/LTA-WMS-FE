@@ -13,6 +13,11 @@ import { useApprovalMutations } from '@modules/Approval/Application/Commands/Use
 import { useApprovalRequestDetail } from '@modules/Approval/Application/Queries/UseApprovalQueries';
 import { ApprovalDecisionBadge } from '@modules/Approval/Presentation/Components/ApprovalDecisionBadge';
 import { ApprovalDetailPanel } from '@modules/Approval/Presentation/Components/ApprovalDetailPanel';
+import {
+  approvalActionLabel,
+  approvalObjectTypeLabel,
+  approvalTargetLabelFromParts,
+} from '@modules/Approval/Presentation/Constants/ApprovalDisplayText';
 
 type ApprovalRequestDetailMode = 'detail' | 'action';
 
@@ -38,26 +43,34 @@ function detailState(params: {
 
 export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPageProps) {
   const { id } = useParams();
+  const approvalId = id ?? null;
   const currentUser = useCurrentUser();
   const [actionError, setActionError] = useState<unknown>(null);
-  const detailQuery = useApprovalRequestDetail(id ?? null);
-  const request = detailQuery.data ?? null;
+  const detailQuery = useApprovalRequestDetail(approvalId);
+  const request = detailQuery.data?.id === approvalId ? detailQuery.data : null;
   const mutations = useApprovalMutations();
   const apiError = detailQuery.error instanceof ApiError ? detailQuery.error : null;
   const isAction = mode === 'action';
   const canMutate = isAction && !apiError?.isForbidden;
+  const detailReadOnlyMessage =
+    'Route xem chi tiết chỉ hiển thị evidence. Mở quyết định để thao tác.';
   const pending = mutations.approve.isPending || mutations.reject.isPending;
   const runOptions = { onError: setActionError, onSuccess: () => setActionError(null) };
   const state = detailState({
-    id,
-    isLoading: detailQuery.isLoading,
+    id: approvalId ?? undefined,
+    isLoading:
+      detailQuery.isLoading || (detailQuery.isFetching && Boolean(detailQuery.data) && !request),
     error: detailQuery.error,
     hasRequest: Boolean(request),
   });
 
   return (
     <DetailPageShell
-      title={request ? `${request.action} · ${request.targetObjectType}` : 'Yêu cầu phê duyệt'}
+      title={
+        request
+          ? `${approvalActionLabel(request.action)} · ${approvalObjectTypeLabel(request.targetObjectType)}`
+          : 'Yêu cầu phê duyệt'
+      }
       subtitle="Rà soát ngữ cảnh quyết định trước khi phê duyệt hoặc từ chối trên route action."
       backTo={ROUTES.FOUNDATION.APPROVALS}
       backLabel="Quay lại hàng đợi phê duyệt"
@@ -66,7 +79,14 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
         request ? (
           <>
             <span>Người yêu cầu: {request.requesterUserId}</span>
-            <span>Đối tượng đích: {request.targetObjectCode ?? request.targetObjectId}</span>
+            <span>
+              Đối tượng đích:{' '}
+              {approvalTargetLabelFromParts(
+                request.targetObjectType,
+                request.targetObjectCode,
+                request.targetObjectId,
+              )}
+            </span>
           </>
         ) : null
       }
@@ -86,6 +106,7 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
       state={state}
       stateTitle={state === 'forbidden' ? 'Không có quyền' : undefined}
       stateMessage={apiError?.message ?? 'Không thể tải yêu cầu phê duyệt.'}
+      contentAriaLabel="Chi tiết yêu cầu phê duyệt"
     >
       {request ? (
         <ActionPanel
@@ -93,6 +114,7 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
           description="Phê duyệt/từ chối giữ nguyên quyền backend, kiểm soát tự duyệt và audit hiện có."
           state={pending ? 'pending' : 'idle'}
           governanceState={canMutate ? undefined : 'readOnly'}
+          governanceMessage={!isAction ? detailReadOnlyMessage : undefined}
         >
           <ApprovalDetailPanel
             key={request.id}
@@ -101,6 +123,7 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
             isSelfRequester={Boolean(currentUser) && request.requesterUserId === currentUser?.id}
             pending={pending}
             blocked={blockedMessage(actionError) ?? undefined}
+            readOnlyMessage={!isAction ? detailReadOnlyMessage : undefined}
             onApprove={(input) => mutations.approve.mutate({ id: request.id, input }, runOptions)}
             onReject={(input) => mutations.reject.mutate({ id: request.id, input }, runOptions)}
           />

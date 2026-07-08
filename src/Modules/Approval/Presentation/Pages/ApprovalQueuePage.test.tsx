@@ -10,7 +10,10 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IApprovalRepository } from '@modules/Approval/Application/Interfaces/IApprovalRepository';
 import type { ApprovalRequest } from '@modules/Approval/Domain/Entities/Approval';
-import type { DecideApprovalInput } from '@modules/Approval/Domain/Types/ApprovalTypes';
+import type {
+  ApprovalFilter,
+  DecideApprovalInput,
+} from '@modules/Approval/Domain/Types/ApprovalTypes';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IApprovalRepository }));
 vi.mock('@modules/Approval/Infrastructure/Repositories/ApprovalRepositoryInstance', () => ({
@@ -91,7 +94,7 @@ class FakeApprovalRepo implements Partial<IApprovalRepository> {
   });
 }
 
-function renderPage(initialPath = ROUTES.FOUNDATION.APPROVALS) {
+function renderPage(initialPath: string = ROUTES.FOUNDATION.APPROVALS) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -123,13 +126,29 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('ApprovalQueuePage (C15)', () => {
+  async function findFirstApprovalRowButton(): Promise<HTMLButtonElement> {
+    const buttons = await screen.findAllByRole('button', {
+      name: /Mở chi tiết yêu cầu phê duyệt Hồ sơ kho · WP-MAIN/i,
+    });
+    return buttons[0] as HTMLButtonElement;
+  }
+
+  async function openFirstApproval(actor: ReturnType<typeof userEvent.setup>) {
+    await actor.click(await findFirstApprovalRowButton());
+  }
+
   it('approves a PENDING request and re-reads APPROVED (AC5)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeApprovalRepo(makeRequest());
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    expect(await screen.findByLabelText('Bộ lọc hàng đợi phê duyệt')).toBeTruthy();
+    expect(screen.getByLabelText('Danh sách hàng đợi phê duyệt')).toBeTruthy();
+    expect((await screen.findAllByText('Hồ sơ kho · WP-MAIN')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Ghi đè')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Chờ duyệt')).length).toBeGreaterThan(0);
+    await openFirstApproval(actor);
     await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
     await actor.click(await screen.findByRole('button', { name: 'Phê duyệt' }));
 
@@ -150,7 +169,7 @@ describe('ApprovalQueuePage (C15)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await openFirstApproval(actor);
     await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
     await actor.click(await screen.findByRole('button', { name: 'Từ chối' }));
 
@@ -161,6 +180,81 @@ describe('ApprovalQueuePage (C15)', () => {
     expect(screen.getByRole('button', { name: 'Phê duyệt' })).toBeTruthy();
   });
 
+  it('disables stale approval rows when a filtered refetch fails', async () => {
+    const actor = userEvent.setup();
+    const live = makeRequest();
+    const fake = new FakeApprovalRepo(live);
+    fake.list = vi
+      .fn()
+      .mockResolvedValueOnce(page([live]))
+      .mockRejectedValueOnce(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'filter failed' }),
+      );
+    repo.current = fake;
+    renderPage();
+
+    const staleRow = await findFirstApprovalRowButton();
+    await actor.type(screen.getByLabelText('ID người yêu cầu'), 'u2');
+
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenCalledWith(
+        expect.objectContaining({ requesterUserId: 'u2', page: 1 }),
+      ),
+    );
+    await waitFor(() => expect(staleRow.disabled).toBe(true));
+    await actor.click(staleRow);
+    expect(fake.getById).not.toHaveBeenCalled();
+  });
+
+  it('clamps an out-of-range approval page back to the last available page', async () => {
+    const actor = userEvent.setup();
+    const live = makeRequest();
+    const fake = new FakeApprovalRepo(live);
+    fake.list = vi.fn((filter?: ApprovalFilter) => {
+      if (filter?.page === 2) {
+        return Promise.resolve({ items: [], page: 2, pageSize: 20, totalItems: 1, totalPages: 1 });
+      }
+      return Promise.resolve({ ...page([live]), totalPages: 2 });
+    });
+    repo.current = fake;
+    renderPage();
+
+    await actor.click(await screen.findByRole('button', { name: 'Tiếp' }));
+
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })),
+    );
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })),
+    );
+  });
+
+  it('falls back to target id and preserves approval notes as evidence text', async () => {
+    const fake = new FakeApprovalRepo(
+      makeRequest({
+        targetObjectCode: ' ',
+        requestReasonNote: 'approved by warehouse lead',
+      }),
+    );
+    repo.current = fake;
+    renderPage();
+
+    expect((await screen.findAllByText('Hồ sơ kho · wp-1')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('approved by warehouse lead').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Đã phê duyệt bởi warehouse lead')).toBeNull();
+  });
+
+  it('does not render or mutate stale approval detail data when route id changes', async () => {
+    const fake = new FakeApprovalRepo(makeRequest({ id: 'ar-old' }));
+    fake.getById = vi.fn(() => Promise.resolve(makeRequest({ id: 'ar-old' })));
+    repo.current = fake;
+    renderPage(ROUTES.FOUNDATION.APPROVAL_ACTION('ar-new'));
+
+    expect(await screen.findByText('Không tìm thấy bản ghi')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Phê duyệt' })).toBeNull();
+    expect(fake.getById).toHaveBeenCalledWith('ar-new');
+  });
+
   it('blocks self-decide when the reviewer is the requester (AC4)', async () => {
     const actor = userEvent.setup();
     currentUser.current = { id: 'u-req' }; // same as requesterUserId
@@ -168,7 +262,7 @@ describe('ApprovalQueuePage (C15)', () => {
     repo.current = fake;
     renderPage();
 
-    await actor.click(await screen.findByRole('button', { name: /WarehouseProfile · WP-MAIN/ }));
+    await openFirstApproval(actor);
     await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
 
     // Scope to the unique panel suffix — the page header also mentions self-approval.
@@ -177,9 +271,27 @@ describe('ApprovalQueuePage (C15)', () => {
     expect(screen.queryByRole('button', { name: 'Phê duyệt' })).toBeNull();
   });
 
+  it('describes the detail route as route-level read-only, not permission denied', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeApprovalRepo(makeRequest());
+    repo.current = fake;
+    renderPage();
+
+    await openFirstApproval(actor);
+
+    expect(
+      await screen.findAllByText(
+        'Route xem chi tiết chỉ hiển thị evidence. Mở quyết định để thao tác.',
+      ),
+    ).toHaveLength(2);
+    expect(screen.queryByText('Chỉ đọc - bạn không có quyền duyệt.')).toBeNull();
+  });
+
   it('shows a permission-denied state when the list 403s (AC4)', async () => {
     const fake = new FakeApprovalRepo(makeRequest());
-    fake.list = vi.fn(() => Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'no' })));
+    fake.list = vi.fn(() =>
+      Promise.reject(new ApiError({ status: 403, code: 'FORBIDDEN', message: 'no' })),
+    );
     repo.current = fake;
     renderPage();
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -14,13 +14,17 @@ import { useApprovalStore } from '@modules/Approval/Application/Stores/ApprovalS
 import {
   ACTION_CODES,
   APPROVAL_DECISIONS,
-  APPROVAL_DECISION_LABELS,
   OBJECT_TYPES,
   type ActionCode,
   type ApprovalDecision,
   type ObjectType,
 } from '@modules/Approval/Domain/Enums/ApprovalEnums';
 import { ApprovalRequestTable } from '@modules/Approval/Presentation/Components/ApprovalRequestTable';
+import {
+  approvalActionLabel,
+  approvalDecisionLabel,
+  approvalObjectTypeLabel,
+} from '@modules/Approval/Presentation/Constants/ApprovalDisplayText';
 
 interface Filters {
   decision: ApprovalDecision | '';
@@ -51,6 +55,17 @@ export function ApprovalQueuePage() {
 
   const debouncedRequester = useDebouncedValue(filters.requesterUserId, 300);
   const debouncedTargetId = useDebouncedValue(filters.targetObjectId, 300);
+  const settledFilters = {
+    decision: filters.decision,
+    action: filters.action,
+    targetObjectType: filters.targetObjectType,
+    requesterUserId: debouncedRequester,
+    targetObjectId: debouncedTargetId,
+  };
+  const isFilterSettled =
+    debouncedRequester === filters.requesterUserId && debouncedTargetId === filters.targetObjectId;
+  const requestKey = JSON.stringify({ filters: settledFilters, page });
+  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useApprovalRequests({
     page,
     decision: filters.decision || undefined,
@@ -68,15 +83,42 @@ export function ApprovalQueuePage() {
     isLoading: query.isLoading,
     itemCount: items.length,
   });
-  const boundaryState = listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
+  const boundaryState =
+    listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
+  const hasCurrentData =
+    Boolean(query.data) && !query.error && !query.isPlaceholderData && query.data?.page === page;
+  const canOpenRows =
+    isFilterSettled && !query.isFetching && (activeDataKey === requestKey || hasCurrentData);
+
+  useEffect(() => {
+    if (query.data && !query.error && !query.isPlaceholderData) {
+      setActiveDataKey(requestKey);
+    }
+  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+
+  useEffect(() => {
+    if (!query.data || query.error || query.isPlaceholderData || query.data.page !== page) return;
+
+    const totalPages = query.data.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    } else if (totalPages === 0 && page > 1) {
+      setPage(1);
+    }
+  }, [page, query.data, query.error, query.isPlaceholderData]);
 
   return (
     <ListPageShell
       title="Hàng đợi phê duyệt"
       description="Quét yêu cầu phê duyệt trước khi mở ngữ cảnh quyết định trên route chi tiết/action riêng."
+      filtersAriaLabel="Bộ lọc hàng đợi phê duyệt"
+      contentAriaLabel="Danh sách hàng đợi phê duyệt"
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">Quyết định<select
+          <label className="grid gap-1 text-sm">
+            Quyết định
+            <select
+              name="decision"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.decision}
               onChange={(e) => patch({ decision: e.target.value as ApprovalDecision | '' })}
@@ -84,12 +126,15 @@ export function ApprovalQueuePage() {
               <option value="">Tất cả</option>
               {APPROVAL_DECISIONS.map((decision) => (
                 <option key={decision} value={decision}>
-                  {APPROVAL_DECISION_LABELS[decision]}
+                  {approvalDecisionLabel(decision)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Loại<select
+          <label className="grid gap-1 text-sm">
+            Loại
+            <select
+              name="targetObjectType"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.targetObjectType}
               onChange={(e) => patch({ targetObjectType: e.target.value as ObjectType | '' })}
@@ -97,12 +142,15 @@ export function ApprovalQueuePage() {
               <option value="">Tất cả</option>
               {OBJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {approvalObjectTypeLabel(type)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Hành động<select
+          <label className="grid gap-1 text-sm">
+            Hành động
+            <select
+              name="action"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.action}
               onChange={(e) => patch({ action: e.target.value as ActionCode | '' })}
@@ -110,17 +158,23 @@ export function ApprovalQueuePage() {
               <option value="">Tất cả</option>
               {ACTION_CODES.map((action) => (
                 <option key={action} value={action}>
-                  {action}
+                  {approvalActionLabel(action)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">ID người yêu cầu<Input
+          <label className="grid gap-1 text-sm">
+            ID người yêu cầu
+            <Input
+              name="requesterUserId"
               value={filters.requesterUserId}
               onChange={(e) => patch({ requesterUserId: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">ID đối tượng đích<Input
+          <label className="grid gap-1 text-sm">
+            ID đối tượng đích
+            <Input
+              name="targetObjectId"
               value={filters.targetObjectId}
               onChange={(e) => patch({ targetObjectId: e.target.value })}
             />
@@ -135,29 +189,36 @@ export function ApprovalQueuePage() {
           : (listApiError?.message ?? 'Không thể tải yêu cầu phê duyệt.')
       }
       pagination={
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">
-            Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >Trước</Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= (meta?.totalPages ?? 1)}
-            onClick={() => setPage((value) => value + 1)}
-          >Tiếp</Button>
-        </div>
+        listState === 'ready' ? (
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-muted-foreground">
+              Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+            >
+              Trước
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= (meta?.totalPages ?? 1)}
+              onClick={() => setPage((value) => value + 1)}
+            >
+              Tiếp
+            </Button>
+          </div>
+        ) : null
       }
     >
       <ListRefetchWarning error={query.error} hasData={items.length > 0} />
       <ApprovalRequestTable
         items={items}
         selectedId={store.selectedRequestId}
+        isSelectionDisabled={!canOpenRows}
         onSelect={(item) => {
           store.setSelectedRequestId(item.id);
           void navigate(ROUTES.FOUNDATION.APPROVAL_DETAIL(item.id));

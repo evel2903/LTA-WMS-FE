@@ -9,12 +9,21 @@ import type {
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { ExceptionStateBadge } from '@modules/Compliance/Presentation/Components/ExceptionStateBadge';
 import { ExceptionActionForm } from '@modules/Compliance/Presentation/Forms/ExceptionActionForm';
+import {
+  businessReferenceLabel,
+  exceptionActionLabel,
+  exceptionOutcomeLabel,
+  exceptionSeverityLabel,
+  exceptionSubStatusLabel,
+  firstNonBlankText,
+} from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 interface ExceptionDetailPanelProps {
   exceptionCase: ExceptionCase;
   canManage: boolean;
   pending: boolean;
   blocked?: string;
+  readOnlyMessage?: string;
   onLog: (input: LogExceptionInput) => void;
   onAssign: (input: AssignExceptionInput) => void;
   onSubmit: (input: SubmitExceptionInput) => void;
@@ -23,10 +32,12 @@ interface ExceptionDetailPanelProps {
 }
 
 function Field({ label, value }: { label: string; value: string | null }) {
+  const displayValue = value?.trim() || '—';
+
   return (
     <div className="grid gap-0.5">
       <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="text-sm break-words">{value ?? '—'}</span>
+      <span className="text-sm break-words">{displayValue}</span>
     </div>
   );
 }
@@ -36,6 +47,7 @@ export function ExceptionDetailPanel({
   canManage,
   pending,
   blocked,
+  readOnlyMessage,
   onLog,
   onAssign,
   onSubmit,
@@ -53,31 +65,46 @@ export function ExceptionDetailPanel({
         {!canManage && <span className="text-muted-foreground text-xs">Chỉ đọc</span>}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Mức độ" value={exceptionCase.severity} />
-        <Field label="Trạng thái phụ" value={exceptionCase.subStatus} />
-        <Field label="Tham chiếu đối tượng" value={`${exceptionCase.referenceType} · ${exceptionCase.referenceId}`} />
-        <Field label="Người được gán" value={exceptionCase.assignedToUserId ?? exceptionCase.assignedRoleId} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Mức độ" value={exceptionSeverityLabel(exceptionCase.severity)} />
+        <Field label="Trạng thái phụ" value={exceptionSubStatusLabel(exceptionCase.subStatus)} />
+        <Field
+          label="Tham chiếu đối tượng"
+          value={businessReferenceLabel(exceptionCase.referenceType, exceptionCase.referenceId)}
+        />
+        <Field
+          label="Người được gán"
+          value={firstNonBlankText(exceptionCase.assignedToUserId, exceptionCase.assignedRoleId)}
+        />
         <Field label="ID mã lý do" value={exceptionCase.reasonCodeId} />
-        <Field label="Bằng chứng" value={evidenceCount > 0 ? `${evidenceCount} tham chiếu` : 'không có'} />
+        <Field
+          label="Bằng chứng"
+          value={evidenceCount > 0 ? `${evidenceCount} tham chiếu` : 'Chưa có'}
+        />
         <Field label="ID yêu cầu phê duyệt" value={exceptionCase.approvalRequestId} />
-        <Field label="Kết quả xử lý" value={exceptionCase.outcome} />
+        <Field label="Kết quả xử lý" value={exceptionOutcomeLabel(exceptionCase.outcome)} />
         <Field label="Mở lúc" value={new Date(exceptionCase.openedAt).toLocaleString()} />
         <Field
           label="Xử lý lúc"
-          value={exceptionCase.resolvedAt ? new Date(exceptionCase.resolvedAt).toLocaleString() : null}
+          value={
+            exceptionCase.resolvedAt ? new Date(exceptionCase.resolvedAt).toLocaleString() : null
+          }
         />
       </div>
 
       <div className="border-t pt-3">
-        <h4 className="mb-2 text-sm font-medium">Hành động vòng đời</h4>
+        <h4 className="mb-2 text-sm font-medium">
+          Hành động vòng đời{action ? `: ${exceptionActionLabel(action)}` : ''}
+        </h4>
         {action === null ? (
           <Alert variant="info" role="status">
             <AlertDescription>Đã đóng - không còn hành động.</AlertDescription>
           </Alert>
         ) : !canManage ? (
           <Alert variant="warning" role="status">
-            <AlertDescription>Chỉ đọc - bạn không có quyền thao tác.</AlertDescription>
+            <AlertDescription>
+              {readOnlyMessage ?? 'Chỉ đọc - bạn không có quyền thao tác.'}
+            </AlertDescription>
           </Alert>
         ) : (
           <ExceptionActionForm

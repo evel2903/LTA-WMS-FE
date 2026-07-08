@@ -58,6 +58,23 @@ const entry: AuditLogEntry = {
   result: 'SUCCESS',
 };
 
+const auditOccurredAt = new Date(entry.occurredAt).toLocaleString();
+const auditRowButtonName = /Mở chi tiết nhật ký kiểm toán Cập nhật Ngoại lệ kiểm soát · EXC-1/i;
+
+async function findAuditRowButton(): Promise<HTMLButtonElement> {
+  return (
+    await screen.findAllByRole('button', { name: auditRowButtonName })
+  )[0] as HTMLButtonElement;
+}
+
+function getAuditRowButton(): HTMLButtonElement {
+  return screen.getAllByRole('button', { name: auditRowButtonName })[0] as HTMLButtonElement;
+}
+
+async function expectAuditRowVisible() {
+  expect((await screen.findAllByText(auditOccurredAt)).length).toBeGreaterThan(0);
+}
+
 class FakeRepository implements Partial<IComplianceRepository> {
   listAuditLogs = vi.fn(() => Promise.resolve(page([entry])));
   getAuditLog = vi.fn((id: string) => Promise.resolve({ ...entry, id }));
@@ -89,11 +106,19 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
-    expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 }));
+    await expectAuditRowVisible();
+    expect(screen.getByLabelText('Bộ lọc nhật ký kiểm toán')).toBeTruthy();
+    expect(screen.getByLabelText('Danh sách nhật ký kiểm toán')).toBeTruthy();
+    expect(fake.listAuditLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 50 }),
+    );
     expect(screen.queryByText('Trước thay đổi')).toBeNull();
+    expect(screen.getAllByText('Cập nhật').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Ngoại lệ kiểm soát · EXC-1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Thành công').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /bản ghi a1/i })).toHaveLength(2);
 
-    await actor.click(screen.getByRole('button', { name: new Date(entry.occurredAt).toLocaleString() }));
+    await actor.click(await findAuditRowButton());
 
     expect(await screen.findByText('Trước thay đổi')).toBeTruthy();
     expect(screen.getByText('Sau thay đổi')).toBeTruthy();
@@ -102,7 +127,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     expect(fake.getAuditLog).toHaveBeenCalledWith('a1');
 
     expect(
-      screen.queryByRole('button', { name: /create|new|edit|delete|save|update|approve|reject|override/i }),
+      screen.queryByRole('button', {
+        name: /create|new|edit|delete|save|update|approve|reject|override/i,
+      }),
     ).toBeNull();
   });
 
@@ -122,7 +149,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage(ROUTES.FOUNDATION.AUDIT_DETAIL('audit/a?#1'));
 
-    expect(await screen.findByText('audit/a?#1')).toBeTruthy();
+    expect((await screen.findAllByText(/audit\/a\?#1/)).length).toBeGreaterThan(0);
     expect(fake.getAuditLog).toHaveBeenCalledWith('audit/a?#1');
   });
 
@@ -132,7 +159,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage(ROUTES.FOUNDATION.AUDIT_DETAIL('audit%23id'));
 
-    expect(await screen.findByText('audit%23id')).toBeTruthy();
+    expect((await screen.findAllByText(/audit%23id/)).length).toBeGreaterThan(0);
     expect(fake.getAuditLog).toHaveBeenCalledWith('audit%23id');
   });
 
@@ -143,14 +170,14 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage(`${ROUTES.FOUNDATION.AUDIT}?actorUserId=u1&reasonCodeId=rc-1&page=2`);
 
-    await screen.findByText(new Date(entry.occurredAt).toLocaleString());
+    await expectAuditRowVisible();
     await waitFor(() =>
       expect(fake.listAuditLogs).toHaveBeenCalledWith(
         expect.objectContaining({ page: 2, pageSize: 50, actorUserId: 'u1', reasonCodeId: 'rc-1' }),
       ),
     );
 
-    await actor.click(screen.getByRole('button', { name: new Date(entry.occurredAt).toLocaleString() }));
+    await actor.click(await findAuditRowButton());
 
     const backLink = await screen.findByRole('link', { name: /quay lại nhật ký kiểm toán/i });
     expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
@@ -164,11 +191,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    const rowButton = await screen.findByRole('button', {
-      name: new Date(entry.occurredAt).toLocaleString(),
-    });
+    const rowButton = await findAuditRowButton();
     await actor.type(screen.getByLabelText('ID người thực hiện'), 'u2');
-    expect((rowButton as HTMLButtonElement).disabled).toBe(true);
+    expect(rowButton.disabled).toBe(true);
     await actor.click(rowButton);
     expect(fake.getAuditLog).not.toHaveBeenCalled();
 
@@ -177,11 +202,13 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
         expect.objectContaining({ actorUserId: 'u2', page: 1, pageSize: 50 }),
       ),
     );
-    await waitFor(() => expect((rowButton as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(rowButton.disabled).toBe(false));
     await actor.click(rowButton);
 
     const backLink = await screen.findByRole('link', { name: /quay lại nhật ký kiểm toán/i });
-    expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe('/foundation/audit?actorUserId=u2');
+    expect((backLink as HTMLAnchorElement).getAttribute('href')).toBe(
+      '/foundation/audit?actorUserId=u2',
+    );
   });
 
   it('keeps preserved audit rows disabled when a filtered refetch fails', async () => {
@@ -196,7 +223,7 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    expect(await screen.findByRole('button', { name: new Date(entry.occurredAt).toLocaleString() })).toBeTruthy();
+    expect(await findAuditRowButton()).toBeTruthy();
     await actor.type(screen.getByLabelText('ID người thực hiện'), 'u2');
 
     await waitFor(() =>
@@ -204,18 +231,38 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
         expect.objectContaining({ actorUserId: 'u2', page: 1, pageSize: 50 }),
       ),
     );
-    const staleRow = screen.getByRole('button', { name: new Date(entry.occurredAt).toLocaleString() });
-    expect((staleRow as HTMLButtonElement).disabled).toBe(true);
+    const staleRow = getAuditRowButton();
+    expect(staleRow.disabled).toBe(true);
     await actor.click(staleRow);
     expect(fake.getAuditLog).not.toHaveBeenCalled();
     expect(screen.getByRole('status')).toBeTruthy();
+  });
+
+  it('falls back to object id when the audit object code is blank', async () => {
+    const fake = new FakeRepository();
+    fake.listAuditLogs = vi.fn(() => Promise.resolve(page([{ ...entry, objectCode: ' ' }])));
+    repo.current = fake as unknown as IComplianceRepository;
+    renderPage();
+
+    expect(
+      await screen.findAllByRole('button', {
+        name: /Mở chi tiết nhật ký kiểm toán Cập nhật Ngoại lệ kiểm soát · e1/i,
+      }),
+    ).toHaveLength(2);
+    expect(screen.getAllByText('Ngoại lệ kiểm soát · e1')).toHaveLength(2);
   });
 
   it('clamps an out-of-range audit page back to the last available page', async () => {
     const fake = new FakeRepository();
     fake.listAuditLogs = vi.fn((filter?: AuditLogFilter) => {
       if (filter?.page === 999) {
-        return Promise.resolve({ items: [], page: 999, pageSize: 50, totalItems: 1, totalPages: 2 });
+        return Promise.resolve({
+          items: [],
+          page: 999,
+          pageSize: 50,
+          totalItems: 1,
+          totalPages: 2,
+        });
       }
       return Promise.resolve({ ...page([entry]), page: 2, totalPages: 2 });
     });
@@ -223,9 +270,11 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage(`${ROUTES.FOUNDATION.AUDIT}?page=999`);
 
     await waitFor(() =>
-      expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
+      expect(fake.listAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 2, pageSize: 50 }),
+      ),
     );
-    expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
+    await expectAuditRowVisible();
     expect(screen.getByText('Trang 2 / 2')).toBeTruthy();
   });
 
@@ -237,7 +286,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     );
 
     await waitFor(() =>
-      expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
+      expect(fake.listAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, pageSize: 50 }),
+      ),
     );
     expect(fake.listAuditLogs).toHaveBeenCalledWith(
       expect.not.objectContaining({
@@ -255,7 +306,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage(`${ROUTES.FOUNDATION.AUDIT}?from=2026-06-25&to=2026-06-24`);
 
     await waitFor(() =>
-      expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
+      expect(fake.listAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, pageSize: 50 }),
+      ),
     );
     expect(fake.listAuditLogs).toHaveBeenCalledWith(
       expect.not.objectContaining({
@@ -269,7 +322,13 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     const fake = new FakeRepository();
     fake.listAuditLogs = vi.fn((filter?: AuditLogFilter) => {
       if (filter?.page === 999) {
-        return Promise.resolve({ items: [], page: 999, pageSize: 50, totalItems: 0, totalPages: 0 });
+        return Promise.resolve({
+          items: [],
+          page: 999,
+          pageSize: 50,
+          totalItems: 0,
+          totalPages: 0,
+        });
       }
       return Promise.resolve({ items: [], page: 1, pageSize: 50, totalItems: 0, totalPages: 0 });
     });
@@ -277,7 +336,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     renderPage(`${ROUTES.FOUNDATION.AUDIT}?page=999`);
 
     await waitFor(() =>
-      expect(fake.listAuditLogs).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
+      expect(fake.listAuditLogs).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, pageSize: 50 }),
+      ),
     );
     expect(await screen.findByText('Không có sự kiện kiểm toán khớp bộ lọc.')).toBeTruthy();
   });
@@ -330,11 +391,11 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
 
-    expect(await screen.findByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
+    await expectAuditRowVisible();
     await actor.click(screen.getByRole('button', { name: 'Tiếp' }));
 
     await waitFor(() => expect(fake.listAuditLogs).toHaveBeenCalledTimes(2));
-    expect(screen.getByText(new Date(entry.occurredAt).toLocaleString())).toBeTruthy();
+    expect(screen.getAllByText(auditOccurredAt).length).toBeGreaterThan(0);
     expect(screen.getByRole('status')).toBeTruthy();
     expect(screen.queryByText('Audit refetch failed')).toBeNull();
   });
@@ -342,7 +403,9 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
   it('keeps an initial non-403 list error blocking when no rows have loaded', async () => {
     const fake = new FakeRepository();
     fake.listAuditLogs = vi.fn(() =>
-      Promise.reject(new ApiError({ status: 500, code: 'UNKNOWN', message: 'Initial audit failed' })),
+      Promise.reject(
+        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Initial audit failed' }),
+      ),
     );
     repo.current = fake as unknown as IComplianceRepository;
     renderPage();
@@ -355,7 +418,11 @@ describe('AuditLogPage (C11 AC1 / AC2)', () => {
     const fake = new FakeRepository();
     fake.getAuditLog = vi.fn(() =>
       Promise.reject(
-        new ApiError({ status: 500, code: 'UNKNOWN', message: 'Audit detail temporarily unavailable' }),
+        new ApiError({
+          status: 500,
+          code: 'UNKNOWN',
+          message: 'Audit detail temporarily unavailable',
+        }),
       ),
     );
     repo.current = fake as unknown as IComplianceRepository;

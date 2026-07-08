@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -13,12 +13,15 @@ import { useExceptions } from '@modules/Compliance/Application/Queries/UseCompli
 import { useComplianceStore } from '@modules/Compliance/Application/Stores/ComplianceStore';
 import {
   EXCEPTION_STATES,
-  EXCEPTION_STATE_LABELS,
   SEVERITIES,
   type ControlExceptionSeverity,
   type ExceptionState,
 } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
 import { ExceptionTable } from '@modules/Compliance/Presentation/Components/ExceptionTable';
+import {
+  exceptionSeverityLabel,
+  exceptionStateLabel,
+} from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 interface ExceptionFilters {
   state: ExceptionState | '';
@@ -52,6 +55,9 @@ export function ExceptionQueuePage() {
   };
 
   const debounced = useDebouncedValue(filters, 300);
+  const isFilterSettled = debounced === filters;
+  const requestKey = JSON.stringify({ filters: debounced, page });
+  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useExceptions({
     page,
     state: debounced.state || undefined,
@@ -71,14 +77,42 @@ export function ExceptionQueuePage() {
     isLoading: query.isLoading,
     itemCount: cases.length,
   });
-  const boundaryState = listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
+  const boundaryState =
+    listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
+  const hasCurrentData =
+    Boolean(query.data) && !query.error && !query.isPlaceholderData && query.data?.page === page;
+  const canOpenRows =
+    isFilterSettled && !query.isFetching && (activeDataKey === requestKey || hasCurrentData);
+
+  useEffect(() => {
+    if (query.data && !query.error && !query.isPlaceholderData) {
+      setActiveDataKey(requestKey);
+    }
+  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+
+  useEffect(() => {
+    if (!query.data || query.error || query.isPlaceholderData || query.data.page !== page) return;
+
+    const totalPages = query.data.totalPages ?? 0;
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    } else if (totalPages === 0 && page > 1) {
+      setPage(1);
+    }
+  }, [page, query.data, query.error, query.isPlaceholderData]);
+
   return (
     <ListPageShell
       title="Hàng đợi ngoại lệ"
       description="Quét các ngoại lệ trước khi mở ngữ cảnh vòng đời trên route chi tiết/action riêng."
+      filtersAriaLabel="Bộ lọc hàng đợi ngoại lệ"
+      contentAriaLabel="Danh sách hàng đợi ngoại lệ"
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">Trạng thái<select
+          <label className="grid gap-1 text-sm">
+            Trạng thái
+            <select
+              name="state"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.state}
               onChange={(e) => patch({ state: e.target.value as ExceptionState | '' })}
@@ -86,12 +120,15 @@ export function ExceptionQueuePage() {
               <option value="">Tất cả</option>
               {EXCEPTION_STATES.map((state) => (
                 <option key={state} value={state}>
-                  {EXCEPTION_STATE_LABELS[state]}
+                  {exceptionStateLabel(state)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Mức độ<select
+          <label className="grid gap-1 text-sm">
+            Mức độ
+            <select
+              name="severity"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.severity}
               onChange={(e) => patch({ severity: e.target.value as ControlExceptionSeverity | '' })}
@@ -99,19 +136,34 @@ export function ExceptionQueuePage() {
               <option value="">Tất cả</option>
               {SEVERITIES.map((severity) => (
                 <option key={severity} value={severity}>
-                  {severity}
+                  {exceptionSeverityLabel(severity)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Loại<Input value={filters.exceptionType} onChange={(e) => patch({ exceptionType: e.target.value })} />
+          <label className="grid gap-1 text-sm">
+            Loại
+            <Input
+              name="exceptionType"
+              value={filters.exceptionType}
+              onChange={(e) => patch({ exceptionType: e.target.value })}
+            />
           </label>
-          <label className="grid gap-1 text-sm">Được gán cho<Input
+          <label className="grid gap-1 text-sm">
+            Được gán cho
+            <Input
+              name="assignedToUserId"
               value={filters.assignedToUserId}
               onChange={(e) => patch({ assignedToUserId: e.target.value })}
             />
           </label>
-          <label className="grid gap-1 text-sm">ID tham chiếu<Input value={filters.referenceId} onChange={(e) => patch({ referenceId: e.target.value })} />
+          <label className="grid gap-1 text-sm">
+            ID tham chiếu
+            <Input
+              name="referenceId"
+              value={filters.referenceId}
+              onChange={(e) => patch({ referenceId: e.target.value })}
+            />
           </label>
         </div>
       }
@@ -123,29 +175,36 @@ export function ExceptionQueuePage() {
           : (listApiError?.message ?? 'Không thể tải ngoại lệ.')
       }
       pagination={
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">
-            Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          >Trước</Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= (meta?.totalPages ?? 1)}
-            onClick={() => setPage((value) => value + 1)}
-          >Tiếp</Button>
-        </div>
+        listState === 'ready' ? (
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-muted-foreground">
+              Trang {meta?.page ?? 1} / {meta?.totalPages ?? 1}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+            >
+              Trước
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= (meta?.totalPages ?? 1)}
+              onClick={() => setPage((value) => value + 1)}
+            >
+              Tiếp
+            </Button>
+          </div>
+        ) : null
       }
     >
       <ListRefetchWarning error={query.error} hasData={cases.length > 0} />
       <ExceptionTable
         cases={cases}
         selectedId={store.selectedExceptionId}
+        isSelectionDisabled={!canOpenRows}
         onSelect={(item) => {
           store.setSelectedExceptionId(item.id);
           void navigate(ROUTES.FOUNDATION.EXCEPTION_DETAIL(item.id));

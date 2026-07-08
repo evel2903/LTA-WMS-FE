@@ -5,6 +5,11 @@ import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useAuditLogDetail } from '@modules/Compliance/Application/Queries/UseComplianceQueries';
 import { AuditLogDetailPanel } from '@modules/Compliance/Presentation/Components/AuditLogDetailPanel';
+import {
+  auditResultLabel,
+  complianceActionLabel,
+  objectReferenceLabelFromParts,
+} from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 function resolveState(params: {
   id: string | undefined;
@@ -43,7 +48,11 @@ export function AuditLogDetailPage() {
 
   return (
     <DetailPageShell
-      title={entry?.objectCode ?? entry?.objectType ?? 'Chi tiết kiểm toán'}
+      title={
+        entry
+          ? objectReferenceLabelFromParts(entry.objectType, entry.objectCode, entry.objectId)
+          : 'Chi tiết kiểm toán'
+      }
       subtitle="Chi tiết sự kiện kiểm toán chỉ đọc với snapshot trước/sau."
       backTo={routeState?.returnTo ?? ROUTES.FOUNDATION.AUDIT}
       backLabel="Quay lại nhật ký kiểm toán"
@@ -71,12 +80,13 @@ export function AuditLogDetailPage() {
       summary={
         entry ? (
           <>
-            <span>{entry.action}</span>
-            <span>{entry.result}</span>
+            <span>{complianceActionLabel(entry.action)}</span>
+            <span>{auditResultLabel(entry.result)}</span>
             <span>{new Date(entry.occurredAt).toLocaleString()}</span>
           </>
         ) : null
       }
+      contentAriaLabel="Chi tiết nhật ký kiểm toán"
     >
       {entry ? <AuditLogDetailPanel entry={entry} /> : null}
     </DetailPageShell>
