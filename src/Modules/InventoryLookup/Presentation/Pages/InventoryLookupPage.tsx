@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pencil, RefreshCw } from 'lucide-react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -198,13 +198,13 @@ export function InventoryLookupPage() {
 
   // Review-fix (IFB-16): typing a new search term can narrow `warehouseOptions` below the
   // already-selected warehouse, and LookupSelect's stale-value fallback then shows its raw id
-  // instead of its name. Clearing the selection on every search edit keeps the dropdown always
-  // showing a real, human-readable choice -- the user just re-picks from the fresh list.
-  function handleWarehouseSearchChange(value: string) {
-    setWarehouseSearch(value);
+  // instead of its name. Clearing the selection once the DEBOUNCED search settles (not on every
+  // keystroke) keeps the dropdown always showing a real, human-readable choice without forcing a
+  // state reset + refetch on every character typed before the debounce even resolves.
+  useEffect(() => {
     setWarehouseId('');
     setPage(1);
-  }
+  }, [debouncedWarehouseSearch]);
 
   function handleSerialFilterChange(value: string) {
     setSerialFilter(value);
@@ -261,7 +261,7 @@ export function InventoryLookupPage() {
             errorMessage="Không tải được danh sách kho."
             onChange={handleWarehouseIdChange}
             searchValue={warehouseSearch}
-            onSearchChange={handleWarehouseSearchChange}
+            onSearchChange={setWarehouseSearch}
             searchPlaceholder="Tìm theo mã/tên kho..."
           />
           <label className="grid gap-1 text-sm">

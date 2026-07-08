@@ -220,7 +220,7 @@ describe('InventoryLookupPage', () => {
     );
   });
 
-  it('clears the selected warehouse when the search text changes afterwards (review-fix)', async () => {
+  it('clears the selected warehouse once the search debounce settles (review-fix)', async () => {
     setSkuOptions();
     setWarehouseOptions();
     lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
@@ -237,7 +237,7 @@ describe('InventoryLookupPage', () => {
 
     await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'H');
 
-    expect(screen.getByLabelText('Kho')).toHaveProperty('value', '');
+    await waitFor(() => expect(screen.getByLabelText('Kho')).toHaveProperty('value', ''));
   });
 
   it('resets warehouse/serial/lot filters when the SKU selection changes', async () => {
