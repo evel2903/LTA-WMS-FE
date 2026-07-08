@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -42,6 +42,8 @@ function detailState(params: {
 export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
   const { id } = useParams();
   const [actionError, setActionError] = useState<unknown>(null);
+  const currentIdRef = useRef(id);
+  currentIdRef.current = id;
   useEffect(() => {
     setActionError(null);
   }, [id]);
@@ -59,7 +61,16 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
     mutations.submitException.isPending ||
     mutations.resolveException.isPending ||
     mutations.closeException.isPending;
-  const runOptions = { onError: setActionError, onSuccess: () => setActionError(null) };
+  // Guard against a late-resolving mutation for a record the user has since navigated
+  // away from setting/clearing actionError on whatever record is now on screen.
+  const runOptionsFor = (targetId: string | undefined) => ({
+    onError: (error: unknown) => {
+      if (currentIdRef.current === targetId) setActionError(error);
+    },
+    onSuccess: () => {
+      if (currentIdRef.current === targetId) setActionError(null);
+    },
+  });
   const state = detailState({
     id,
     isLoading: detailQuery.isLoading,
@@ -119,18 +130,35 @@ export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
             blocked={blockedMessage(actionError) ?? undefined}
             readOnlyMessage={!isAction ? detailReadOnlyMessage : undefined}
             onLog={(input) =>
-              mutations.logException.mutate({ id: exceptionCase.id, input }, runOptions)
+              mutations.logException.mutate(
+                { id: exceptionCase.id, input },
+                runOptionsFor(exceptionCase.id),
+              )
             }
             onAssign={(input) =>
-              mutations.assignException.mutate({ id: exceptionCase.id, input }, runOptions)
+              mutations.assignException.mutate(
+                { id: exceptionCase.id, input },
+                runOptionsFor(exceptionCase.id),
+              )
             }
             onSubmit={(input) =>
-              mutations.submitException.mutate({ id: exceptionCase.id, input }, runOptions)
+              mutations.submitException.mutate(
+                { id: exceptionCase.id, input },
+                runOptionsFor(exceptionCase.id),
+              )
             }
             onResolve={(input) =>
-              mutations.resolveException.mutate({ id: exceptionCase.id, input }, runOptions)
+              mutations.resolveException.mutate(
+                { id: exceptionCase.id, input },
+                runOptionsFor(exceptionCase.id),
+              )
             }
-            onClose={() => mutations.closeException.mutate({ id: exceptionCase.id }, runOptions)}
+            onClose={() =>
+              mutations.closeException.mutate(
+                { id: exceptionCase.id },
+                runOptionsFor(exceptionCase.id),
+              )
+            }
           />
         </ActionPanel>
       ) : null}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -46,6 +46,8 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
   const approvalId = id ?? null;
   const currentUser = useCurrentUser();
   const [actionError, setActionError] = useState<unknown>(null);
+  const currentApprovalIdRef = useRef(approvalId);
+  currentApprovalIdRef.current = approvalId;
   useEffect(() => {
     setActionError(null);
   }, [approvalId]);
@@ -58,7 +60,16 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
   const detailReadOnlyMessage =
     'Route xem chi tiết chỉ hiển thị evidence. Mở quyết định để thao tác.';
   const pending = mutations.approve.isPending || mutations.reject.isPending;
-  const runOptions = { onError: setActionError, onSuccess: () => setActionError(null) };
+  // Guard against a late-resolving mutation for a record the user has since navigated
+  // away from setting/clearing actionError on whatever record is now on screen.
+  const runOptionsFor = (targetId: string | null) => ({
+    onError: (error: unknown) => {
+      if (currentApprovalIdRef.current === targetId) setActionError(error);
+    },
+    onSuccess: () => {
+      if (currentApprovalIdRef.current === targetId) setActionError(null);
+    },
+  });
   const state = detailState({
     id: approvalId ?? undefined,
     isLoading:
@@ -127,8 +138,12 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
             pending={pending}
             blocked={blockedMessage(actionError) ?? undefined}
             readOnlyMessage={!isAction ? detailReadOnlyMessage : undefined}
-            onApprove={(input) => mutations.approve.mutate({ id: request.id, input }, runOptions)}
-            onReject={(input) => mutations.reject.mutate({ id: request.id, input }, runOptions)}
+            onApprove={(input) =>
+              mutations.approve.mutate({ id: request.id, input }, runOptionsFor(request.id))
+            }
+            onReject={(input) =>
+              mutations.reject.mutate({ id: request.id, input }, runOptionsFor(request.id))
+            }
           />
         </ActionPanel>
       ) : null}
