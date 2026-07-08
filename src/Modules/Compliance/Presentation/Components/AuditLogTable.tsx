@@ -64,7 +64,7 @@ export function AuditLogTable({
                     <button
                       type="button"
                       aria-label={`Mở chi tiết nhật ký kiểm toán ${actionLabel} ${objectLabel} lúc ${occurredAt}, bản ghi ${entry.id}`}
-                      aria-pressed={isSelected}
+                      aria-current={isSelected ? 'true' : undefined}
                       className="break-words text-left underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={isSelectionDisabled}
                       onClick={() => onSelect(entry)}
@@ -110,7 +110,7 @@ export function AuditLogTable({
               <button
                 type="button"
                 aria-label={`Mở chi tiết nhật ký kiểm toán ${actionLabel} ${objectLabel} lúc ${occurredAt}, bản ghi ${entry.id}`}
-                aria-pressed={isSelected}
+                aria-current={isSelected ? 'true' : undefined}
                 disabled={isSelectionDisabled}
                 className="block w-full min-w-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
                 onClick={() => onSelect(entry)}

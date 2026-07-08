@@ -65,7 +65,7 @@ export function ExceptionTable({
                     <button
                       type="button"
                       aria-label={`Mở chi tiết ngoại lệ ${item.exceptionType} cho tham chiếu ${referenceLabel}, bản ghi ${item.id}`}
-                      aria-pressed={isSelected}
+                      aria-current={isSelected ? 'true' : undefined}
                       className="break-words text-left underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={isSelectionDisabled}
                       onClick={() => onSelect(item)}
@@ -109,7 +109,7 @@ export function ExceptionTable({
               <button
                 type="button"
                 aria-label={`Mở chi tiết ngoại lệ ${item.exceptionType} cho tham chiếu ${referenceLabel}, bản ghi ${item.id}`}
-                aria-pressed={isSelected}
+                aria-current={isSelected ? 'true' : undefined}
                 className="block w-full min-w-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSelectionDisabled}
                 onClick={() => onSelect(item)}

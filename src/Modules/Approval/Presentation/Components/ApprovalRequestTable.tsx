@@ -67,7 +67,7 @@ export function ApprovalRequestTable({
                     <button
                       type="button"
                       aria-label={`Mở chi tiết yêu cầu phê duyệt ${targetLabel}, hành động ${approvalActionLabel(item.action)}, người yêu cầu ${item.requesterUserId}, bản ghi ${item.id}`}
-                      aria-pressed={isSelected}
+                      aria-current={isSelected ? 'true' : undefined}
                       className="break-words text-left underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={isSelectionDisabled}
                       onClick={() => onSelect(item)}
@@ -121,7 +121,7 @@ export function ApprovalRequestTable({
               <button
                 type="button"
                 aria-label={`Mở chi tiết yêu cầu phê duyệt ${targetLabel}, hành động ${approvalActionLabel(item.action)}, người yêu cầu ${item.requesterUserId}, bản ghi ${item.id}`}
-                aria-pressed={isSelected}
+                aria-current={isSelected ? 'true' : undefined}
                 className="block w-full min-w-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSelectionDisabled}
                 onClick={() => onSelect(item)}

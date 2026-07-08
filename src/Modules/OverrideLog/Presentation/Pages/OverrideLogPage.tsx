@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
-import { resolveListViewState, useResilientQueryData } from '@shared/Utils/QueryResilience';
+import {
+  resolveListViewState,
+  useQueryRowGate,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
@@ -106,7 +110,6 @@ export function OverrideLogPage() {
   const debounced = useDebouncedValue(filters, 300);
   const isFilterSettled = debounced === filters;
   const requestKey = useMemo(() => JSON.stringify({ filters: debounced, page }), [debounced, page]);
-  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useOverrideLogs({
     page,
     pageSize: 50,
@@ -128,13 +131,15 @@ export function OverrideLogPage() {
   });
   const boundaryState =
     listState === 'ready' ? null : listState === 'denied' ? 'forbidden' : listState;
-  const canOpenRows = isFilterSettled && !query.isFetching && activeDataKey === requestKey;
-
-  useEffect(() => {
-    if (query.data && !query.error && !query.isPlaceholderData) {
-      setActiveDataKey(requestKey);
-    }
-  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+  const canOpenRows = useQueryRowGate({
+    requestKey,
+    isFilterSettled,
+    page,
+    data: query.data,
+    error: query.error,
+    isFetching: query.isFetching,
+    isPlaceholderData: query.isPlaceholderData,
+  });
 
   useEffect(() => {
     const canonicalSearch = buildSearchParams(filters, page).toString();

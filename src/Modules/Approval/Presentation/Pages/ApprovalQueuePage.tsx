@@ -7,7 +7,11 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
-import { resolveListViewState, useResilientQueryData } from '@shared/Utils/QueryResilience';
+import {
+  resolveListViewState,
+  useQueryRowGate,
+  useResilientQueryData,
+} from '@shared/Utils/QueryResilience';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useApprovalRequests } from '@modules/Approval/Application/Queries/UseApprovalQueries';
 import { useApprovalStore } from '@modules/Approval/Application/Stores/ApprovalStore';
@@ -65,7 +69,6 @@ export function ApprovalQueuePage() {
   const isFilterSettled =
     debouncedRequester === filters.requesterUserId && debouncedTargetId === filters.targetObjectId;
   const requestKey = JSON.stringify({ filters: settledFilters, page });
-  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useApprovalRequests({
     page,
     decision: filters.decision || undefined,
@@ -85,16 +88,15 @@ export function ApprovalQueuePage() {
   });
   const boundaryState =
     listState === 'denied' ? 'forbidden' : listState === 'ready' ? null : listState;
-  const hasCurrentData =
-    Boolean(query.data) && !query.error && !query.isPlaceholderData && query.data?.page === page;
-  const canOpenRows =
-    isFilterSettled && !query.isFetching && (activeDataKey === requestKey || hasCurrentData);
-
-  useEffect(() => {
-    if (query.data && !query.error && !query.isPlaceholderData) {
-      setActiveDataKey(requestKey);
-    }
-  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+  const canOpenRows = useQueryRowGate({
+    requestKey,
+    isFilterSettled,
+    page,
+    data: query.data,
+    error: query.error,
+    isFetching: query.isFetching,
+    isPlaceholderData: query.isPlaceholderData,
+  });
 
   useEffect(() => {
     if (!query.data || query.error || query.isPlaceholderData || query.data.page !== page) return;
