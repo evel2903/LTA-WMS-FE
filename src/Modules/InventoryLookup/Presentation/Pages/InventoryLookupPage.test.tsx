@@ -200,6 +200,46 @@ describe('InventoryLookupPage', () => {
     );
   });
 
+  it('debounces typed warehouse search text and forwards it as WarehouseName (IFB-16)', async () => {
+    setSkuOptions();
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await screen.findByTestId('inventory-lookup-row-dimension-1');
+
+    await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'HCM');
+
+    await waitFor(() =>
+      expect(masterDataRepo.current.listWarehouses).toHaveBeenCalledWith(
+        expect.objectContaining({ warehouseName: 'HCM' }),
+      ),
+    );
+  });
+
+  it('clears the selected warehouse once the search debounce settles (review-fix)', async () => {
+    setSkuOptions();
+    setWarehouseOptions();
+    lookupRepo.current.list = vi.fn(() => Promise.resolve(page([makeItem()])));
+    const actor = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('option', { name: /SKU-A/i });
+    await actor.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
+    await screen.findByTestId('inventory-lookup-row-dimension-1');
+
+    await screen.findByRole('option', { name: /WH-01/i });
+    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    expect(screen.getByLabelText('Kho')).toHaveProperty('value', 'warehouse-1');
+
+    await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'H');
+
+    await waitFor(() => expect(screen.getByLabelText('Kho')).toHaveProperty('value', ''));
+  });
+
   it('resets warehouse/serial/lot filters when the SKU selection changes', async () => {
     catalogRepo.current.listSkus = vi.fn(() =>
       Promise.resolve(
@@ -246,6 +286,7 @@ describe('InventoryLookupPage', () => {
     );
     expect(screen.getByLabelText('Kho')).toHaveProperty('value', '');
     expect(screen.getByLabelText('Lọc số serial')).toHaveProperty('value', '');
+    expect(screen.getByLabelText('Tìm kiếm Kho')).toHaveProperty('value', '');
   });
 
   it('does not combine the new SKU with the old, not-yet-debounced serial filter (debounce reset)', async () => {

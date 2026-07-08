@@ -59,6 +59,7 @@ function listParams(filter: MasterDataListFilter = {}) {
     SiteCode: filter.siteCode,
     WarehouseId: filter.warehouseId,
     WarehouseCode: filter.warehouseCode,
+    WarehouseName: filter.warehouseName,
     WarehouseTypeCode: filter.warehouseTypeCode,
     ZoneId: filter.zoneId,
     ZoneCode: filter.zoneCode,

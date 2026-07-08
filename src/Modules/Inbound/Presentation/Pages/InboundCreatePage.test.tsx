@@ -21,6 +21,7 @@ const h = vi.hoisted(() => ({
   previewMutate: vi.fn<(vars: PreviewVars, opts?: MutateOpts<InboundLineImportPreview>) => void>(),
   commit: vi.fn<(vars: CommitVars, opts?: MutateOpts<{ id: string }>) => void>(),
   create: vi.fn(),
+  activeWarehousesSearch: vi.fn<(search: string | undefined) => void>(),
 }));
 
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -54,7 +55,10 @@ vi.mock('@modules/MasterData/Application/Queries/CatalogQueries', () => ({
   useSkus: () => lookup([{ id: 'sku-1', skuCode: 'SKU-1', skuName: 'Hàng 1' }]),
 }));
 vi.mock('@modules/MasterData/Application/Queries/UseSiteLocationTree', () => ({
-  useActiveWarehouses: () => lookup([{ id: 'wh-1', warehouseCode: 'WH', warehouseName: 'Kho 1' }]),
+  useActiveWarehouses: (search?: string) => {
+    h.activeWarehousesSearch(search);
+    return lookup([{ id: 'wh-1', warehouseCode: 'WH', warehouseName: 'Kho 1' }]);
+  },
 }));
 vi.mock('@modules/WarehouseProfile/Application/Queries/UseWarehouseProfiles', () => ({
   useWarehouseProfiles: () => lookup([{ id: 'profile-1', profileCode: 'PRF', profileName: 'Hồ sơ 1' }]),
@@ -231,5 +235,41 @@ describe('InboundCreatePage Excel import (IFB-03)', () => {
       warehouseId: 'wh-1',
     });
     expect(h.navigate).toHaveBeenCalledWith(ROUTES.INBOUND.DETAIL('inbound-plan-1'));
+  });
+});
+
+describe('InboundCreatePage warehouse search (IFB-16)', () => {
+  afterEach(() => cleanup());
+
+  it('debounces typed warehouse search text and forwards it to useActiveWarehouses', async () => {
+    h.activeWarehousesSearch.mockClear();
+    const actor = userEvent.setup();
+    renderPage();
+
+    expect(h.activeWarehousesSearch).toHaveBeenCalledWith('');
+
+    await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'HCM');
+
+    await waitFor(() => expect(h.activeWarehousesSearch).toHaveBeenCalledWith('HCM'));
+  });
+
+  it('still selects a warehouse option through the underlying select', async () => {
+    const actor = userEvent.setup();
+    renderPage();
+
+    await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
+    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
+  });
+
+  it('clears the selected warehouse once the search debounce settles (review-fix)', async () => {
+    const actor = userEvent.setup();
+    renderPage();
+
+    await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
+    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
+
+    await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'H');
+
+    await waitFor(() => expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe(''));
   });
 });
