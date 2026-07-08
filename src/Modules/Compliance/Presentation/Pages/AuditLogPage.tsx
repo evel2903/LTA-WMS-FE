@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -7,6 +7,7 @@ import { Button } from '@shared/Components/Ui/Button';
 import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
 import {
   resolveListViewState,
+  useQueryRowGate,
   useResilientQueryData,
 } from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
@@ -20,6 +21,10 @@ import {
 } from '@modules/Compliance/Domain/Enums/ComplianceEnums';
 import { useAuditLogs } from '@modules/Compliance/Application/Queries/UseComplianceQueries';
 import { AuditLogTable } from '@modules/Compliance/Presentation/Components/AuditLogTable';
+import {
+  complianceActionLabel,
+  complianceObjectTypeLabel,
+} from '@modules/Compliance/Presentation/Constants/ComplianceDisplayText';
 
 interface AuditFilters {
   actorUserId: string;
@@ -59,7 +64,9 @@ function readFilters(search: string): AuditFilters {
     actorUserId: params.get('actorUserId') ?? '',
     action: action && ACTION_CODES.includes(action as ActionCode) ? (action as ActionCode) : '',
     objectType:
-      objectType && OBJECT_TYPES.includes(objectType as ObjectType) ? (objectType as ObjectType) : '',
+      objectType && OBJECT_TYPES.includes(objectType as ObjectType)
+        ? (objectType as ObjectType)
+        : '',
     reasonCodeId: params.get('reasonCodeId') ?? '',
     from: hasValidRange ? from : '',
     to: hasValidRange ? to : '',
@@ -116,7 +123,6 @@ export function AuditLogPage() {
   const debounced = useDebouncedValue(filters, 300);
   const isFilterSettled = debounced === filters;
   const requestKey = useMemo(() => JSON.stringify({ filters: debounced, page }), [debounced, page]);
-  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useAuditLogs({
     page,
     pageSize: 50,
@@ -139,13 +145,15 @@ export function AuditLogPage() {
   });
   const boundaryState =
     listState === 'ready' ? null : listState === 'denied' ? 'forbidden' : listState;
-  const canOpenRows = isFilterSettled && !query.isFetching && activeDataKey === requestKey;
-
-  useEffect(() => {
-    if (query.data && !query.error && !query.isPlaceholderData) {
-      setActiveDataKey(requestKey);
-    }
-  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+  const canOpenRows = useQueryRowGate({
+    requestKey,
+    isFilterSettled,
+    page,
+    data: query.data,
+    error: query.error,
+    isFetching: query.isFetching,
+    isPlaceholderData: query.isPlaceholderData,
+  });
 
   useEffect(() => {
     const canonicalSearch = buildSearchParams(filters, page).toString();
@@ -169,6 +177,8 @@ export function AuditLogPage() {
     <ListPageShell
       title="Nhật ký kiểm toán"
       description="Sự kiện kiểm toán chỉ đọc. Mở một dòng để xem snapshot trước/sau trên trang chi tiết riêng."
+      filtersAriaLabel="Bộ lọc nhật ký kiểm toán"
+      contentAriaLabel="Danh sách nhật ký kiểm toán"
       state={boundaryState}
       stateTitle={
         listState === 'denied'
@@ -183,14 +193,23 @@ export function AuditLogPage() {
         listState === 'empty'
           ? 'Không có sự kiện kiểm toán khớp bộ lọc.'
           : listState === 'error'
-            ? apiError?.message ?? 'Không thể tải nhật ký kiểm toán.'
+            ? (apiError?.message ?? 'Không thể tải nhật ký kiểm toán.')
             : undefined
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">ID người thực hiện<Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          <label className="grid gap-1 text-sm">
+            ID người thực hiện
+            <Input
+              name="actorUserId"
+              value={filters.actorUserId}
+              onChange={(event) => patch({ actorUserId: event.target.value })}
+            />
           </label>
-          <label className="grid gap-1 text-sm">Hành động<select
+          <label className="grid gap-1 text-sm">
+            Hành động
+            <select
+              name="action"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.action}
               onChange={(event) => patch({ action: event.target.value as ActionCode | '' })}
@@ -198,12 +217,15 @@ export function AuditLogPage() {
               <option value="">Tất cả</option>
               {ACTION_CODES.map((action) => (
                 <option key={action} value={action}>
-                  {action}
+                  {complianceActionLabel(action)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Loại đối tượng<select
+          <label className="grid gap-1 text-sm">
+            Loại đối tượng
+            <select
+              name="objectType"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.objectType}
               onChange={(event) => patch({ objectType: event.target.value as ObjectType | '' })}
@@ -211,20 +233,36 @@ export function AuditLogPage() {
               <option value="">Tất cả</option>
               {OBJECT_TYPES.map((objectType) => (
                 <option key={objectType} value={objectType}>
-                  {objectType}
+                  {complianceObjectTypeLabel(objectType)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm">ID mã lý do<Input value={filters.reasonCodeId} onChange={(event) => patch({ reasonCodeId: event.target.value })} />
+          <label className="grid gap-1 text-sm">
+            ID mã lý do
+            <Input
+              name="reasonCodeId"
+              value={filters.reasonCodeId}
+              onChange={(event) => patch({ reasonCodeId: event.target.value })}
+            />
           </label>
           <label className="grid gap-1 text-sm">
             Từ ngày
-            <Input type="date" value={filters.from} onChange={(event) => patch({ from: event.target.value })} />
+            <Input
+              name="from"
+              type="date"
+              value={filters.from}
+              onChange={(event) => patch({ from: event.target.value })}
+            />
           </label>
           <label className="grid gap-1 text-sm">
             Đến ngày
-            <Input type="date" value={filters.to} onChange={(event) => patch({ to: event.target.value })} />
+            <Input
+              name="to"
+              type="date"
+              value={filters.to}
+              onChange={(event) => patch({ to: event.target.value })}
+            />
           </label>
         </div>
       }
@@ -240,13 +278,17 @@ export function AuditLogPage() {
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
-              >Trước</Button>
+              >
+                Trước
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={page >= (meta?.totalPages ?? 1)}
                 onClick={() => updateSearch(filters, page + 1, false)}
-              >Tiếp</Button>
+              >
+                Tiếp
+              </Button>
             </div>
           </div>
         ) : null

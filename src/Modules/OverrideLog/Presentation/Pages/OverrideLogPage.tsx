@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -7,17 +7,16 @@ import { Button } from '@shared/Components/Ui/Button';
 import { ListRefetchWarning } from '@shared/Components/Feedback/QueryResilience';
 import {
   resolveListViewState,
+  useQueryRowGate,
   useResilientQueryData,
 } from '@shared/Utils/QueryResilience';
 import { Input } from '@shared/Components/Ui/Input';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
-import {
-  OBJECT_TYPES,
-  type ObjectType,
-} from '@modules/OverrideLog/Domain/Enums/OverrideLogEnums';
+import { OBJECT_TYPES, type ObjectType } from '@modules/OverrideLog/Domain/Enums/OverrideLogEnums';
 import { useOverrideLogs } from '@modules/OverrideLog/Application/Queries/UseOverrideLogQueries';
 import { OverrideLogTable } from '@modules/OverrideLog/Presentation/Components/OverrideLogTable';
+import { overrideObjectTypeLabel } from '@modules/OverrideLog/Presentation/Constants/OverrideLogDisplayText';
 
 interface Filters {
   ruleId: string;
@@ -111,7 +110,6 @@ export function OverrideLogPage() {
   const debounced = useDebouncedValue(filters, 300);
   const isFilterSettled = debounced === filters;
   const requestKey = useMemo(() => JSON.stringify({ filters: debounced, page }), [debounced, page]);
-  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useOverrideLogs({
     page,
     pageSize: 50,
@@ -133,13 +131,15 @@ export function OverrideLogPage() {
   });
   const boundaryState =
     listState === 'ready' ? null : listState === 'denied' ? 'forbidden' : listState;
-  const canOpenRows = isFilterSettled && !query.isFetching && activeDataKey === requestKey;
-
-  useEffect(() => {
-    if (query.data && !query.error && !query.isPlaceholderData) {
-      setActiveDataKey(requestKey);
-    }
-  }, [query.data, query.error, query.isPlaceholderData, requestKey]);
+  const canOpenRows = useQueryRowGate({
+    requestKey,
+    isFilterSettled,
+    page,
+    data: query.data,
+    error: query.error,
+    isFetching: query.isFetching,
+    isPlaceholderData: query.isPlaceholderData,
+  });
 
   useEffect(() => {
     const canonicalSearch = buildSearchParams(filters, page).toString();
@@ -163,6 +163,8 @@ export function OverrideLogPage() {
     <ListPageShell
       title="Nhật ký ghi đè"
       description="Bản ghi ghi đè chỉ đọc. Mở một dòng để xem lý do, phê duyệt, bằng chứng và snapshot trước/sau."
+      filtersAriaLabel="Bộ lọc nhật ký ghi đè"
+      contentAriaLabel="Danh sách nhật ký ghi đè"
       state={boundaryState}
       stateTitle={
         listState === 'denied'
@@ -177,35 +179,62 @@ export function OverrideLogPage() {
         listState === 'empty'
           ? 'Không có nhật ký ghi đè khớp bộ lọc.'
           : listState === 'error'
-            ? apiError?.message ?? 'Không thể tải nhật ký ghi đè.'
+            ? (apiError?.message ?? 'Không thể tải nhật ký ghi đè.')
             : undefined
       }
       filters={
         <div className="flex flex-wrap items-end gap-3">
-          <label className="grid gap-1 text-sm">ID quy tắc<Input value={filters.ruleId} onChange={(event) => patch({ ruleId: event.target.value })} />
+          <label className="grid gap-1 text-sm">
+            ID quy tắc
+            <Input
+              name="ruleId"
+              value={filters.ruleId}
+              onChange={(event) => patch({ ruleId: event.target.value })}
+            />
           </label>
-          <label className="grid gap-1 text-sm">ID người thực hiện<Input value={filters.actorUserId} onChange={(event) => patch({ actorUserId: event.target.value })} />
+          <label className="grid gap-1 text-sm">
+            ID người thực hiện
+            <Input
+              name="actorUserId"
+              value={filters.actorUserId}
+              onChange={(event) => patch({ actorUserId: event.target.value })}
+            />
           </label>
-          <label className="grid gap-1 text-sm">Loại đích<select
+          <label className="grid gap-1 text-sm">
+            Loại đích
+            <select
+              name="targetObjectType"
               className="h-9 rounded-md border bg-transparent px-3 text-sm"
               value={filters.targetObjectType}
-              onChange={(event) => patch({ targetObjectType: event.target.value as ObjectType | '' })}
+              onChange={(event) =>
+                patch({ targetObjectType: event.target.value as ObjectType | '' })
+              }
             >
               <option value="">Tất cả</option>
               {OBJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {overrideObjectTypeLabel(type)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-sm">
             Từ ngày
-            <Input type="date" value={filters.from} onChange={(event) => patch({ from: event.target.value })} />
+            <Input
+              name="from"
+              type="date"
+              value={filters.from}
+              onChange={(event) => patch({ from: event.target.value })}
+            />
           </label>
           <label className="grid gap-1 text-sm">
             Đến ngày
-            <Input type="date" value={filters.to} onChange={(event) => patch({ to: event.target.value })} />
+            <Input
+              name="to"
+              type="date"
+              value={filters.to}
+              onChange={(event) => patch({ to: event.target.value })}
+            />
           </label>
         </div>
       }
@@ -221,13 +250,17 @@ export function OverrideLogPage() {
                 variant="outline"
                 disabled={page <= 1}
                 onClick={() => updateSearch(filters, Math.max(1, page - 1), false)}
-              >Trước</Button>
+              >
+                Trước
+              </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={page >= (meta?.totalPages ?? 1)}
                 onClick={() => updateSearch(filters, page + 1, false)}
-              >Tiếp</Button>
+              >
+                Tiếp
+              </Button>
             </div>
           </div>
         ) : null

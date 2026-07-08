@@ -6,6 +6,7 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import { useOverrideLogDetail } from '@modules/OverrideLog/Application/Queries/UseOverrideLogQueries';
 import { OverrideControlModeBadge } from '@modules/OverrideLog/Presentation/Components/OverrideControlModeBadge';
 import { OverrideLogDetailPanel } from '@modules/OverrideLog/Presentation/Components/OverrideLogDetailPanel';
+import { overrideTargetLabelFromParts } from '@modules/OverrideLog/Presentation/Constants/OverrideLogDisplayText';
 
 function resolveState(params: {
   id: string | undefined;
@@ -73,12 +74,19 @@ export function OverrideLogDetailPage() {
       summary={
         log ? (
           <>
-            <span>{log.targetObjectType}</span>
+            <span>
+              {overrideTargetLabelFromParts(
+                log.targetObjectType,
+                log.targetObjectCode,
+                log.targetObjectId,
+              )}
+            </span>
             <span>{log.actorUserId}</span>
             <span>{new Date(log.createdAt).toLocaleString()}</span>
           </>
         ) : null
       }
+      contentAriaLabel="Chi tiết nhật ký ghi đè"
     >
       {log ? <OverrideLogDetailPanel log={log} /> : null}
     </DetailPageShell>

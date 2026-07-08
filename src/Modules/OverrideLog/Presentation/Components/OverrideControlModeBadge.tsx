@@ -1,8 +1,6 @@
 import { Badge } from '@shared/Components/Ui/Badge';
-import {
-  RULE_CONTROL_MODE_LABELS,
-  type RuleControlMode,
-} from '@modules/OverrideLog/Domain/Enums/OverrideLogEnums';
+import type { RuleControlMode } from '@modules/OverrideLog/Domain/Enums/OverrideLogEnums';
+import { overrideControlModeLabel } from '@modules/OverrideLog/Presentation/Constants/OverrideLogDisplayText';
 
 const VARIANT: Record<RuleControlMode, 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive'> = {
   HARD_BLOCK: 'destructive',
@@ -12,5 +10,5 @@ const VARIANT: Record<RuleControlMode, 'default' | 'secondary' | 'outline' | 'su
 };
 
 export function OverrideControlModeBadge({ mode }: { mode: RuleControlMode }) {
-  return <Badge variant={VARIANT[mode]}>{RULE_CONTROL_MODE_LABELS[mode]}</Badge>;
+  return <Badge variant={VARIANT[mode]}>{overrideControlModeLabel(mode)}</Badge>;
 }

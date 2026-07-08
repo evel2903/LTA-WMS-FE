@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 
@@ -54,4 +54,41 @@ export function queryErrorMessage(error: unknown, fallback: string): string {
     return error.message;
   }
   return fallback;
+}
+
+interface UseQueryRowGateInput<TData extends { page: number }> {
+  requestKey: string;
+  isFilterSettled: boolean;
+  page: number;
+  data: TData | undefined;
+  error: unknown;
+  isFetching: boolean;
+  isPlaceholderData: boolean;
+}
+
+/**
+ * Gates row-open interactions on a filtered, paginated list query so a row can't be opened
+ * while it may still belong to a stale filter/page combination. Stays open once either the
+ * current request key has resolved, or the query already holds fresh data for the current
+ * page — the latter avoids a flash-disable when nothing has actually gone stale.
+ */
+export function useQueryRowGate<TData extends { page: number }>({
+  requestKey,
+  isFilterSettled,
+  page,
+  data,
+  error,
+  isFetching,
+  isPlaceholderData,
+}: UseQueryRowGateInput<TData>): boolean {
+  const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
+  const hasCurrentData = Boolean(data) && !error && !isPlaceholderData && data?.page === page;
+
+  useEffect(() => {
+    if (data && !error && !isPlaceholderData) {
+      setActiveDataKey(requestKey);
+    }
+  }, [data, error, isPlaceholderData, requestKey]);
+
+  return isFilterSettled && !isFetching && (activeDataKey === requestKey || hasCurrentData);
 }
