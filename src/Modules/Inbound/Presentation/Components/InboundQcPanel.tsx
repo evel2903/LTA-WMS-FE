@@ -205,11 +205,17 @@ export function InboundQcPanel({
   const qcNotRequired = Boolean(evaluatedQcTask && !evaluatedQcTask.required);
   const showRecordForm = !qcNotRequired;
   const qcResultDisabled = !evaluatedQcTask?.required;
+  // Shared by the trigger (EvaluateQcTaskUseCase validates Action=Create) and
+  // result (RecordQcResultUseCase validates Action=Update) fields below — both
+  // check ObjectType=QcTask, so narrowing to just that object type covers both
+  // without a second query. Verified live: ACTIVE-all truncates at pageSize 100
+  // and hides the one applicable code (RC-V1-DISCREPANCY) among 253 unrelated
+  // seeded codes; this narrowing brings it back without risking an empty list.
   const {
     options: reasonCodeOptions,
     isLoading: reasonCodesLoading,
     isError: reasonCodesError,
-  } = useReasonCodeOptions();
+  } = useReasonCodeOptions({ objectType: 'QcTask' });
 
   return (
     <Card data-testid="inbound-qc-panel">

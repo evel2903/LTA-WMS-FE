@@ -23,13 +23,18 @@ import { InboundDiscrepancySheet } from '@modules/Inbound/Presentation/Component
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
 import { InboundLineConsole } from '@modules/Inbound/Presentation/Components/InboundLineConsole';
 import { InboundLineRail } from '@modules/Inbound/Presentation/Components/InboundLineRail';
-import { deriveFocusedLineStage } from '@modules/Inbound/Presentation/Components/InboundLineStage';
+import {
+  deriveFocusedLineStage,
+  deriveLineStage,
+  type InboundLineStage,
+} from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
 import { InboundReadinessPanel } from '@modules/Inbound/Presentation/Components/InboundReadinessPanel';
 import { InboundReceiptLineRail } from '@modules/Inbound/Presentation/Components/InboundReceiptLineRail';
 import { InboundReceivingPanel } from '@modules/Inbound/Presentation/Components/InboundReceivingPanel';
 import { InboundReleasePutawayPanel } from '@modules/Inbound/Presentation/Components/InboundReleasePutawayPanel';
 import { InboundWorkflowStepper } from '@modules/Inbound/Presentation/Components/InboundWorkflowStepper';
+import { usePutawayMutations } from '@modules/Putaway/Application/Commands/UsePutawayMutations';
 import {
   mapInboundActionToWorkflowStep,
   type InboundWorkflowStep,
@@ -390,6 +395,11 @@ export function InboundDetailPage() {
   const detailQuery = useInboundPlan(routePlanId ?? null);
   const operationalStateQuery = useInboundOperationalState(routePlanId ?? null);
   const mutations = useInboundMutations();
+  // Bug fix: release-to-putaway used to leave the released goods with no visible
+  // Putaway Task (the FE never called the separate `POST /putaway/tasks/release`
+  // step) — auto-chain it right after a successful release below so the operator
+  // ends up with a workable task without leaving the Inbound screen.
+  const putawayMutations = usePutawayMutations();
   const resetValidateReadiness = mutations.validateReadiness.reset;
   const resetStartReceiving = mutations.startReceivingSession.reset;
   const resetConfirmReceiptLine = mutations.confirmReceiptLine.reset;
@@ -515,6 +525,16 @@ export function InboundDetailPage() {
       operationalState?.releases.filter((release) => release.receiptLineId === confirmedReceiptLine?.id),
       (release) => release.releasedAt,
     );
+  // Scoped to the currently-shown release so switching lines doesn't leak a
+  // stale task code/error from a previously released, different line.
+  const putawayTaskForRelease =
+    putawayMutations.releaseTask.data?.inboundPutawayReleaseId === putawayRelease?.id
+      ? putawayMutations.releaseTask.data
+      : null;
+  const putawayTaskErrorForRelease =
+    putawayMutations.releaseTask.variables?.inboundPutawayReleaseId === putawayRelease?.id
+      ? putawayMutations.releaseTask.error
+      : null;
   const selectedInitialLineId = selected?.lines[0]?.id ?? null;
   const selectedInitialExpectedQuantity = selected?.lines[0]?.expectedQuantity ?? 1;
   const readinessQuery = useReceivingReadiness(selected?.id ?? null);
@@ -824,6 +844,21 @@ export function InboundDetailPage() {
     lpnDone,
     releaseDone,
   });
+  // Rail badge fix: every line gets its OWN real stage from the operational-state
+  // read model (already fetched in one call, carries `inboundPlanLineId` on every
+  // row) instead of defaulting to `not-started` for whichever line isn't focused.
+  // The focused line keeps the richer mutation-aware `focusedLineStage` above so
+  // it still updates instantly on submit, before the read model refetches.
+  const lineStages = useMemo(() => {
+    const map: Record<string, InboundLineStage> = {};
+    for (const line of selected?.lines ?? []) {
+      map[line.id] =
+        line.id === selectedLine?.id
+          ? focusedLineStage
+          : deriveLineStage({ lineId: line.id, gateInDone, operationalState });
+    }
+    return map;
+  }, [selected?.lines, selectedLine?.id, focusedLineStage, gateInDone, operationalState]);
   const completedStepSummary: InboundCompletedStepSummaryViewModel | null =
     completedSummaryStep?.state === 'done'
       ? {
@@ -1403,6 +1438,24 @@ export function InboundDetailPage() {
           setReleaseIdempotencyKey(`release-${release.receiptLineId}-${Date.now()}`);
           setReleaseReasonCode('');
           setReleaseEvidenceRefs('');
+          // No targetLocationId on purpose — the BE's own suggested-target rule
+          // engine (RULE-PUT-ELIG-01) picks it, same as a manual `POST
+          // /putaway/tasks/release` call already does.
+          //
+          // Idempotency key is DETERMINISTIC (release.id only, no timestamp) on
+          // purpose: a time-based suffix would defeat idempotency (every retry of
+          // this auto-chain gets a fresh "unique" key instead of deduping against
+          // the first attempt). It's also kept short — BuildOutbox's MessageId is
+          // `PutawayTaskReleased:${InboundPutawayReleaseId}:${IdempotencyKey}`
+          // against a varchar(120) column (57 chars of fixed prefix + UUID already
+          // used up before this key even starts; verified live that a longer,
+          // timestamp-suffixed key overflows it with a real 500).
+          putawayMutations.releaseTask.mutate({
+            inboundPutawayReleaseId: release.id,
+            sourceLocationId: release.currentLocationId,
+            sourceLocationCode: release.currentLocationCode,
+            idempotencyKey: `putaway-release-${release.id}`,
+          });
         },
       },
     );
@@ -1699,7 +1752,7 @@ export function InboundDetailPage() {
               preserved while mobile pins the action form to the top. */}
           <div className="order-2 min-w-0 xl:order-1" data-testid="inbound-line-rail-slot">
             <InboundLineRail
-              focusedLineStage={focusedLineStage}
+              lineStages={lineStages}
               lines={selected.lines}
               selectedLineId={selectedLine?.id ?? null}
               onSelect={(line) => {
@@ -1878,6 +1931,11 @@ export function InboundDetailPage() {
                   confirmedReceiptLine={confirmedReceiptLine}
                   hasConfirmInboundLpnError={Boolean(mutations.confirmInboundLpn.error)}
                   isConfirmInboundLpnPending={mutations.confirmInboundLpn.isPending}
+                  isCreatingPutawayTask={
+                    putawayMutations.releaseTask.isPending &&
+                    putawayMutations.releaseTask.variables?.inboundPutawayReleaseId ===
+                      putawayRelease?.id
+                  }
                   isReleaseInboundToPutawayPending={mutations.releaseInboundToPutaway.isPending}
                   lpnCode={lpnCode}
                   lpnIdempotencyKey={lpnIdempotencyKey}
@@ -1894,6 +1952,11 @@ export function InboundDetailPage() {
                   onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
                   putawayReady={putawayReady}
                   putawayRelease={putawayRelease}
+                  putawayTaskCode={putawayTaskForRelease?.taskCode ?? null}
+                  putawayTaskErrorMessage={toPanelErrorMessage(
+                    putawayTaskErrorForRelease,
+                    'Không thể tạo tác vụ cất hàng.',
+                  )}
                   receivingSession={receivingSession ?? null}
                   releaseAttemptLabelOverride={releaseAttemptLabelOverride}
                   releaseCurrentLocationCode={releaseCurrentLocationCode}
