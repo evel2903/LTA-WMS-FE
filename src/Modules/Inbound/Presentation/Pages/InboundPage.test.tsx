@@ -87,6 +87,28 @@ vi.mock(
   }),
 );
 
+// Bug fix: InboundDetailPage now auto-chains a Putaway Task release right after a
+// successful release-to-putaway, so it imports usePutawayMutations -> the real
+// eager-singleton putawayRepository (constructs an env-validated ApiClient at
+// import time) unless mocked here, same as every other repository above.
+const putawayRepo = vi.hoisted(() => ({
+  current: null as unknown as { release: ReturnType<typeof vi.fn> },
+}));
+vi.mock('@modules/Putaway/Infrastructure/Repositories/PutawayRepositoryInstance', () => ({
+  get putawayRepository() {
+    return putawayRepo.current;
+  },
+}));
+putawayRepo.current = {
+  release: vi.fn(() =>
+    Promise.resolve({
+      id: 'putaway-task-1',
+      taskCode: 'PUT-TEST01',
+      inboundPutawayReleaseId: 'release-1',
+    }),
+  ),
+};
+
 // Reason-code dropdowns (IFB-04): mock the options hook so panels render selectable codes.
 vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
   useReasonCodeOptions: () => ({

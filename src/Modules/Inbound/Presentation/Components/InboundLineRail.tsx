@@ -12,8 +12,8 @@ function formatQuantity(value: number) {
 }
 
 interface InboundLineRailProps {
-  /** Stage for the currently focused line; non-focused lines render `Chưa bắt đầu`. */
-  focusedLineStage: InboundLineStage;
+  /** Real stage per plan line id, so every row reflects its own progress (not just the focused one). */
+  lineStages: Record<string, InboundLineStage>;
   lines: InboundPlanLine[];
   onSelect: (line: InboundPlanLine) => void;
   selectedLineId: string | null;
@@ -32,7 +32,7 @@ interface InboundLineRailProps {
  * Tapping a line collapses the section again to bring the console back to top.
  */
 export function InboundLineRail({
-  focusedLineStage,
+  lineStages,
   lines,
   onSelect,
   selectedLineId,
@@ -89,7 +89,7 @@ export function InboundLineRail({
       >
         {lines.map((line) => {
           const isSelected = line.id === selectedLineId;
-          const stage: InboundLineStage = isSelected ? focusedLineStage : 'not-started';
+          const stage: InboundLineStage = lineStages[line.id] ?? 'not-started';
           return (
             <button
               key={line.id}

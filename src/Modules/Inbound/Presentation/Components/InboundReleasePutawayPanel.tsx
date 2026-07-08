@@ -34,8 +34,11 @@ interface InboundReleasePutawayPanelProps {
   onSsccCodeChange: (value: string) => void;
   onSubmitInboundLpn: (event: FormEvent<HTMLFormElement>) => void;
   onSubmitReleaseInboundToPutaway: (event: FormEvent<HTMLFormElement>) => void;
+  isCreatingPutawayTask: boolean;
   putawayReady: boolean;
   putawayRelease: InboundPutawayRelease | null;
+  putawayTaskCode: string | null;
+  putawayTaskErrorMessage: string | null;
   receivingSession: ReceivingSession | null;
   releaseAttemptLabelOverride: boolean;
   releaseCurrentLocationCode: string;
@@ -114,6 +117,7 @@ export function InboundReleasePutawayPanel({
   confirmedReceiptLine,
   hasConfirmInboundLpnError,
   isConfirmInboundLpnPending,
+  isCreatingPutawayTask,
   isReleaseInboundToPutawayPending,
   lpnCode,
   lpnIdempotencyKey,
@@ -130,6 +134,8 @@ export function InboundReleasePutawayPanel({
   onSubmitReleaseInboundToPutaway,
   putawayReady,
   putawayRelease,
+  putawayTaskCode,
+  putawayTaskErrorMessage,
   receivingSession,
   releaseAttemptLabelOverride,
   releaseCurrentLocationCode,
@@ -140,11 +146,15 @@ export function InboundReleasePutawayPanel({
   releaseRequireLpn,
   ssccCode,
 }: InboundReleasePutawayPanelProps) {
+  // ReleaseInboundToPutawayUseCase actually validates Action=Update, ObjectType=Receipt
+  // (not Override — verified live: {action:'Override'} matches 0 ACTIVE codes, which made
+  // this dropdown permanently empty; {action:'Update', objectType:'Receipt'} matches
+  // RC-V1-DISCREPANCY).
   const {
     options: reasonCodeOptions,
     isLoading: reasonCodesLoading,
     isError: reasonCodesError,
-  } = useReasonCodeOptions({ action: 'Override' });
+  } = useReasonCodeOptions({ action: 'Update', objectType: 'Receipt' });
   const lpnHelper = getLpnHelper({
     confirmedReceiptLine,
     isPending: isConfirmInboundLpnPending,
@@ -324,11 +334,32 @@ export function InboundReleasePutawayPanel({
             {putawayRelease.currentLocationCode ? ` / ${putawayRelease.currentLocationCode}` : ''}
           </p>
         )}
+        {putawayRelease && isCreatingPutawayTask && (
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-putaway-task-pending"
+          >
+            Đang tạo tác vụ cất hàng...
+          </p>
+        )}
+        {putawayRelease && putawayTaskCode && (
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-putaway-task-code"
+          >
+            Tác vụ cất hàng {putawayTaskCode} đã sẵn sàng ở màn Cất hàng.
+          </p>
+        )}
         {hasConfirmInboundLpnError ? (
           <p className="text-sm text-destructive">Không thể xác nhận LPN/SSCC.</p>
         ) : null}
         {releaseErrorMessage ? (
           <p className="text-sm text-destructive">{releaseErrorMessage}</p>
+        ) : null}
+        {putawayRelease && putawayTaskErrorMessage ? (
+          <p className="text-sm text-destructive" data-testid="inbound-release-putaway-task-error">
+            {putawayTaskErrorMessage}
+          </p>
         ) : null}
       </CardContent>
     </Card>

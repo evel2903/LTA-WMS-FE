@@ -110,11 +110,15 @@ export function InboundDiscrepancySheet({
   open,
   selectedLine,
 }: InboundDiscrepancySheetProps) {
+  // Narrowed to what CaptureInboundDiscrepancyUseCase actually validates against
+  // (Action=Update, ObjectType=Receipt) — verified live that this pair has >=1
+  // ACTIVE code (RC-V1-DISCREPANCY), unlike ACTIVE-all which now truncates at
+  // pageSize 100 and hides it among 253 unrelated seeded codes.
   const {
     options: reasonCodeOptions,
     isLoading: reasonCodesLoading,
     isError: reasonCodesError,
-  } = useReasonCodeOptions();
+  } = useReasonCodeOptions({ action: 'Update', objectType: 'Receipt' });
   const helper = getDiscrepancyHelper({
     confirmedReceiptLine,
     discrepancyEvidenceRefs,
