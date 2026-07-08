@@ -62,6 +62,8 @@ export function ProfileLifecycleActions({
         onChange={setReasonCode}
       />
       <label className="grid gap-1 text-sm">Ghi chú lý do<Input
+          id="warehouse-profile-lifecycle-reason-note"
+          name="reasonNote"
           disabled={!canManage}
           value={reasonNote}
           onChange={(event) => setReasonNote(event.target.value)}
