@@ -74,7 +74,10 @@ export function ExceptionDetailPanel({
         />
         <Field
           label="Người được gán"
-          value={firstNonBlankText(exceptionCase.assignedToUserId, exceptionCase.assignedRoleId)}
+          value={
+            firstNonBlankText(exceptionCase.assignedToUserId, exceptionCase.assignedRoleId) ??
+            'Chưa gán'
+          }
         />
         <Field label="ID mã lý do" value={exceptionCase.reasonCodeId} />
         <Field

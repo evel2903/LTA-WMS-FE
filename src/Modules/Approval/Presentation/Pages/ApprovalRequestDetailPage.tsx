@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -46,6 +46,9 @@ export function ApprovalRequestDetailPage({ mode }: ApprovalRequestDetailPagePro
   const approvalId = id ?? null;
   const currentUser = useCurrentUser();
   const [actionError, setActionError] = useState<unknown>(null);
+  useEffect(() => {
+    setActionError(null);
+  }, [approvalId]);
   const detailQuery = useApprovalRequestDetail(approvalId);
   const request = detailQuery.data?.id === approvalId ? detailQuery.data : null;
   const mutations = useApprovalMutations();

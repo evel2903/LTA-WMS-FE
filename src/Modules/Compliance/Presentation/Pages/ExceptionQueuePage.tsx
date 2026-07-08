@@ -54,19 +54,39 @@ export function ExceptionQueuePage() {
     setPage(1);
   };
 
-  const debounced = useDebouncedValue(filters, 300);
-  const isFilterSettled = debounced === filters;
-  const requestKey = JSON.stringify({ filters: debounced, page });
+  // Only free-text fields are debounced — dropdowns (state, severity) apply immediately,
+  // matching ApprovalQueuePage so rows don't flicker-disable on every dropdown selection.
+  const debouncedExceptionType = useDebouncedValue(filters.exceptionType, 300);
+  const debouncedAssignedToUserId = useDebouncedValue(filters.assignedToUserId, 300);
+  const debouncedWarehouseId = useDebouncedValue(filters.warehouseId, 300);
+  const debouncedOwnerId = useDebouncedValue(filters.ownerId, 300);
+  const debouncedReferenceId = useDebouncedValue(filters.referenceId, 300);
+  const settledFilters = {
+    state: filters.state,
+    exceptionType: debouncedExceptionType,
+    severity: filters.severity,
+    assignedToUserId: debouncedAssignedToUserId,
+    warehouseId: debouncedWarehouseId,
+    ownerId: debouncedOwnerId,
+    referenceId: debouncedReferenceId,
+  };
+  const isFilterSettled =
+    debouncedExceptionType === filters.exceptionType &&
+    debouncedAssignedToUserId === filters.assignedToUserId &&
+    debouncedWarehouseId === filters.warehouseId &&
+    debouncedOwnerId === filters.ownerId &&
+    debouncedReferenceId === filters.referenceId;
+  const requestKey = JSON.stringify({ filters: settledFilters, page });
   const [activeDataKey, setActiveDataKey] = useState<string | null>(null);
   const query = useExceptions({
     page,
-    state: debounced.state || undefined,
-    exceptionType: debounced.exceptionType || undefined,
-    severity: debounced.severity || undefined,
-    assignedToUserId: debounced.assignedToUserId || undefined,
-    warehouseId: debounced.warehouseId || undefined,
-    ownerId: debounced.ownerId || undefined,
-    referenceId: debounced.referenceId || undefined,
+    state: filters.state || undefined,
+    exceptionType: debouncedExceptionType || undefined,
+    severity: filters.severity || undefined,
+    assignedToUserId: debouncedAssignedToUserId || undefined,
+    warehouseId: debouncedWarehouseId || undefined,
+    ownerId: debouncedOwnerId || undefined,
+    referenceId: debouncedReferenceId || undefined,
   });
   const exceptionData = useResilientQueryData(query.data);
   const cases = exceptionData?.items ?? [];

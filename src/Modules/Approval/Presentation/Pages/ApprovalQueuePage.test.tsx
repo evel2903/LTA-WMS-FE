@@ -287,6 +287,31 @@ describe('ApprovalQueuePage (C15)', () => {
     expect(screen.queryByText('Chỉ đọc - bạn không có quyền duyệt.')).toBeNull();
   });
 
+  it('shows the same route-level read-only message on the detail route even for the requester, and still blocks self-decide once they open the action route (AC4)', async () => {
+    const actor = userEvent.setup();
+    currentUser.current = { id: 'u-req' }; // same as requesterUserId
+    const fake = new FakeApprovalRepo(makeRequest());
+    repo.current = fake;
+    renderPage();
+
+    await openFirstApproval(actor);
+
+    // Detail route is read-only for everyone, including the requester — no one can act
+    // from here, so the message must not single out self-approval before the requester
+    // even reaches the action route.
+    expect(
+      await screen.findAllByText(
+        'Route xem chi tiết chỉ hiển thị evidence. Mở quyết định để thao tác.',
+      ),
+    ).toHaveLength(2);
+    expect(screen.queryByText(/Không thể tự duyệt yêu cầu/i)).toBeNull();
+
+    // The self-approval guard still fires once they actually reach the action route (AC4).
+    await actor.click(await screen.findByRole('link', { name: 'Mở quyết định' }));
+    expect(await screen.findByText(/Không thể tự duyệt yêu cầu/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Phê duyệt' })).toBeNull();
+  });
+
   it('shows a permission-denied state when the list 403s (AC4)', async () => {
     const fake = new FakeApprovalRepo(makeRequest());
     fake.list = vi.fn(() =>

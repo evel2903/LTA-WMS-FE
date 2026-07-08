@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -42,6 +42,9 @@ function detailState(params: {
 export function ExceptionDetailPage({ mode }: ExceptionDetailPageProps) {
   const { id } = useParams();
   const [actionError, setActionError] = useState<unknown>(null);
+  useEffect(() => {
+    setActionError(null);
+  }, [id]);
   const detailQuery = useExceptionDetail(id ?? null);
   const exceptionCase = detailQuery.data ?? null;
   const mutations = useExceptionMutations();
