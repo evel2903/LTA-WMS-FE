@@ -260,4 +260,16 @@ describe('InboundCreatePage warehouse search (IFB-16)', () => {
     await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
     expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
   });
+
+  it('clears the selected warehouse when the search text changes afterwards (review-fix)', async () => {
+    const actor = userEvent.setup();
+    renderPage();
+
+    await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
+    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
+
+    await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'H');
+
+    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('');
+  });
 });

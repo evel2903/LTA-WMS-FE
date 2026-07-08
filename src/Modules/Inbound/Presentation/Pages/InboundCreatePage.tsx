@@ -64,6 +64,15 @@ export function InboundCreatePage() {
   const [excelPreview, setExcelPreview] = useState<InboundLineImportPreview | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
+  // Review-fix (IFB-16): typing a new search term can narrow `warehouseOptions` below the
+  // already-selected warehouse, and LookupSelect's stale-value fallback then shows its raw id
+  // instead of its name. Clearing the selection on every search edit keeps the dropdown always
+  // showing a real, human-readable choice -- the user just re-picks from the fresh list.
+  function handleWarehouseSearchChange(value: string) {
+    setWarehouseSearch(value);
+    setWarehouseId('');
+  }
+
   const canCreate = Boolean(
     sourceSystem.trim() &&
     sourceDocumentNumber.trim() &&
@@ -338,7 +347,7 @@ export function InboundCreatePage() {
               errorMessage="Không tải được danh sách kho."
               onChange={setWarehouseId}
               searchValue={warehouseSearch}
-              onSearchChange={setWarehouseSearch}
+              onSearchChange={handleWarehouseSearchChange}
               searchPlaceholder="Tìm theo mã/tên kho..."
             />
             <LookupSelect

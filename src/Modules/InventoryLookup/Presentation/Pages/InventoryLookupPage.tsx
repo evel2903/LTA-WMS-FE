@@ -134,7 +134,9 @@ export function InventoryLookupPage() {
   const [correctingItem, setCorrectingItem] = useState<InventorySerialLookupItem | null>(null);
   const debouncedSerial = useDebouncedValue(serialFilter, 250, skuId);
   const debouncedLot = useDebouncedValue(lotFilter, 250, skuId);
-  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch, 300);
+  // Review-fix (IFB-16): reset like debouncedSerial/debouncedLot so a SKU switch doesn't let
+  // the previous SKU's still-debouncing warehouse search text transiently filter the dropdown.
+  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch, 300, skuId);
 
   const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
   const skuOptions = useMemo(
@@ -194,6 +196,16 @@ export function InventoryLookupPage() {
     setPage(1);
   }
 
+  // Review-fix (IFB-16): typing a new search term can narrow `warehouseOptions` below the
+  // already-selected warehouse, and LookupSelect's stale-value fallback then shows its raw id
+  // instead of its name. Clearing the selection on every search edit keeps the dropdown always
+  // showing a real, human-readable choice -- the user just re-picks from the fresh list.
+  function handleWarehouseSearchChange(value: string) {
+    setWarehouseSearch(value);
+    setWarehouseId('');
+    setPage(1);
+  }
+
   function handleSerialFilterChange(value: string) {
     setSerialFilter(value);
     setPage(1);
@@ -249,7 +261,7 @@ export function InventoryLookupPage() {
             errorMessage="Không tải được danh sách kho."
             onChange={handleWarehouseIdChange}
             searchValue={warehouseSearch}
-            onSearchChange={setWarehouseSearch}
+            onSearchChange={handleWarehouseSearchChange}
             searchPlaceholder="Tìm theo mã/tên kho..."
           />
           <label className="grid gap-1 text-sm">
