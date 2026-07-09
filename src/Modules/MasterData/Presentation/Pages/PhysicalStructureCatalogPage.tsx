@@ -7,6 +7,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@shared/Compon
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import {
   Table,
@@ -484,24 +485,26 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
           placeholder="Mã hoặc tên"
         />
       </label>
-      <label className="grid min-w-0 gap-1 text-sm">
-        Trạng thái
-        <select
-          className="h-10 rounded-md border bg-background px-3 text-sm"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-        >
-          <option value="">Tất cả</option>
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-          {mode === 'locations' ? (
-            <>
-              <option value="Blocked">Bị khóa</option>
-              <option value="Maintenance">Bảo trì</option>
-            </>
-          ) : null}
-        </select>
-      </label>
+      <ComboboxSelect
+        id={`${mode}-status-filter`}
+        name="statusFilter"
+        label="Trạng thái"
+        value={statusFilter}
+        placeholder="Tất cả"
+        optional
+        options={[
+          { value: '', label: 'Tất cả' },
+          { value: 'Active', label: 'Đang hoạt động' },
+          { value: 'Inactive', label: 'Không hoạt động' },
+          ...(mode === 'locations'
+            ? [
+                { value: 'Blocked', label: 'Bị khóa' },
+                { value: 'Maintenance', label: 'Bảo trì' },
+              ]
+            : []),
+        ]}
+        onChange={setStatusFilter}
+      />
     </div>
   );
 

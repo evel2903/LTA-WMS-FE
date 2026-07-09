@@ -1,4 +1,4 @@
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type { ActionCode, ObjectType } from '@modules/ReasonCode/Domain/Enums/ReasonCodeEnums';
 
@@ -35,7 +35,7 @@ export function ReasonCodeSelect({
   });
 
   return (
-    <LookupSelect
+    <ComboboxSelect
       id={id}
       name={name}
       label={label}

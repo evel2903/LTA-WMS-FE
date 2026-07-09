@@ -233,7 +233,8 @@ describe('PartnerMasterPage', () => {
     await actor.click(screen.getByRole('link', { name: 'Chỉnh sửa đối tác' }));
     const refreshedUpdateButton = await screen.findByRole('button', { name: 'Cập nhật đối tác' });
     const refreshedForm = refreshedUpdateButton.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(refreshedForm).getByLabelText('Mã lý do'), 'RC-CANCEL');
+    await actor.click(within(refreshedForm).getByLabelText('Mã lý do'));
+    await actor.click(await screen.findByRole('option', { name: /RC-CANCEL/ }));
     await actor.click(within(refreshedForm).getByRole('button', { name: 'Ngưng kích hoạt đối tác' }));
 
     await waitFor(() =>
