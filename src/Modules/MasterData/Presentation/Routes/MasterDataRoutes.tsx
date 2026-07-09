@@ -21,6 +21,12 @@ const ZoneMasterPage = lazy(() =>
   })),
 );
 
+const WarehouseMasterPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/WarehouseMasterPage').then((module) => ({
+    default: module.WarehouseMasterPage,
+  })),
+);
+
 const PhysicalStructureCatalogPage = lazy(() =>
   import('@modules/MasterData/Presentation/Pages/PhysicalStructureCatalogPage').then((module) => ({
     default: module.PhysicalStructureCatalogPage,
@@ -47,7 +53,7 @@ const LocationProfileDetailPage = lazy(() =>
 
 export const masterDataRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.SITES, element: <SiteMasterPage /> },
-  { path: ROUTES.FOUNDATION.LOCATIONS, element: <PhysicalStructureCatalogPage key="warehouses" mode="warehouses" /> },
+  { path: ROUTES.FOUNDATION.LOCATIONS, element: <WarehouseMasterPage /> },
   { path: ROUTES.FOUNDATION.ZONES, element: <ZoneMasterPage /> },
   { path: ROUTES.FOUNDATION.PHYSICAL_LOCATIONS, element: <PhysicalStructureCatalogPage key="locations" mode="locations" /> },
   { path: ROUTES.FOUNDATION.LOCATION_MAP(), element: <SiteLocationTreePage mode="detail" /> },

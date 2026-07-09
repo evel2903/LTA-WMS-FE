@@ -46,6 +46,7 @@ import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseF
 import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import { buildWarehouseTypeOptions } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
 import { PhysicalStructureCatalogPage } from '@modules/MasterData/Presentation/Pages/PhysicalStructureCatalogPage';
+import { WarehouseMasterPage } from '@modules/MasterData/Presentation/Pages/WarehouseMasterPage';
 import { SiteLocationTreePageView } from '@modules/MasterData/Presentation/Pages/SiteLocationTreePageView';
 import type {
   LocationProfile,
@@ -895,9 +896,10 @@ describe('Site & Location Tree components', () => {
       />,
     );
 
-    expect(screen.getByLabelText<HTMLSelectElement>('Loại kho').value).toBe('DC');
     expect(screen.getByText('DC (giá trị hiện tại)')).toBeTruthy();
-    expect(screen.getByText('WT-01 - Kho thường')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Loại kho'));
+    expect(screen.getByRole('option', { name: 'WT-01 - Kho thường' })).toBeTruthy();
   });
 
   it('blocks warehouse create submit when warehouse type catalog has no active option', () => {
@@ -1192,27 +1194,14 @@ describe('Site & Location Tree components', () => {
 
     render(
       <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="warehouses" />
+        <WarehouseMasterPage />
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('Site'), { target: { value: 'site-2' } });
+    fireEvent.click(screen.getByLabelText('Site'));
+    fireEvent.click(screen.getByRole('option', { name: /SITE-02/ }));
 
-    expect(screen.getByText('Tạo kho đầu tiên cho site đang chọn trước khi mở sơ đồ cấu trúc.')).not.toBeNull();
-  });
-
-  it('renders active warehouse catalog map actions with warehouse-specific labels', () => {
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="warehouses" />
-      </MemoryRouter>,
-    );
-
-    const mapLinks = screen.getAllByRole('link', { name: 'Sơ đồ kho WH-01' });
-
-    expect(mapLinks.length).toBeGreaterThan(0);
-    expect(mapLinks[0]?.getAttribute('href')).toBe('/foundation/locations/wh-1/map');
-    expect(screen.queryByRole('link', { name: 'Sơ đồ' })).toBeNull();
+    expect(screen.getByText('Tạo kho đầu tiên cho site đang chọn.')).not.toBeNull();
   });
 
   it('localizes physical structure location headers and avoids English action/profile labels', () => {
