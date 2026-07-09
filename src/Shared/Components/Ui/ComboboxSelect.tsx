@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
 
 import { cn } from '@shared/Utils/Cn';
 import { Input } from '@shared/Components/Ui/Input';
@@ -42,25 +42,28 @@ export interface ComboboxSelectProps {
 const triggerClassName =
   'flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
 
-export function ComboboxSelect({
-  id,
-  name,
-  label,
-  value,
-  placeholder,
-  options,
-  isLoading = false,
-  isError = false,
-  emptyMessage = 'Không có lựa chọn phù hợp.',
-  errorMessage = 'Không tải được danh sách.',
-  optional = false,
-  disabled = false,
-  autoFocus = false,
-  onChange,
-  searchValue,
-  onSearchChange,
-  searchPlaceholder,
-}: ComboboxSelectProps) {
+export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelectProps>(function ComboboxSelect(
+  {
+    id,
+    name,
+    label,
+    value,
+    placeholder,
+    options,
+    isLoading = false,
+    isError = false,
+    emptyMessage = 'Không có lựa chọn phù hợp.',
+    errorMessage = 'Không tải được danh sách.',
+    optional = false,
+    disabled = false,
+    autoFocus = false,
+    onChange,
+    searchValue,
+    onSearchChange,
+    searchPlaceholder,
+  },
+  ref,
+) {
   const [open, setOpen] = React.useState(false);
   const [internalQuery, setInternalQuery] = React.useState('');
   const [highlightIndex, setHighlightIndex] = React.useState(0);
@@ -84,7 +87,7 @@ export function ComboboxSelect({
       );
 
   const hasOptions = displayOptions.length > 0;
-  const isDisabled = disabled || isLoading || isError || (!optional && !hasOptions) || (optional && !hasOptions);
+  const isDisabled = disabled || isLoading || isError || (!optional && !hasOptions);
   const helperText = isLoading
     ? 'Đang tải danh sách...'
     : isError
@@ -94,6 +97,12 @@ export function ComboboxSelect({
         : null;
 
   const selectedOption = displayOptions.find((option) => option.value === value);
+
+  // Keeps highlightIndex in range if `options` shrinks for a reason other than
+  // typing (e.g. an async refetch), independent of the reset-to-0 in setQuery.
+  React.useEffect(() => {
+    setHighlightIndex((index) => Math.min(index, Math.max(filteredOptions.length - 1, 0)));
+  }, [filteredOptions.length]);
 
   function setQuery(next: string) {
     if (isControlledSearch) {
@@ -145,27 +154,43 @@ export function ComboboxSelect({
           else setQuery('');
         }}
       >
-        <PopoverPrimitive.Trigger asChild>
-          <button
-            type="button"
-            id={id}
-            name={name}
-            role="combobox"
-            aria-expanded={open}
-            aria-haspopup="listbox"
-            aria-controls={listboxId}
-            aria-describedby={helperText ? helperId : undefined}
-            disabled={isDisabled}
-            autoFocus={autoFocus}
-            className={cn(triggerClassName)}
-            onKeyDown={handleTriggerKeyDown}
-          >
-            <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
-              {isLoading ? 'Đang tải...' : (selectedOption?.label ?? placeholder)}
-            </span>
-            <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
-          </button>
-        </PopoverPrimitive.Trigger>
+        <div className="relative">
+          <PopoverPrimitive.Trigger asChild>
+            <button
+              ref={ref}
+              type="button"
+              id={id}
+              name={name}
+              role="combobox"
+              aria-expanded={open}
+              aria-haspopup="listbox"
+              aria-controls={listboxId}
+              aria-describedby={helperText ? helperId : undefined}
+              disabled={isDisabled}
+              autoFocus={autoFocus}
+              className={cn(triggerClassName)}
+              onKeyDown={handleTriggerKeyDown}
+            >
+              <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
+                {isLoading ? 'Đang tải...' : (selectedOption?.label ?? placeholder)}
+              </span>
+              <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+            </button>
+          </PopoverPrimitive.Trigger>
+          {optional && selectedOption && !isDisabled ? (
+            <button
+              type="button"
+              aria-label={`Xóa lựa chọn ${label}`}
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 absolute top-1/2 right-8 -translate-y-1/2 rounded-sm p-0.5 outline-none focus-visible:ring-[3px]"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange('');
+              }}
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             align="start"
@@ -222,4 +247,4 @@ export function ComboboxSelect({
       ) : null}
     </div>
   );
-}
+});

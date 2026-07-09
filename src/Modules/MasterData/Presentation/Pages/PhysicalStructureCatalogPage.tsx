@@ -32,6 +32,7 @@ import type {
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
+import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 import {
   explicitPhysicalField,
   fallbackPhysicalField,
@@ -80,13 +81,6 @@ interface LocationRow {
   warehouse: WarehouseNode;
   zone: ZoneNode;
   location: LocationNode;
-}
-
-function countDescendants(node: SiteLocationTree, type: SiteLocationTree['type']): number {
-  return node.children.reduce((total, child) => {
-    const own = child.type === type ? 1 : 0;
-    return total + own + countDescendants(child, type);
-  }, 0);
 }
 
 function siteRows(nodes: SiteLocationTree[]): SiteRow[] {
@@ -187,10 +181,6 @@ function preserveUnchangedPhysicalFallbacks(
   });
 
   return next;
-}
-
-function normalized(value: string): string {
-  return value.trim().toLocaleLowerCase('vi-VN');
 }
 
 function ParentSiteSelect({

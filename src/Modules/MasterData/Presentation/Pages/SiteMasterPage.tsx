@@ -16,6 +16,7 @@ import {
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { StatusBadge } from '@modules/MasterData/Presentation/Components/StatusBadge';
 import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
+import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
@@ -29,15 +30,6 @@ interface SiteRow {
   locationCount: number;
 }
 
-// Sites are the root of the tree; counting warehouse/zone/location descendants
-// still requires the full tree fetch (no per-site aggregate endpoint exists yet).
-function countDescendants(node: SiteLocationTree, type: SiteLocationTree['type']): number {
-  return node.children.reduce((total, child) => {
-    const own = child.type === type ? 1 : 0;
-    return total + own + countDescendants(child, type);
-  }, 0);
-}
-
 function siteRows(nodes: SiteLocationTree[]): SiteRow[] {
   return nodes
     .filter((node): node is SiteNode => node.type === 'site')
@@ -47,10 +39,6 @@ function siteRows(nodes: SiteLocationTree[]): SiteRow[] {
       zoneCount: countDescendants(site, 'zone'),
       locationCount: countDescendants(site, 'location'),
     }));
-}
-
-function normalized(value: string): string {
-  return value.trim().toLocaleLowerCase('vi-VN');
 }
 
 function filterSiteRows(rows: SiteRow[], searchTerm: string, statusFilter: string): SiteRow[] {
@@ -63,17 +51,17 @@ function filterSiteRows(rows: SiteRow[], searchTerm: string, statusFilter: strin
 
 function compareSiteRows(a: SiteRow, b: SiteRow, column: string): number {
   switch (column) {
-    case 'Mã site':
+    case 'site-code':
       return a.site.entity.siteCode.localeCompare(b.site.entity.siteCode, 'vi');
-    case 'Tên site':
+    case 'site-name':
       return a.site.entity.siteName.localeCompare(b.site.entity.siteName, 'vi');
-    case 'Trạng thái':
+    case 'status':
       return a.site.status.localeCompare(b.site.status, 'vi');
-    case 'Kho':
+    case 'warehouse-count':
       return a.warehouseCount - b.warehouseCount;
-    case 'Zone':
+    case 'zone-count':
       return a.zoneCount - b.zoneCount;
-    case 'Vị trí':
+    case 'location-count':
       return a.locationCount - b.locationCount;
     default:
       return 0;
@@ -130,16 +118,17 @@ export function SiteMasterPage() {
   const canCreate = !apiError?.isForbidden;
 
   const columns: CatalogColumn<SiteRow>[] = [
-    { header: 'Mã site', render: (row) => row.site.entity.siteCode, sortable: true },
-    { header: 'Tên site', render: (row) => row.site.entity.siteName, sortable: true },
+    { id: 'site-code', header: 'Mã site', render: (row) => row.site.entity.siteCode, sortable: true },
+    { id: 'site-name', header: 'Tên site', render: (row) => row.site.entity.siteName, sortable: true },
     {
+      id: 'status',
       header: 'Trạng thái',
       render: (row) => <StatusBadge status={row.site.status} />,
       sortable: true,
     },
-    { header: 'Kho', render: (row) => row.warehouseCount, className: 'text-right', sortable: true },
-    { header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
-    { header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
+    { id: 'warehouse-count', header: 'Kho', render: (row) => row.warehouseCount, className: 'text-right', sortable: true },
+    { id: 'zone-count', header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
+    { id: 'location-count', header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
     {
       header: 'Hành động',
       render: (row) => (

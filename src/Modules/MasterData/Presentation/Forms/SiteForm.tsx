@@ -46,6 +46,10 @@ export function SiteForm({
   const reasonCode = form.watch('reasonCode');
   const status = form.watch('status');
   const reasonAction = initialValue ? 'Update' : 'Create';
+  // register() here is ref-only (value is driven by watch()/setValue() above) — gives RHF
+  // a DOM node to call .focus() on for these fields when shouldFocusError fires on submit.
+  const { ref: statusRef } = form.register('status');
+  const { ref: reasonCodeRef } = form.register('reasonCode');
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -60,6 +64,7 @@ export function SiteForm({
         )}
       </label>
       <ComboboxSelect
+        ref={statusRef}
         id="site-status"
         name="status"
         label="Trạng thái"
@@ -73,6 +78,7 @@ export function SiteForm({
       />
       <div>
         <ReasonCodeSelect
+          ref={reasonCodeRef}
           id="site-reason-code"
           name="reasonCode"
           label="Mã lý do"

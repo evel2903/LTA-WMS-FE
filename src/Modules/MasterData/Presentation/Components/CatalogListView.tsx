@@ -24,6 +24,8 @@ export interface CatalogColumn<TRow> {
   mobileLabel?: string;
   /** Marks this column as sortable — the parent owns the actual comparator via `onSortChange`. */
   sortable?: boolean;
+  /** Stable sort key, decoupled from the display text. Required when `sortable: true` — falls back to `header` otherwise. */
+  id?: string;
 }
 
 export interface CatalogSortState {
@@ -148,8 +150,9 @@ function ResponsiveCatalogRows<TRow>({
           <TableHeader>
             <TableRow>
               {columns.map((column) => {
+                const sortKey = column.id ?? column.header;
                 const isSortable = column.sortable && onSortChange != null;
-                const isActive = sort?.column === column.header;
+                const isActive = sort?.column === sortKey;
                 const SortIcon = isActive ? (sort?.direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
                 return (
                   <TableHead
@@ -160,7 +163,7 @@ function ResponsiveCatalogRows<TRow>({
                       <button
                         type="button"
                         className="hover:text-foreground inline-flex items-center gap-1"
-                        onClick={() => onSortChange?.(column.header)}
+                        onClick={() => onSortChange?.(sortKey)}
                       >
                         {column.header}
                         <SortIcon className={cn('size-3.5', isActive ? 'opacity-100' : 'opacity-40')} />
