@@ -2,14 +2,21 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import type { Warehouse, WarehouseType } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import { MASTER_DATA_STATUS_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   buildWarehouseTypeOptions,
   warehouseFormSchema,
   type WarehouseFormValues,
 } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
+
+const WAREHOUSE_STATUS_OPTIONS = (['Active', 'Inactive'] as const).map((value) => ({
+  value,
+  label: MASTER_DATA_STATUS_LABELS[value],
+}));
 
 interface WarehouseFormProps {
   siteId?: string;
@@ -52,7 +59,13 @@ export function WarehouseForm({
     },
   });
   const reasonCode = form.watch('reasonCode');
+  const status = form.watch('status');
+  const warehouseTypeCode = form.watch('warehouseTypeCode');
   const reasonAction = initialValue ? 'Update' : 'Create';
+  // register() here is ref-only (value is driven by watch()/setValue() above) — gives RHF
+  // a DOM node to call .focus() on for these fields when shouldFocusError fires on submit.
+  const { ref: statusRef } = form.register('status');
+  const { ref: warehouseTypeCodeRef } = form.register('warehouseTypeCode');
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -66,16 +79,19 @@ export function WarehouseForm({
       </label>
       <label className="grid gap-1 text-sm">Tên kho<Input disabled={disabled} {...form.register('warehouseName')} />
       </label>
-      <label className="grid gap-1 text-sm">Loại kho<select aria-label="Loại kho" className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled || !hasSelectableWarehouseType} {...form.register('warehouseTypeCode')}>
-          {warehouseTypeOptions.length === 0 ? (
-            <option value="">Chưa có loại kho đang hoạt động</option>
-          ) : null}
-          {warehouseTypeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <div>
+        <ComboboxSelect
+          ref={warehouseTypeCodeRef}
+          id="warehouse-type-code"
+          name="warehouseTypeCode"
+          label="Loại kho"
+          value={warehouseTypeCode}
+          placeholder="Chọn loại kho"
+          options={warehouseTypeOptions}
+          disabled={disabled || !hasSelectableWarehouseType}
+          emptyMessage="Chưa có loại kho đang hoạt động"
+          onChange={(value) => form.setValue('warehouseTypeCode', value, { shouldDirty: true, shouldValidate: true })}
+        />
         {warehouseTypeOptions.some((option) => option.unavailable) && (
           <span className="text-muted-foreground text-xs">
             Mã hiện tại chưa có trong danh mục loại kho.
@@ -86,12 +102,20 @@ export function WarehouseForm({
             Tải hoặc tạo loại kho đang hoạt động trước khi lưu kho.
           </span>
         )}
-      </label>
-      <label className="grid gap-1 text-sm">Trạng thái<select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-        </select>
-      </label>
+      </div>
+      <ComboboxSelect
+        ref={statusRef}
+        id="warehouse-status"
+        name="status"
+        label="Trạng thái"
+        value={status}
+        placeholder="Chọn trạng thái"
+        options={WAREHOUSE_STATUS_OPTIONS}
+        disabled={disabled}
+        onChange={(value) =>
+          form.setValue('status', value as WarehouseFormValues['status'], { shouldDirty: true, shouldValidate: true })
+        }
+      />
       <div>
         <ReasonCodeSelect
           id="warehouse-reason-code"
