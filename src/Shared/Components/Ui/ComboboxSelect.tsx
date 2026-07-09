@@ -144,7 +144,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
   }
 
   return (
-    <div className="grid gap-1 text-sm">
+    <div className="grid min-w-0 gap-1 text-sm">
       <label htmlFor={id}>{label}</label>
       <PopoverPrimitive.Root
         open={open}
@@ -171,7 +171,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
               className={cn(triggerClassName)}
               onKeyDown={handleTriggerKeyDown}
             >
-              <span className={cn('truncate', !selectedOption && 'text-muted-foreground')}>
+              <span className={cn('min-w-0 flex-1 truncate text-left', !selectedOption && 'text-muted-foreground')}>
                 {isLoading ? 'Đang tải...' : (selectedOption?.label ?? placeholder)}
               </span>
               <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
@@ -231,7 +231,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
                     onMouseEnter={() => setHighlightIndex(index)}
                     onClick={() => commitSelection(option.value)}
                   >
-                    <span className="truncate">{option.label}</span>
+                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
                     {option.value === value && <Check className="size-4 shrink-0" />}
                   </li>
                 ))
