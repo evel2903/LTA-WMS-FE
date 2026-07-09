@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
 import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { FormModal } from '@shared/Components/Ui/FormModal';
@@ -16,14 +17,16 @@ import {
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { StatusBadge } from '@modules/MasterData/Presentation/Components/StatusBadge';
 import { ZoneForm } from '@modules/MasterData/Presentation/Forms/ZoneForm';
-import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
+import {
+  countDescendants,
+  normalized,
+  type SiteNode,
+  type WarehouseNode,
+  type ZoneNode,
+} from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
-
-type SiteNode = Extract<SiteLocationTree, { type: 'site' }>;
-type WarehouseNode = Extract<SiteLocationTree, { type: 'warehouse' }>;
-type ZoneNode = Extract<SiteLocationTree, { type: 'zone' }>;
 
 interface WarehouseOption {
   site: SiteNode;
@@ -135,17 +138,24 @@ export function ZoneMasterPage() {
     () => warehouses.filter(({ site }) => !siteFilter || site.id === siteFilter),
     [siteFilter, warehouses],
   );
+  // Self-heals if the selected warehouse falls out of scope (site filter changed, or the
+  // warehouse itself disappeared from a refetch) instead of silently matching zero rows.
+  const activeWarehouseFilter = scopedWarehouses.some(({ warehouse }) => warehouse.id === warehouseFilter)
+    ? warehouseFilter
+    : '';
   const filteredRows = useMemo(
-    () => filterZoneRows(zones, searchTerm, statusFilter, siteFilter, warehouseFilter),
-    [zones, searchTerm, statusFilter, siteFilter, warehouseFilter],
+    () => filterZoneRows(zones, searchTerm, statusFilter, siteFilter, activeWarehouseFilter),
+    [zones, searchTerm, statusFilter, siteFilter, activeWarehouseFilter],
   );
   const sortedRows = useMemo(() => sortZoneRows(filteredRows, sort), [filteredRows, sort]);
   const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const pagedRows = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+  // Defaults to whatever the toolbar is currently scoped to (warehouse filter, else site
+  // filter) instead of the very first warehouse overall, so "Tạo zone" starts in-context.
   const activeCreateWarehouseId =
-    createWarehouseId && warehouses.some(({ warehouse }) => warehouse.id === createWarehouseId)
+    createWarehouseId && scopedWarehouses.some(({ warehouse }) => warehouse.id === createWarehouseId)
       ? createWarehouseId
-      : (warehouses[0]?.warehouse.id ?? '');
+      : (activeWarehouseFilter || scopedWarehouses[0]?.warehouse.id || '');
 
   function handleSiteFilterChange(value: string) {
     setSiteFilter(value);
@@ -171,7 +181,7 @@ export function ZoneMasterPage() {
         : filteredRows.length === 0
           ? 'empty'
           : 'ready';
-  const canCreate = !apiError?.isForbidden && warehouses.length > 0;
+  const canCreate = !apiError?.isForbidden && scopedWarehouses.length > 0;
 
   const columns: CatalogColumn<ZoneRow>[] = [
     { id: 'site-code', header: 'Site', render: (row) => row.site.entity.siteCode, sortable: true },
@@ -223,7 +233,7 @@ export function ZoneMasterPage() {
         sort={sort}
         onSortChange={handleSortChange}
         canCreate={canCreate}
-        emptyLabel={warehouses.length === 0 ? 'Tạo kho trước khi thêm zone.' : 'Không có zone phù hợp với bộ lọc hiện tại.'}
+        emptyLabel={scopedWarehouses.length === 0 ? 'Tạo kho trước khi thêm zone.' : 'Không có zone phù hợp với bộ lọc hiện tại.'}
         errorMessage={apiError?.message ?? (treeQuery.error ? 'Không thể tải dữ liệu zone.' : undefined)}
         headerAction={
           canCreate ? (
@@ -286,7 +296,7 @@ export function ZoneMasterPage() {
                 id="zone-warehouse-filter"
                 name="warehouseFilter"
                 label="Kho"
-                value={warehouseFilter}
+                value={activeWarehouseFilter}
                 placeholder="Tất cả kho"
                 optional
                 options={[
@@ -307,7 +317,7 @@ export function ZoneMasterPage() {
       />
 
       <FormModal title="Tạo zone" open={createOpen} onClose={() => setCreateOpen(false)}>
-        {warehouses.length > 0 ? (
+        {scopedWarehouses.length > 0 ? (
           <div className="grid gap-4">
             <ComboboxSelect
               id="zone-create-warehouse"
@@ -315,7 +325,7 @@ export function ZoneMasterPage() {
               label="Kho"
               value={activeCreateWarehouseId}
               placeholder="Chọn kho"
-              options={warehouses.map(({ warehouse }) => ({
+              options={scopedWarehouses.map(({ warehouse }) => ({
                 value: warehouse.id,
                 label: `${warehouse.entity.warehouseCode} - ${warehouse.entity.warehouseName}`,
               }))}
@@ -329,7 +339,12 @@ export function ZoneMasterPage() {
               onSubmit={(values) => mutations.createZone.mutate(values, { onSuccess: () => setCreateOpen(false) })}
             />
           </div>
-        ) : null}
+        ) : (
+          <Alert role="status" variant="info">
+            <AlertTitle>Chưa có kho phù hợp</AlertTitle>
+            <AlertDescription>Xóa bộ lọc Site/Kho hoặc tạo kho trước khi tạo zone.</AlertDescription>
+          </Alert>
+        )}
       </FormModal>
       <FormModal title="Cập nhật zone" open={editingZone != null} onClose={() => setEditingZone(null)}>
         {editingZone ? (

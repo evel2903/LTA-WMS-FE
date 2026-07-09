@@ -31,7 +31,14 @@ import type {
   WarehouseType,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
-import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
+import {
+  countDescendants,
+  normalized,
+  type LocationNode,
+  type SiteNode,
+  type WarehouseNode,
+  type ZoneNode,
+} from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 import {
   explicitPhysicalField,
   fallbackPhysicalField,
@@ -47,11 +54,6 @@ import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseF
 export type PhysicalStructureCatalogMode = 'warehouses' | 'locations';
 
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
-
-type SiteNode = Extract<SiteLocationTree, { type: 'site' }>;
-type WarehouseNode = Extract<SiteLocationTree, { type: 'warehouse' }>;
-type ZoneNode = Extract<SiteLocationTree, { type: 'zone' }>;
-type LocationNode = Extract<SiteLocationTree, { type: 'location' }>;
 
 interface SiteRow {
   site: SiteNode;

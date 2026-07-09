@@ -16,12 +16,14 @@ import {
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { StatusBadge } from '@modules/MasterData/Presentation/Components/StatusBadge';
 import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
-import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
+import {
+  countDescendants,
+  normalized,
+  type SiteNode,
+} from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
-
-type SiteNode = Extract<SiteLocationTree, { type: 'site' }>;
 
 interface SiteRow {
   site: SiteNode;
