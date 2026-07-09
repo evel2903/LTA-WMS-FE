@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArchiveX } from 'lucide-react';
-import type { UseFormRegisterReturn } from 'react-hook-form';
 import { useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
@@ -26,30 +25,6 @@ interface LocationProfileFormProps {
 
 function ErrorText({ message }: { message?: string }) {
   return message ? <span className="text-destructive text-xs">{message}</span> : null;
-}
-
-function PolicyTextarea({
-  label,
-  disabled,
-  registration,
-  error,
-}: {
-  label: string;
-  disabled: boolean;
-  registration: UseFormRegisterReturn;
-  error?: string;
-}) {
-  return (
-    <label className="grid gap-1 text-sm">
-      {label}
-      <textarea
-        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 rounded-md border bg-transparent px-3 py-2 font-mono text-xs shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={disabled}
-        {...registration}
-      />
-      <ErrorText message={error} />
-    </label>
-  );
 }
 
 export function LocationProfileForm({
@@ -98,36 +73,131 @@ export function LocationProfileForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <PolicyTextarea
-          label="Chính sách sức chứa"
-          disabled={disabled}
-          registration={form.register('capacityPolicyJson')}
-          error={errors.capacityPolicyJson?.message}
-        />
-        <PolicyTextarea
-          label="Chính sách điều kiện sử dụng"
-          disabled={disabled}
-          registration={form.register('eligibilityPolicyJson')}
-          error={errors.eligibilityPolicyJson?.message}
-        />
-        <PolicyTextarea
-          label="Chính sách trộn hàng"
-          disabled={disabled}
-          registration={form.register('mixPolicyJson')}
-          error={errors.mixPolicyJson?.message}
-        />
-        <PolicyTextarea
-          label="Chính sách tuân thủ"
-          disabled={disabled}
-          registration={form.register('compliancePolicyJson')}
-          error={errors.compliancePolicyJson?.message}
-        />
-        <PolicyTextarea
-          label="Chính sách vận hành"
-          disabled={disabled}
-          registration={form.register('operationPolicyJson')}
-          error={errors.operationPolicyJson?.message}
-        />
+        <fieldset className="grid gap-2 rounded-md border p-3">
+          <legend className="text-muted-foreground px-1 text-xs">Chính sách sức chứa</legend>
+          <label className="flex min-w-0 items-center gap-2 text-sm">
+            <input
+              id="location-profile-require-capacity-qty"
+              type="checkbox"
+              disabled={disabled}
+              {...form.register('requireCapacityQty')}
+            />
+            Yêu cầu số lượng sức chứa
+          </label>
+        </fieldset>
+
+        <fieldset className="grid gap-2 rounded-md border p-3">
+          <legend className="text-muted-foreground px-1 text-xs">Chính sách điều kiện sử dụng</legend>
+          <label className="flex min-w-0 items-center gap-2 text-sm">
+            <input
+              id="location-profile-eligibility-putaway-blocked"
+              type="checkbox"
+              disabled={disabled}
+              {...form.register('eligibilityPutawayBlocked')}
+            />
+            Chặn putaway (điều kiện sử dụng)
+          </label>
+        </fieldset>
+
+        <fieldset className="grid gap-2 rounded-md border p-3">
+          <legend className="text-muted-foreground px-1 text-xs">Chính sách trộn hàng</legend>
+          <label className="grid gap-1 text-sm">Trộn SKU<select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              disabled={disabled}
+              {...form.register('mixSkuPolicy')}
+            >
+              <option value="allow">Cho phép trộn</option>
+              <option value="noMix">Không trộn</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">Trộn chủ hàng<select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              disabled={disabled}
+              {...form.register('mixOwnerPolicy')}
+            >
+              <option value="allow">Cho phép trộn</option>
+              <option value="noMix">Không trộn</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">Trộn lô<select
+              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              disabled={disabled}
+              {...form.register('mixLotPolicy')}
+            >
+              <option value="allow">Cho phép trộn</option>
+              <option value="noMix">Không trộn</option>
+            </select>
+          </label>
+        </fieldset>
+
+        <fieldset className="grid gap-2 rounded-md border p-3">
+          <legend className="text-muted-foreground px-1 text-xs">Chính sách tuân thủ</legend>
+          <label className="grid gap-1 text-sm">Nhóm nhiệt độ yêu cầu<Input disabled={disabled} {...form.register('requiredTemperatureClass')} />
+            <ErrorText message={errors.requiredTemperatureClass?.message} />
+          </label>
+          <label className="flex min-w-0 items-center gap-2 text-sm">
+            <input
+              id="location-profile-bonded-only"
+              type="checkbox"
+              disabled={disabled}
+              {...form.register('bondedOnly')}
+            />
+            Chỉ áp dụng khu ngoại quan
+          </label>
+        </fieldset>
+
+        <fieldset className="grid gap-2 rounded-md border p-3 md:col-span-2">
+          <legend className="text-muted-foreground px-1 text-xs">Chính sách vận hành</legend>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex min-w-0 items-center gap-2 text-sm">
+              <input
+                id="location-profile-operation-putaway-blocked"
+                type="checkbox"
+                disabled={disabled}
+                {...form.register('operationPutawayBlocked')}
+              />
+              Chặn putaway (vận hành)
+            </label>
+            <label className="grid gap-1 text-sm">Cho phép putaway<select
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                disabled={disabled}
+                {...form.register('operationPutawayAllowed')}
+              >
+                <option value="unset">Không đặt</option>
+                <option value="true">Cho phép</option>
+                <option value="false">Không cho phép</option>
+              </select>
+            </label>
+            <label className="flex min-w-0 items-center gap-2 text-sm">
+              <input
+                id="location-profile-operation-replenishment-blocked"
+                type="checkbox"
+                disabled={disabled}
+                {...form.register('operationReplenishmentBlocked')}
+              />
+              Chặn châm hàng
+            </label>
+            <label className="grid gap-1 text-sm">Cho phép châm hàng<select
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                disabled={disabled}
+                {...form.register('operationReplenishmentAllowed')}
+              >
+                <option value="unset">Không đặt</option>
+                <option value="true">Cho phép</option>
+                <option value="false">Không cho phép</option>
+              </select>
+            </label>
+            <label className="flex min-w-0 items-center gap-2 text-sm">
+              <input
+                id="location-profile-operation-pick-face"
+                type="checkbox"
+                disabled={disabled}
+                {...form.register('operationPickFace')}
+              />
+              Là vị trí soạn hàng (pick face)
+            </label>
+          </div>
+        </fieldset>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">

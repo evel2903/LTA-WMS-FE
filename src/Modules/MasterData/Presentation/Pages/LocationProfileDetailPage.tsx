@@ -70,7 +70,7 @@ export function LocationProfileDetailPage({ mode }: LocationProfileDetailPagePro
 
   const submitUpdate = (profileId: string, values: LocationProfileFormValues) =>
     mutations.update.mutate(
-      { id: profileId, input: toUpdateLocationProfileInput(values) },
+      { id: profileId, input: toUpdateLocationProfileInput(values, profile) },
       {
         onError: setSubmitError,
         onSuccess: (updated) => {
@@ -84,7 +84,7 @@ export function LocationProfileDetailPage({ mode }: LocationProfileDetailPagePro
     mutations.update.mutate(
       {
         id: profileId,
-        input: { ...toUpdateLocationProfileInput(values), status: 'Inactive' },
+        input: { ...toUpdateLocationProfileInput(values, profile), status: 'Inactive' },
       },
       {
         onError: setSubmitError,
