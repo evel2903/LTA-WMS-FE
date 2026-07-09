@@ -29,7 +29,6 @@ import type {
   SiteLocationTree,
   Warehouse,
   WarehouseType,
-  Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
 import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
@@ -44,9 +43,8 @@ import {
 import { LocationForm, type LocationFormDirtyFields } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import type { LocationFormValues } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
 import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseForm';
-import { ZoneForm } from '@modules/MasterData/Presentation/Forms/ZoneForm';
 
-export type PhysicalStructureCatalogMode = 'warehouses' | 'zones' | 'locations';
+export type PhysicalStructureCatalogMode = 'warehouses' | 'locations';
 
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
 
@@ -210,33 +208,6 @@ function ParentSiteSelect({
   );
 }
 
-function ParentWarehouseSelect({
-  warehouses,
-  selectedWarehouseId,
-  onChange,
-}: {
-  warehouses: WarehouseRow[];
-  selectedWarehouseId: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="grid gap-1 text-sm">
-      Kho
-      <select
-        className="h-10 rounded-md border bg-background px-3 text-sm"
-        value={selectedWarehouseId}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {warehouses.map(({ warehouse }) => (
-          <option key={warehouse.id} value={warehouse.id}>
-            {warehouse.entity.warehouseCode} - {warehouse.entity.warehouseName}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
 function ParentZoneSelect({
   zones,
   selectedZoneId,
@@ -287,10 +258,8 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
   const [rackFilter, setRackFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
-  const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [createSiteId, setCreateSiteId] = useState('');
-  const [createWarehouseId, setCreateWarehouseId] = useState('');
   const [createZoneId, setCreateZoneId] = useState('');
   const siteScopeRows = useMemo(
     () => (siteFilter === 'all' ? sites : sites.filter(({ site }) => site.id === siteFilter)),
@@ -299,13 +268,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
   const warehouseScopeRows = useMemo(
     () => warehouses.filter(({ site }) => siteFilter === 'all' || site.id === siteFilter),
     [siteFilter, warehouses],
-  );
-  const warehouseCreateRows = useMemo(
-    () =>
-      warehouseFilter === 'all'
-        ? warehouseScopeRows
-        : warehouseScopeRows.filter(({ warehouse }) => warehouse.id === warehouseFilter),
-    [warehouseFilter, warehouseScopeRows],
   );
   const zoneScopeRows = useMemo(
     () =>
@@ -327,7 +289,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
     [locations, siteFilter, warehouseFilter, zoneFilter],
   );
   const warehouseTableRows = filterWarehouseRows(warehouses, searchTerm, statusFilter, siteFilter);
-  const zoneTableRows = filterZoneRows(zones, searchTerm, statusFilter, siteFilter, warehouseFilter);
   const locationTableRows = filterLocationRows(
     locations,
     searchTerm,
@@ -351,7 +312,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
     setRackFilter('all');
     setCreateOpen(false);
     setEditingWarehouse(null);
-    setEditingZone(null);
     setEditingLocation(null);
   }, [mode]);
 
@@ -360,14 +320,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
       current && siteScopeRows.some(({ site }) => site.id === current) ? current : (siteScopeRows[0]?.site.id ?? ''),
     );
   }, [siteScopeRows]);
-
-  useEffect(() => {
-    setCreateWarehouseId((current) =>
-      current && warehouseCreateRows.some(({ warehouse }) => warehouse.id === current)
-        ? current
-        : (warehouseCreateRows[0]?.warehouse.id ?? ''),
-    );
-  }, [warehouseCreateRows]);
 
   useEffect(() => {
     setCreateZoneId((current) =>
@@ -402,23 +354,15 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         ? 'error'
         : null;
 
-  const title =
-    mode === 'warehouses'
-      ? 'Kho'
-      : mode === 'zones'
-        ? 'Zone'
-        : 'Vị trí vật lý';
+  const title = mode === 'warehouses' ? 'Kho' : 'Vị trí vật lý';
   const description =
     mode === 'warehouses'
       ? 'Quản lý kho bằng bảng và mở sơ đồ cấu trúc vật lý khi cần xem chi tiết.'
-      : mode === 'zones'
-        ? 'Quản lý zone theo kho bằng bảng; sơ đồ hóa zone sẽ làm ở story sau.'
-        : 'Quản lý dãy, kệ, tầng và ô của từng vị trí bằng bảng.';
+      : 'Quản lý dãy, kệ, tầng và ô của từng vị trí bằng bảng.';
   const canCreate =
     !apiError?.isForbidden &&
     !locationProfileQueryError &&
     ((mode === 'warehouses' && siteScopeRows.length > 0) ||
-      (mode === 'zones' && warehouseCreateRows.length > 0) ||
       (mode === 'locations' && zoneScopeRows.length > 0 && locationProfiles.length > 0));
 
   const commonFilters = (
@@ -472,14 +416,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
           ? 'Tạo kho đầu tiên cho site đã có trước khi mở sơ đồ cấu trúc.'
           : 'Tạo kho đầu tiên cho site đang chọn trước khi mở sơ đồ cấu trúc.'
         : 'Không có kho phù hợp với bộ lọc hiện tại.';
-  const zoneEmptyMessage =
-    warehouseScopeRows.length === 0
-      ? 'Tạo kho trước khi thêm zone.'
-      : zoneScopeRows.length === 0
-        ? warehouseFilter === 'all'
-          ? 'Tạo zone cho kho trong phạm vi đang chọn trước khi thêm vị trí vật lý.'
-          : 'Tạo zone cho kho đang chọn trước khi thêm vị trí vật lý.'
-        : 'Không có zone phù hợp với bộ lọc hiện tại.';
   const locationEmptyMessage = (() => {
     if (locationProfileQueryError) return locationProfileErrorMessage;
     if (warehouseScopeRows.length === 0 && missingLocationProfiles) {
@@ -566,13 +502,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
             onEdit={(warehouse) => setEditingWarehouse(warehouse.entity)}
           />
         ) : null}
-        {mode === 'zones' ? (
-          <ZoneTable
-            rows={zoneTableRows}
-            emptyMessage={zoneEmptyMessage}
-            onEdit={(zone) => setEditingZone(zone.entity)}
-          />
-        ) : null}
         {mode === 'locations' ? (
           <LocationTable
             rows={locationTableRows}
@@ -588,15 +517,12 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         sites={mode === 'warehouses' ? siteScopeRows : sites}
-        warehouses={mode === 'zones' ? warehouseCreateRows : mode === 'locations' ? warehouseScopeRows : warehouses}
         zones={mode === 'locations' ? zoneScopeRows : zones}
         locationProfiles={locationProfiles}
         warehouseTypes={warehouseTypes}
         createSiteId={createSiteId}
-        createWarehouseId={createWarehouseId}
         createZoneId={createZoneId}
         onCreateSiteId={setCreateSiteId}
-        onCreateWarehouseId={setCreateWarehouseId}
         onCreateZoneId={setCreateZoneId}
         mutations={mutations}
       />
@@ -614,19 +540,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
                 { id: editingWarehouse.id, input: values },
                 { onSuccess: () => setEditingWarehouse(null) },
               )
-            }
-          />
-        ) : null}
-      </FormModal>
-      <FormModal title="Cập nhật zone" open={editingZone != null} onClose={() => setEditingZone(null)}>
-        {editingZone ? (
-          <ZoneForm
-            key={editingZone.id}
-            initialValue={editingZone}
-            submitLabel="Cập nhật zone"
-            pending={mutations.updateZone.isPending}
-            onSubmit={(values) =>
-              mutations.updateZone.mutate({ id: editingZone.id, input: values }, { onSuccess: () => setEditingZone(null) })
             }
           />
         ) : null}
@@ -814,15 +727,12 @@ function CreateModal({
   open,
   onClose,
   sites,
-  warehouses,
   zones,
   locationProfiles,
   warehouseTypes,
   createSiteId,
-  createWarehouseId,
   createZoneId,
   onCreateSiteId,
-  onCreateWarehouseId,
   onCreateZoneId,
   mutations,
 }: {
@@ -830,22 +740,19 @@ function CreateModal({
   open: boolean;
   onClose: () => void;
   sites: SiteRow[];
-  warehouses: WarehouseRow[];
   zones: ZoneRow[];
   locationProfiles: LocationProfile[];
   warehouseTypes: WarehouseType[];
   createSiteId: string;
-  createWarehouseId: string;
   createZoneId: string;
   onCreateSiteId: (value: string) => void;
-  onCreateWarehouseId: (value: string) => void;
   onCreateZoneId: (value: string) => void;
   mutations: ReturnType<typeof useMasterDataMutations>;
 }) {
   const selectedZone = zones.find(({ zone }) => zone.id === createZoneId)?.zone;
 
   return (
-    <FormModal title={`Tạo ${mode === 'locations' ? 'vị trí vật lý' : mode === 'warehouses' ? 'kho' : 'zone'}`} open={open} onClose={onClose}>
+    <FormModal title={`Tạo ${mode === 'locations' ? 'vị trí vật lý' : 'kho'}`} open={open} onClose={onClose}>
       {mode === 'warehouses' ? (
         sites.length > 0 ? (
           <div className="grid gap-4">
@@ -863,29 +770,6 @@ function CreateModal({
           <Alert role="status" variant="info">
             <AlertTitle>Chưa có site</AlertTitle>
             <AlertDescription>Tạo site trước khi tạo kho.</AlertDescription>
-          </Alert>
-        )
-      ) : null}
-      {mode === 'zones' ? (
-        warehouses.length > 0 ? (
-          <div className="grid gap-4">
-            <ParentWarehouseSelect
-              warehouses={warehouses}
-              selectedWarehouseId={createWarehouseId}
-              onChange={onCreateWarehouseId}
-            />
-            <ZoneForm
-              key={createWarehouseId}
-              warehouseId={createWarehouseId}
-              submitLabel="Tạo zone"
-              pending={mutations.createZone.isPending}
-              onSubmit={(values) => mutations.createZone.mutate(values, { onSuccess: onClose })}
-            />
-          </div>
-        ) : (
-          <Alert role="status" variant="info">
-            <AlertTitle>Chưa có kho</AlertTitle>
-            <AlertDescription>Tạo kho trước khi tạo zone.</AlertDescription>
           </Alert>
         )
       ) : null}
@@ -927,25 +811,6 @@ function filterWarehouseRows(
       (!search || searchSource.includes(search)) &&
       (!statusFilter || warehouse.status === statusFilter) &&
       (siteFilter === 'all' || site.id === siteFilter)
-    );
-  });
-}
-
-function filterZoneRows(
-  rows: ZoneRow[],
-  searchTerm: string,
-  statusFilter: string,
-  siteFilter: string,
-  warehouseFilter: string,
-): ZoneRow[] {
-  const search = normalized(searchTerm);
-  return rows.filter(({ site, warehouse, zone }) => {
-    const searchSource = `${site.entity.siteCode} ${warehouse.entity.warehouseCode} ${zone.entity.zoneCode} ${zone.entity.zoneName}`.toLocaleLowerCase('vi-VN');
-    return (
-      (!search || searchSource.includes(search)) &&
-      (!statusFilter || zone.status === statusFilter) &&
-      (siteFilter === 'all' || site.id === siteFilter) &&
-      (warehouseFilter === 'all' || warehouse.id === warehouseFilter)
     );
   });
 }
@@ -1063,67 +928,6 @@ function WarehouseTable({
             >
               Sơ đồ kho
             </Link>
-          </Button>
-        </EntityCard>
-      ))}
-    />
-  );
-}
-
-function ZoneTable({
-  rows,
-  emptyMessage,
-  onEdit,
-}: {
-  rows: ZoneRow[];
-  emptyMessage: string;
-  onEdit: (zone: ZoneNode) => void;
-}) {
-  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
-
-  return (
-    <ResponsiveTable
-      desktop={
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Site</TableHead>
-              <TableHead>Kho</TableHead>
-              <TableHead>Mã zone</TableHead>
-              <TableHead>Tên zone</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Vị trí</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.zone.id}>
-                <TableCell>{row.site.entity.siteCode}</TableCell>
-                <TableCell>{row.warehouse.entity.warehouseCode}</TableCell>
-                <TableCell className="font-medium">{row.zone.entity.zoneCode}</TableCell>
-                <TableCell>{row.zone.entity.zoneName}</TableCell>
-                <TableCell>{row.zone.entity.zoneType}</TableCell>
-                <TableCell>
-                  <Badge variant={masterDataStatusVariant(row.zone.status)}>{statusLabel(row.zone.status)}</Badge>
-                </TableCell>
-                <TableCell className="text-right">{row.locationCount}</TableCell>
-                <TableCell className="text-right">
-                  <Button type="button" size="sm" variant="outline" onClick={() => onEdit(row.zone)}>
-                    Sửa
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      }
-      mobile={rows.map((row) => (
-        <EntityCard key={row.zone.id} title={row.zone.entity.zoneCode} subtitle={row.zone.entity.zoneName}>
-          <Badge variant={masterDataStatusVariant(row.zone.status)}>{statusLabel(row.zone.status)}</Badge>
-          <Button type="button" size="sm" variant="outline" onClick={() => onEdit(row.zone)}>
-            Sửa
           </Button>
         </EntityCard>
       ))}
