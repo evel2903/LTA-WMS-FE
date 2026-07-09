@@ -9,6 +9,13 @@ import type {
   WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataEntities';
+import type {
+  CapacityPolicy,
+  CompliancePolicy,
+  EligibilityPolicy,
+  MixPolicy,
+  OperationPolicy,
+} from '@modules/MasterData/Domain/Types/LocationProfilePolicy';
 
 export type SiteLocationNodeType = 'site' | 'warehouse' | 'zone' | 'location';
 
@@ -124,11 +131,11 @@ export interface CreateLocationProfileInput {
   profileName: string;
   locationType: string;
   status: MasterDataStatus;
-  capacityPolicy?: Record<string, unknown>;
-  eligibilityPolicy?: Record<string, unknown>;
-  mixPolicy?: Record<string, unknown>;
-  compliancePolicy?: Record<string, unknown>;
-  operationPolicy?: Record<string, unknown>;
+  capacityPolicy?: CapacityPolicy;
+  eligibilityPolicy?: EligibilityPolicy;
+  mixPolicy?: MixPolicy;
+  compliancePolicy?: CompliancePolicy;
+  operationPolicy?: OperationPolicy;
   sourceSystem?: string | null;
   referenceId?: string | null;
   reasonCode?: string | null;

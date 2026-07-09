@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -176,9 +176,7 @@ describe('LocationProfileCatalogPage (A10)', () => {
     await actor.type(await screen.findByLabelText('Mã hồ sơ'), 'BIN-STD');
     await actor.type(screen.getByLabelText('Tên hồ sơ'), 'Standard Bin');
     await actor.type(screen.getByLabelText('Loại vị trí'), 'Bin');
-    fireEvent.change(screen.getByLabelText('Chính sách sức chứa'), {
-      target: { value: '{ "maxQty": 100 }' },
-    });
+    await actor.click(screen.getByLabelText('Yêu cầu số lượng sức chứa'));
     await actor.click(screen.getByRole('button', { name: 'Tạo hồ sơ' }));
 
     await waitFor(() =>
@@ -186,7 +184,7 @@ describe('LocationProfileCatalogPage (A10)', () => {
         expect.objectContaining({
           profileCode: 'BIN-STD',
           profileName: 'Standard Bin',
-          capacityPolicy: { maxQty: 100 },
+          capacityPolicy: { RequireCapacityQty: true },
         }),
       ),
     );

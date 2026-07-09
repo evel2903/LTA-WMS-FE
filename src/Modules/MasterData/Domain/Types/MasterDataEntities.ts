@@ -1,4 +1,11 @@
 import type { ISODateString } from '@shared/Types/Common';
+import type {
+  CapacityPolicy,
+  CompliancePolicy,
+  EligibilityPolicy,
+  MixPolicy,
+  OperationPolicy,
+} from '@modules/MasterData/Domain/Types/LocationProfilePolicy';
 
 export type MasterDataStatus = 'Active' | 'Inactive';
 export type LocationStatus = 'Active' | 'Inactive' | 'Blocked' | 'Maintenance';
@@ -89,9 +96,9 @@ export interface LocationProfile extends MasterDataAuditFields {
   locationType: string;
   version: number;
   status: MasterDataStatus;
-  capacityPolicy: Record<string, unknown>;
-  eligibilityPolicy: Record<string, unknown>;
-  mixPolicy: Record<string, unknown>;
-  compliancePolicy: Record<string, unknown>;
-  operationPolicy: Record<string, unknown>;
+  capacityPolicy: CapacityPolicy;
+  eligibilityPolicy: EligibilityPolicy;
+  mixPolicy: MixPolicy;
+  compliancePolicy: CompliancePolicy;
+  operationPolicy: OperationPolicy;
 }
