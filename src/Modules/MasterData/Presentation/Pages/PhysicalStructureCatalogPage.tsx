@@ -7,6 +7,8 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@shared/Compon
 import { Badge } from '@shared/Components/Ui/Badge';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
+import { FormModal } from '@shared/Components/Ui/FormModal';
 import { Input } from '@shared/Components/Ui/Input';
 import {
   Table,
@@ -24,13 +26,13 @@ import { useActiveWarehouseTypes } from '@modules/MasterData/Application/Queries
 import type {
   Location,
   LocationProfile,
-  Site,
   SiteLocationTree,
   Warehouse,
   WarehouseType,
   Zone,
 } from '@modules/MasterData/Domain/Types/MasterDataTree';
 import { masterDataStatusVariant } from '@modules/MasterData/Presentation/Components/MasterDataStatusVariant';
+import { countDescendants, normalized } from '@modules/MasterData/Presentation/Utils/MasterDataTreeUtils';
 import {
   explicitPhysicalField,
   fallbackPhysicalField,
@@ -41,11 +43,10 @@ import {
 } from '@modules/MasterData/Presentation/Components/PhysicalAddressFallback';
 import { LocationForm, type LocationFormDirtyFields } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import type { LocationFormValues } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
-import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
 import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseForm';
 import { ZoneForm } from '@modules/MasterData/Presentation/Forms/ZoneForm';
 
-export type PhysicalStructureCatalogMode = 'sites' | 'warehouses' | 'zones' | 'locations';
+export type PhysicalStructureCatalogMode = 'warehouses' | 'zones' | 'locations';
 
 const EMPTY_SITE_LOCATION_TREE: SiteLocationTree[] = [];
 
@@ -80,13 +81,6 @@ interface LocationRow {
   warehouse: WarehouseNode;
   zone: ZoneNode;
   location: LocationNode;
-}
-
-function countDescendants(node: SiteLocationTree, type: SiteLocationTree['type']): number {
-  return node.children.reduce((total, child) => {
-    const own = child.type === type ? 1 : 0;
-    return total + own + countDescendants(child, type);
-  }, 0);
 }
 
 function siteRows(nodes: SiteLocationTree[]): SiteRow[] {
@@ -187,44 +181,6 @@ function preserveUnchangedPhysicalFallbacks(
   });
 
   return next;
-}
-
-function normalized(value: string): string {
-  return value.trim().toLocaleLowerCase('vi-VN');
-}
-
-function FormModal({
-  title,
-  open,
-  onClose,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onClose: () => void;
-  children?: ReactNode;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 py-8">
-      <button aria-label="Đóng lớp phủ" className="absolute inset-0 cursor-default" type="button" onClick={onClose} />
-      <section
-        aria-label={title}
-        aria-modal="true"
-        className="relative z-10 w-full max-w-xl rounded-md border bg-background p-5 shadow-lg"
-        role="dialog"
-      >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Đóng
-          </Button>
-        </div>
-        {children}
-      </section>
-    </div>
-  );
 }
 
 function ParentSiteSelect({
@@ -330,7 +286,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
   const [aisleFilter, setAisleFilter] = useState('all');
   const [rackFilter, setRackFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
-  const [editingSite, setEditingSite] = useState<Site | null>(null);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
@@ -371,7 +326,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
       ),
     [locations, siteFilter, warehouseFilter, zoneFilter],
   );
-  const siteTableRows = filterSiteRows(sites, searchTerm, statusFilter);
   const warehouseTableRows = filterWarehouseRows(warehouses, searchTerm, statusFilter, siteFilter);
   const zoneTableRows = filterZoneRows(zones, searchTerm, statusFilter, siteFilter, warehouseFilter);
   const locationTableRows = filterLocationRows(
@@ -396,7 +350,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
     setAisleFilter('all');
     setRackFilter('all');
     setCreateOpen(false);
-    setEditingSite(null);
     setEditingWarehouse(null);
     setEditingZone(null);
     setEditingLocation(null);
@@ -450,26 +403,21 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         : null;
 
   const title =
-    mode === 'sites'
-      ? 'Site'
-      : mode === 'warehouses'
-        ? 'Kho'
-        : mode === 'zones'
-          ? 'Zone'
-          : 'Vị trí vật lý';
+    mode === 'warehouses'
+      ? 'Kho'
+      : mode === 'zones'
+        ? 'Zone'
+        : 'Vị trí vật lý';
   const description =
-    mode === 'sites'
-      ? 'Quản lý site bằng bảng trước khi cấu hình kho và sơ đồ.'
-      : mode === 'warehouses'
-        ? 'Quản lý kho bằng bảng và mở sơ đồ cấu trúc vật lý khi cần xem chi tiết.'
-        : mode === 'zones'
-          ? 'Quản lý zone theo kho bằng bảng; sơ đồ hóa zone sẽ làm ở story sau.'
-          : 'Quản lý dãy, kệ, tầng và ô của từng vị trí bằng bảng.';
+    mode === 'warehouses'
+      ? 'Quản lý kho bằng bảng và mở sơ đồ cấu trúc vật lý khi cần xem chi tiết.'
+      : mode === 'zones'
+        ? 'Quản lý zone theo kho bằng bảng; sơ đồ hóa zone sẽ làm ở story sau.'
+        : 'Quản lý dãy, kệ, tầng và ô của từng vị trí bằng bảng.';
   const canCreate =
     !apiError?.isForbidden &&
     !locationProfileQueryError &&
-      (mode === 'sites' ||
-      (mode === 'warehouses' && siteScopeRows.length > 0) ||
+    ((mode === 'warehouses' && siteScopeRows.length > 0) ||
       (mode === 'zones' && warehouseCreateRows.length > 0) ||
       (mode === 'locations' && zoneScopeRows.length > 0 && locationProfiles.length > 0));
 
@@ -484,24 +432,26 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
           placeholder="Mã hoặc tên"
         />
       </label>
-      <label className="grid min-w-0 gap-1 text-sm">
-        Trạng thái
-        <select
-          className="h-10 rounded-md border bg-background px-3 text-sm"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-        >
-          <option value="">Tất cả</option>
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-          {mode === 'locations' ? (
-            <>
-              <option value="Blocked">Bị khóa</option>
-              <option value="Maintenance">Bảo trì</option>
-            </>
-          ) : null}
-        </select>
-      </label>
+      <ComboboxSelect
+        id={`${mode}-status-filter`}
+        name="statusFilter"
+        label="Trạng thái"
+        value={statusFilter}
+        placeholder="Tất cả"
+        optional
+        options={[
+          { value: '', label: 'Tất cả' },
+          { value: 'Active', label: 'Đang hoạt động' },
+          { value: 'Inactive', label: 'Không hoạt động' },
+          ...(mode === 'locations'
+            ? [
+                { value: 'Blocked', label: 'Bị khóa' },
+                { value: 'Maintenance', label: 'Bảo trì' },
+              ]
+            : []),
+        ]}
+        onChange={setStatusFilter}
+      />
     </div>
   );
 
@@ -514,10 +464,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
     mode === 'locations' && !profilesQuery.isLoading && !locationProfileQueryError && locationProfiles.length === 0;
   const locationProfileErrorMessage =
     profileApiError?.message ?? 'Không thể tải danh sách hồ sơ vị trí đang hoạt động.';
-  const siteEmptyMessage =
-    sites.length === 0
-      ? 'Tạo site đầu tiên trước khi thêm kho, zone và vị trí vật lý.'
-      : 'Không có site phù hợp với bộ lọc hiện tại.';
   const warehouseEmptyMessage =
     sites.length === 0
       ? 'Tạo site trước khi thêm kho.'
@@ -584,30 +530,26 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         description={description}
         toolbar={toolbar}
         filters={
-          mode === 'sites' ? (
-            commonFilters
-          ) : (
-            <div className="space-y-3">
-              {commonFilters}
-              <ScopeFilters
-                mode={mode}
-                sites={sites}
-                warehouses={warehouses}
-                zones={zones}
-                locations={locations}
-                siteFilter={siteFilter}
-                warehouseFilter={warehouseFilter}
-                zoneFilter={zoneFilter}
-                aisleFilter={aisleFilter}
-                rackFilter={rackFilter}
-                onSiteFilter={handleSiteFilter}
-                onWarehouseFilter={handleWarehouseFilter}
-                onZoneFilter={handleZoneFilter}
-                onAisleFilter={setAisleFilter}
-                onRackFilter={setRackFilter}
-              />
-            </div>
-          )
+          <div className="space-y-3">
+            {commonFilters}
+            <ScopeFilters
+              mode={mode}
+              sites={sites}
+              warehouses={warehouses}
+              zones={zones}
+              locations={locations}
+              siteFilter={siteFilter}
+              warehouseFilter={warehouseFilter}
+              zoneFilter={zoneFilter}
+              aisleFilter={aisleFilter}
+              rackFilter={rackFilter}
+              onSiteFilter={handleSiteFilter}
+              onWarehouseFilter={handleWarehouseFilter}
+              onZoneFilter={handleZoneFilter}
+              onAisleFilter={setAisleFilter}
+              onRackFilter={setRackFilter}
+            />
+          </div>
         }
         state={pageState}
         stateTitle={pageState === 'forbidden' ? 'Không có quyền' : undefined}
@@ -617,13 +559,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
       >
         {locationProfileErrorBanner}
         {missingLocationProfileBanner}
-        {mode === 'sites' ? (
-          <SiteTable
-            rows={siteTableRows}
-            emptyMessage={siteEmptyMessage}
-            onEdit={(site) => setEditingSite(site.entity)}
-          />
-        ) : null}
         {mode === 'warehouses' ? (
           <WarehouseTable
             rows={warehouseTableRows}
@@ -666,19 +601,6 @@ export function PhysicalStructureCatalogPage({ mode }: { mode: PhysicalStructure
         mutations={mutations}
       />
 
-      <FormModal title="Cập nhật site" open={editingSite != null} onClose={() => setEditingSite(null)}>
-        {editingSite ? (
-          <SiteForm
-            key={editingSite.id}
-            initialValue={editingSite}
-            submitLabel="Cập nhật site"
-            pending={mutations.updateSite.isPending}
-            onSubmit={(values) =>
-              mutations.updateSite.mutate({ id: editingSite.id, input: values }, { onSuccess: () => setEditingSite(null) })
-            }
-          />
-        ) : null}
-      </FormModal>
       <FormModal title="Cập nhật kho" open={editingWarehouse != null} onClose={() => setEditingWarehouse(null)}>
         {editingWarehouse ? (
           <WarehouseForm
@@ -923,14 +845,7 @@ function CreateModal({
   const selectedZone = zones.find(({ zone }) => zone.id === createZoneId)?.zone;
 
   return (
-    <FormModal title={`Tạo ${mode === 'locations' ? 'vị trí vật lý' : mode === 'warehouses' ? 'kho' : mode === 'zones' ? 'zone' : 'site'}`} open={open} onClose={onClose}>
-      {mode === 'sites' ? (
-        <SiteForm
-          submitLabel="Tạo site"
-          pending={mutations.createSite.isPending}
-          onSubmit={(values) => mutations.createSite.mutate(values, { onSuccess: onClose })}
-        />
-      ) : null}
+    <FormModal title={`Tạo ${mode === 'locations' ? 'vị trí vật lý' : mode === 'warehouses' ? 'kho' : 'zone'}`} open={open} onClose={onClose}>
       {mode === 'warehouses' ? (
         sites.length > 0 ? (
           <div className="grid gap-4">
@@ -997,14 +912,6 @@ function CreateModal({
       ) : null}
     </FormModal>
   );
-}
-
-function filterSiteRows(rows: SiteRow[], searchTerm: string, statusFilter: string): SiteRow[] {
-  const search = normalized(searchTerm);
-  return rows.filter(({ site }) => {
-    const searchSource = `${site.entity.siteCode} ${site.entity.siteName}`.toLocaleLowerCase('vi-VN');
-    return (!search || searchSource.includes(search)) && (!statusFilter || site.status === statusFilter);
-  });
 }
 
 function filterWarehouseRows(
@@ -1080,65 +987,6 @@ function filterLocationRows(
       (rackFilter === 'all' || rack === rackFilter)
     );
   });
-}
-
-function SiteTable({
-  rows,
-  emptyMessage,
-  onEdit,
-}: {
-  rows: SiteRow[];
-  emptyMessage: string;
-  onEdit: (site: SiteNode) => void;
-}) {
-  if (rows.length === 0) return <EmptyTableMessage message={emptyMessage} />;
-
-  return (
-    <ResponsiveTable
-      desktop={
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Mã site</TableHead>
-              <TableHead>Tên site</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Kho</TableHead>
-              <TableHead className="text-right">Zone</TableHead>
-              <TableHead className="text-right">Vị trí</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.site.id}>
-                <TableCell className="font-medium">{row.site.entity.siteCode}</TableCell>
-                <TableCell>{row.site.entity.siteName}</TableCell>
-                <TableCell>
-                  <Badge variant={masterDataStatusVariant(row.site.status)}>{statusLabel(row.site.status)}</Badge>
-                </TableCell>
-                <TableCell className="text-right">{row.warehouseCount}</TableCell>
-                <TableCell className="text-right">{row.zoneCount}</TableCell>
-                <TableCell className="text-right">{row.locationCount}</TableCell>
-                <TableCell className="text-right">
-                  <Button type="button" size="sm" variant="outline" onClick={() => onEdit(row.site)}>
-                    Sửa
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      }
-      mobile={rows.map((row) => (
-        <EntityCard key={row.site.id} title={row.site.entity.siteCode} subtitle={row.site.entity.siteName}>
-          <Badge variant={masterDataStatusVariant(row.site.status)}>{statusLabel(row.site.status)}</Badge>
-          <Button type="button" size="sm" variant="outline" onClick={() => onEdit(row.site)}>
-            Sửa
-          </Button>
-        </EntityCard>
-      ))}
-    />
-  );
 }
 
 function WarehouseTable({

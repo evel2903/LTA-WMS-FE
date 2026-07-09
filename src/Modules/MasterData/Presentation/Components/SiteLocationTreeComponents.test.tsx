@@ -992,7 +992,8 @@ describe('Site & Location Tree components', () => {
     expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', '03');
     expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', '04');
 
-    fireEvent.change(within(dialog).getByLabelText('Mã lý do'), { target: { value: 'RC-MD-CREATE' } });
+    fireEvent.click(within(dialog).getByLabelText('Mã lý do'));
+    fireEvent.click(screen.getByRole('option', { name: 'RC-MD-CREATE - Thay đổi master data' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
 
     await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));
@@ -1049,7 +1050,8 @@ describe('Site & Location Tree components', () => {
     expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', 'L01');
     expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', 'B01');
 
-    fireEvent.change(within(dialog).getByLabelText('Mã lý do'), { target: { value: 'RC-MD-CREATE' } });
+    fireEvent.click(within(dialog).getByLabelText('Mã lý do'));
+    fireEvent.click(screen.getByRole('option', { name: 'RC-MD-CREATE - Thay đổi master data' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
 
     await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));

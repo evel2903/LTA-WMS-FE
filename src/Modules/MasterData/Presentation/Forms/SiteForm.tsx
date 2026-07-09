@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import type { Site } from '@modules/MasterData/Domain/Types/MasterDataEntities';
 import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
@@ -9,6 +10,12 @@ import {
   siteFormSchema,
   type SiteFormValues,
 } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
+import { MASTER_DATA_STATUS_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
+
+const SITE_STATUS_OPTIONS = (['Active', 'Inactive'] as const).map((value) => ({
+  value,
+  label: MASTER_DATA_STATUS_LABELS[value],
+}));
 
 interface SiteFormProps {
   initialValue?: Site;
@@ -37,7 +44,12 @@ export function SiteForm({
     },
   });
   const reasonCode = form.watch('reasonCode');
+  const status = form.watch('status');
   const reasonAction = initialValue ? 'Update' : 'Create';
+  // register() here is ref-only (value is driven by watch()/setValue() above) — gives RHF
+  // a DOM node to call .focus() on for these fields when shouldFocusError fires on submit.
+  const { ref: statusRef } = form.register('status');
+  const { ref: reasonCodeRef } = form.register('reasonCode');
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -51,13 +63,22 @@ export function SiteForm({
           <span className="text-destructive text-xs">{form.formState.errors.siteName.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">Trạng thái<select className="h-9 rounded-md border bg-transparent px-3 text-sm" disabled={disabled} {...form.register('status')}>
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-        </select>
-      </label>
+      <ComboboxSelect
+        ref={statusRef}
+        id="site-status"
+        name="status"
+        label="Trạng thái"
+        value={status}
+        placeholder="Chọn trạng thái"
+        options={SITE_STATUS_OPTIONS}
+        disabled={disabled}
+        onChange={(value) =>
+          form.setValue('status', value as SiteFormValues['status'], { shouldDirty: true, shouldValidate: true })
+        }
+      />
       <div>
         <ReasonCodeSelect
+          ref={reasonCodeRef}
           id="site-reason-code"
           name="reasonCode"
           label="Mã lý do"

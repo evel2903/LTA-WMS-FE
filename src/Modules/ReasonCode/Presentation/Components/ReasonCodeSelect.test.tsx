@@ -43,7 +43,8 @@ describe('ReasonCodeSelect', () => {
       action: 'Update',
       objectType: 'Warehouse',
     });
-    await userEvent.selectOptions(screen.getByLabelText('Mã lý do'), 'RC-MD-UPDATE');
+    await userEvent.click(screen.getByLabelText('Mã lý do'));
+    await userEvent.click(screen.getByRole('option', { name: 'RC-MD-UPDATE — Cập nhật master data' }));
     expect(onChange).toHaveBeenCalledWith('RC-MD-UPDATE');
   });
 
@@ -84,7 +85,7 @@ describe('ReasonCodeSelect', () => {
     expect(screen.getByLabelText('Mã lý do').matches(':disabled')).toBe(true);
   });
 
-  it('preserves a legacy selected value that is missing from fetched options', () => {
+  it('preserves a legacy selected value that is missing from fetched options', async () => {
     h.useReasonCodeOptions.mockReturnValue({ options: [], isLoading: false, isError: false });
 
     render(
@@ -99,10 +100,11 @@ describe('ReasonCodeSelect', () => {
       />,
     );
 
-    const select = screen.getByLabelText('Mã lý do');
-    expect((select as HTMLSelectElement).disabled).toBe(false);
+    const trigger = screen.getByLabelText('Mã lý do');
+    expect((trigger as HTMLButtonElement).disabled).toBe(false);
+    expect(trigger.textContent).toBe('RC-LEGACY');
+    await userEvent.click(trigger);
     expect(screen.getByRole('option', { name: 'RC-LEGACY' })).toBeTruthy();
-    expect((select as HTMLSelectElement).value).toBe('RC-LEGACY');
   });
 
 });

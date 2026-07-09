@@ -9,6 +9,12 @@ const SiteLocationTreePage = lazy(() =>
   })),
 );
 
+const SiteMasterPage = lazy(() =>
+  import('@modules/MasterData/Presentation/Pages/SiteMasterPage').then((module) => ({
+    default: module.SiteMasterPage,
+  })),
+);
+
 const PhysicalStructureCatalogPage = lazy(() =>
   import('@modules/MasterData/Presentation/Pages/PhysicalStructureCatalogPage').then((module) => ({
     default: module.PhysicalStructureCatalogPage,
@@ -34,7 +40,7 @@ const LocationProfileDetailPage = lazy(() =>
 );
 
 export const masterDataRoutes: RouteObject[] = [
-  { path: ROUTES.FOUNDATION.SITES, element: <PhysicalStructureCatalogPage key="sites" mode="sites" /> },
+  { path: ROUTES.FOUNDATION.SITES, element: <SiteMasterPage /> },
   { path: ROUTES.FOUNDATION.LOCATIONS, element: <PhysicalStructureCatalogPage key="warehouses" mode="warehouses" /> },
   { path: ROUTES.FOUNDATION.ZONES, element: <PhysicalStructureCatalogPage key="zones" mode="zones" /> },
   { path: ROUTES.FOUNDATION.PHYSICAL_LOCATIONS, element: <PhysicalStructureCatalogPage key="locations" mode="locations" /> },

@@ -140,7 +140,8 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     const editForm = updateBtn.closest('form') as HTMLFormElement;
 
     await actor.click(within(editForm).getByLabelText('Tạm giữ')); // off -> on
-    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-MD-UPDATE');
+    await actor.click(within(editForm).getByLabelText('Mã lý do thay đổi'));
+    await actor.click(await screen.findByRole('option', { name: 'RC-MD-UPDATE - Cập nhật master data' }));
     await actor.click(updateBtn);
 
     await waitFor(() =>
@@ -176,7 +177,8 @@ describe('InventoryStatusCatalogPage (C14)', () => {
 
     const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-MD-UPDATE');
+    await actor.click(within(editForm).getByLabelText('Mã lý do thay đổi'));
+    await actor.click(await screen.findByRole('option', { name: 'RC-MD-UPDATE - Cập nhật master data' }));
     await actor.click(updateBtn);
     expect(await screen.findByText('Cần mã lý do cho thay đổi này.')).toBeTruthy();
 
@@ -217,7 +219,8 @@ describe('InventoryStatusCatalogPage (C14)', () => {
     await actor.click(await screen.findByRole('link', { name: 'Chỉnh sửa trạng thái' }));
     const updateBtn = await screen.findByRole('button', { name: 'Cập nhật trạng thái tồn kho' });
     const editForm = updateBtn.closest('form') as HTMLFormElement;
-    await actor.selectOptions(within(editForm).getByLabelText('Mã lý do thay đổi'), 'RC-WRONG');
+    await actor.click(within(editForm).getByLabelText('Mã lý do thay đổi'));
+    await actor.click(await screen.findByRole('option', { name: 'RC-WRONG - Sai rule' }));
     await actor.click(updateBtn);
 
     expect(await screen.findByText('Cần mã lý do cho thay đổi này.')).toBeTruthy();

@@ -1,4 +1,6 @@
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import * as React from 'react';
+
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type { ActionCode, ObjectType } from '@modules/ReasonCode/Domain/Enums/ReasonCodeEnums';
 
@@ -16,26 +18,30 @@ interface ReasonCodeSelectProps {
   onChange: (value: string) => void;
 }
 
-export function ReasonCodeSelect({
-  id,
-  name,
-  label,
-  value,
-  action,
-  objectType,
-  placeholder = 'Chọn mã lý do',
-  optional = false,
-  disabled = false,
-  autoFocus = false,
-  onChange,
-}: ReasonCodeSelectProps) {
+export const ReasonCodeSelect = React.forwardRef<HTMLButtonElement, ReasonCodeSelectProps>(function ReasonCodeSelect(
+  {
+    id,
+    name,
+    label,
+    value,
+    action,
+    objectType,
+    placeholder = 'Chọn mã lý do',
+    optional = false,
+    disabled = false,
+    autoFocus = false,
+    onChange,
+  },
+  ref,
+) {
   const { options, isLoading, isError } = useReasonCodeOptions({
     action,
     objectType,
   });
 
   return (
-    <LookupSelect
+    <ComboboxSelect
+      ref={ref}
       id={id}
       name={name}
       label={label}
@@ -52,4 +58,4 @@ export function ReasonCodeSelect({
       onChange={onChange}
     />
   );
-}
+});
