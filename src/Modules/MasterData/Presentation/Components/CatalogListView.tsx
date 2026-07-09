@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
+import { cn } from '@shared/Utils/Cn';
 import { GovernanceStateBanner } from '@shared/Components/Page/GovernanceStateBanner';
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import type { PageBoundaryState } from '@shared/Components/Page/PageStateBoundary';
@@ -20,6 +22,13 @@ export interface CatalogColumn<TRow> {
   render: (row: TRow) => ReactNode;
   className?: string;
   mobileLabel?: string;
+  /** Marks this column as sortable — the parent owns the actual comparator via `onSortChange`. */
+  sortable?: boolean;
+}
+
+export interface CatalogSortState {
+  column: string;
+  direction: 'asc' | 'desc';
 }
 
 interface CatalogListViewProps<TRow> {
@@ -32,6 +41,13 @@ interface CatalogListViewProps<TRow> {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  /** Rows-per-page selector — omit to keep pagination as-is (no selector shown). */
+  pageSize?: number;
+  onPageSizeChange?: (pageSize: number) => void;
+  pageSizeOptions?: number[];
+  /** Omit to keep headers non-interactive (no consumer opted in yet). */
+  sort?: CatalogSortState | null;
+  onSortChange?: (column: string) => void;
   errorMessage?: string;
   /** Entity-specific empty-state copy (e.g. "Chưa có chủ hàng."). */
   emptyLabel?: string;
@@ -55,6 +71,11 @@ export function CatalogListView<TRow>({
   page,
   totalPages,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
+  pageSizeOptions,
+  sort,
+  onSortChange,
   errorMessage,
   emptyLabel,
   canCreate = true,
@@ -79,6 +100,9 @@ export function CatalogListView<TRow>({
           page={page}
           totalPages={totalPages}
           onPageChange={onPageChange}
+          pageSize={pageSize}
+          onPageSizeChange={onPageSizeChange}
+          pageSizeOptions={pageSizeOptions}
         />
       }
     >
@@ -92,7 +116,13 @@ export function CatalogListView<TRow>({
         </div>
       ) : null}
       {state === 'ready' ? (
-        <ResponsiveCatalogRows columns={columns} rows={rows} rowKey={rowKey} />
+        <ResponsiveCatalogRows
+          columns={columns}
+          rows={rows}
+          rowKey={rowKey}
+          sort={sort}
+          onSortChange={onSortChange}
+        />
       ) : null}
     </ListPageShell>
   );
@@ -102,22 +132,45 @@ function ResponsiveCatalogRows<TRow>({
   columns,
   rows,
   rowKey,
+  sort,
+  onSortChange,
 }: {
   columns: CatalogColumn<TRow>[];
   rows: TRow[];
   rowKey: (row: TRow) => string;
+  sort?: CatalogSortState | null;
+  onSortChange?: (column: string) => void;
 }) {
   return (
     <>
       <div className="border-border bg-card hidden rounded-lg border md:block">
-        <Table>
+        <Table containerClassName="max-h-[600px] overflow-y-auto">
           <TableHeader>
             <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.header} className={column.className}>
-                  {column.header}
-                </TableHead>
-              ))}
+              {columns.map((column) => {
+                const isSortable = column.sortable && onSortChange != null;
+                const isActive = sort?.column === column.header;
+                const SortIcon = isActive ? (sort?.direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                return (
+                  <TableHead
+                    key={column.header}
+                    className={cn('bg-card sticky top-0 z-10', column.className)}
+                  >
+                    {isSortable ? (
+                      <button
+                        type="button"
+                        className="hover:text-foreground inline-flex items-center gap-1"
+                        onClick={() => onSortChange?.(column.header)}
+                      >
+                        {column.header}
+                        <SortIcon className={cn('size-3.5', isActive ? 'opacity-100' : 'opacity-40')} />
+                      </button>
+                    ) : (
+                      column.header
+                    )}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -160,15 +213,23 @@ function CatalogPagination({
   page,
   totalPages,
   onPageChange,
+  pageSize,
+  onPageSizeChange,
+  pageSizeOptions,
 }: {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  pageSize?: number;
+  onPageSizeChange?: (pageSize: number) => void;
+  pageSizeOptions?: number[];
 }) {
   const normalizedTotalPages = Number.isFinite(totalPages) ? Math.trunc(totalPages) : 1;
   const normalizedPage = Number.isFinite(page) ? Math.trunc(page) : 1;
   const safeTotalPages = Math.max(normalizedTotalPages, 1);
   const safePage = Math.min(Math.max(normalizedPage, 1), safeTotalPages);
+  const showPageSize = pageSize != null && onPageSizeChange != null;
+  const sizeOptions = pageSizeOptions ?? [10, 20, 50, 100];
 
   useEffect(() => {
     if (page !== safePage) {
@@ -178,9 +239,27 @@ function CatalogPagination({
 
   return (
     <div className="flex w-full flex-wrap items-center justify-between gap-3">
-      <span className="text-muted-foreground text-sm">
-        Trang {safePage} / {safeTotalPages}
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="text-muted-foreground text-sm">
+          Trang {safePage} / {safeTotalPages}
+        </span>
+        {showPageSize ? (
+          <label className="text-muted-foreground flex items-center gap-2 text-sm">
+            Số dòng/trang
+            <select
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+              value={pageSize}
+              onChange={(event) => onPageSizeChange?.(Number(event.target.value))}
+            >
+              {sizeOptions.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
       <div className="flex gap-2">
         <Button
           type="button"
