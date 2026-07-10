@@ -35,6 +35,13 @@ const optionalInteger = z.preprocess(
 export const masterDataStatusSchema = z.enum(['Active', 'Inactive']);
 export const locationStatusSchema = z.enum(['Active', 'Inactive', 'Blocked', 'Maintenance']);
 
+export const LOCATION_STATUS_OPTIONS = [
+  { value: 'Active', label: 'Đang hoạt động' },
+  { value: 'Inactive', label: 'Không hoạt động' },
+  { value: 'Blocked', label: 'Bị khóa' },
+  { value: 'Maintenance', label: 'Bảo trì' },
+];
+
 export const siteFormSchema = z.object({
   siteCode: requiredText(50, 'Cần mã site'),
   siteName: requiredText(255, 'Cần tên site'),

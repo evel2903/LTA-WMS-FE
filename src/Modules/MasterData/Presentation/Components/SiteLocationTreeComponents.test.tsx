@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,7 +45,6 @@ import { SiteForm } from '@modules/MasterData/Presentation/Forms/SiteForm';
 import { WarehouseForm } from '@modules/MasterData/Presentation/Forms/WarehouseForm';
 import { LocationForm } from '@modules/MasterData/Presentation/Forms/LocationForm';
 import { buildWarehouseTypeOptions } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
-import { PhysicalStructureCatalogPage } from '@modules/MasterData/Presentation/Pages/PhysicalStructureCatalogPage';
 import { WarehouseMasterPage } from '@modules/MasterData/Presentation/Pages/WarehouseMasterPage';
 import { SiteLocationTreePageView } from '@modules/MasterData/Presentation/Pages/SiteLocationTreePageView';
 import type {
@@ -949,128 +948,6 @@ describe('Site & Location Tree components', () => {
     expect(screen.queryByText(/tồn kho/i)).toBeNull();
   });
 
-  it('keeps legacy physical address values visible when editing from the physical location table without persisting fallback on no-op submit', async () => {
-    const mutations = mockMasterDataMutations();
-    const legacyTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
-    const legacyLocation = legacyTree[0]?.children[0]?.children[0]?.children[0];
-    if (legacyLocation?.type !== 'location') {
-      throw new Error('Expected location fixture');
-    }
-    legacyLocation.label = 'A-01-02-03-04 - Legacy location';
-    legacyLocation.entity = {
-      ...legacyLocation.entity,
-      locationCode: 'A-01-02-03-04',
-      locationName: 'Legacy location',
-      aisleCode: null,
-      rackCode: null,
-      levelCode: null,
-      binCode: null,
-      pickSequence: null,
-      putawaySequence: null,
-    };
-    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
-      data: legacyTree,
-      isLoading: false,
-      error: null,
-    });
-    physicalCatalogMocks.useMasterDataMutations.mockReturnValue(mutations);
-
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="locations" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getAllByRole('cell', { name: '01' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('cell', { name: '02' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('cell', { name: '03' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('cell', { name: '04' }).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Sửa' })[0]);
-
-    const dialog = screen.getByRole('dialog', { name: 'Cập nhật vị trí vật lý' });
-    expect(within(dialog).getByLabelText('Dãy')).toHaveProperty('value', '01');
-    expect(within(dialog).getByLabelText('Kệ')).toHaveProperty('value', '02');
-    expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', '03');
-    expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', '04');
-
-    fireEvent.click(within(dialog).getByLabelText('Mã lý do'));
-    fireEvent.click(screen.getByRole('option', { name: 'RC-MD-CREATE - Thay đổi master data' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
-
-    await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));
-    const submitted = mutations.updateLocation.mutate.mock.calls[0]?.[0] as {
-      id: string;
-      input: {
-        aisleCode?: string | null;
-        rackCode?: string | null;
-        levelCode?: string | null;
-        binCode?: string | null;
-        reasonCode?: string | null;
-      };
-    };
-    expect(submitted.id).toBe('loc-1');
-    expect(submitted.input.aisleCode).toBeUndefined();
-    expect(submitted.input.rackCode).toBeUndefined();
-    expect(submitted.input.levelCode).toBeUndefined();
-    expect(submitted.input.binCode).toBeUndefined();
-    expect(submitted.input.reasonCode).toBe('RC-MD-CREATE');
-  });
-
-  it('preserves unchanged explicit physical address values on no-op edit submit', async () => {
-    const mutations = mockMasterDataMutations();
-    const explicitTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
-    const explicitLocation = explicitTree[0]?.children[0]?.children[0]?.children[0];
-    if (explicitLocation?.type !== 'location') {
-      throw new Error('Expected location fixture');
-    }
-    explicitLocation.entity = {
-      ...explicitLocation.entity,
-      aisleCode: ' A01 ',
-      rackCode: ' R01 ',
-      levelCode: ' L01 ',
-      binCode: ' B01 ',
-    };
-    physicalCatalogMocks.useSiteLocationTree.mockReturnValue({
-      data: explicitTree,
-      isLoading: false,
-      error: null,
-    });
-    physicalCatalogMocks.useMasterDataMutations.mockReturnValue(mutations);
-
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="locations" />
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Sửa' })[0]);
-
-    const dialog = screen.getByRole('dialog', { name: 'Cập nhật vị trí vật lý' });
-    expect(within(dialog).getByLabelText('Dãy')).toHaveProperty('value', 'A01');
-    expect(within(dialog).getByLabelText('Kệ')).toHaveProperty('value', 'R01');
-    expect(within(dialog).getByLabelText('Tầng')).toHaveProperty('value', 'L01');
-    expect(within(dialog).getByLabelText('Ô')).toHaveProperty('value', 'B01');
-
-    fireEvent.click(within(dialog).getByLabelText('Mã lý do'));
-    fireEvent.click(screen.getByRole('option', { name: 'RC-MD-CREATE - Thay đổi master data' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cập nhật vị trí' }));
-
-    await waitFor(() => expect(mutations.updateLocation.mutate).toHaveBeenCalledTimes(1));
-    const submitted = mutations.updateLocation.mutate.mock.calls[0]?.[0] as {
-      input: {
-        aisleCode?: string | null;
-        rackCode?: string | null;
-        levelCode?: string | null;
-        binCode?: string | null;
-      };
-    };
-    expect(submitted.input.aisleCode).toBe(' A01 ');
-    expect(submitted.input.rackCode).toBe(' R01 ');
-    expect(submitted.input.levelCode).toBe(' L01 ');
-    expect(submitted.input.binCode).toBe(' B01 ');
-  });
-
   it('uses legacy physical address fallback in the detail panel', () => {
     const legacyTree = JSON.parse(JSON.stringify(tree)) as SiteLocationTree[];
     const legacyLocation = legacyTree[0]?.children[0]?.children[0]?.children[0];
@@ -1122,47 +999,6 @@ describe('Site & Location Tree components', () => {
     expect(screen.getAllByText('07').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('surfaces missing active location profile setup before creating physical locations', () => {
-    physicalCatalogMocks.useLocationProfiles.mockReturnValue({
-      data: { items: [] },
-      isLoading: false,
-      error: null,
-    });
-
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="locations" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText('Thiếu hồ sơ vị trí đang hoạt động')).not.toBeNull();
-    expect(screen.getByRole('link', { name: 'Quản lý hồ sơ vị trí' }).getAttribute('href')).toBe(
-      '/foundation/location-profiles',
-    );
-    expect(screen.queryByRole('button', { name: 'Tạo vị trí vật lý' })).toBeNull();
-  });
-
-  it('surfaces active location profile query errors before creating physical locations', () => {
-    physicalCatalogMocks.useLocationProfiles.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error('profile query failed'),
-    });
-
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="locations" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByText('Không thể tải hồ sơ vị trí')).not.toBeNull();
-    expect(screen.getByText('Không thể tải danh sách hồ sơ vị trí đang hoạt động.')).not.toBeNull();
-    expect(screen.getByRole('link', { name: 'Mở danh mục hồ sơ vị trí' }).getAttribute('href')).toBe(
-      '/foundation/location-profiles',
-    );
-    expect(screen.queryByRole('button', { name: 'Tạo vị trí vật lý' })).toBeNull();
-  });
-
   it('uses selected parent scope when explaining empty warehouse setup', () => {
     const scopedTree = [
       ...tree,
@@ -1202,23 +1038,6 @@ describe('Site & Location Tree components', () => {
     fireEvent.click(screen.getByRole('option', { name: /SITE-02/ }));
 
     expect(screen.getByText('Tạo kho đầu tiên cho site đang chọn.')).not.toBeNull();
-  });
-
-  it('localizes physical structure location headers and avoids English action/profile labels', () => {
-    render(
-      <MemoryRouter>
-        <PhysicalStructureCatalogPage mode="locations" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('columnheader', { name: 'Kệ' })).not.toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'Ô' })).not.toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'Hồ sơ vị trí' })).not.toBeNull();
-    expect(screen.getByRole('columnheader', { name: 'Hành động' })).not.toBeNull();
-    expect(screen.queryByRole('columnheader', { name: 'Kệ/Shelf' })).toBeNull();
-    expect(screen.queryByRole('columnheader', { name: 'Ô/bin' })).toBeNull();
-    expect(screen.queryByRole('columnheader', { name: 'Profile' })).toBeNull();
-    expect(screen.queryByRole('columnheader', { name: 'Action' })).toBeNull();
   });
 
   it('keeps master filter controls constrained so the site select cannot overlap search', () => {

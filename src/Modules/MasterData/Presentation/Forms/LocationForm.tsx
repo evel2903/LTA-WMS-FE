@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { ROUTES } from '@app/Config/Routes';
 import { Alert, AlertAction, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import type {
@@ -14,6 +15,7 @@ import type {
 import {
   buildLocationProfileOptions,
   locationFormSchema,
+  LOCATION_STATUS_OPTIONS,
   type LocationFormValues,
 } from '@modules/MasterData/Presentation/Forms/MasterDataFormSchemas';
 
@@ -92,7 +94,10 @@ export function LocationForm({
     },
   });
   const reasonCode = form.watch('reasonCode');
+  const locationStatus = form.watch('locationStatus');
   const reasonAction = initialValue ? 'Update' : 'Create';
+  const { ref: locationStatusRef } = form.register('locationStatus');
+  const { ref: reasonCodeRef } = form.register('reasonCode');
 
   if (!hasProfiles) {
     return (
@@ -143,17 +148,22 @@ export function LocationForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm">Trạng thái<select
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            disabled={disabled}
-            {...form.register('locationStatus')}
-          >
-            <option value="Active">Đang hoạt động</option>
-            <option value="Inactive">Không hoạt động</option>
-            <option value="Blocked">Bị khóa</option>
-            <option value="Maintenance">Bảo trì</option>
-          </select>
-        </label>
+        <ComboboxSelect
+          ref={locationStatusRef}
+          id="location-status"
+          name="locationStatus"
+          label="Trạng thái"
+          value={locationStatus}
+          placeholder="Chọn trạng thái"
+          options={LOCATION_STATUS_OPTIONS}
+          disabled={disabled}
+          onChange={(value) =>
+            form.setValue('locationStatus', value as LocationFormValues['locationStatus'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
       </fieldset>
       <fieldset className="grid gap-3 rounded-md border p-3">
         <legend className="px-1 text-sm font-semibold">Địa chỉ vật lý</legend>
@@ -180,6 +190,7 @@ export function LocationForm({
       </label>
       <div>
         <ReasonCodeSelect
+          ref={reasonCodeRef}
           id="location-reason-code"
           name="reasonCode"
           label="Mã lý do"
