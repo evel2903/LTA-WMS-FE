@@ -74,11 +74,6 @@ const NAV_ENTRIES: NavEntry[] = [
       { label: 'Zone', to: ROUTES.FOUNDATION.ZONES, icon: Network },
       { label: 'Vị trí vật lý', to: ROUTES.FOUNDATION.PHYSICAL_LOCATIONS, icon: MapPinned },
       { label: 'Loại kho', to: ROUTES.FOUNDATION.WAREHOUSE_TYPES, icon: Warehouse },
-      {
-        label: 'Hồ sơ vị trí',
-        to: ROUTES.FOUNDATION.LOCATION_PROFILES,
-        icon: SlidersHorizontal,
-      },
       { section: 'Sản phẩm và đóng gói' },
       { label: 'Chủ hàng', to: ROUTES.FOUNDATION.MASTER_DATA.OWNERS, icon: Building2 },
       { label: 'Đơn vị tính', to: ROUTES.FOUNDATION.MASTER_DATA.UOMS, icon: Ruler },
@@ -88,6 +83,11 @@ const NAV_ENTRIES: NavEntry[] = [
       {
         label: 'Hồ sơ kho',
         to: ROUTES.FOUNDATION.WAREHOUSE_PROFILES,
+        icon: SlidersHorizontal,
+      },
+      {
+        label: 'Hồ sơ vị trí',
+        to: ROUTES.FOUNDATION.LOCATION_PROFILES,
         icon: SlidersHorizontal,
       },
       { label: 'Ma trận quy tắc', to: ROUTES.FOUNDATION.RULE_MATRIX, icon: Network },
