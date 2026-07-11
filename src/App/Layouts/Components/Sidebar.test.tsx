@@ -33,6 +33,17 @@ describe('Sidebar V1 route hygiene', () => {
     expect(screen.getByRole('link', { name: 'Vị trí vật lý' }).getAttribute('href')).toBe(
       ROUTES.FOUNDATION.PHYSICAL_LOCATIONS,
     );
+
+    // "Hồ sơ vị trí" sits under "Quy tắc và hồ sơ" (next to "Hồ sơ kho"), not under
+    // "Cấu trúc vật lý" — it is a policy-template catalog, sibling of "Hồ sơ kho".
+    expect(screen.getByRole('link', { name: 'Hồ sơ vị trí' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.LOCATION_PROFILES,
+    );
+    const navOrder = document.querySelector('nav')?.textContent ?? '';
+    expect(navOrder.indexOf('Hồ sơ vị trí')).toBeGreaterThan(navOrder.indexOf('Hồ sơ kho'));
+    expect(navOrder.indexOf('Hồ sơ vị trí')).toBeLessThan(navOrder.indexOf('Ma trận quy tắc'));
+    // After "Sản phẩm và đóng gói" proves it left the earlier "Cấu trúc vật lý" section.
+    expect(navOrder.indexOf('Hồ sơ vị trí')).toBeGreaterThan(navOrder.indexOf('Sản phẩm và đóng gói'));
   });
 
   it('shows only implemented operational route groups in V1', () => {
