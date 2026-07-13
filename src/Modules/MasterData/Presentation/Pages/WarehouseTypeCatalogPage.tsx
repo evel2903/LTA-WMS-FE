@@ -110,8 +110,9 @@ export function WarehouseTypeCatalogPage() {
     {
       id: 'description',
       header: 'Mô tả',
-      render: (row) => <span className="text-muted-foreground">{row.description ?? '-'}</span>,
+      render: (row) => row.description ?? '-',
       sortable: true,
+      className: 'max-w-md truncate text-muted-foreground',
     },
     { id: 'status', header: 'Trạng thái', render: (row) => <StatusBadge status={row.status} />, sortable: true },
     {

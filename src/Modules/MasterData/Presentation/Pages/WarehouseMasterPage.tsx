@@ -183,14 +183,14 @@ export function WarehouseMasterPage() {
     { id: 'warehouse-code', header: 'Mã kho', render: (row) => row.warehouse.entity.warehouseCode, sortable: true },
     { id: 'warehouse-name', header: 'Tên kho', render: (row) => row.warehouse.entity.warehouseName, sortable: true },
     { id: 'warehouse-type', header: 'Loại kho', render: (row) => row.warehouse.entity.warehouseTypeCode, sortable: true },
+    { id: 'zone-count', header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
+    { id: 'location-count', header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
     {
       id: 'status',
       header: 'Trạng thái',
       render: (row) => <StatusBadge status={row.warehouse.status} />,
       sortable: true,
     },
-    { id: 'zone-count', header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
-    { id: 'location-count', header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
     {
       header: 'Hành động',
       render: (row) => (

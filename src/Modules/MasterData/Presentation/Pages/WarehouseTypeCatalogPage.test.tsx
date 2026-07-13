@@ -68,10 +68,12 @@ describe('WarehouseTypeCatalogPage', () => {
     expect(screen.getByRole('heading', { name: 'Danh mục loại kho' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: /Mã loại kho/ })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: /Tên loại kho/ })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: /Mô tả/ })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: /Trạng thái/ })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'Hành động' })).toBeTruthy();
     expect(screen.getAllByText('WT-01').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Kho lạnh').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Kho khô tiêu chuẩn').length).toBeGreaterThan(0);
     // StatusBadge labels (not the old plain Badge)
     expect(screen.getAllByText('Đang hoạt động').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Không hoạt động').length).toBeGreaterThan(0);

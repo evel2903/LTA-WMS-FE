@@ -190,16 +190,16 @@ export function ZoneMasterPage() {
     { id: 'zone-name', header: 'Tên zone', render: (row) => row.zone.entity.zoneName, sortable: true },
     { id: 'zone-type', header: 'Loại', render: (row) => row.zone.entity.zoneType, sortable: true },
     {
-      id: 'status',
-      header: 'Trạng thái',
-      render: (row) => <StatusBadge status={row.zone.status} />,
-      sortable: true,
-    },
-    {
       id: 'location-count',
       header: 'Vị trí',
       render: (row) => row.locationCount,
       className: 'text-right',
+      sortable: true,
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      render: (row) => <StatusBadge status={row.zone.status} />,
       sortable: true,
     },
     {

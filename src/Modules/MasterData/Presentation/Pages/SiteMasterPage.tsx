@@ -122,15 +122,15 @@ export function SiteMasterPage() {
   const columns: CatalogColumn<SiteRow>[] = [
     { id: 'site-code', header: 'Mã site', render: (row) => row.site.entity.siteCode, sortable: true },
     { id: 'site-name', header: 'Tên site', render: (row) => row.site.entity.siteName, sortable: true },
+    { id: 'warehouse-count', header: 'Kho', render: (row) => row.warehouseCount, className: 'text-right', sortable: true },
+    { id: 'zone-count', header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
+    { id: 'location-count', header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
     {
       id: 'status',
       header: 'Trạng thái',
       render: (row) => <StatusBadge status={row.site.status} />,
       sortable: true,
     },
-    { id: 'warehouse-count', header: 'Kho', render: (row) => row.warehouseCount, className: 'text-right', sortable: true },
-    { id: 'zone-count', header: 'Zone', render: (row) => row.zoneCount, className: 'text-right', sortable: true },
-    { id: 'location-count', header: 'Vị trí', render: (row) => row.locationCount, className: 'text-right', sortable: true },
     {
       header: 'Hành động',
       render: (row) => (
