@@ -47,61 +47,67 @@ export function useMasterDataMutations() {
   // Surface failures (validation, 403, 409 duplicate code, network) instead of
   // swallowing them; without this a failed create/update looks like a no-op.
   const notifyError = (error: unknown) => toast.error(toMutationErrorMessage(error));
+  // Symmetric success feedback — without this, a successful create/update also
+  // looks like a no-op (modal just closes, table quietly refreshes).
+  const onDone = (invalidate: () => void, message: string) => () => {
+    invalidate();
+    toast.success(message);
+  };
 
   return {
     createSite: useMutation({
       mutationFn: (input: CreateSiteInput) => createSiteUseCase.execute(input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã tạo site'),
       onError: notifyError,
     }),
     updateSite: useMutation({
       mutationFn: ({ id, input }: { id: string; input: UpdateSiteInput }) =>
         updateSiteUseCase.execute(id, input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã cập nhật site'),
       onError: notifyError,
     }),
     createWarehouse: useMutation({
       mutationFn: (input: CreateWarehouseInput) => createWarehouseUseCase.execute(input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã tạo kho'),
       onError: notifyError,
     }),
     updateWarehouse: useMutation({
       mutationFn: ({ id, input }: { id: string; input: UpdateWarehouseInput }) =>
         updateWarehouseUseCase.execute(id, input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã cập nhật kho'),
       onError: notifyError,
     }),
     createWarehouseType: useMutation({
       mutationFn: (input: CreateWarehouseTypeInput) => createWarehouseTypeUseCase.execute(input),
-      onSuccess: invalidateWarehouseTypes,
+      onSuccess: onDone(invalidateWarehouseTypes, 'Đã tạo loại kho'),
       onError: notifyError,
     }),
     updateWarehouseType: useMutation({
       mutationFn: ({ id, input }: { id: string; input: UpdateWarehouseTypeInput }) =>
         updateWarehouseTypeUseCase.execute(id, input),
-      onSuccess: invalidateWarehouseTypes,
+      onSuccess: onDone(invalidateWarehouseTypes, 'Đã cập nhật loại kho'),
       onError: notifyError,
     }),
     createZone: useMutation({
       mutationFn: (input: CreateZoneInput) => createZoneUseCase.execute(input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã tạo zone'),
       onError: notifyError,
     }),
     updateZone: useMutation({
       mutationFn: ({ id, input }: { id: string; input: UpdateZoneInput }) =>
         updateZoneUseCase.execute(id, input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã cập nhật zone'),
       onError: notifyError,
     }),
     createLocation: useMutation({
       mutationFn: (input: CreateLocationInput) => createLocationUseCase.execute(input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã tạo vị trí vật lý'),
       onError: notifyError,
     }),
     updateLocation: useMutation({
       mutationFn: ({ id, input }: { id: string; input: UpdateLocationInput }) =>
         updateLocationUseCase.execute(id, input),
-      onSuccess: invalidateTree,
+      onSuccess: onDone(invalidateTree, 'Đã cập nhật vị trí vật lý'),
       onError: notifyError,
     }),
   };
