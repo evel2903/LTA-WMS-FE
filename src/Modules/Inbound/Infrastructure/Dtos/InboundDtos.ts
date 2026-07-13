@@ -444,4 +444,5 @@ export interface InboundOperationalStateDto {
   QcResults: QcResultDto[];
   Lpns: InboundLpnDto[];
   Releases: InboundPutawayReleaseDto[];
+  Discrepancies: InboundDiscrepancyDto[];
 }

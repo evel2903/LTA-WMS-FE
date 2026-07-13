@@ -382,6 +382,7 @@ export const InboundMapper = {
       qcResults: (dto.QcResults ?? []).map((item) => InboundMapper.toQcResult(item)),
       lpns: (dto.Lpns ?? []).map((item) => InboundMapper.toInboundLpn(item)),
       releases: (dto.Releases ?? []).map((item) => InboundMapper.toInboundPutawayRelease(item)),
+      discrepancies: (dto.Discrepancies ?? []).map((item) => InboundMapper.toInboundDiscrepancy(item)),
     };
   },
 
