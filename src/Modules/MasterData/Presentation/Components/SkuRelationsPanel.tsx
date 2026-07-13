@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Pencil, Plus, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import {
@@ -52,7 +53,6 @@ import {
 } from '@modules/MasterData/Presentation/Forms/SelectOptions';
 import { displayMasterDataStatus } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 
-const selectClass = 'h-9 rounded-md border bg-transparent px-3 text-sm';
 const masterDataStatusOptions = MASTER_DATA_STATUSES.map((status) => ({
   value: status,
   label: displayMasterDataStatus(status),
@@ -539,6 +539,10 @@ function PackForm({
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
   const reasonCode = form.watch('reasonCode') ?? '';
+  const uomId = form.watch('uomId');
+  const { ref: uomIdRef } = form.register('uomId');
+  const status = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
@@ -550,21 +554,32 @@ function PackForm({
           <Input disabled={disabled} {...form.register('packName')} />
         </Field>
         <SelectField
+          ref={uomIdRef}
+          id="pack-uom-id"
           label="Đơn vị tính"
+          value={uomId}
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.uomId?.message}
-          {...form.register('uomId')}
+          onChange={(value) => form.setValue('uomId', value, { shouldDirty: true, shouldValidate: true })}
         />
         <Field label="Số lượng mỗi quy cách" error={form.formState.errors.quantityPerPack?.message}>
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('quantityPerPack')} />
         </Field>
         <SelectField
+          ref={statusRef}
+          id="pack-status"
           label="Trạng thái"
+          value={status}
           disabled={disabled}
           options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
-          {...form.register('status')}
+          onChange={(value) =>
+            form.setValue('status', value as PackDefinitionFormValues['status'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
         <div>
           <ReasonCodeSelect
@@ -639,6 +654,10 @@ function BarcodeForm({
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
   const reasonCode = form.watch('reasonCode') ?? '';
+  const uomId = form.watch('uomId');
+  const { ref: uomIdRef } = form.register('uomId');
+  const status = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
@@ -650,11 +669,14 @@ function BarcodeForm({
           <Input disabled={disabled} {...form.register('barcodeType')} />
         </Field>
         <SelectField
+          ref={uomIdRef}
+          id="barcode-uom-id"
           label="Đơn vị tính"
+          value={uomId}
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.uomId?.message}
-          {...form.register('uomId')}
+          onChange={(value) => form.setValue('uomId', value, { shouldDirty: true, shouldValidate: true })}
         />
         <Field label="Mã quy cách" error={form.formState.errors.packCode?.message}>
           <Input disabled={disabled} {...form.register('packCode')} />
@@ -666,11 +688,19 @@ function BarcodeForm({
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
+          ref={statusRef}
+          id="barcode-status"
           label="Trạng thái"
+          value={status}
           disabled={disabled}
           options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
-          {...form.register('status')}
+          onChange={(value) =>
+            form.setValue('status', value as SkuBarcodeFormValues['status'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
         <div>
           <ReasonCodeSelect
@@ -742,23 +772,35 @@ function ConversionForm({
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
   const reasonCode = form.watch('reasonCode') ?? '';
+  const fromUomId = form.watch('fromUomId');
+  const { ref: fromUomIdRef } = form.register('fromUomId');
+  const toUomId = form.watch('toUomId');
+  const { ref: toUomIdRef } = form.register('toUomId');
+  const status = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
         <SelectField
+          ref={fromUomIdRef}
+          id="conversion-from-uom-id"
           label="Từ đơn vị tính"
+          value={fromUomId}
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.fromUomId?.message}
-          {...form.register('fromUomId')}
+          onChange={(value) => form.setValue('fromUomId', value, { shouldDirty: true, shouldValidate: true })}
         />
         <SelectField
+          ref={toUomIdRef}
+          id="conversion-to-uom-id"
           label="Đến đơn vị tính"
+          value={toUomId}
           disabled={disabled}
           options={uomOptions}
           error={form.formState.errors.toUomId?.message}
-          {...form.register('toUomId')}
+          onChange={(value) => form.setValue('toUomId', value, { shouldDirty: true, shouldValidate: true })}
         />
         <Field label="Hệ số" error={form.formState.errors.factor?.message}>
           <Input type="number" step="0.000001" disabled={disabled} {...form.register('factor')} />
@@ -770,11 +812,19 @@ function ConversionForm({
           <Input type="date" disabled={disabled} {...form.register('effectiveTo')} />
         </Field>
         <SelectField
+          ref={statusRef}
+          id="conversion-status"
           label="Trạng thái"
+          value={status}
           disabled={disabled}
           options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
-          {...form.register('status')}
+          onChange={(value) =>
+            form.setValue('status', value as UomConversionFormValues['status'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
         <div>
           <ReasonCodeSelect
@@ -846,23 +896,38 @@ function CoverageForm({
     defaultValues: defaults,
   });
   useEffect(() => form.reset(defaults), [defaults, form]);
+  const warehouseId = form.watch('warehouseId');
+  const { ref: warehouseIdRef } = form.register('warehouseId');
+  const status = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form className="grid gap-2" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-2 sm:grid-cols-2">
         <SelectField
+          ref={warehouseIdRef}
+          id="coverage-warehouse-id"
           label="Kho"
+          value={warehouseId}
           disabled={disabled}
           options={warehouseOptions}
           error={form.formState.errors.warehouseId?.message}
-          {...form.register('warehouseId')}
+          onChange={(value) => form.setValue('warehouseId', value, { shouldDirty: true, shouldValidate: true })}
         />
         <SelectField
+          ref={statusRef}
+          id="coverage-status"
           label="Trạng thái"
+          value={status}
           disabled={disabled}
           options={masterDataStatusOptions}
           error={form.formState.errors.status?.message}
-          {...form.register('status')}
+          onChange={(value) =>
+            form.setValue('status', value as ItemCoverageFormValues['status'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
         />
         <Field label="Số lượng tối thiểu" error={form.formState.errors.minQty?.message}>
           <Input type="number" disabled={disabled} {...form.register('minQty')} />
@@ -917,29 +982,35 @@ function Field({
   );
 }
 
-function SelectField({
-  label,
-  options,
-  error,
-  ...props
-}: {
-  label: string;
-  options: SelectOption[];
-  error?: string;
-} & React.ComponentProps<'select'>) {
+const SelectField = forwardRef<
+  HTMLButtonElement,
+  {
+    id: string;
+    label: string;
+    value: string;
+    options: SelectOption[];
+    error?: string;
+    disabled?: boolean;
+    onChange: (value: string) => void;
+  }
+>(function SelectField({ id, label, value, options, error, disabled, onChange }, ref) {
   return (
-    <Field label={label} error={error}>
-      <select className={selectClass} {...props}>
-        <option value="">Chọn {label}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </Field>
+    <div className="grid gap-1">
+      <ComboboxSelect
+        ref={ref}
+        id={id}
+        name={id}
+        label={label}
+        value={value}
+        placeholder={`Chọn ${label}`}
+        options={options}
+        disabled={disabled}
+        onChange={onChange}
+      />
+      {error && <span className="text-destructive text-xs">{error}</span>}
+    </div>
   );
-}
+});
 
 function FormActions({
   editing,
