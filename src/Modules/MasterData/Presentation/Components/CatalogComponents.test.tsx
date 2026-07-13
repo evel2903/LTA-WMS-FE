@@ -218,7 +218,7 @@ describe('Catalog components', () => {
     expect(html).not.toContain('value="Quantity"');
   });
 
-  it('renders each SKU status variant with Vietnamese display labels', () => {
+  it('renders each SKU status pill with Vietnamese display labels', () => {
     expect(displaySkuStatus('Active')).toBe('Đang kinh doanh');
     expect(displaySkuStatus('Draft')).toBe('Nháp');
     expect(displaySkuStatus('Blocked')).toBe('Tạm khóa');

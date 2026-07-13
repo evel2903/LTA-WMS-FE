@@ -13,6 +13,7 @@ import {
   type CatalogListState,
   type CatalogSortState,
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
+import { MASTER_DATA_STATUS_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { StatusBadge } from '@modules/MasterData/Presentation/Components/StatusBadge';
 import {
   PARTNER_DEFAULT_PAGE_SIZE,
@@ -27,7 +28,7 @@ type PartnerTypeFilter = 'All' | PartnerType;
 
 const STATUS_FILTER_OPTIONS = [
   { value: '', label: 'Tất cả' },
-  ...PARTNER_STATUSES.map((item) => ({ value: item, label: item === 'Active' ? 'Đang hoạt động' : 'Không hoạt động' })),
+  ...PARTNER_STATUSES.map((item) => ({ value: item, label: MASTER_DATA_STATUS_LABELS[item] })),
 ];
 
 function comparePartners(a: Partner, b: Partner, column: string): number {
