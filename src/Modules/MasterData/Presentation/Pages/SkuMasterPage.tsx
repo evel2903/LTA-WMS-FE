@@ -176,24 +176,25 @@ export function SkuMasterPage() {
               }}
             />
           </div>
-          <label className="grid min-w-0 gap-1 text-sm md:max-w-xs">
-            Chủ hàng mặc định
-            <select
-              className="h-10 rounded-md border bg-background px-3 text-sm"
+          <div className="md:max-w-xs">
+            <ComboboxSelect
+              id="sku-default-owner-filter"
+              name="defaultOwnerId"
+              label="Chủ hàng mặc định"
               value={defaultOwnerId}
-              onChange={(event) => {
-                setDefaultOwnerId(event.target.value);
+              placeholder="Tất cả"
+              optional
+              isLoading={ownersQuery.isLoading}
+              options={owners.map((owner) => ({
+                value: owner.id,
+                label: `${owner.ownerCode} - ${owner.ownerName}`,
+              }))}
+              onChange={(value) => {
+                setDefaultOwnerId(value);
                 setPage(1);
               }}
-            >
-              <option value="">Tất cả</option>
-              {owners.map((owner) => (
-                <option key={owner.id} value={owner.id}>
-                  {owner.ownerCode} - {owner.ownerName}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
         </div>
       }
     />

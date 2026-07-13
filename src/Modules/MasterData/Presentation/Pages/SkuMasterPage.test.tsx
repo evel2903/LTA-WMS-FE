@@ -199,8 +199,10 @@ describe('SkuMasterPage UI-managed behavior', () => {
     await actor.type(screen.getByLabelText('Mã SKU'), 'SKU-002');
     await actor.type(screen.getByLabelText('Tên SKU'), 'Manual item');
     await actor.type(screen.getByLabelText('Nhóm hàng'), 'GENERAL');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính cơ sở'), 'uom-1');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính tồn kho'), 'uom-1');
+    await actor.click(screen.getByRole('combobox', { name: 'Đơn vị tính cơ sở' }));
+    await actor.click(await screen.findByRole('option', { name: 'EA - Each' }));
+    await actor.click(screen.getByRole('combobox', { name: 'Đơn vị tính tồn kho' }));
+    await actor.click(await screen.findByRole('option', { name: 'EA - Each' }));
     await actor.click(screen.getByRole('button', { name: 'Tạo SKU' }));
 
     await waitFor(() =>
@@ -230,8 +232,10 @@ describe('SkuMasterPage UI-managed behavior', () => {
     await actor.type(screen.getByLabelText('Mã SKU'), 'SKU-003');
     await actor.type(screen.getByLabelText('Tên SKU'), 'Owner optional item');
     await actor.type(screen.getByLabelText('Nhóm hàng'), 'GENERAL');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính cơ sở'), 'uom-1');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính tồn kho'), 'uom-1');
+    await actor.click(screen.getByRole('combobox', { name: 'Đơn vị tính cơ sở' }));
+    await actor.click(await screen.findByRole('option', { name: 'EA - Each' }));
+    await actor.click(screen.getByRole('combobox', { name: 'Đơn vị tính tồn kho' }));
+    await actor.click(await screen.findByRole('option', { name: 'EA - Each' }));
     await actor.click(screen.getByRole('button', { name: 'Tạo SKU' }));
 
     await waitFor(() =>
