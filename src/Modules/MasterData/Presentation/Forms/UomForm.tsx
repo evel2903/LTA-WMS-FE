@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
@@ -106,6 +107,7 @@ export function UomForm({
         </select>
       </label>
       <Button type="submit" disabled={disabled || pending}>
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
         {submitLabel}
       </Button>
     </form>
