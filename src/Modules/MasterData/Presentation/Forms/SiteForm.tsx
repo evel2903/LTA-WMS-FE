@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
@@ -93,6 +94,7 @@ export function SiteForm({
         )}
       </div>
       <Button type="submit" disabled={disabled || pending}>
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
         {submitLabel}
       </Button>
     </form>
