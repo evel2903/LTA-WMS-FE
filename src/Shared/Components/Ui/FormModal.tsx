@@ -20,16 +20,16 @@ export function FormModal({ title, open, onClose, children }: FormModalProps) {
       <section
         aria-label={title}
         aria-modal="true"
-        className="relative z-10 w-full max-w-xl rounded-md border bg-background p-5 shadow-lg"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-xl flex-col rounded-md border bg-background shadow-lg"
         role="dialog"
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 p-5 pb-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <Button type="button" variant="ghost" onClick={onClose}>
             Đóng
           </Button>
         </div>
-        {children}
+        <div className="overflow-y-auto p-5 pt-0">{children}</div>
       </section>
     </div>
   );
