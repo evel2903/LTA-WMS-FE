@@ -36,7 +36,7 @@ import type {
   CreateSkuBarcodeInput,
   CreateUomConversionInput,
 } from '@modules/MasterData/Domain/Types/CatalogQuery';
-import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
+import { StatusBadge } from '@modules/MasterData/Presentation/Components/StatusBadge';
 import {
   itemCoverageFormSchema,
   packDefinitionFormSchema,
@@ -122,7 +122,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
             { header: 'Tên', render: (pack) => pack.packName },
             { header: 'Đơn vị tính', render: (pack) => optionLabel(uomOptions, pack.uomId) },
             { header: 'Số lượng', render: (pack) => pack.quantityPerPack },
-            { header: 'Trạng thái', render: (pack) => <MasterDataStatusBadge status={pack.status} /> },
+            { header: 'Trạng thái', render: (pack) => <StatusBadge status={pack.status} /> },
           ]}
           onEdit={(pack) => {
             setEditingPack(pack);
@@ -191,7 +191,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
                   dateOnly(barcode.effectiveTo) || '-'
                 }`,
             },
-            { header: 'Trạng thái', render: (barcode) => <MasterDataStatusBadge status={barcode.status} /> },
+            { header: 'Trạng thái', render: (barcode) => <StatusBadge status={barcode.status} /> },
           ]}
           onEdit={(barcode) => {
             setEditingBarcode(barcode);
@@ -258,7 +258,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
             { header: 'Ngày hiệu lực', render: (conversion) => dateOnly(conversion.effectiveFrom) },
             {
               header: 'Trạng thái',
-              render: (conversion) => <MasterDataStatusBadge status={conversion.status} />,
+              render: (conversion) => <StatusBadge status={conversion.status} />,
             },
           ]}
           onEdit={(conversion) => {
@@ -335,7 +335,7 @@ export function SkuRelationsPanel({ skuId, uoms, warehouses, canEdit }: SkuRelat
                       .join(', ')
                   : '-',
             },
-            { header: 'Trạng thái', render: (coverage) => <MasterDataStatusBadge status={coverage.status} /> },
+            { header: 'Trạng thái', render: (coverage) => <StatusBadge status={coverage.status} /> },
           ]}
           onEdit={(coverage) => {
             setEditingCoverage(coverage);
