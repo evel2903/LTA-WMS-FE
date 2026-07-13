@@ -170,7 +170,8 @@ describe('PartnerMasterPage', () => {
     await actor.click(await screen.findByRole('link', { name: 'Tạo đối tác' }));
     await actor.type(await screen.findByLabelText('Mã đối tác'), 'SUP-001');
     await actor.type(screen.getByLabelText('Tên đối tác'), 'Acme Supplier');
-    await actor.selectOptions(screen.getByLabelText('Loại đối tác'), 'Supplier');
+    await actor.click(screen.getByRole('combobox', { name: 'Loại đối tác' }));
+    await actor.click(await screen.findByRole('option', { name: 'Nhà cung cấp' }));
     await actor.type(screen.getByLabelText('Hệ thống nguồn'), 'SAP');
     await actor.type(screen.getByLabelText('Tham chiếu ngoài'), 'SAP-SUP-001');
     await actor.click(screen.getByRole('button', { name: 'Tạo đối tác' }));

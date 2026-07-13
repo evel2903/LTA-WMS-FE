@@ -22,6 +22,11 @@ const PARTNER_STATUS_OPTIONS = PARTNER_STATUSES.map((value) => ({
   label: MASTER_DATA_STATUS_LABELS[value],
 }));
 
+const PARTNER_TYPE_OPTIONS = PARTNER_TYPES.map((type) => ({
+  value: type,
+  label: displayPartnerType(type),
+}));
+
 interface PartnerFormProps {
   initialValue?: Partner;
   disabled?: boolean;
@@ -63,6 +68,7 @@ export function PartnerForm({
   });
   const deactivateReasonCode = deactivateForm.watch('reasonCode');
   const partnerTypeValue = form.watch('partnerType');
+  const { ref: partnerTypeRef } = form.register('partnerType');
   const statusValue = form.watch('status');
   const { ref: statusRef } = form.register('status');
 
@@ -87,18 +93,22 @@ export function PartnerForm({
         )}
       </label>
       {partnerTypeEditable ? (
-        <label className="grid gap-1 text-sm">Loại đối tác<select
-            className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            disabled={disabled}
-            {...form.register('partnerType')}
-          >
-            {PARTNER_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {displayPartnerType(type)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ComboboxSelect
+          ref={partnerTypeRef}
+          id="partner-type"
+          name="partnerType"
+          label="Loại đối tác"
+          value={partnerTypeValue}
+          placeholder="Chọn loại đối tác"
+          options={PARTNER_TYPE_OPTIONS}
+          disabled={disabled}
+          onChange={(value) =>
+            form.setValue('partnerType', value as PartnerFormValues['partnerType'], {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
+        />
       ) : (
         <div className="grid gap-1 text-sm">
           <span>Loại đối tác</span>

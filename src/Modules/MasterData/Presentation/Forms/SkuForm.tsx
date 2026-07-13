@@ -77,6 +77,12 @@ export function SkuForm({
   const errors = form.formState.errors;
   const itemStatus = form.watch('itemStatus');
   const { ref: itemStatusRef } = form.register('itemStatus');
+  const baseUomId = form.watch('baseUomId');
+  const { ref: baseUomIdRef } = form.register('baseUomId');
+  const inventoryUomId = form.watch('inventoryUomId');
+  const { ref: inventoryUomIdRef } = form.register('inventoryUomId');
+  const defaultOwnerId = form.watch('defaultOwnerId');
+  const { ref: defaultOwnerIdRef } = form.register('defaultOwnerId');
 
   const uomOptions = uoms.map((uom) => ({ value: uom.id, label: `${uom.uomCode} - ${uom.uomName}` }));
   const ownerOptions = owners.map((owner) => ({
@@ -134,54 +140,61 @@ export function SkuForm({
           })
         }
       />
-      <label className="grid gap-1 text-sm">Đơn vị tính cơ sở<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+      <div className="grid gap-1">
+        <ComboboxSelect
+          ref={baseUomIdRef}
+          id="sku-base-uom"
+          name="baseUomId"
+          label="Đơn vị tính cơ sở"
+          value={baseUomId}
+          placeholder="Chọn đơn vị tính"
+          options={baseUomOptions}
           disabled={disabled}
-          {...form.register('baseUomId')}
-        >
-          <option value="">Chọn đơn vị tính</option>
-          {baseUomOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) =>
+            form.setValue('baseUomId', value, { shouldDirty: true, shouldValidate: true })
+          }
+        />
         {errors.baseUomId && (
           <span className="text-destructive text-xs">{errors.baseUomId.message}</span>
         )}
-      </label>
-      <label className="grid gap-1 text-sm">Đơn vị tính tồn kho<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+      </div>
+      <div className="grid gap-1">
+        <ComboboxSelect
+          ref={inventoryUomIdRef}
+          id="sku-inventory-uom"
+          name="inventoryUomId"
+          label="Đơn vị tính tồn kho"
+          value={inventoryUomId}
+          placeholder="Chọn đơn vị tính"
+          options={inventoryUomOptions}
           disabled={disabled}
-          {...form.register('inventoryUomId')}
-        >
-          <option value="">Chọn đơn vị tính</option>
-          {inventoryUomOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) =>
+            form.setValue('inventoryUomId', value, { shouldDirty: true, shouldValidate: true })
+          }
+        />
         {errors.inventoryUomId && (
           <span className="text-destructive text-xs">{errors.inventoryUomId.message}</span>
         )}
-      </label>
-      <label className="grid gap-1 text-sm">Chủ hàng mặc định<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
+      </div>
+      <div className="grid gap-1">
+        <ComboboxSelect
+          ref={defaultOwnerIdRef}
+          id="sku-default-owner"
+          name="defaultOwnerId"
+          label="Chủ hàng mặc định"
+          value={defaultOwnerId}
+          placeholder="Không chọn"
+          optional
+          options={defaultOwnerOptions}
           disabled={disabled}
-          {...form.register('defaultOwnerId')}
-        >
-          <option value="">Không chọn</option>
-          {defaultOwnerOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) =>
+            form.setValue('defaultOwnerId', value, { shouldDirty: true, shouldValidate: true })
+          }
+        />
         {errors.defaultOwnerId && (
           <span className="text-destructive text-xs">{errors.defaultOwnerId.message}</span>
         )}
-      </label>
+      </div>
 
       <fieldset className="grid gap-2 rounded-md border p-3 text-sm">
         <legend className="px-1 font-medium">Cờ kiểm soát</legend>

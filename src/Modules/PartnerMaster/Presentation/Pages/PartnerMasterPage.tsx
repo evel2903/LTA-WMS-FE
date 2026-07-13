@@ -24,11 +24,14 @@ import { PARTNER_EMPTY_LABEL_VI, displayPartnerType } from '@modules/PartnerMast
 import type { Partner, PartnerStatus, PartnerType } from '@modules/PartnerMaster/Domain/Types/Partner';
 import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
 
-type PartnerTypeFilter = 'All' | PartnerType;
-
 const STATUS_FILTER_OPTIONS = [
   { value: '', label: 'Tất cả' },
   ...PARTNER_STATUSES.map((item) => ({ value: item, label: MASTER_DATA_STATUS_LABELS[item] })),
+];
+
+const TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'Tất cả' },
+  ...PARTNER_TYPES.map((type) => ({ value: type, label: displayPartnerType(type) })),
 ];
 
 function comparePartners(a: Partner, b: Partner, column: string): number {
@@ -62,7 +65,7 @@ export function PartnerMasterPage() {
   const [statusFilter, setStatusFilter] = useState<PartnerStatus | ''>('');
   const [nameFilter, setNameFilter] = useState('');
   const [externalReferenceFilter, setExternalReferenceFilter] = useState('');
-  const [partnerType, setPartnerType] = useState<PartnerTypeFilter>('All');
+  const [partnerType, setPartnerType] = useState<PartnerType | ''>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PARTNER_DEFAULT_PAGE_SIZE);
   const [sort, setSort] = useState<CatalogSortState | null>(null);
@@ -76,7 +79,7 @@ export function PartnerMasterPage() {
     partnerCode: partnerCode || undefined,
     partnerName: partnerName || undefined,
     externalReference: externalReference || undefined,
-    partnerType: partnerType === 'All' ? undefined : partnerType,
+    partnerType: partnerType || undefined,
     status: statusFilter || undefined,
   });
 
@@ -213,24 +216,19 @@ export function PartnerMasterPage() {
                 }}
               />
             </label>
-            <label className="grid min-w-0 gap-1 text-sm">
-              Loại đối tác
-              <select
-                className="h-10 rounded-md border bg-background px-3 text-sm"
-                value={partnerType}
-                onChange={(event) => {
-                  setPartnerType(event.target.value as PartnerTypeFilter);
-                  setPage(1);
-                }}
-              >
-                <option value="All">Tất cả</option>
-                {PARTNER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {displayPartnerType(type)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ComboboxSelect
+              id="partner-type-filter"
+              name="partnerTypeFilter"
+              label="Loại đối tác"
+              value={partnerType}
+              placeholder="Tất cả"
+              optional
+              options={TYPE_FILTER_OPTIONS}
+              onChange={(value) => {
+                setPartnerType(value as PartnerType | '');
+                setPage(1);
+              }}
+            />
           </div>
         </div>
       }
