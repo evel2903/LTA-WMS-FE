@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useActiveOwners, useSkus } from '@modules/MasterData/Application/Queries/CatalogQueries';
 import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
+import { MASTER_DATA_DEFAULT_PAGE_SIZE } from '@modules/MasterData/Domain/Constants/MasterDataConstants';
 import {
   MASTER_DATA_EMPTY_LABELS,
   displaySkuStatus,
@@ -17,31 +19,62 @@ import {
   CatalogListView,
   type CatalogColumn,
   type CatalogListState,
+  type CatalogSortState,
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { SkuStatusBadge } from '@modules/MasterData/Presentation/Components/SkuStatusBadge';
 
-type ItemStatusFilter = 'All' | SkuStatus;
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'Tất cả' },
+  ...SKU_STATUSES.map((value) => ({ value, label: displaySkuStatus(value) })),
+];
+
+function compareSkus(a: Sku, b: Sku, column: string): number {
+  switch (column) {
+    case 'code':
+      return a.skuCode.localeCompare(b.skuCode, 'vi', { numeric: true });
+    case 'name':
+      return a.skuName.localeCompare(b.skuName, 'vi');
+    case 'class':
+      return (a.itemClass ?? '').localeCompare(b.itemClass ?? '', 'vi');
+    case 'status':
+      return a.itemStatus.localeCompare(b.itemStatus, 'vi');
+    default:
+      return 0;
+  }
+}
+
+// Sort is client-side and scoped to the current server page only (server
+// pagination is kept as-is; the BE has no sort param), matching DSR-05/Loại kho.
+function sortSkus(items: Sku[], sort: CatalogSortState | null): Sku[] {
+  if (!sort) return items;
+  const sorted = [...items].sort((a, b) => compareSkus(a, b, sort.column));
+  return sort.direction === 'desc' ? sorted.reverse() : sorted;
+}
 
 export function SkuMasterPage() {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(MASTER_DATA_DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState('');
-  const [itemStatus, setItemStatus] = useState<ItemStatusFilter>('All');
+  const [itemStatus, setItemStatus] = useState<SkuStatus | ''>('');
   const [defaultOwnerId, setDefaultOwnerId] = useState('');
-  const skuCode = useDebouncedValue(search, 300);
+  const [sort, setSort] = useState<CatalogSortState | null>(null);
+  const skuCode = useDebouncedValue(search);
 
   const query = useSkus({
     page,
+    pageSize,
     skuCode: skuCode || undefined,
-    itemStatus: itemStatus === 'All' ? undefined : itemStatus,
+    itemStatus: itemStatus || undefined,
     defaultOwnerId: defaultOwnerId || undefined,
   });
   const ownersQuery = useActiveOwners();
 
-  const skus = query.data?.items ?? [];
+  const skus = useMemo(() => query.data?.items ?? [], [query.data]);
   const owners = ownersQuery.data?.items ?? [];
   const apiError = query.error instanceof ApiError ? query.error : null;
   const canCreate = !apiError?.isForbidden;
+  const sortedSkus = useMemo(() => sortSkus(skus, sort), [skus, sort]);
   const state: CatalogListState = apiError?.isForbidden
     ? 'denied'
     : query.isLoading
@@ -52,21 +85,38 @@ export function SkuMasterPage() {
           ? 'empty'
           : 'ready';
 
+  function handleSortChange(column: string) {
+    setSort((current) => {
+      if (current?.column !== column) return { column, direction: 'asc' };
+      if (current.direction === 'asc') return { column, direction: 'desc' };
+      return null;
+    });
+  }
+
   const columns: CatalogColumn<Sku>[] = [
     {
+      id: 'code',
       header: 'Mã',
+      render: (sku) => <span className="font-medium">{sku.skuCode}</span>,
+      sortable: true,
+    },
+    { id: 'name', header: 'Tên', render: (sku) => sku.skuName, sortable: true },
+    { id: 'class', header: 'Nhóm', render: (sku) => sku.itemClass, sortable: true },
+    { id: 'status', header: 'Trạng thái', render: (sku) => <SkuStatusBadge status={sku.itemStatus} />, sortable: true },
+    {
+      header: 'Hành động',
       render: (sku) => (
-        <button
-          className="underline-offset-2 hover:underline"
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
           onClick={() => navigate(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(sku.id))}
         >
-          {sku.skuCode}
-        </button>
+          Xem
+        </Button>
       ),
+      className: 'text-right',
     },
-    { header: 'Tên', render: (sku) => sku.skuName },
-    { header: 'Nhóm', render: (sku) => sku.itemClass },
-    { header: 'Trạng thái', render: (sku) => <SkuStatusBadge status={sku.itemStatus} /> },
   ];
 
   return (
@@ -75,11 +125,18 @@ export function SkuMasterPage() {
       description="Quản lý dữ liệu chủ SKU, cờ kiểm soát và quan hệ đóng gói cho vận hành WMS."
       state={state}
       columns={columns}
-      rows={skus}
+      rows={sortedSkus}
       rowKey={(sku) => sku.id}
       page={page}
       totalPages={query.data?.totalPages ?? 1}
       onPageChange={setPage}
+      pageSize={pageSize}
+      onPageSizeChange={(size) => {
+        setPageSize(size);
+        setPage(1);
+      }}
+      sort={sort}
+      onSortChange={handleSortChange}
       emptyLabel={MASTER_DATA_EMPTY_LABELS.skus}
       errorMessage={apiError?.message ?? (query.error ? 'Không thể tải SKU.' : undefined)}
       canCreate={canCreate}
@@ -91,34 +148,38 @@ export function SkuMasterPage() {
         ) : null
       }
       toolbar={
-        <>
-          <label className="grid gap-1 text-sm">Mã SKU<Input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Tìm theo mã"
-            />
-          </label>
-          <label className="grid gap-1 text-sm">Trạng thái hàng<select
-              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+        <div className="grid min-w-0 gap-3">
+          <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px] md:items-end">
+            <label className="grid min-w-0 gap-1 text-sm">
+              Tìm
+              <Input
+                className="min-w-0"
+                placeholder="Mã SKU"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+              />
+            </label>
+            <ComboboxSelect
+              id="sku-status-filter"
+              name="statusFilter"
+              label="Trạng thái"
               value={itemStatus}
-              onChange={(event) => {
-                setItemStatus(event.target.value as ItemStatusFilter);
+              placeholder="Tất cả"
+              optional
+              options={STATUS_FILTER_OPTIONS}
+              onChange={(value) => {
+                setItemStatus(value as SkuStatus | '');
                 setPage(1);
               }}
-            >
-              <option value="All">Tất cả</option>
-              {SKU_STATUSES.map((value) => (
-                <option key={value} value={value}>
-                  {displaySkuStatus(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm">Chủ hàng mặc định<select
-              className="h-9 rounded-md border bg-transparent px-3 text-sm"
+            />
+          </div>
+          <label className="grid min-w-0 gap-1 text-sm md:max-w-xs">
+            Chủ hàng mặc định
+            <select
+              className="h-10 rounded-md border bg-background px-3 text-sm"
               value={defaultOwnerId}
               onChange={(event) => {
                 setDefaultOwnerId(event.target.value);
@@ -133,7 +194,7 @@ export function SkuMasterPage() {
               ))}
             </select>
           </label>
-        </>
+        </div>
       }
     />
   );

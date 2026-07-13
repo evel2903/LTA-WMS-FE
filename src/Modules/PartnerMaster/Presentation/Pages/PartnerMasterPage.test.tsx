@@ -4,7 +4,6 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { renderToStaticMarkup } from 'react-dom/server';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -36,11 +35,7 @@ vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
 
 import { PartnerMasterPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterPage';
 import { PartnerMasterDetailPage } from '@modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage';
-import { PartnerStatusBadge } from '@modules/PartnerMaster/Presentation/Components/PartnerStatusBadge';
-import {
-  displayPartnerStatus,
-  displayPartnerType,
-} from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
+import { displayPartnerType } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
@@ -156,34 +151,14 @@ afterEach(() => {
 });
 
 describe('PartnerMasterPage', () => {
-  it('hiển thị trạng thái đối tác bằng Badge thống nhất', () => {
-    const activeHtml = renderToStaticMarkup(<PartnerStatusBadge status="Active" />);
-    const inactiveHtml = renderToStaticMarkup(<PartnerStatusBadge status="Inactive" />);
-
-    expect(displayPartnerStatus('Active')).toBe('Đang hoạt động');
-    expect(displayPartnerStatus('Inactive')).toBe('Ngừng hoạt động');
+  it('hiển thị nhãn loại đối tác bằng tiếng Việt', () => {
     expect(displayPartnerType('Supplier')).toBe('Nhà cung cấp');
     expect(displayPartnerType('Customer')).toBe('Khách hàng');
     expect(displayPartnerType('Carrier')).toBe('Đơn vị vận chuyển');
-    expect(displayPartnerStatus(' Active ')).toBe('Đang hoạt động');
-    expect(displayPartnerStatus('   ')).toBe('-');
-    expect(displayPartnerStatus('Suspended')).toBe('Suspended');
-    expect(displayPartnerStatus(undefined)).toBe('-');
     expect(displayPartnerType(' Supplier ')).toBe('Nhà cung cấp');
     expect(displayPartnerType('   ')).toBe('-');
     expect(displayPartnerType('Broker')).toBe('Broker');
     expect(displayPartnerType(undefined)).toBe('-');
-
-    expect(activeHtml).toContain('data-slot="badge"');
-    expect(activeHtml).toContain('Đang hoạt động');
-    expect(activeHtml).not.toContain('>Active<');
-
-    expect(inactiveHtml).toContain('data-slot="badge"');
-    expect(inactiveHtml).toContain('Ngừng hoạt động');
-    expect(inactiveHtml).not.toContain('>Inactive<');
-
-    const unknownHtml = renderToStaticMarkup(<PartnerStatusBadge status="Suspended" />);
-    expect(unknownHtml).toContain('Suspended');
   });
 
   it('creates, edits and deactivates Supplier/Customer/Carrier through the repository', async () => {
@@ -240,7 +215,7 @@ describe('PartnerMasterPage', () => {
     await waitFor(() =>
       expect(fake.deactivate).toHaveBeenCalledWith('partner-1', { reasonCode: 'RC-CANCEL' }),
     );
-    await waitFor(() => expect(screen.getAllByText('Ngừng hoạt động').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText('Không hoạt động').length).toBeGreaterThan(0));
   });
 
   it('shows read-only denied behavior when list is forbidden', async () => {
@@ -264,11 +239,20 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
-    expect((await screen.findAllByRole('button', { name: 'SUP-001' })).length).toBeGreaterThan(0);
-    await actor.type(screen.getByLabelText('Lọc tên đối tác'), 'Acme');
+    expect((await screen.findAllByText('SUP-001')).length).toBeGreaterThan(0);
+    await actor.type(screen.getByLabelText('Tên đối tác'), 'Acme');
 
     await waitFor(() =>
       expect(fake.list).toHaveBeenLastCalledWith(expect.objectContaining({ partnerName: 'Acme' })),
     );
+  });
+
+  it('renders the Trạng thái column last, immediately before Hành động', async () => {
+    const fake = new FakeRepository([makePartner()]);
+    repo.current = fake as unknown as IPartnerRepository;
+    renderPage();
+
+    const headers = (await screen.findAllByRole('columnheader')).map((header) => header.textContent);
+    expect(headers.slice(-2)).toEqual(['Trạng thái', 'Hành động']);
   });
 });
