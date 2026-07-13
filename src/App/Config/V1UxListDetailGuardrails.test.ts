@@ -72,7 +72,6 @@ const migratedRootPages = [
 const representativeDetailPages = [
   'Modules/PartnerMaster/Presentation/Pages/PartnerMasterDetailPage.tsx',
   'Modules/MasterData/Presentation/Pages/OwnerMasterDetailPage.tsx',
-  'Modules/MasterData/Presentation/Pages/UomMasterDetailPage.tsx',
   'Modules/MasterData/Presentation/Pages/SkuMasterDetailPage.tsx',
   'Modules/MasterData/Presentation/Pages/LocationProfileDetailPage.tsx',
   'Modules/ReasonCode/Presentation/Pages/ReasonCodeDetailPage.tsx',

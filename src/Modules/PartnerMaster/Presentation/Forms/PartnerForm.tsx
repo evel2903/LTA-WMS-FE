@@ -3,13 +3,12 @@ import { useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import { PARTNER_STATUSES, PARTNER_TYPES } from '@modules/PartnerMaster/Domain/Constants/PartnerConstants';
 import type { Partner } from '@modules/PartnerMaster/Domain/Types/Partner';
-import {
-  displayPartnerStatus,
-  displayPartnerType,
-} from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
+import { displayPartnerType } from '@modules/PartnerMaster/Presentation/Constants/PartnerDisplayText';
+import { MASTER_DATA_STATUS_LABELS } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { ReasonCodeSelect } from '@modules/ReasonCode/Presentation/Components/ReasonCodeSelect';
 import {
   partnerDeactivateSchema,
@@ -17,6 +16,11 @@ import {
   type PartnerDeactivateValues,
   type PartnerFormValues,
 } from '@modules/PartnerMaster/Presentation/Forms/PartnerFormSchema';
+
+const PARTNER_STATUS_OPTIONS = PARTNER_STATUSES.map((value) => ({
+  value,
+  label: MASTER_DATA_STATUS_LABELS[value],
+}));
 
 interface PartnerFormProps {
   initialValue?: Partner;
@@ -59,6 +63,8 @@ export function PartnerForm({
   });
   const deactivateReasonCode = deactivateForm.watch('reasonCode');
   const partnerTypeValue = form.watch('partnerType');
+  const statusValue = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form
@@ -102,18 +108,22 @@ export function PartnerForm({
           </p>
         </div>
       )}
-      <label className="grid gap-1 text-sm">Trạng thái<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('status')}
-        >
-          {PARTNER_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {displayPartnerStatus(status)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ComboboxSelect
+        ref={statusRef}
+        id="partner-status"
+        name="status"
+        label="Trạng thái"
+        value={statusValue}
+        placeholder="Chọn trạng thái"
+        options={PARTNER_STATUS_OPTIONS}
+        disabled={disabled}
+        onChange={(value) =>
+          form.setValue('status', value as PartnerFormValues['status'], {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+      />
       <label className="grid gap-1 text-sm">Hệ thống nguồn<Input disabled={disabled} {...form.register('sourceSystem')} />
         {form.formState.errors.sourceSystem && (
           <span className="text-destructive text-xs">{form.formState.errors.sourceSystem.message}</span>

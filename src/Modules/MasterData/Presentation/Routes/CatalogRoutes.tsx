@@ -21,12 +21,6 @@ const UomMasterPage = lazy(() =>
   })),
 );
 
-const UomMasterDetailPage = lazy(() =>
-  import('@modules/MasterData/Presentation/Pages/UomMasterDetailPage').then((module) => ({
-    default: module.UomMasterDetailPage,
-  })),
-);
-
 const SkuMasterPage = lazy(() =>
   import('@modules/MasterData/Presentation/Pages/SkuMasterPage').then((module) => ({
     default: module.SkuMasterPage,
@@ -45,9 +39,6 @@ export const catalogRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.MASTER_DATA.OWNER_DETAIL(), element: <OwnerMasterDetailPage mode="detail" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(), element: <OwnerMasterDetailPage mode="edit" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.UOMS, element: <UomMasterPage /> },
-  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW, element: <UomMasterDetailPage mode="create" /> },
-  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL(), element: <UomMasterDetailPage mode="detail" /> },
-  { path: ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(), element: <UomMasterDetailPage mode="edit" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.SKUS, element: <SkuMasterPage /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW, element: <SkuMasterDetailPage mode="create" /> },
   { path: ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(), element: <SkuMasterDetailPage mode="detail" /> },

@@ -19,7 +19,6 @@ import {
 } from '@modules/MasterData/Presentation/Components/CatalogListView';
 import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
 import { SkuStatusBadge } from '@modules/MasterData/Presentation/Components/SkuStatusBadge';
-import { skuStatusVariant } from '@modules/MasterData/Presentation/Components/SkuStatusVariant';
 import { OwnerForm } from '@modules/MasterData/Presentation/Forms/OwnerForm';
 import { SkuForm } from '@modules/MasterData/Presentation/Forms/SkuForm';
 import { UomForm } from '@modules/MasterData/Presentation/Forms/UomForm';
@@ -220,11 +219,6 @@ describe('Catalog components', () => {
   });
 
   it('renders each SKU status variant with Vietnamese display labels', () => {
-    expect(skuStatusVariant('Active')).toBe('success');
-    expect(skuStatusVariant('Draft')).toBe('outline');
-    expect(skuStatusVariant('Blocked')).toBe('warning');
-    expect(skuStatusVariant('Discontinued')).toBe('secondary');
-
     expect(displaySkuStatus('Active')).toBe('Đang kinh doanh');
     expect(displaySkuStatus('Draft')).toBe('Nháp');
     expect(displaySkuStatus('Blocked')).toBe('Tạm khóa');
@@ -240,6 +234,7 @@ describe('Catalog components', () => {
     const discontinuedHtml = renderToStaticMarkup(<SkuStatusBadge status="Discontinued" />);
     const unknownHtml = renderToStaticMarkup(<SkuStatusBadge status="Archived" />);
 
+    expect(activeHtml).toContain('data-slot="badge"');
     expect(activeHtml).toContain('Đang kinh doanh');
     expect(activeHtml).not.toContain('>Active<');
     expect(draftHtml).toContain('Nháp');
@@ -274,10 +269,7 @@ describe('Catalog components', () => {
     expect(html).toContain('data-slot="alert"');
     expect(html).toContain('role="alert"');
     expect(html).toContain('Nháp');
-    expect(html).toContain('Đang kinh doanh');
     expect(html).not.toContain('>Draft<');
-    expect(html).not.toContain('>Active<');
-    expect(html).not.toContain('>None<');
   });
 
   it('shows SKU missing setup guidance for absent active Owner/UOM lookups', () => {
@@ -367,13 +359,6 @@ describe('Catalog components', () => {
       '/foundation/master-data/owners/owner-1/edit',
     );
     expect(ROUTES.FOUNDATION.MASTER_DATA.UOMS).toBe('/foundation/master-data/uoms');
-    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW).toBe('/foundation/master-data/uoms/new');
-    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL('uom-1')).toBe(
-      '/foundation/master-data/uoms/uom-1',
-    );
-    expect(ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT('uom-1')).toBe(
-      '/foundation/master-data/uoms/uom-1/edit',
-    );
     expect(ROUTES.FOUNDATION.MASTER_DATA.SKUS).toBe('/foundation/master-data/skus');
     expect(ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW).toBe('/foundation/master-data/skus/new');
     expect(ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL('sku-1')).toBe(
@@ -388,9 +373,6 @@ describe('Catalog components', () => {
       ROUTES.FOUNDATION.MASTER_DATA.OWNER_DETAIL(),
       ROUTES.FOUNDATION.MASTER_DATA.OWNER_EDIT(),
       ROUTES.FOUNDATION.MASTER_DATA.UOMS,
-      ROUTES.FOUNDATION.MASTER_DATA.UOM_NEW,
-      ROUTES.FOUNDATION.MASTER_DATA.UOM_DETAIL(),
-      ROUTES.FOUNDATION.MASTER_DATA.UOM_EDIT(),
       ROUTES.FOUNDATION.MASTER_DATA.SKUS,
       ROUTES.FOUNDATION.MASTER_DATA.SKU_NEW,
       ROUTES.FOUNDATION.MASTER_DATA.SKU_DETAIL(),

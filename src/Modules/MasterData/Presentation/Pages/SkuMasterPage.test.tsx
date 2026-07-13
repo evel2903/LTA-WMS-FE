@@ -182,7 +182,8 @@ describe('SkuMasterPage UI-managed behavior', () => {
     masterRepo.current = fakeMasterRepository;
     renderSkuRoutes([ROUTES.FOUNDATION.MASTER_DATA.SKUS]);
 
-    expect((await screen.findAllByRole('button', { name: 'SKU-001' })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('SKU-001')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Xem' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Tạo SKU' })).toBeTruthy();
   });
 

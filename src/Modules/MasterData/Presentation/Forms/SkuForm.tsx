@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import { SKU_STATUSES } from '@modules/MasterData/Domain/Constants/CatalogConstants';
 import type { Owner, Sku, Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
@@ -16,6 +17,8 @@ import {
   displaySkuStatus,
 } from '@modules/MasterData/Presentation/Constants/MasterDataDisplayText';
 import { mergeSelectedOption } from '@modules/MasterData/Presentation/Forms/SelectOptions';
+
+const SKU_STATUS_OPTIONS = SKU_STATUSES.map((value) => ({ value, label: displaySkuStatus(value) }));
 
 interface SkuFormProps {
   initialValue?: Sku;
@@ -72,6 +75,8 @@ export function SkuForm({
     },
   });
   const errors = form.formState.errors;
+  const itemStatus = form.watch('itemStatus');
+  const { ref: itemStatusRef } = form.register('itemStatus');
 
   const uomOptions = uoms.map((uom) => ({ value: uom.id, label: `${uom.uomCode} - ${uom.uomName}` }));
   const ownerOptions = owners.map((owner) => ({
@@ -113,18 +118,22 @@ export function SkuForm({
           <span className="text-destructive text-xs">{errors.itemClass.message}</span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">Trạng thái hàng<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('itemStatus')}
-        >
-          {SKU_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {displaySkuStatus(status)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ComboboxSelect
+        ref={itemStatusRef}
+        id="sku-item-status"
+        name="itemStatus"
+        label="Trạng thái hàng"
+        value={itemStatus}
+        placeholder="Chọn trạng thái"
+        options={SKU_STATUS_OPTIONS}
+        disabled={disabled}
+        onChange={(value) =>
+          form.setValue('itemStatus', value as SkuFormValues['itemStatus'], {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+      />
       <label className="grid gap-1 text-sm">Đơn vị tính cơ sở<select
           className="h-9 rounded-md border bg-transparent px-3 text-sm"
           disabled={disabled}

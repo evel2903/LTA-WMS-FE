@@ -4,9 +4,11 @@ import { Controller, useForm } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { Input } from '@shared/Components/Ui/Input';
 import type { Uom } from '@modules/MasterData/Domain/Types/CatalogEntities';
 import {
+  MASTER_DATA_STATUS_LABELS,
   UOM_TYPE_OPTION_VALUES,
   displayUomType,
   toUomTypeRawValue,
@@ -15,6 +17,11 @@ import {
   uomFormSchema,
   type UomFormValues,
 } from '@modules/MasterData/Presentation/Forms/CatalogFormSchemas';
+
+const UOM_STATUS_OPTIONS = (['Active', 'Inactive'] as const).map((value) => ({
+  value,
+  label: MASTER_DATA_STATUS_LABELS[value],
+}));
 
 function toUomTypeDisplayValue(value: string | null | undefined) {
   return value ? displayUomType(value) : '';
@@ -50,6 +57,8 @@ export function UomForm({
       referenceId: initialValue?.referenceId ?? '',
     },
   });
+  const status = form.watch('status');
+  const { ref: statusRef } = form.register('status');
 
   return (
     <form className="grid gap-3" onSubmit={form.handleSubmit(onSubmit)}>
@@ -97,15 +106,22 @@ export function UomForm({
           </span>
         )}
       </label>
-      <label className="grid gap-1 text-sm">Trạng thái<select
-          className="h-9 rounded-md border bg-transparent px-3 text-sm"
-          disabled={disabled}
-          {...form.register('status')}
-        >
-          <option value="Active">Đang hoạt động</option>
-          <option value="Inactive">Không hoạt động</option>
-        </select>
-      </label>
+      <ComboboxSelect
+        ref={statusRef}
+        id="uom-status"
+        name="status"
+        label="Trạng thái"
+        value={status}
+        placeholder="Chọn trạng thái"
+        options={UOM_STATUS_OPTIONS}
+        disabled={disabled}
+        onChange={(value) =>
+          form.setValue('status', value as UomFormValues['status'], {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
+      />
       <Button type="submit" disabled={disabled || pending}>
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
         {submitLabel}

@@ -264,8 +264,8 @@ describe('PartnerMasterPage', () => {
     repo.current = fake as unknown as IPartnerRepository;
     renderPage();
 
-    expect((await screen.findAllByRole('button', { name: 'SUP-001' })).length).toBeGreaterThan(0);
-    await actor.type(screen.getByLabelText('Lọc tên đối tác'), 'Acme');
+    expect((await screen.findAllByText('SUP-001')).length).toBeGreaterThan(0);
+    await actor.type(screen.getByLabelText('Tên đối tác'), 'Acme');
 
     await waitFor(() =>
       expect(fake.list).toHaveBeenLastCalledWith(expect.objectContaining({ partnerName: 'Acme' })),
