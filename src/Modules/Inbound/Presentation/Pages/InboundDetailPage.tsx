@@ -498,10 +498,14 @@ export function InboundDetailPage() {
       (result) => result.recordedAt,
     );
   const capturedDiscrepancy =
-    mutations.captureDiscrepancy.data &&
+    (mutations.captureDiscrepancy.data &&
     mutations.captureDiscrepancy.data.receiptLineId === confirmedReceiptLine?.id
       ? mutations.captureDiscrepancy.data
-      : null;
+      : null) ??
+    latestBy(
+      operationalState?.discrepancies.filter((d) => d.receiptLineId === confirmedReceiptLine?.id),
+      (d) => d.recordedAt,
+    );
   const captureDiscrepancyErrorMatchesSelectedLine = Boolean(
     confirmedReceiptLine &&
     mutations.captureDiscrepancy.error &&

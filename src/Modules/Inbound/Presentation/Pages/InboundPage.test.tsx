@@ -483,6 +483,7 @@ class FakeRepository implements Partial<IInboundRepository> {
           qcResults: [],
           lpns: [],
           releases: [],
+          discrepancies: [],
         },
       ),
   );
@@ -3151,6 +3152,7 @@ describe('InboundPage', () => {
       qcResults: [],
       lpns: [],
       releases: [],
+      discrepancies: [],
     };
     repo.current = fake;
     renderPage('/inbound/inbound-plan-1');
@@ -3161,6 +3163,56 @@ describe('InboundPage', () => {
     expect(chip.textContent).toContain('Đã tiếp nhận');
     expect(fake.getOperationalState).toHaveBeenCalledWith('inbound-plan-1');
     expect(fake.confirmReceiptLine).not.toHaveBeenCalled();
+  });
+
+  it('IFB-19: rehydrates a filed discrepancy from operational-state after reload, unblocking QC without re-filing', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = {
+      inboundPlanId: 'inbound-plan-1',
+      receivingSessions: [
+        { inboundPlanId: 'inbound-plan-1', receiptId: 'receipt-1' } as unknown as ReceivingSession,
+      ],
+      receiptLines: [
+        {
+          id: 'receipt-line-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          status: 'Discrepancy',
+          discrepancySignals: ['QuantityVariance'],
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [],
+      releases: [],
+      discrepancies: [
+        {
+          id: 'discrepancy-1',
+          receiptId: 'receipt-1',
+          receiptLineId: 'receipt-line-1',
+          status: 'Routed',
+          recordedAt: '2026-07-13T02:00:00Z',
+        } as unknown as InboundDiscrepancy,
+      ],
+    };
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    // No mutation ever ran in this session (simulates a reload after the discrepancy was
+    // filed in an earlier session) — the persisted read model alone must be enough to
+    // unblock QC, mirroring evaluatedQcTask/recordedQcResult's mutation-first/persisted-
+    // fallback pattern (IRM-02).
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-discrepancy-trigger-helper').textContent).toContain(
+        'Đã báo sai lệch — Đã định tuyến',
+      ),
+    );
+    expect(screen.getByRole('button', { name: 'Xem/cập nhật sai lệch' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Báo sai lệch dòng này' })).toBeNull();
+    expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    expect(fake.captureDiscrepancy).not.toHaveBeenCalled();
   });
 
   // Shared fixture for the IDC-07 tests below: two receipt lines on the same plan line
@@ -3222,6 +3274,7 @@ describe('InboundPage', () => {
       ],
       lpns: [],
       releases: [],
+      discrepancies: [],
       ...overrides,
     };
   }
@@ -3276,6 +3329,7 @@ describe('InboundPage', () => {
       qcResults: [],
       lpns: [],
       releases: [],
+      discrepancies: [],
     };
     repo.current = fake;
     renderPage('/inbound/inbound-plan-1');

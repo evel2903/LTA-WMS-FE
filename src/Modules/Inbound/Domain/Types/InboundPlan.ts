@@ -343,4 +343,5 @@ export interface InboundOperationalState {
   qcResults: QcResult[];
   lpns: InboundLpn[];
   releases: InboundPutawayRelease[];
+  discrepancies: InboundDiscrepancy[];
 }
