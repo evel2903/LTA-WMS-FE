@@ -1,4 +1,4 @@
-import type { InboundOperationalState } from '@modules/Inbound/Domain/Types/InboundPlan';
+import type { InboundOperationalState, ReceiptLine } from '@modules/Inbound/Domain/Types/InboundPlan';
 
 export type InboundLineStage =
   | 'not-started'
@@ -6,12 +6,43 @@ export type InboundLineStage =
   | 'receiving'
   | 'qc'
   | 'lpn'
-  | 'released';
+  | 'released'
+  | 'released-partial';
+
+/**
+ * IFB-21: a plan line can have more than one receipt line (multi-unit
+ * SerialControlled receiving forces one receiving-confirm call per physical
+ * unit — see IFB-14), so a single matching release record never means the
+ * plan line itself is fully received. Every receipt line for the same plan
+ * line carries the same `expectedQuantity` (denormalized from the plan line
+ * at confirm time), so summing `actualQuantity` across just the ones for
+ * this `lineId` and comparing to any one of their `expectedQuantity` is
+ * enough — no extra plan-line lookup needed.
+ *
+ * Review fix: also scope by `skuId`, matching the BE guard's precedent — a
+ * substituted-SKU receipt line sharing this `lineId` must not contaminate
+ * the correct SKU's cumulative count.
+ */
+export function isPlanLineFullyReceived(
+  receiptLines: Pick<ReceiptLine, 'inboundPlanLineId' | 'actualQuantity' | 'expectedQuantity' | 'skuId'>[],
+  lineId: string,
+  skuId: string,
+): boolean {
+  const linesForPlanLine = receiptLines.filter(
+    (line) => line.inboundPlanLineId === lineId && line.skuId === skuId,
+  );
+  if (linesForPlanLine.length === 0) return false;
+  const cumulativeActualQuantity = linesForPlanLine.reduce((sum, line) => sum + line.actualQuantity, 0);
+  return cumulativeActualQuantity >= linesForPlanLine[0].expectedQuantity;
+}
 
 /**
  * Derives the stage chip value for the focused line from the page's existing
  * per-line done/skip flags. Mirrors the workflow precedence (released > lpn >
  * qc-done > receiving > gate-in) so the chip never diverges from the ribbon.
+ * `releaseDone` alone only means "at least one release exists for this
+ * line" — `fullyReceived` (IFB-21) distinguishes a real completed line from
+ * one released after only a partial quantity was ever received.
  */
 export function deriveFocusedLineStage(flags: {
   gateInDone: boolean;
@@ -19,8 +50,9 @@ export function deriveFocusedLineStage(flags: {
   qcDone: boolean;
   lpnDone: boolean;
   releaseDone: boolean;
+  fullyReceived: boolean;
 }): InboundLineStage {
-  if (flags.releaseDone) return 'released';
+  if (flags.releaseDone) return flags.fullyReceived ? 'released' : 'released-partial';
   if (flags.lpnDone) return 'lpn';
   if (flags.qcDone) return 'qc';
   if (flags.receivingDone) return 'receiving';
@@ -38,13 +70,14 @@ export function deriveFocusedLineStage(flags: {
  */
 export function deriveLineStage(params: {
   lineId: string;
+  skuId: string;
   gateInDone: boolean;
   operationalState: Pick<
     InboundOperationalState,
     'receiptLines' | 'qcTasks' | 'qcResults' | 'lpns' | 'releases'
   > | null;
 }): InboundLineStage {
-  const { lineId, gateInDone, operationalState } = params;
+  const { lineId, skuId, gateInDone, operationalState } = params;
   const receivingDone = Boolean(
     operationalState?.receiptLines.some((line) => line.inboundPlanLineId === lineId),
   );
@@ -59,11 +92,13 @@ export function deriveLineStage(params: {
   const releaseDone = Boolean(
     operationalState?.releases.some((release) => release.inboundPlanLineId === lineId),
   );
+  const fullyReceived = isPlanLineFullyReceived(operationalState?.receiptLines ?? [], lineId, skuId);
   return deriveFocusedLineStage({
     gateInDone,
     receivingDone,
     qcDone: qcResultDone || qcSkipped,
     lpnDone,
     releaseDone,
+    fullyReceived,
   });
 }

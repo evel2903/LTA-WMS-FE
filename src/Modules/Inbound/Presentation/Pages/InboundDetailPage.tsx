@@ -26,6 +26,7 @@ import { InboundLineRail } from '@modules/Inbound/Presentation/Components/Inboun
 import {
   deriveFocusedLineStage,
   deriveLineStage,
+  isPlanLineFullyReceived,
   type InboundLineStage,
 } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
@@ -699,6 +700,18 @@ export function InboundDetailPage() {
   const qcDone = Boolean(recordedQcResult || qcSkipped);
   const lpnDone = Boolean(confirmedInboundLpn);
   const releaseDone = Boolean(putawayRelease);
+  // IFB-21: releaseDone above only means this ONE receipt-line was released --
+  // a SerialControlled plan line can have several receipt-lines (one per unit,
+  // IFB-14), so the badge/stepper must check the plan line's cumulative received
+  // quantity separately, not assume one release means the whole line is done.
+  // Declared here (not next to focusedLineStage below) because rawWorkflowSteps
+  // -- which also needs it for the Release step's state/description -- is built
+  // before that point in this component.
+  const focusedLineFullyReceived = isPlanLineFullyReceived(
+    receiptLinesForSelectedLine,
+    selectedLine?.id ?? '',
+    selectedLine?.skuId ?? '',
+  );
   const isDiscrepancyRoute = Boolean(routeDiscrepancyLineId);
   const discrepancyRouteBlockedMessage = isDiscrepancyRoute
     ? !selectedLine
@@ -809,11 +822,19 @@ export function InboundDetailPage() {
     {
       key: 'release',
       label: 'Release',
-      description: releaseDone ? 'Đã phát hành sang cất hàng.' : 'Release sang công việc cất hàng.',
+      // IFB-21 review fix: releaseDone alone only means this ONE receipt-line was
+      // released -- the stepper (and the completed-step summary it gates) must not
+      // show "Hoàn tất" for a SerialControlled plan line that's only partially
+      // received, matching the rail badge's 'released-partial' distinction.
+      description: releaseDone
+        ? focusedLineFullyReceived
+          ? 'Đã phát hành sang cất hàng.'
+          : 'Đã phát hành một phần — còn đơn vị chưa nhận đủ.'
+        : 'Release sang công việc cất hàng.',
       state: resolveWorkflowStepState(
         'release',
         activeWorkflowStep,
-        releaseDone,
+        releaseDone && focusedLineFullyReceived,
         !confirmedInboundLpn,
       ),
     },
@@ -847,6 +868,7 @@ export function InboundDetailPage() {
     qcDone,
     lpnDone,
     releaseDone,
+    fullyReceived: focusedLineFullyReceived,
   });
   // Rail badge fix: every line gets its OWN real stage from the operational-state
   // read model (already fetched in one call, carries `inboundPlanLineId` on every
@@ -859,7 +881,7 @@ export function InboundDetailPage() {
       map[line.id] =
         line.id === selectedLine?.id
           ? focusedLineStage
-          : deriveLineStage({ lineId: line.id, gateInDone, operationalState });
+          : deriveLineStage({ lineId: line.id, skuId: line.skuId, gateInDone, operationalState });
     }
     return map;
   }, [selected?.lines, selectedLine?.id, focusedLineStage, gateInDone, operationalState]);
@@ -1954,6 +1976,8 @@ export function InboundDetailPage() {
                   onSsccCodeChange={setSsccCode}
                   onSubmitInboundLpn={submitInboundLpn}
                   onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
+                  onReceiveMoreUnitsClick={navigateToReceivingAndFocusSelectedLine}
+                  showReceiveMoreUnitsAction={releaseDone && !focusedLineFullyReceived}
                   putawayReady={putawayReady}
                   putawayRelease={putawayRelease}
                   putawayTaskCode={putawayTaskForRelease?.taskCode ?? null}
