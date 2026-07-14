@@ -8,6 +8,10 @@ const stageLabels: Record<InboundLineStage, string> = {
   qc: 'Đã QC',
   lpn: 'Đã gán LPN',
   released: 'Đã release',
+  // IFB-21: released, but the plan line's cumulative received quantity is
+  // still below its expected quantity (SerialControlled multi-unit lines can
+  // be released unit-by-unit before every unit has ever been scanned).
+  'released-partial': 'Đã release một phần',
 };
 
 // Map each milestone to a ReUI semantic badge variant instead of a hand-rolled
@@ -19,6 +23,7 @@ const stageVariant: Record<InboundLineStage, NonNullable<BadgeProps['variant']>>
   qc: 'primary-light',
   lpn: 'invert-light',
   released: 'success-light',
+  'released-partial': 'warning-light',
 };
 
 /**

@@ -40,6 +40,13 @@ interface InboundReleasePutawayPanelProps {
   putawayTaskCode: string | null;
   putawayTaskErrorMessage: string | null;
   receivingSession: ReceivingSession | null;
+  // IFB-21: this receipt-line was released, but the plan line's cumulative
+  // received quantity is still below its expected quantity (SerialControlled
+  // multi-unit lines are released one unit at a time) -- surface a real
+  // action to go scan the remaining units instead of leaving the operator
+  // with no visible next step.
+  onReceiveMoreUnitsClick: () => void;
+  showReceiveMoreUnitsAction: boolean;
   releaseAttemptLabelOverride: boolean;
   releaseCurrentLocationCode: string;
   releaseErrorMessage: string | null;
@@ -132,6 +139,8 @@ export function InboundReleasePutawayPanel({
   onSsccCodeChange,
   onSubmitInboundLpn,
   onSubmitReleaseInboundToPutaway,
+  onReceiveMoreUnitsClick,
+  showReceiveMoreUnitsAction,
   putawayReady,
   putawayRelease,
   putawayTaskCode,
@@ -333,6 +342,16 @@ export function InboundReleasePutawayPanel({
             / {putawayRelease.inventoryStatusCode}
             {putawayRelease.currentLocationCode ? ` / ${putawayRelease.currentLocationCode}` : ''}
           </p>
+        )}
+        {putawayRelease && showReceiveMoreUnitsAction && (
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+            onClick={onReceiveMoreUnitsClick}
+            data-testid="inbound-receive-more-units-button"
+          >
+            Nhận thêm đơn vị
+          </button>
         )}
         {putawayRelease && isCreatingPutawayTask && (
           <p
