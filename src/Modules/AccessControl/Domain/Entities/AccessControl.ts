@@ -11,6 +11,7 @@ export interface Permission {
 
 /** A role header (list shape — no permissions). */
 export interface Role {
+  id: string;
   roleCode: RoleCode;
   roleName: string;
   description: string | null;

@@ -32,6 +32,7 @@ class FakeRepository implements Partial<IAccessControlRepository> {
   getRole = vi.fn(
     (roleCode: RoleCode): Promise<RoleDetail> =>
       Promise.resolve({
+        id: roleCode,
         roleCode,
         roleName: roleCode,
         description: null,
@@ -91,6 +92,7 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
       }
 
       return Promise.resolve({
+        id: roleCode,
         roleCode,
         roleName: roleCode,
         description: null,
@@ -112,6 +114,7 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
     fake.getRole = vi.fn(
       (roleCode: RoleCode): Promise<RoleDetail> =>
         Promise.resolve({
+          id: roleCode,
           roleCode,
           roleName: roleCode,
           description: null,

@@ -12,6 +12,15 @@ export function isConflictError(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'CONFLICT';
 }
 
+/**
+ * True for ANY HTTP 400 — createRole surfaces this inline, not toasted. Deliberately
+ * status-based, not `code === 'VALIDATION'`: the real role_code format check throws BE's
+ * `BusinessRuleException` (code `BUSINESS_RULE`), not a class-validator `VALIDATION` 400.
+ */
+export function isBadRequestError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 400;
+}
+
 /** True for a 403 FORBIDDEN — the page demotes to read-only (no toast) instead. */
 export function isForbiddenError(error: unknown): boolean {
   return error instanceof ApiError && error.isForbidden;

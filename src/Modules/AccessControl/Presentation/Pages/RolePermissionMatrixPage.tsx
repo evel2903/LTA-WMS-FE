@@ -11,11 +11,12 @@ import {
 import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';
 import { RolePermissionMatrix } from '@modules/AccessControl/Presentation/Components/RolePermissionMatrix';
 import { objectTypeLabel } from '@modules/AccessControl/Presentation/Constants/AccessControlDisplayText';
+import { CORE_ROLE_CODES } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type { RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 
 export function RolePermissionMatrixPage() {
   const store = useAccessControlStore();
-  const roleQueries = useRoleDetails();
+  const roleQueries = useRoleDetails(CORE_ROLE_CODES);
   const permissionsQuery = useAllPermissions();
 
   const roleDetails = roleQueries
@@ -88,7 +89,7 @@ export function RolePermissionMatrixPage() {
       <GovernanceStateBanner
         state="readOnly"
         title="Catalog quyền chỉ đọc"
-        message="Vai trò và quyền được lấy từ RBAC backend. Story này chỉ làm mới presentation, không tạo role CRUD hoặc permission editor."
+        message="Vai trò và quyền được lấy từ RBAC backend. Màn này chỉ đọc, dùng để đối chiếu — tạo/sửa vai trò ở trang Vai trò."
       />
       <Card>
         <CardHeader>

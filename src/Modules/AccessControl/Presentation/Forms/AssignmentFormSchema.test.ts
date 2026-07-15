@@ -9,8 +9,11 @@ describe('assignRoleFormSchema', () => {
   it('accepts a core role code', () => {
     expect(assignRoleFormSchema.safeParse({ roleCode: 'OPERATOR' }).success).toBe(true);
   });
-  it('rejects an unknown role code', () => {
-    expect(assignRoleFormSchema.safeParse({ roleCode: 'GUEST' }).success).toBe(false);
+  it('accepts a custom (non-core) role code — the select, not this schema, constrains choices (RA-03)', () => {
+    expect(assignRoleFormSchema.safeParse({ roleCode: 'WAREHOUSE_LEAD' }).success).toBe(true);
+  });
+  it('rejects an empty role code', () => {
+    expect(assignRoleFormSchema.safeParse({ roleCode: '' }).success).toBe(false);
   });
 });
 

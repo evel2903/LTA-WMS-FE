@@ -10,10 +10,12 @@ import type {
 import type {
   AssignDataScopeInput,
   AssignRoleInput,
+  CreateRoleInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import type {
   AssignDataScopeRequestDto,
   AssignRoleRequestDto,
+  CreateRoleRequestDto,
   DataScopeDto,
   EffectivePermissionsDto,
   PagedDto,
@@ -60,6 +62,7 @@ export const AccessControlMapper = {
 
   toRole(dto: RoleDto): Role {
     return {
+      id: dto.Id,
       roleCode: dto.RoleCode,
       roleName: dto.RoleName,
       description: dto.Description,
@@ -113,6 +116,14 @@ export const AccessControlMapper = {
 
   toAssignRoleRequest(input: AssignRoleInput): AssignRoleRequestDto {
     return { RoleCode: input.roleCode };
+  },
+
+  toCreateRoleRequest(input: CreateRoleInput): CreateRoleRequestDto {
+    return removeEmpty({
+      RoleCode: input.roleCode,
+      RoleName: input.roleName,
+      Description: input.description,
+    });
   },
 
   toAssignDataScopeRequest(input: AssignDataScopeInput): AssignDataScopeRequestDto {

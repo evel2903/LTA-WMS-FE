@@ -57,6 +57,12 @@ export interface AssignRoleRequestDto {
   RoleCode: RoleCode;
 }
 
+export interface CreateRoleRequestDto {
+  RoleCode: string;
+  RoleName: string;
+  Description?: string;
+}
+
 export interface AssignDataScopeRequestDto {
   ScopeType: DataScopeType;
   ScopeValueId?: string;

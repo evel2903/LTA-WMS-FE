@@ -2,6 +2,7 @@
  * Reason-code enums mirrored verbatim from the backend wire contract (C3 AccessControl).
  * Wire casing matters: ReasonGroup/Status/RoleCode are UPPER; ActionCode/ObjectType mixed-case.
  */
+import type { SystemRoleCode } from '@shared/Types/SystemRoleCode';
 
 export type ReasonGroup =
   | 'RULE_OVERRIDE'
@@ -144,13 +145,14 @@ export const OBJECT_TYPES: ObjectType[] = [
   'ReconciliationRun',
 ];
 
-export type RoleCode =
-  | 'WMS_ADMIN'
-  | 'WAREHOUSE_SUPERVISOR'
-  | 'WAREHOUSE_COORDINATOR'
-  | 'OPERATOR'
-  | 'QC'
-  | 'INVENTORY_ACCOUNTANT';
+/**
+ * Type-only alias to the shared `SystemRoleCode` union (RA-03 review fix — was importing
+ * AccessControl's Domain directly, a cross-module violation). Reason-code role restriction
+ * is system-role-only by design (Signal 1, RATIFIED), so this stays the closed 6-code union
+ * even though AccessControl's own `RoleCode` widened to `string`. Runtime `ROLE_CODES` below
+ * is unchanged.
+ */
+export type RoleCode = SystemRoleCode;
 
 export const ROLE_CODES: RoleCode[] = [
   'WMS_ADMIN',
