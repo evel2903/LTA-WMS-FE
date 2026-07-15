@@ -28,6 +28,7 @@ import {
   deriveLineStage,
   isPlanLineFullyReceived,
   isPlanLineFullyReleased,
+  READY_FOR_PUTAWAY,
   type InboundLineStage,
 } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
@@ -713,16 +714,63 @@ export function InboundDetailPage() {
     selectedLine?.id ?? '',
     selectedLine?.skuId ?? '',
   );
-  // IFB-22: RELEASE-axis analog of focusedLineFullyReceived above. Releases
-  // carry no expectedQuantity of their own -- reuse the same value already
-  // denormalized onto this line's receipt lines so both axes agree on one
-  // source of truth.
+  // IFB-22: RELEASE-axis analog of focusedLineFullyReceived above.
+  // IFB-23 review fix: now also excludes permanently QC-blocked receipt lines
+  // from the completeness math (see isPlanLineFullyReleased's own comment) --
+  // pass qcResults so it can resolve each receipt line's latest QC state.
   const focusedLineFullyReleased = isPlanLineFullyReleased(
+    receiptLinesForSelectedLine,
     operationalState?.releases ?? [],
+    operationalState?.qcResults ?? [],
     selectedLine?.id ?? '',
     selectedLine?.skuId ?? '',
-    receiptLinesForSelectedLine[0]?.expectedQuantity ?? 0,
   );
+  // IFB-23 review fix: compute the "next unit to release" candidate ONCE,
+  // shared by both the "Release đơn vị còn lại" button's visibility gate and
+  // its click handler below. The old handler picked by skuId + not-yet-released
+  // only, with no QC-readiness check -- it could route to a sibling that hasn't
+  // cleared QC at all (or was permanently blocked), landing the operator on a
+  // dead-end release form. This candidate must actually be release-ready right
+  // now: its latest QcResult resolved to READY_FOR_PUTAWAY, or its latest
+  // QcTask was skipped (required:false) and targets READY_FOR_PUTAWAY (mirrors
+  // this page's own `putawayReady` check for the focused line).
+  // Review fix: filter QC-ready + not-yet-released candidates, THEN sort
+  // ascending by receivedAt (tie-broken by id for a fully deterministic order
+  // when two lines share the same timestamp) before picking the earliest --
+  // array order from the backend is not a contract, and an earlier round
+  // already fixed a real bug caused by relying on it; a bare `.find()` here
+  // would silently reintroduce that same risk.
+  // Re-review patch: also require an existing LPN confirmation when
+  // `releaseRequireLpn` is on -- the click handler below force-navigates to
+  // the 'release' workflow step, and `blockedActionMessage`'s 'release'
+  // branch unmounts the ENTIRE panel for a candidate that's QC-ready but
+  // still missing its required LPN, landing the operator on a blocked
+  // message with no LPN form to actually resolve it. A "next releasable
+  // unit" must mean release-ready right now under every gate this page
+  // itself enforces, not just the QC one.
+  const nextReleasableUnitForRelease = receiptLinesForSelectedLine
+    .filter((line) => {
+      if (line.skuId !== selectedLine?.skuId) return false;
+      if (operationalState?.releases.some((release) => release.receiptLineId === line.id)) return false;
+      if (releaseRequireLpn && !operationalState?.lpns.some((lpn) => lpn.receiptLineId === line.id)) {
+        return false;
+      }
+      const latestResult = latestBy(
+        operationalState?.qcResults.filter((result) => result.receiptLineId === line.id),
+        (result) => result.recordedAt,
+      );
+      if (latestResult) return latestResult.targetInventoryStatusCode === READY_FOR_PUTAWAY;
+      const latestTask = latestBy(
+        operationalState?.qcTasks.filter((task) => task.receiptLineId === line.id),
+        (task) => task.createdAt,
+      );
+      return Boolean(
+        latestTask && !latestTask.required && latestTask.targetInventoryStatusCode === READY_FOR_PUTAWAY,
+      );
+    })
+    .sort(
+      (a, b) => (a.receivedAt ?? '').localeCompare(b.receivedAt ?? '') || a.id.localeCompare(b.id),
+    )[0];
   const isDiscrepancyRoute = Boolean(routeDiscrepancyLineId);
   const discrepancyRouteBlockedMessage = isDiscrepancyRoute
     ? !selectedLine
@@ -773,11 +821,20 @@ export function InboundDetailPage() {
             ? 'Cần bắt đầu phiên tiếp nhận trước khi release.'
             : !confirmedReceiptLine
               ? 'Cần xác nhận dòng tiếp nhận trước khi release.'
-              : !putawayReady
-                ? 'Cần trạng thái READY_FOR_PUTAWAY trước khi release.'
-                : releaseRequireLpn && !confirmedInboundLpn
-                ? 'Cần xác nhận LPN/SSCC trước khi release vì cấu hình đang yêu cầu LPN.'
-                : null
+              : // IFB-23 review fix: once this receipt line already has a release,
+                // don't retroactively block it on `putawayReady` -- a later QC
+                // re-evaluation can flip that false, but the release already
+                // happened and re-blocking here unmounts the ENTIRE release panel
+                // (including the IFB-21/IFB-22 rescue buttons for the plan line's
+                // still-outstanding siblings), replacing it with a message that
+                // falsely reads as "before release" for an already-released unit.
+                putawayRelease
+                ? null
+                : !putawayReady
+                  ? 'Cần trạng thái READY_FOR_PUTAWAY trước khi release.'
+                  : releaseRequireLpn && !confirmedInboundLpn
+                    ? 'Cần xác nhận LPN/SSCC trước khi release vì cấu hình đang yêu cầu LPN.'
+                    : null
           : null);
   // A Cancelled (terminal) doc overrides every not-yet-cleared step to its own
   // `cancelled` state in one place, instead of threading `isCancelledTerminal`
@@ -1345,26 +1402,15 @@ export function InboundDetailPage() {
   // IFB-22: RELEASE-axis analog -- reopens the release flow for the currently
   // selected line (mirrors navigateToReceivingAndFocusSelectedLine above).
   //
-  // Review fix (round 2): unlike receiving (which always creates a brand-new
-  // receipt line), release targets one SPECIFIC existing receipt line, and
-  // `selectedReceiptLineId` is left pointing at whichever unit was received or
-  // released most recently -- almost always the unit that was JUST released.
-  // Left untouched, this button would reopen the panel on the already-done
-  // unit instead of an outstanding one. Pick the earliest-received (array
-  // order is not a contract, see `latestBy` above), SKU-scoped receipt line
-  // that has no release record yet.
+  // Review fix (round 2 → IFB-23): the candidate is now precomputed once as
+  // `nextReleasableUnitForRelease` (shared with the button's own visibility
+  // gate) instead of recomputed here -- see that declaration's comment for
+  // why (must be QC-ready right now, not just skuId + not-yet-released).
   function navigateToReleaseAndFocusSelectedLine() {
     if (!selected) return;
     const selectedLineFocusId = selectedLine?.id;
     setPendingLineFocusId(selectedLineFocusId ?? null);
-    const nextUnreleasedReceiptLine = [...receiptLinesForSelectedLine]
-      .filter(
-        (line) =>
-          line.skuId === selectedLine?.skuId &&
-          !operationalState?.releases.some((release) => release.receiptLineId === line.id),
-      )
-      .sort((a, b) => (a.receivedAt ?? '').localeCompare(b.receivedAt ?? ''))[0];
-    setSelectedReceiptLineId(nextUnreleasedReceiptLine?.id ?? null);
+    setSelectedReceiptLineId(nextReleasableUnitForRelease?.id ?? null);
     void navigate(ROUTES.INBOUND.ACTION(selected.id, 'release'));
   }
 
@@ -2023,7 +2069,10 @@ export function InboundDetailPage() {
                   showReceiveMoreUnitsAction={releaseDone && !focusedLineFullyReceived}
                   onReleaseRemainingUnitsClick={navigateToReleaseAndFocusSelectedLine}
                   showReleaseRemainingUnitsAction={
-                    releaseDone && focusedLineFullyReceived && !focusedLineFullyReleased
+                    releaseDone &&
+                    focusedLineFullyReceived &&
+                    !focusedLineFullyReleased &&
+                    Boolean(nextReleasableUnitForRelease)
                   }
                   putawayReady={putawayReady}
                   putawayRelease={putawayRelease}
