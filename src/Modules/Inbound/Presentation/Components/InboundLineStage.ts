@@ -1,8 +1,11 @@
 import type {
   InboundOperationalState,
   InboundPutawayRelease,
+  QcResult,
   ReceiptLine,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
+
+export const READY_FOR_PUTAWAY = 'READY_FOR_PUTAWAY';
 
 export type InboundLineStage =
   | 'not-started'
@@ -57,19 +60,82 @@ export function isPlanLineFullyReceived(
  * rather than trivially true, so an orphan release record can't report a
  * plan line as done.
  */
+/**
+ * IFB-23 review fix: reworked from a raw `expectedQuantity` comparison to
+ * account for two gaps found reviewing the merged IFB-22 implementation:
+ *
+ * 1. A receipt line whose LATEST QcResult resolved away from
+ *    READY_FOR_PUTAWAY (rejected/quarantined) can NEVER get a release row --
+ *    ReleaseInboundToPutawayUseCase permanently blocks it. Comparing against
+ *    the plan's full `expectedQuantity` (which still counts that unit) meant
+ *    the badge could never reach "fully released" even once every unit that
+ *    COULD be released had been. `releasableLines` excludes such units from
+ *    both the numerator's scope and the denominator -- but ONLY while they
+ *    have never been released; a line that already HAS a release row stays
+ *    releasable forever, even if a LATER re-inspection moves its QC status
+ *    away from READY_FOR_PUTAWAY (review-round fix: the first cut of this
+ *    exclusion re-evaluated every line's current QC status unconditionally,
+ *    which stripped an already-released line's own release out of both the
+ *    numerator and denominator the moment it was re-inspected, permanently
+ *    stranding the badge at "released-partial" -- exactly the regression
+ *    Gap 5/AC6 exists to prevent).
+ * 2. The numerator must be scoped to the SAME population as the denominator
+ *    and deduped to one release per receipt line (latest by `releasedAt`) --
+ *    BE only de-duplicates a release by (ReceiptLineId, IdempotencyKey), so a
+ *    receipt line can end up with 2 release rows (a retried submission with a
+ *    fresh key), and/or can be re-inspected to a worse QC status AFTER its own
+ *    release. Without both the scoping and the dedupe, a stale/duplicate
+ *    release row could substitute for a genuinely outstanding sibling unit
+ *    that was never released.
+ */
 export function isPlanLineFullyReleased(
-  releases: Pick<InboundPutawayRelease, 'inboundPlanLineId' | 'skuId' | 'quantity'>[],
+  receiptLines: Pick<ReceiptLine, 'id' | 'inboundPlanLineId' | 'actualQuantity' | 'skuId'>[],
+  releases: Pick<
+    InboundPutawayRelease,
+    'receiptLineId' | 'inboundPlanLineId' | 'quantity' | 'skuId' | 'releasedAt'
+  >[],
+  qcResults: Pick<QcResult, 'receiptLineId' | 'targetInventoryStatusCode' | 'recordedAt'>[],
   lineId: string,
   skuId: string,
-  expectedQuantity: number,
 ): boolean {
-  if (expectedQuantity <= 0) return false;
+  const receiptLinesForPlanLine = receiptLines.filter(
+    (line) => line.inboundPlanLineId === lineId && line.skuId === skuId,
+  );
+  if (receiptLinesForPlanLine.length === 0) return false;
+  const releasedReceiptLineIds = new Set(
+    releases
+      .filter((release) => release.inboundPlanLineId === lineId && release.skuId === skuId)
+      .map((release) => release.receiptLineId),
+  );
+  const releasableLines = receiptLinesForPlanLine.filter((line) => {
+    if (releasedReceiptLineIds.has(line.id)) return true;
+    const latestResult = [...qcResults]
+      .filter((result) => result.receiptLineId === line.id)
+      .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
+    return !latestResult || latestResult.targetInventoryStatusCode === READY_FOR_PUTAWAY;
+  });
+  if (releasableLines.length === 0) return false;
+  const releasableLineIds = new Set(releasableLines.map((line) => line.id));
   const releasesForPlanLine = releases.filter(
-    (release) => release.inboundPlanLineId === lineId && release.skuId === skuId,
+    (release) =>
+      release.inboundPlanLineId === lineId &&
+      release.skuId === skuId &&
+      releasableLineIds.has(release.receiptLineId),
   );
   if (releasesForPlanLine.length === 0) return false;
-  const cumulativeReleasedQuantity = releasesForPlanLine.reduce((sum, release) => sum + release.quantity, 0);
-  return cumulativeReleasedQuantity >= expectedQuantity;
+  const latestReleaseByReceiptLineId = new Map<string, (typeof releasesForPlanLine)[number]>();
+  for (const release of releasesForPlanLine) {
+    const existing = latestReleaseByReceiptLineId.get(release.receiptLineId);
+    if (!existing || release.releasedAt.localeCompare(existing.releasedAt) > 0) {
+      latestReleaseByReceiptLineId.set(release.receiptLineId, release);
+    }
+  }
+  const cumulativeReleasedQuantity = [...latestReleaseByReceiptLineId.values()].reduce(
+    (sum, release) => sum + release.quantity,
+    0,
+  );
+  const requiredQuantity = releasableLines.reduce((sum, line) => sum + line.actualQuantity, 0);
+  return cumulativeReleasedQuantity >= requiredQuantity;
 }
 
 /**
@@ -118,30 +184,41 @@ export function deriveLineStage(params: {
   > | null;
 }): InboundLineStage {
   const { lineId, skuId, gateInDone, operationalState } = params;
-  const receivingDone = Boolean(
-    operationalState?.receiptLines.some((line) => line.inboundPlanLineId === lineId),
+  // IFB-23 review fix: scope every existence flag by skuId too, matching
+  // isPlanLineFullyReceived/isPlanLineFullyReleased's own scoping just below --
+  // otherwise a substituted-SKU row sharing this inboundPlanLineId can flip
+  // receivingDone/qcResultDone/lpnDone/releaseDone true even when the plan
+  // line's OWN sku has zero matching activity, misrepresenting a not-yet-started
+  // line as in-progress or released. QcResult carries no own skuId field, so
+  // it's scoped by checking membership in this sku's own receipt-line ids.
+  const receiptLineIdsForSku = new Set(
+    (operationalState?.receiptLines ?? [])
+      .filter((line) => line.inboundPlanLineId === lineId && line.skuId === skuId)
+      .map((line) => line.id),
   );
+  const receivingDone = receiptLineIdsForSku.size > 0;
   const latestQcTask = [...(operationalState?.qcTasks ?? [])]
-    .filter((task) => task.inboundPlanLineId === lineId)
+    .filter((task) => task.inboundPlanLineId === lineId && task.skuId === skuId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const qcSkipped = Boolean(latestQcTask && !latestQcTask.required);
   const qcResultDone = Boolean(
-    operationalState?.qcResults.some((result) => result.inboundPlanLineId === lineId),
+    operationalState?.qcResults.some((result) => receiptLineIdsForSku.has(result.receiptLineId)),
   );
-  const lpnDone = Boolean(operationalState?.lpns.some((lpn) => lpn.inboundPlanLineId === lineId));
+  const lpnDone = Boolean(
+    operationalState?.lpns.some((lpn) => lpn.inboundPlanLineId === lineId && lpn.skuId === skuId),
+  );
   const releaseDone = Boolean(
-    operationalState?.releases.some((release) => release.inboundPlanLineId === lineId),
+    operationalState?.releases.some(
+      (release) => release.inboundPlanLineId === lineId && release.skuId === skuId,
+    ),
   );
-  const linesForPlanLine = (operationalState?.receiptLines ?? []).filter(
-    (line) => line.inboundPlanLineId === lineId && line.skuId === skuId,
-  );
-  const expectedQuantity = linesForPlanLine[0]?.expectedQuantity ?? 0;
   const fullyReceived = isPlanLineFullyReceived(operationalState?.receiptLines ?? [], lineId, skuId);
   const fullyReleased = isPlanLineFullyReleased(
+    operationalState?.receiptLines ?? [],
     operationalState?.releases ?? [],
+    operationalState?.qcResults ?? [],
     lineId,
     skuId,
-    expectedQuantity,
   );
   return deriveFocusedLineStage({
     gateInDone,
