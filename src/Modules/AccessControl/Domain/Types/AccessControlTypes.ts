@@ -5,6 +5,13 @@ export interface AssignRoleInput {
   roleCode: RoleCode;
 }
 
+/** Create-role input for `POST /access-control/roles` (RA-01). */
+export interface CreateRoleInput {
+  roleCode: string;
+  roleName: string;
+  description?: string;
+}
+
 /**
  * Assign-data-scope input for `POST /access-control/users/:userId/data-scopes`.
  * Either `includeAll` (unrestricted for that scope type) OR a concrete value — the
@@ -23,6 +30,7 @@ interface PageFilter {
 }
 
 export type UserListFilter = PageFilter;
+export type RoleListFilter = PageFilter;
 
 export interface PermissionListFilter extends PageFilter {
   action?: string;

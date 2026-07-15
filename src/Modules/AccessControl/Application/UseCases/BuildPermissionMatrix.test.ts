@@ -15,6 +15,7 @@ const perm = (action: string, objectType: string): Permission => ({
 });
 
 const adminRole: RoleDetail = {
+  id: 'role-wms-admin',
   roleCode: 'WMS_ADMIN',
   roleName: 'Admin',
   description: null,
@@ -24,6 +25,7 @@ const adminRole: RoleDetail = {
 };
 
 const qcRole: RoleDetail = {
+  id: 'role-qc',
   roleCode: 'QC',
   roleName: 'QC',
   description: null,

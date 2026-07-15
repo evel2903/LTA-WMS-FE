@@ -28,6 +28,42 @@ describe('AccessControlMapper', () => {
     expect(result.totalItems).toBe(0);
   });
 
+  it('toRole maps the header shape including id (RA-03)', () => {
+    const dto: RoleDto = {
+      Id: 'r1',
+      RoleCode: 'CUSTOM_ROLE',
+      RoleName: 'Custom Role',
+      Description: 'A custom role',
+      IsSystem: false,
+      Status: 'ACTIVE',
+    };
+    expect(AccessControlMapper.toRole(dto)).toEqual({
+      id: 'r1',
+      roleCode: 'CUSTOM_ROLE',
+      roleName: 'Custom Role',
+      description: 'A custom role',
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+  });
+
+  it('toCreateRoleRequest maps to PascalCase and strips an absent description', () => {
+    expect(
+      AccessControlMapper.toCreateRoleRequest({ roleCode: 'CUSTOM_ROLE', roleName: 'Custom Role' }),
+    ).toEqual({ RoleCode: 'CUSTOM_ROLE', RoleName: 'Custom Role' });
+
+    const withDescription = AccessControlMapper.toCreateRoleRequest({
+      roleCode: 'CUSTOM_ROLE',
+      roleName: 'Custom Role',
+      description: 'A custom role',
+    });
+    expect(withDescription).toEqual({
+      RoleCode: 'CUSTOM_ROLE',
+      RoleName: 'Custom Role',
+      Description: 'A custom role',
+    });
+  });
+
   it('toRoleDetail maps permissions (and defaults to [] when absent)', () => {
     const withPerms: RoleDto = {
       Id: 'r1',

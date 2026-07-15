@@ -2,11 +2,13 @@ import { QUERY_NAMESPACES } from '@shared/Constants/QueryKeys';
 import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type {
   PermissionListFilter,
+  RoleListFilter,
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
 export const accessControlQueryKeys = {
   all: [QUERY_NAMESPACES.ACCESS_CONTROL] as const,
+  roles: (filter?: RoleListFilter) => [...accessControlQueryKeys.all, 'roles', filter ?? {}] as const,
   roleDetail: (roleCode: RoleCode) => [...accessControlQueryKeys.all, 'role', roleCode] as const,
   permissions: (filter?: PermissionListFilter) =>
     [...accessControlQueryKeys.all, 'permissions', filter ?? {}] as const,

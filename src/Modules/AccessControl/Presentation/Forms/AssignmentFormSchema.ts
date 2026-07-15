@@ -6,16 +6,13 @@ const optionalText = (max: number) =>
     z.string().trim().max(max).optional(),
   );
 
-/** Assign-role form: one of the six core roles. */
+/**
+ * Assign-role form: any role code (core or custom, RA-03) — the actual choice set is
+ * constrained by whatever `availableRoles` the caller renders in the select, not by this
+ * schema (a hand-typed closed enum here would silently reject valid custom roles).
+ */
 export const assignRoleFormSchema = z.object({
-  roleCode: z.enum([
-    'WMS_ADMIN',
-    'WAREHOUSE_SUPERVISOR',
-    'WAREHOUSE_COORDINATOR',
-    'OPERATOR',
-    'QC',
-    'INVENTORY_ACCOUNTANT',
-  ]),
+  roleCode: z.string().min(1, 'Cần chọn vai trò'),
 });
 
 export type AssignRoleFormValues = z.infer<typeof assignRoleFormSchema>;

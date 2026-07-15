@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { toast } from '@shared/Components/Ui/Toast';
 import {
+  isBadRequestError,
   isConflictError,
   isForbiddenError,
   toMutationErrorMessage,
@@ -11,6 +12,7 @@ import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControl
 import type {
   AssignDataScopeInput,
   AssignRoleInput,
+  CreateRoleInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
 
@@ -32,6 +34,22 @@ export function useAccessControlMutations() {
   };
 
   return {
+    // 409 (dup code) and 400 (bad role_code format — real BE error is BUSINESS_RULE, not
+    // VALIDATION, so this checks HTTP status not code) are inline form states (AC2); 403
+    // demotes the "Tạo vai trò" action for subsequent renders — neither toasts. Only an
+    // unexpected failure (5xx/network) does.
+    createRole: useMutation({
+      mutationFn: (input: CreateRoleInput) => accessControlRepository.createRole(input),
+      onSuccess: () => {
+        void invalidate(accessControlQueryKeys.roles());
+        toast.success('Đã tạo vai trò');
+      },
+      onError: (error) => {
+        if (!isConflictError(error) && !isBadRequestError(error) && !isForbiddenError(error)) {
+          toast.error(toMutationErrorMessage(error));
+        }
+      },
+    }),
     assignRole: useMutation({
       mutationFn: ({ userId, input }: { userId: string; input: AssignRoleInput }) =>
         accessControlRepository.assignRole(userId, input),

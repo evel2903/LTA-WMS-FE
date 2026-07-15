@@ -2,6 +2,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   EffectivePermissions,
   Permission,
+  Role,
   RoleDetail,
   UserDataScope,
   UserSummary,
@@ -10,14 +11,18 @@ import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControl
 import type {
   AssignDataScopeInput,
   AssignRoleInput,
+  CreateRoleInput,
   PermissionListFilter,
+  RoleListFilter,
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
-/** Application port for the RBAC read + assignment surface (C10). */
+/** Application port for the RBAC read/list/create + assignment surface. */
 export interface IAccessControlRepository {
-  // Roles & permissions (read-only matrix — C1 seeded)
+  // Roles & permissions
+  listRoles(filter?: RoleListFilter): Promise<PaginatedResponse<Role>>;
   getRole(roleCode: RoleCode): Promise<RoleDetail>;
+  createRole(input: CreateRoleInput): Promise<Role>;
   /** Pages through the whole permission catalog (no silent truncation). */
   listAllPermissions(filter?: PermissionListFilter): Promise<Permission[]>;
 

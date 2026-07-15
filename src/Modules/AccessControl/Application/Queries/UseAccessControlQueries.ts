@@ -1,8 +1,8 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { accessControlQueryKeys } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
-import { CORE_ROLE_CODES } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
-import type { UserListFilter } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
+import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type { RoleListFilter, UserListFilter } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
 
 export function useAllPermissions() {
@@ -12,10 +12,17 @@ export function useAllPermissions() {
   });
 }
 
-/** One detail query per core role (parallel) — supplies the matrix grant cells. */
-export function useRoleDetails() {
+export function useRoles(filter: RoleListFilter = {}) {
+  return useQuery({
+    queryKey: accessControlQueryKeys.roles(filter),
+    queryFn: () => accessControlRepository.listRoles(filter),
+  });
+}
+
+/** One detail query per given role code (parallel) — supplies matrix grant cells / permission counts. */
+export function useRoleDetails(roleCodes: RoleCode[]) {
   return useQueries({
-    queries: CORE_ROLE_CODES.map((roleCode) => ({
+    queries: roleCodes.map((roleCode) => ({
       queryKey: accessControlQueryKeys.roleDetail(roleCode),
       queryFn: () => accessControlRepository.getRole(roleCode),
     })),

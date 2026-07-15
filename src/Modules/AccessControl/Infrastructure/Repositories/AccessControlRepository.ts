@@ -3,6 +3,7 @@ import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   EffectivePermissions,
   Permission,
+  Role,
   RoleDetail,
   UserDataScope,
   UserSummary,
@@ -11,7 +12,9 @@ import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControl
 import type {
   AssignDataScopeInput,
   AssignRoleInput,
+  CreateRoleInput,
   PermissionListFilter,
+  RoleListFilter,
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
@@ -43,9 +46,24 @@ function paging(filter: { page?: number; pageSize?: number } = {}) {
 export class AccessControlRepository implements IAccessControlRepository {
   constructor(private readonly http: HttpClient) {}
 
+  async listRoles(filter: RoleListFilter = {}): Promise<PaginatedResponse<Role>> {
+    const dto = await this.http.get<PagedDto<RoleDto>>(ACCESS_CONTROL_ENDPOINTS.ROLES, {
+      params: paging(filter),
+    });
+    return AccessControlMapper.toPaged(dto, (item) => AccessControlMapper.toRole(item));
+  }
+
   async getRole(roleCode: RoleCode): Promise<RoleDetail> {
     const dto = await this.http.get<RoleDto>(ACCESS_CONTROL_ENDPOINTS.ROLE_BY_CODE(roleCode));
     return AccessControlMapper.toRoleDetail(dto);
+  }
+
+  async createRole(input: CreateRoleInput): Promise<Role> {
+    const dto = await this.http.post<RoleDto>(
+      ACCESS_CONTROL_ENDPOINTS.ROLES,
+      AccessControlMapper.toCreateRoleRequest(input),
+    );
+    return AccessControlMapper.toRole(dto);
   }
 
   async listAllPermissions(filter: PermissionListFilter = {}): Promise<Permission[]> {
