@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
+import { isPlanLineFullyReleased } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import type {
   InboundDiscrepancy,
   InboundLineImportPreview,
@@ -3699,6 +3700,8 @@ describe('InboundPage', () => {
     renderPage('/inbound/inbound-plan-1');
 
     const receiveMoreButton = await screen.findByTestId('inbound-receive-more-units-button');
+    // Review fix (IFB-22): the two continue-actions are mutually exclusive by state.
+    expect(screen.queryByTestId('inbound-release-remaining-units-button')).toBeNull();
     await actor.click(receiveMoreButton);
 
     expect(screen.getByTestId('location-probe').textContent).toBe(
@@ -3767,11 +3770,19 @@ describe('InboundPage', () => {
           id: 'release-full-1',
           receiptLineId: 'rl-full-1',
           inboundPlanLineId: 'line-1',
+          // IFB-22: a real release record always carries skuId/quantity (see
+          // InboundPutawayRelease) -- filled in here so isPlanLineFullyReleased
+          // (skuId-scoped, cumulative-quantity) also resolves "fully released"
+          // for this fixture, same as isPlanLineFullyReceived already does.
+          skuId: 'sku-1',
+          quantity: 1,
         } as unknown as InboundPutawayRelease,
         {
           id: 'release-full-2',
           receiptLineId: 'rl-full-2',
           inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          quantity: 1,
         } as unknown as InboundPutawayRelease,
       ],
     });
@@ -3787,5 +3798,376 @@ describe('InboundPage', () => {
       'một phần',
     );
     expect(screen.queryByTestId('inbound-receive-more-units-button')).toBeNull();
+    // IFB-22 AC9 regression: a fully-received AND fully-released line must not
+    // show the release-axis "continue" affordance either.
+    expect(screen.queryByTestId('inbound-release-remaining-units-button')).toBeNull();
+  });
+
+  it('IFB-22: shows "Đã release một phần" (not "Đã release") when the plan line is fully received but only partially released', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState({
+      receiptLines: [
+        {
+          id: 'rl-22-full-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:00:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 3,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-22-full-2',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:05:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 3,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-22-full-3',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:10:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 3,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [
+        { id: 'lpn-22-full', receiptLineId: 'rl-22-full-3', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+      ],
+      releases: [
+        {
+          id: 'release-22-partial',
+          receiptLineId: 'rl-22-full-3',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+      ],
+    });
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toBe(
+        'Đã release một phần',
+      ),
+    );
+  });
+
+  it('IFB-22: workflow stepper Release step does not show "Hoàn tất" when fully received but only partially released', async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState({
+      receiptLines: [
+        {
+          id: 'rl-22-stepper-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:00:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-22-stepper-2',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:05:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [
+        { id: 'lpn-22-stepper', receiptLineId: 'rl-22-stepper-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+      ],
+      releases: [
+        {
+          id: 'release-22-stepper',
+          receiptLineId: 'rl-22-stepper-2',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+      ],
+    });
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    const releaseStepButton = await screen.findByTestId('inbound-workflow-step-button-release');
+    expect(releaseStepButton.getAttribute('aria-label')).toBe('Release: Đang xử lý');
+    // Review fix (round 2): AC5's two partial-release description branches were
+    // never asserted -- only the aria-label state was checked, so the
+    // "...chưa nhận đủ" / "...chưa release" text could be swapped unnoticed.
+    expect(screen.getByTestId('inbound-workflow-active-step-description').textContent).toBe(
+      'Đã phát hành một phần — còn đơn vị chưa release.',
+    );
+  });
+
+  it('IFB-22: shows the "Release đơn vị còn lại" action when fully received but only partially released, and clicking it reopens the release panel for the same line', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState({
+      receiptLines: [
+        {
+          id: 'rl-22-action-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:00:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-22-action-2',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:05:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [
+        // Both units passed QC before either was released -- matches the real
+        // flow (QC/LPN happen per unit ahead of release), and lets the round-2
+        // fix's re-targeted (still-outstanding) rl-22-action-1 actually reach
+        // READY_FOR_PUTAWAY instead of being blocked on missing QC.
+        {
+          id: 'qc-22-action-1',
+          receiptLineId: 'rl-22-action-1',
+          inboundPlanLineId: 'line-1',
+          taskStatus: 'NotRequired',
+          required: false,
+          targetInventoryStatusCode: 'READY_FOR_PUTAWAY',
+          createdAt: '2026-07-14T01:20:00Z',
+        } as unknown as QcTask,
+        {
+          id: 'qc-22-action-2',
+          receiptLineId: 'rl-22-action-2',
+          inboundPlanLineId: 'line-1',
+          taskStatus: 'NotRequired',
+          required: false,
+          targetInventoryStatusCode: 'READY_FOR_PUTAWAY',
+          createdAt: '2026-07-14T01:30:00Z',
+        } as unknown as QcTask,
+      ],
+      qcResults: [],
+      lpns: [
+        { id: 'lpn-22-action-1', receiptLineId: 'rl-22-action-1', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        { id: 'lpn-22-action-2', receiptLineId: 'rl-22-action-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+      ],
+      releases: [
+        {
+          id: 'release-22-action',
+          receiptLineId: 'rl-22-action-2',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+      ],
+    });
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    const releaseRemainingButton = await screen.findByTestId('inbound-release-remaining-units-button');
+    // AC7: the two continue-actions are mutually exclusive by state.
+    expect(screen.queryByTestId('inbound-receive-more-units-button')).toBeNull();
+    await actor.click(releaseRemainingButton);
+
+    expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/inbound-plan-1/release');
+    expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
+    // Review fix (round 2): before the fix, `selectedReceiptLineId` stayed on
+    // whichever line was most recently received/released (here rl-22-action-2,
+    // the one already released) -- the button must instead target the still-
+    // outstanding rl-22-action-1.
+    expect(
+      screen.getByTestId('inbound-receipt-line-rail-button-rl-22-action-1').getAttribute('aria-current'),
+    ).toBe('true');
+    expect(
+      screen.getByTestId('inbound-receipt-line-rail-button-rl-22-action-2').getAttribute('aria-current'),
+    ).toBeNull();
+  });
+
+  it("IFB-22: deriveLineStage's non-focused rail path also shows 'Đã release một phần' for a fully-received-but-partially-released SerialControlled line", async () => {
+    const basePlan = makePlan();
+    const fake = new FakeRepository([
+      makePlan({
+        lines: [
+          ...basePlan.lines,
+          {
+            ...basePlan.lines[0],
+            id: 'line-2',
+            lineNumber: 2,
+            skuId: 'sku-2',
+            skuCode: 'SKU-B',
+            expectedQuantity: 2,
+            externalLineReference: '20',
+          },
+        ],
+      }),
+    ]);
+    allowReceiving(fake);
+    // line-1 stays the default-focused line and gets no operational data — irrelevant here.
+    // Only line-2 (never focused/selected) gets receiving/LPN/release data, so its chip is
+    // driven purely by deriveLineStage's own computation, not deriveFocusedLineStage.
+    fake.operationalState = multiReceiptLineOperationalState({
+      receiptLines: [
+        {
+          id: 'rl-line2-22-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-2',
+          skuId: 'sku-2',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:00:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-line2-22-2',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-2',
+          skuId: 'sku-2',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:05:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [
+        { id: 'lpn-line2-22', receiptLineId: 'rl-line2-22-2', inboundPlanLineId: 'line-2' } as unknown as InboundLpn,
+      ],
+      releases: [
+        {
+          id: 'release-line2-22',
+          receiptLineId: 'rl-line2-22-2',
+          inboundPlanLineId: 'line-2',
+          skuId: 'sku-2',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+      ],
+    });
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-line-stage-chip-line-2').textContent).toBe(
+        'Đã release một phần',
+      ),
+    );
+  });
+
+  it("IFB-22: a substituted-SKU release does not count toward the correct SKU's cumulative released quantity for the badge", async () => {
+    const fake = new FakeRepository([makePlan()]);
+    allowReceiving(fake);
+    fake.operationalState = multiReceiptLineOperationalState({
+      receiptLines: [
+        {
+          id: 'rl-22-sku-1',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:00:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+        {
+          id: 'rl-22-sku-2',
+          receiptId: 'receipt-1',
+          inboundPlanId: 'inbound-plan-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          status: 'Received',
+          receivedAt: '2026-07-14T01:05:00Z',
+          discrepancySignals: [],
+          expectedQuantity: 2,
+          actualQuantity: 1,
+        } as unknown as ReceiptLine,
+      ],
+      qcTasks: [],
+      qcResults: [],
+      lpns: [
+        { id: 'lpn-22-sku', receiptLineId: 'rl-22-sku-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+      ],
+      releases: [
+        // Released against a substituted SKU sharing the same lineId -- must not
+        // count toward sku-1's cumulative released quantity.
+        {
+          id: 'release-22-wrong-sku',
+          receiptLineId: 'rl-22-sku-1',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-9-substituted',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+        {
+          id: 'release-22-correct-sku',
+          receiptLineId: 'rl-22-sku-2',
+          inboundPlanLineId: 'line-1',
+          skuId: 'sku-1',
+          quantity: 1,
+        } as unknown as InboundPutawayRelease,
+      ],
+    });
+    repo.current = fake;
+    renderPage('/inbound/inbound-plan-1');
+
+    // Without the SkuId filter, the wrong-SKU release's quantity would wrongly count
+    // toward sku-1's cumulative (1 wrong-sku + 1 correct = 2 >= 2 expected), showing the
+    // fully-released badge even though only 1 of 2 expected sku-1 units has been released.
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toBe(
+        'Đã release một phần',
+      ),
+    );
+  });
+});
+
+describe('isPlanLineFullyReleased (review fix)', () => {
+  it('returns false when expectedQuantity is 0 even if a release record matches lineId/skuId', () => {
+    const releases = [
+      { inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1 },
+    ];
+
+    expect(isPlanLineFullyReleased(releases, 'line-1', 'sku-1', 0)).toBe(false);
   });
 });
