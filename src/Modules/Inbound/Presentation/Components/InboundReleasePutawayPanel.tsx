@@ -47,6 +47,14 @@ interface InboundReleasePutawayPanelProps {
   // with no visible next step.
   onReceiveMoreUnitsClick: () => void;
   showReceiveMoreUnitsAction: boolean;
+  // IFB-22: RELEASE-axis analog -- the plan line is fully received but its
+  // cumulative released quantity is still below expected (release is also
+  // per-unit), so the badge/stepper can no longer honestly say "done" -- give
+  // the operator a real action to go release the remaining units instead of
+  // leaving them with no visible next step (mutually exclusive with the
+  // receive-axis action above; the two states never both apply).
+  onReleaseRemainingUnitsClick: () => void;
+  showReleaseRemainingUnitsAction: boolean;
   releaseAttemptLabelOverride: boolean;
   releaseCurrentLocationCode: string;
   releaseErrorMessage: string | null;
@@ -141,6 +149,8 @@ export function InboundReleasePutawayPanel({
   onSubmitReleaseInboundToPutaway,
   onReceiveMoreUnitsClick,
   showReceiveMoreUnitsAction,
+  onReleaseRemainingUnitsClick,
+  showReleaseRemainingUnitsAction,
   putawayReady,
   putawayRelease,
   putawayTaskCode,
@@ -351,6 +361,16 @@ export function InboundReleasePutawayPanel({
             data-testid="inbound-receive-more-units-button"
           >
             Nhận thêm đơn vị
+          </button>
+        )}
+        {putawayRelease && showReleaseRemainingUnitsAction && (
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+            onClick={onReleaseRemainingUnitsClick}
+            data-testid="inbound-release-remaining-units-button"
+          >
+            Release đơn vị còn lại
           </button>
         )}
         {putawayRelease && isCreatingPutawayTask && (

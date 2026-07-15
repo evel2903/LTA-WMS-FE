@@ -1,4 +1,8 @@
-import type { InboundOperationalState, ReceiptLine } from '@modules/Inbound/Domain/Types/InboundPlan';
+import type {
+  InboundOperationalState,
+  InboundPutawayRelease,
+  ReceiptLine,
+} from '@modules/Inbound/Domain/Types/InboundPlan';
 
 export type InboundLineStage =
   | 'not-started'
@@ -37,12 +41,47 @@ export function isPlanLineFullyReceived(
 }
 
 /**
+ * IFB-22: mirrors `isPlanLineFullyReceived`, but for the RELEASE axis.
+ * Release is per-unit too (`ReleaseInboundToPutawayUseCase` operates on
+ * exactly one `ReceiptLineId`), so a SerialControlled plan line with N
+ * received units needs N release records before it is truly done.
+ * `InboundPutawayRelease` carries no `expectedQuantity` of its own —
+ * callers pass the SAME value already derived from `receiptLines` for
+ * `isPlanLineFullyReceived`, so both helpers agree on one source of truth.
+ * SkuId-scoped for the same reason as the receive-axis helper: a
+ * substituted-SKU release sharing this `lineId` must not count toward the
+ * correct SKU's cumulative released quantity.
+ *
+ * Review fix: `expectedQuantity <= 0` means the caller had no matching
+ * receipt line to derive it from -- treat that as "not fully released"
+ * rather than trivially true, so an orphan release record can't report a
+ * plan line as done.
+ */
+export function isPlanLineFullyReleased(
+  releases: Pick<InboundPutawayRelease, 'inboundPlanLineId' | 'skuId' | 'quantity'>[],
+  lineId: string,
+  skuId: string,
+  expectedQuantity: number,
+): boolean {
+  if (expectedQuantity <= 0) return false;
+  const releasesForPlanLine = releases.filter(
+    (release) => release.inboundPlanLineId === lineId && release.skuId === skuId,
+  );
+  if (releasesForPlanLine.length === 0) return false;
+  const cumulativeReleasedQuantity = releasesForPlanLine.reduce((sum, release) => sum + release.quantity, 0);
+  return cumulativeReleasedQuantity >= expectedQuantity;
+}
+
+/**
  * Derives the stage chip value for the focused line from the page's existing
  * per-line done/skip flags. Mirrors the workflow precedence (released > lpn >
  * qc-done > receiving > gate-in) so the chip never diverges from the ribbon.
  * `releaseDone` alone only means "at least one release exists for this
- * line" — `fullyReceived` (IFB-21) distinguishes a real completed line from
- * one released after only a partial quantity was ever received.
+ * line" — `fullyReceived` (IFB-21) and `fullyReleased` (IFB-22) distinguish a
+ * real completed line from one released after only a partial quantity was
+ * ever received OR only partially released so far. `'released-partial'`
+ * covers BOTH axes (not yet fully received, or received but not yet fully
+ * released) — one state, broadened semantics, no new union member.
  */
 export function deriveFocusedLineStage(flags: {
   gateInDone: boolean;
@@ -51,8 +90,9 @@ export function deriveFocusedLineStage(flags: {
   lpnDone: boolean;
   releaseDone: boolean;
   fullyReceived: boolean;
+  fullyReleased: boolean;
 }): InboundLineStage {
-  if (flags.releaseDone) return flags.fullyReceived ? 'released' : 'released-partial';
+  if (flags.releaseDone) return flags.fullyReceived && flags.fullyReleased ? 'released' : 'released-partial';
   if (flags.lpnDone) return 'lpn';
   if (flags.qcDone) return 'qc';
   if (flags.receivingDone) return 'receiving';
@@ -92,7 +132,17 @@ export function deriveLineStage(params: {
   const releaseDone = Boolean(
     operationalState?.releases.some((release) => release.inboundPlanLineId === lineId),
   );
+  const linesForPlanLine = (operationalState?.receiptLines ?? []).filter(
+    (line) => line.inboundPlanLineId === lineId && line.skuId === skuId,
+  );
+  const expectedQuantity = linesForPlanLine[0]?.expectedQuantity ?? 0;
   const fullyReceived = isPlanLineFullyReceived(operationalState?.receiptLines ?? [], lineId, skuId);
+  const fullyReleased = isPlanLineFullyReleased(
+    operationalState?.releases ?? [],
+    lineId,
+    skuId,
+    expectedQuantity,
+  );
   return deriveFocusedLineStage({
     gateInDone,
     receivingDone,
@@ -100,5 +150,6 @@ export function deriveLineStage(params: {
     lpnDone,
     releaseDone,
     fullyReceived,
+    fullyReleased,
   });
 }

@@ -27,6 +27,7 @@ import {
   deriveFocusedLineStage,
   deriveLineStage,
   isPlanLineFullyReceived,
+  isPlanLineFullyReleased,
   type InboundLineStage,
 } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import { InboundQcPanel } from '@modules/Inbound/Presentation/Components/InboundQcPanel';
@@ -712,6 +713,16 @@ export function InboundDetailPage() {
     selectedLine?.id ?? '',
     selectedLine?.skuId ?? '',
   );
+  // IFB-22: RELEASE-axis analog of focusedLineFullyReceived above. Releases
+  // carry no expectedQuantity of their own -- reuse the same value already
+  // denormalized onto this line's receipt lines so both axes agree on one
+  // source of truth.
+  const focusedLineFullyReleased = isPlanLineFullyReleased(
+    operationalState?.releases ?? [],
+    selectedLine?.id ?? '',
+    selectedLine?.skuId ?? '',
+    receiptLinesForSelectedLine[0]?.expectedQuantity ?? 0,
+  );
   const isDiscrepancyRoute = Boolean(routeDiscrepancyLineId);
   const discrepancyRouteBlockedMessage = isDiscrepancyRoute
     ? !selectedLine
@@ -826,15 +837,20 @@ export function InboundDetailPage() {
       // released -- the stepper (and the completed-step summary it gates) must not
       // show "Hoàn tất" for a SerialControlled plan line that's only partially
       // received, matching the rail badge's 'released-partial' distinction.
+      // IFB-22: same guard on the RELEASE axis -- fully received but not yet
+      // fully released must also not say "Hoàn tất", with its own distinct
+      // description so the operator knows which axis still needs attention.
       description: releaseDone
-        ? focusedLineFullyReceived
+        ? focusedLineFullyReceived && focusedLineFullyReleased
           ? 'Đã phát hành sang cất hàng.'
-          : 'Đã phát hành một phần — còn đơn vị chưa nhận đủ.'
+          : !focusedLineFullyReceived
+            ? 'Đã phát hành một phần — còn đơn vị chưa nhận đủ.'
+            : 'Đã phát hành một phần — còn đơn vị chưa release.'
         : 'Release sang công việc cất hàng.',
       state: resolveWorkflowStepState(
         'release',
         activeWorkflowStep,
-        releaseDone && focusedLineFullyReceived,
+        releaseDone && focusedLineFullyReceived && focusedLineFullyReleased,
         !confirmedInboundLpn,
       ),
     },
@@ -869,6 +885,7 @@ export function InboundDetailPage() {
     lpnDone,
     releaseDone,
     fullyReceived: focusedLineFullyReceived,
+    fullyReleased: focusedLineFullyReleased,
   });
   // Rail badge fix: every line gets its OWN real stage from the operational-state
   // read model (already fetched in one call, carries `inboundPlanLineId` on every
@@ -1323,6 +1340,32 @@ export function InboundDetailPage() {
     const selectedLineFocusId = selectedLine?.id;
     setPendingLineFocusId(selectedLineFocusId ?? null);
     void navigate(ROUTES.INBOUND.ACTION(selected.id, 'receiving'));
+  }
+
+  // IFB-22: RELEASE-axis analog -- reopens the release flow for the currently
+  // selected line (mirrors navigateToReceivingAndFocusSelectedLine above).
+  //
+  // Review fix (round 2): unlike receiving (which always creates a brand-new
+  // receipt line), release targets one SPECIFIC existing receipt line, and
+  // `selectedReceiptLineId` is left pointing at whichever unit was received or
+  // released most recently -- almost always the unit that was JUST released.
+  // Left untouched, this button would reopen the panel on the already-done
+  // unit instead of an outstanding one. Pick the earliest-received (array
+  // order is not a contract, see `latestBy` above), SKU-scoped receipt line
+  // that has no release record yet.
+  function navigateToReleaseAndFocusSelectedLine() {
+    if (!selected) return;
+    const selectedLineFocusId = selectedLine?.id;
+    setPendingLineFocusId(selectedLineFocusId ?? null);
+    const nextUnreleasedReceiptLine = [...receiptLinesForSelectedLine]
+      .filter(
+        (line) =>
+          line.skuId === selectedLine?.skuId &&
+          !operationalState?.releases.some((release) => release.receiptLineId === line.id),
+      )
+      .sort((a, b) => (a.receivedAt ?? '').localeCompare(b.receivedAt ?? ''))[0];
+    setSelectedReceiptLineId(nextUnreleasedReceiptLine?.id ?? null);
+    void navigate(ROUTES.INBOUND.ACTION(selected.id, 'release'));
   }
 
   function closeDiscrepancyOverlay() {
@@ -1978,6 +2021,10 @@ export function InboundDetailPage() {
                   onSubmitReleaseInboundToPutaway={submitReleaseInboundToPutaway}
                   onReceiveMoreUnitsClick={navigateToReceivingAndFocusSelectedLine}
                   showReceiveMoreUnitsAction={releaseDone && !focusedLineFullyReceived}
+                  onReleaseRemainingUnitsClick={navigateToReleaseAndFocusSelectedLine}
+                  showReleaseRemainingUnitsAction={
+                    releaseDone && focusedLineFullyReceived && !focusedLineFullyReleased
+                  }
                   putawayReady={putawayReady}
                   putawayRelease={putawayRelease}
                   putawayTaskCode={putawayTaskForRelease?.taskCode ?? null}
