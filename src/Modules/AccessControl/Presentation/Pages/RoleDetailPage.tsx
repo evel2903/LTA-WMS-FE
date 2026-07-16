@@ -95,6 +95,12 @@ export function RoleDetailPage() {
   // (Review Finding, re-review of post-merge fixes).
   const currentRoleCodeRef = useRef(roleCode);
   currentRoleCodeRef.current = roleCode;
+  // Highest `permissionsVersion` actually applied to the visible editor for the CURRENT role —
+  // kept in a ref (not derived from `permissionsVersion` state) so `reconcile()` always compares
+  // against the latest value even from a stale closure. Two same-role Save/Reset results settling
+  // out of order must never roll the editor backward to the older one (Review Finding, final
+  // verification).
+  const appliedVersionRef = useRef(0);
 
   // Initialize local editable state once per role — deliberately NOT re-synced on a background
   // refetch of the same role (e.g. window focus), which would silently discard unsaved edits.
@@ -109,6 +115,7 @@ export function RoleDetailPage() {
     setBaselineGrants(new Set(matrix.grants));
     setPendingGrants(new Set(matrix.grants));
     setPermissionsVersion(role.permissionsVersion);
+    appliedVersionRef.current = role.permissionsVersion;
   }, [role, matrix]);
 
   // Pending/error for Save and Reset are derived from the MUTATION CACHE (via `useMutationState`,
@@ -157,7 +164,14 @@ export function RoleDetailPage() {
     latestForRole?.kind === 'save' && isConflictError(currentError) ? conflictMessage(currentError) : null;
 
   const isDirty = !grantSetsEqual(pendingGrants, baselineGrants);
-  const isPending = latestForRole?.status === 'pending';
+  // Whether ANY invocation for this role is still pending — not just whichever one was
+  // submitted last. If a newer invocation settles while an earlier one for the same role is
+  // still running, `latestForRole` alone would report it as no longer pending, re-enabling the
+  // controls and permitting another write to race the one still in flight (Review Finding, final
+  // verification).
+  const isPending = [...saveStates, ...resetStates].some(
+    (entry) => entry.roleCode === roleCode && entry.status === 'pending',
+  );
 
   const state = detailState({
     roleCode,
@@ -173,6 +187,11 @@ export function RoleDetailPage() {
     // EVERY role regardless (patched in `UseAccessControlMutations.ts`'s onSuccess), so skipping
     // the local-state update here only means "don't show it on screen right now", not "lose it".
     if (!role || role.roleCode !== currentRoleCodeRef.current) return;
+    // Two Save/Reset calls for the SAME role can settle out of order (e.g. network delivery
+    // reordering). Never let an older result roll the visible editor back behind a newer one
+    // already applied (Review Finding, final verification).
+    if (result.version <= appliedVersionRef.current) return;
+    appliedVersionRef.current = result.version;
     const next = new Set(
       result.permissions.map((pair) => matrixCellKey(role.roleCode, pair.action, pair.objectType)),
     );
