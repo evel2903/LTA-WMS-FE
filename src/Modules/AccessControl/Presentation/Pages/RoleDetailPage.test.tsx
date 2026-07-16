@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { ROLE_PERMISSIONS_MUTATION_KEYS } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
 import type { Permission, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type {
@@ -152,6 +153,10 @@ function renderPageWithBidirectionalNav(roleCodeA: string, roleCodeB: string) {
 
 function checkbox(name: string): HTMLInputElement {
   return screen.getByRole('checkbox', { name });
+}
+
+function button(name: string): HTMLButtonElement {
+  return screen.getByRole('button', { name });
 }
 
 async function chooseReason(actor: ReturnType<typeof userEvent.setup>) {
@@ -594,7 +599,7 @@ describe('RoleDetailPage (RA-04) — re-review after final fixes 2026-07-16', ()
     // to THIS role rather than reflecting whichever role's mutate() call ran last.
     await actor.click(screen.getByRole('link', { name: 'Sang A' }));
     await screen.findByText('WMS Admin');
-    expect(screen.getByRole('button', { name: 'Khôi phục về mặc định' }).disabled).toBe(true);
+    expect(button('Khôi phục về mặc định').disabled).toBe(true);
 
     resolvers.get('role-admin')!({ permissions: [], version: 1 });
     resolvers.get('role-custom')!({ permissions: [], version: 1 });
@@ -674,5 +679,133 @@ describe('RoleDetailPage (RA-04) — re-review after final fixes 2026-07-16', ()
     renderInventoryLead(); // fresh mount of the SAME role, reusing the SAME QueryClient
     await screen.findByText('Inventory Lead');
     expect(checkbox('SKU Cập nhật').checked).toBe(true); // must still reflect the earlier Save
+  });
+});
+
+describe('RoleDetailPage (RA-04) — Review Findings, final verification 2026-07-16', () => {
+  it("derives isPending from ANY still-pending mutation for this role, not just whichever one was submitted last", async () => {
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL('INVENTORY_LEAD')]}>
+          <Routes>
+            <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByText('Inventory Lead');
+
+    // Seed the mutation cache directly with 2 invocations for this role -- a disabled Save
+    // button legitimately can't be double-clicked in a real browser, so this is the only way to
+    // reliably construct "a newer invocation settles while an older one is still pending" and
+    // test the DERIVATION logic itself, independent of whether the UI can currently reach it.
+    let resolveOlder: (() => void) | undefined;
+    const olderMutation = client.getMutationCache().build(client, {
+      mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.set,
+      mutationFn: (_vars: { id: string; roleCode: string; input: unknown }) =>
+        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+          resolveOlder = () => resolve({ permissions: [], version: 1 });
+        }),
+    });
+    const olderExecution = olderMutation.execute({ id: 'role-custom', roleCode: 'INVENTORY_LEAD', input: {} });
+    await waitFor(() => expect(olderMutation.state.status).toBe('pending'));
+
+    const newerMutation = client.getMutationCache().build(client, {
+      mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.set,
+      mutationFn: (_vars: { id: string; roleCode: string; input: unknown }) =>
+        Promise.resolve({ permissions: [], version: 2 }),
+    });
+    await newerMutation.execute({ id: 'role-custom', roleCode: 'INVENTORY_LEAD', input: {} });
+    // Let React finish re-rendering from the newer mutation's cache update before asserting the
+    // STEADY-STATE value below -- `waitFor`'s own first synchronous check can otherwise pass on a
+    // transient pre-render DOM snapshot that happens to still show the disabled state left over
+    // from BEFORE the newer mutation settled, masking a real regression here.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // The NEWER (later-submitted) invocation already succeeded, but the OLDER one for this SAME
+    // role is still genuinely pending -- the editor must stay disabled, not re-enable just
+    // because whichever invocation started last has settled.
+    expect(checkbox('SKU Cập nhật').disabled).toBe(true);
+
+    resolveOlder!();
+    await olderExecution;
+  });
+
+  it("never regresses the role-detail cache when a Save/Reset response arrives after a background GET refetch has already gone stale", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.setRolePermissions = vi.fn(() =>
+      Promise.resolve({
+        permissions: [
+          { action: 'Read', objectType: 'SKU' },
+          { action: 'Update', objectType: 'SKU' },
+        ],
+        version: 5,
+      }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const renderInventoryLead = () =>
+      render(
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL('INVENTORY_LEAD')]}>
+            <Routes>
+              <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+    const first = renderInventoryLead();
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Đã lưu thay đổi quyền'));
+    first.unmount();
+
+    // The 2nd mount's own GET resolves LATE and with STALE data (as if it had been in flight
+    // since before the Save above committed) -- it must not be allowed to regress the CACHE
+    // that the Save's response already patched to the fresher version. Note: the 2nd mount's
+    // OWN on-screen checkbox stays correct either way, because its init effect already ran off
+    // the cache-hit (fresh) data before the stale GET resolved, and `loadedRoleId` then blocks
+    // re-initializing for the same `role.id` — that guard is unrelated to this fix. The
+    // regression only becomes OBSERVABLE on a 3rd, later mount that initializes fresh from
+    // whatever the cache now actually holds, which is why this test needs three mounts.
+    let resolveStaleGet: (() => void) | undefined;
+    fake.getRole = vi.fn(
+      (roleCode: string) =>
+        new Promise((resolve, reject) => {
+          resolveStaleGet = () => {
+            const role = fake.roles.find((item) => item.roleCode === roleCode);
+            if (!role) reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'not found' }));
+            else resolve(role); // customRole fixture -- permissionsVersion: 0, no Update:SKU
+          };
+        }),
+    );
+
+    const second = renderInventoryLead();
+    // The cache-hit render (React Query serves the cached, patched data synchronously before
+    // the new GET resolves) must already show the Save's result, not a loading/blank state.
+    await screen.findByText('Inventory Lead');
+    expect(checkbox('SKU Cập nhật').checked).toBe(true);
+
+    resolveStaleGet!();
+    // Let the stale GET's promise resolve and flow through React Query before moving on.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    second.unmount();
+
+    // Restore a normal (immediate, correct) getRole for the 3rd mount, matching the CURRENT
+    // real database state -- what matters here is what the 3rd mount reads from the CACHE on
+    // init, before this new GET could possibly resolve.
+    fake.getRole = new FakeRepository().getRole;
+    renderInventoryLead();
+    await screen.findByText('Inventory Lead');
+    // If the stale GET above was allowed to regress the cache, this fresh mount would initialize
+    // from that stale data (unchecked) instead of the Save's real result (checked).
+    expect(checkbox('SKU Cập nhật').checked).toBe(true);
   });
 });

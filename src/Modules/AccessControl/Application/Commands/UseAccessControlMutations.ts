@@ -44,21 +44,23 @@ function patchRoleDetailCache(
   roleCode: RoleCode,
   result: { permissions: { action: string; objectType: string }[]; version: number },
 ) {
-  queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(roleCode), (old) =>
-    old
-      ? {
-          ...old,
-          permissions: result.permissions.map((p) => ({
-            id: '',
-            permissionCode: '',
-            action: p.action,
-            objectType: p.objectType,
-            description: null,
-          })),
-          permissionsVersion: result.version,
-        }
-      : old,
-  );
+  queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(roleCode), (old) => {
+    // Two Save/Reset calls for the same role can settle out of order (e.g. network delivery
+    // reordering) — never regress the cache to an older result once a newer one has already
+    // landed (Review Finding, final verification).
+    if (!old || result.version <= old.permissionsVersion) return old;
+    return {
+      ...old,
+      permissions: result.permissions.map((p) => ({
+        id: '',
+        permissionCode: '',
+        action: p.action,
+        objectType: p.objectType,
+        description: null,
+      })),
+      permissionsVersion: result.version,
+    };
+  });
 }
 
 export function useAccessControlMutations() {
