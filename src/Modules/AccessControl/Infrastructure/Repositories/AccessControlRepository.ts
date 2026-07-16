@@ -14,7 +14,9 @@ import type {
   AssignRoleInput,
   CreateRoleInput,
   PermissionListFilter,
+  ResetRolePermissionsInput,
   RoleListFilter,
+  SetRolePermissionsInput,
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
@@ -22,6 +24,7 @@ import { ACCESS_CONTROL_ENDPOINTS } from '@modules/AccessControl/Infrastructure/
 import type {
   DataScopeDto,
   EffectivePermissionsDto,
+  EffectivePermissionsResponseDto,
   PagedDto,
   PermissionDto,
   RoleDto,
@@ -64,6 +67,28 @@ export class AccessControlRepository implements IAccessControlRepository {
       AccessControlMapper.toCreateRoleRequest(input),
     );
     return AccessControlMapper.toRole(dto);
+  }
+
+  async setRolePermissions(
+    id: string,
+    input: SetRolePermissionsInput,
+  ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }> {
+    const dto = await this.http.put<EffectivePermissionsResponseDto>(
+      ACCESS_CONTROL_ENDPOINTS.ROLE_PERMISSIONS(id),
+      AccessControlMapper.toSetRolePermissionsRequest(input),
+    );
+    return AccessControlMapper.toEffectivePermissionsResult(dto);
+  }
+
+  async resetRolePermissions(
+    id: string,
+    input: ResetRolePermissionsInput,
+  ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }> {
+    const dto = await this.http.post<EffectivePermissionsResponseDto>(
+      ACCESS_CONTROL_ENDPOINTS.ROLE_PERMISSIONS_RESET(id),
+      AccessControlMapper.toResetRolePermissionsRequest(input),
+    );
+    return AccessControlMapper.toEffectivePermissionsResult(dto);
   }
 
   async listAllPermissions(filter: PermissionListFilter = {}): Promise<Permission[]> {

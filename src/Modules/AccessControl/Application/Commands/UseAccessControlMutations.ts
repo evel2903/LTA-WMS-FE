@@ -13,6 +13,8 @@ import type {
   AssignDataScopeInput,
   AssignRoleInput,
   CreateRoleInput,
+  ResetRolePermissionsInput,
+  SetRolePermissionsInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
 
@@ -46,6 +48,34 @@ export function useAccessControlMutations() {
       },
       onError: (error) => {
         if (!isConflictError(error) && !isBadRequestError(error) && !isForbiddenError(error)) {
+          toast.error(toMutationErrorMessage(error));
+        }
+      },
+    }),
+    // 400 (N/A/rider/add-only violation) is an inline form state for RolePermissionEditor, not a
+    // toast (mirrors createRole's AC2 pattern); 403 demotes the Save/Reset actions instead.
+    setRolePermissions: useMutation({
+      mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: SetRolePermissionsInput }) =>
+        accessControlRepository.setRolePermissions(id, input),
+      onSuccess: (_permissions, variables) => {
+        void invalidate(accessControlQueryKeys.roleDetail(variables.roleCode));
+        toast.success('Đã lưu thay đổi quyền');
+      },
+      onError: (error) => {
+        if (!isBadRequestError(error) && !isForbiddenError(error) && !isConflictError(error)) {
+          toast.error(toMutationErrorMessage(error));
+        }
+      },
+    }),
+    resetRolePermissions: useMutation({
+      mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: ResetRolePermissionsInput }) =>
+        accessControlRepository.resetRolePermissions(id, input),
+      onSuccess: (_permissions, variables) => {
+        void invalidate(accessControlQueryKeys.roleDetail(variables.roleCode));
+        toast.success('Đã khôi phục quyền về mặc định');
+      },
+      onError: (error) => {
+        if (!isBadRequestError(error) && !isForbiddenError(error)) {
           toast.error(toMutationErrorMessage(error));
         }
       },

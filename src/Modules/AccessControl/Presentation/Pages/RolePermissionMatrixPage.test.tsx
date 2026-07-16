@@ -38,6 +38,7 @@ class FakeRepository implements Partial<IAccessControlRepository> {
         description: null,
         isSystem: true,
         status: 'ACTIVE',
+        permissionsVersion: 0,
         // Only WMS_ADMIN holds the Create SKU permission in this fixture.
         permissions:
           roleCode === 'WMS_ADMIN' ? [perm('Read', 'SKU'), perm('Create', 'SKU')] : [perm('Read', 'SKU')],
@@ -98,6 +99,7 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
         description: null,
         isSystem: true,
         status: 'ACTIVE',
+        permissionsVersion: 0,
         permissions: [perm('Read', 'SKU')],
       });
     });
@@ -120,6 +122,7 @@ describe('RolePermissionMatrixPage (C10 AC1 / AC3)', () => {
           description: null,
           isSystem: true,
           status: 'ACTIVE',
+          permissionsVersion: 0,
           permissions: [],
         }),
     );

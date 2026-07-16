@@ -5,6 +5,8 @@
 export const ACCESS_CONTROL_ENDPOINTS = {
   ROLES: '/access-control/roles',
   ROLE_BY_CODE: (roleCode: string) => `/access-control/roles/${roleCode}`,
+  ROLE_PERMISSIONS: (id: string) => `/access-control/roles/${id}/permissions`,
+  ROLE_PERMISSIONS_RESET: (id: string) => `/access-control/roles/${id}/permissions/reset`,
   PERMISSIONS: '/access-control/permissions',
   USERS: '/users',
   USER_EFFECTIVE: (userId: string) => `/access-control/users/${userId}/effective-permissions`,

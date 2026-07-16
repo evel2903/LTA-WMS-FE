@@ -26,6 +26,7 @@ export interface RoleDto {
   Description: string | null;
   IsSystem: boolean;
   Status: string;
+  PermissionsVersion: number;
   Permissions?: PermissionDto[];
 }
 
@@ -68,4 +69,27 @@ export interface AssignDataScopeRequestDto {
   ScopeValueId?: string;
   ScopeValueCode?: string;
   IncludeAll?: boolean;
+}
+
+// ── Role-permissions request/response DTOs (lower-camel — Signal 3 exception, mirrors RA-02's
+// PUT/reset endpoints, unlike the rest of this file's PascalCase convention) ──────────────
+
+export interface SetRolePermissionsRequestDto {
+  permissions: { action: string; objectType: string }[];
+  /** Must equal the role's current PermissionsVersion (from the last GET) — mismatch is a 409. */
+  version: number;
+  reasonCode: string;
+  reasonNote?: string;
+}
+
+export interface ResetRolePermissionsRequestDto {
+  reasonCode: string;
+  reasonNote?: string;
+}
+
+/** Response shape for both PUT and reset: the effective set after Read-auto-add, plus the
+ * new PermissionsVersion (post-increment), no other role metadata. */
+export interface EffectivePermissionsResponseDto {
+  permissions: { action: string; objectType: string }[];
+  version: number;
 }

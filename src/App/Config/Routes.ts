@@ -57,7 +57,7 @@ export const ROUTES = {
     },
     ACCESS: {
       ROLES: '/foundation/access/roles',
-      ROLE_DETAIL: (id = ':id') => `/foundation/access/roles/${id}`,
+      ROLE_DETAIL: (roleCode = ':roleCode') => `/foundation/access/roles/${roleCode}`,
       PERMISSION_MATRIX: '/foundation/access/permission-matrix',
       USERS: '/foundation/access/users',
       USER_DETAIL: (id = ':id') => `/foundation/access/users/${id}`,

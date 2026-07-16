@@ -9,7 +9,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
-import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import type { Permission, Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { CreateRoleInput } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IAccessControlRepository }));
@@ -21,6 +21,15 @@ vi.mock('@modules/AccessControl/Infrastructure/Repositories/AccessControlReposit
 const toastError = vi.hoisted(() => vi.fn());
 const toastSuccess = vi.hoisted(() => vi.fn());
 vi.mock('@shared/Components/Ui/Toast', () => ({ toast: { error: toastError, success: toastSuccess } }));
+// RoleDetailPage (RA-04) renders ReasonCodeSelect — mock its query hook so the real repository
+// singleton (which reads import.meta.env at module-eval time) never gets constructed.
+vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
+  useReasonCodeOptions: () => ({
+    options: [{ value: 'RC-ROLE-PERMISSION-UPDATE', label: 'RC-ROLE-PERMISSION-UPDATE - Cập nhật quyền vai trò' }],
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 import { RolesMasterPage } from '@modules/AccessControl/Presentation/Pages/RolesMasterPage';
 import { RoleDetailPage } from '@modules/AccessControl/Presentation/Pages/RoleDetailPage';
@@ -37,6 +46,7 @@ const wmsAdmin: Role = {
   description: null,
   isSystem: true,
   status: 'ACTIVE',
+  permissionsVersion: 0,
 };
 
 const customRole: Role = {
@@ -46,6 +56,7 @@ const customRole: Role = {
   description: null,
   isSystem: false,
   status: 'ACTIVE',
+  permissionsVersion: 0,
 };
 
 const detail = (role: Role, permissionCount: number): RoleDetail => ({
@@ -75,10 +86,12 @@ class FakeRepository implements Partial<IAccessControlRepository> {
       description: input.description ?? null,
       isSystem: false,
       status: 'ACTIVE',
+      permissionsVersion: 0,
     };
     this.roles = [...this.roles, created];
     return Promise.resolve(created);
   });
+  listAllPermissions = vi.fn(() => Promise.resolve<Permission[]>([]));
 }
 
 function renderPage() {
@@ -251,15 +264,18 @@ describe('RolesMasterPage (RA-03)', () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
-  it('navigates to the role detail stub on "Chi tiết", carrying the row via navigation state', async () => {
+  it('navigates to the role detail editor on "Chi tiết", fetching by role code (not navigation state)', async () => {
     const actor = userEvent.setup();
-    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    const fake = new FakeRepository();
+    repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
     await screen.findByText('WMS Admin');
     const [detailLink] = await screen.findAllByRole('link', { name: 'Chi tiết' });
+    expect(detailLink.getAttribute('href')).toBe('/foundation/access/roles/WMS_ADMIN');
     await actor.click(detailLink);
 
-    expect(await screen.findByText('Chỉnh sửa quyền sẽ có ở bản cập nhật tiếp theo.')).toBeTruthy();
+    expect(await screen.findByText('Ma trận quyền')).toBeTruthy();
+    expect(fake.getRole).toHaveBeenCalledWith('WMS_ADMIN');
   });
 });
