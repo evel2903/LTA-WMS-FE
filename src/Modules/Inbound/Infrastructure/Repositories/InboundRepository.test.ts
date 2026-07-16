@@ -349,6 +349,47 @@ describe('InboundRepository', () => {
       },
     });
   });
+
+  it('IFB-24: update calls PATCH with PascalCase body, confirm/cancel POST to their own endpoints with no body', async () => {
+    const http = new FakeHttpClient();
+    const repository = new InboundRepository(http);
+
+    await repository.update('inbound-plan-1', {
+      sourceSystem: 'ERP',
+      sourceDocumentType: 'ASN',
+      sourceDocumentNumber: 'ASN-10001',
+      supplierId: 'supplier-1',
+      ownerId: 'owner-1',
+      warehouseId: 'warehouse-1',
+      warehouseProfileId: 'profile-1',
+      expectedArrivalAt: '2026-07-01T00:00:00.000Z',
+      expectedUpdatedAt: '2026-06-22T08:00:00.000Z',
+      lines: [{ lineNumber: 1, skuId: 'sku-1', uomId: 'uom-1', expectedQuantity: 99 }],
+    });
+    await repository.confirm('inbound-plan-1');
+    await repository.cancel('inbound-plan-1');
+
+    expect(http.calls[0]).toMatchObject({
+      method: 'patch',
+      url: '/inbound-plans/inbound-plan-1',
+    });
+    expect(http.calls[0]?.body).toEqual(
+      expect.objectContaining({
+        SourceDocumentNumber: 'ASN-10001',
+        Lines: [expect.objectContaining({ LineNumber: 1, ExpectedQuantity: 99 })],
+      }),
+    );
+    expect(http.calls[1]).toMatchObject({
+      method: 'post',
+      url: '/inbound-plans/inbound-plan-1/confirm',
+      body: {},
+    });
+    expect(http.calls[2]).toMatchObject({
+      method: 'post',
+      url: '/inbound-plans/inbound-plan-1/cancel',
+      body: {},
+    });
+  });
 });
 
 describe('InboundRepository line import (IFB-03)', () => {

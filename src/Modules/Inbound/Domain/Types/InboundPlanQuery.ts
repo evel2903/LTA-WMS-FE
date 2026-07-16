@@ -35,6 +35,29 @@ export interface CreateInboundPlanInput {
   lines: CreateInboundPlanLineInput[];
 }
 
+export interface UpdateInboundPlanLineInput {
+  lineNumber: number;
+  skuId: string;
+  uomId: string;
+  expectedQuantity: number;
+  externalLineReference?: string | null;
+}
+
+export interface UpdateInboundPlanInput {
+  sourceSystem: string;
+  sourceDocumentType: string;
+  sourceDocumentNumber: string;
+  supplierId: string;
+  ownerId: string;
+  warehouseId: string;
+  warehouseProfileId?: string | null;
+  expectedArrivalAt?: string | null;
+  // Re-review fix (P1 decision): optimistic concurrency token -- the updatedAt the
+  // caller last saw. Backend 409s if the plan has moved on since then.
+  expectedUpdatedAt: string;
+  lines: UpdateInboundPlanLineInput[];
+}
+
 export interface RecordGateInInput {
   gateInAt: string;
   gateReference: string;

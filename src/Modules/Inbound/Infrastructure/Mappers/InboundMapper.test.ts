@@ -333,6 +333,32 @@ describe('InboundMapper', () => {
     });
 
     expect(
+      InboundMapper.toUpdateRequest({
+        sourceSystem: 'ERP',
+        sourceDocumentType: 'ASN',
+        sourceDocumentNumber: 'ASN-10001',
+        supplierId: 'supplier-1',
+        ownerId: 'owner-1',
+        warehouseId: 'warehouse-1',
+        warehouseProfileId: 'profile-1',
+        expectedArrivalAt: '2026-07-01T00:00:00.000Z',
+        expectedUpdatedAt: '2026-06-22T08:00:00.000Z',
+        lines: [{ lineNumber: 1, skuId: 'sku-1', uomId: 'uom-1', expectedQuantity: 99 }],
+      }),
+    ).toEqual({
+      SourceSystem: 'ERP',
+      SourceDocumentType: 'ASN',
+      SourceDocumentNumber: 'ASN-10001',
+      SupplierId: 'supplier-1',
+      OwnerId: 'owner-1',
+      WarehouseId: 'warehouse-1',
+      WarehouseProfileId: 'profile-1',
+      ExpectedUpdatedAt: '2026-06-22T08:00:00.000Z',
+      ExpectedArrivalAt: '2026-07-01T00:00:00.000Z',
+      Lines: [{ LineNumber: 1, SkuId: 'sku-1', UomId: 'uom-1', ExpectedQuantity: 99 }],
+    });
+
+    expect(
       InboundMapper.toGateInRequest({
         gateInAt: '2026-06-22T09:00:00.000Z',
         gateReference: 'GATE-A-001',

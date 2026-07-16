@@ -23,6 +23,7 @@ import type {
   RecordGateInInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
+  UpdateInboundPlanInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 
@@ -31,6 +32,9 @@ export interface IInboundRepository {
   getById(id: string): Promise<InboundPlan>;
   getOperationalState(id: string): Promise<InboundOperationalState>;
   create(input: CreateInboundPlanInput): Promise<InboundPlan>;
+  update(id: string, input: UpdateInboundPlanInput): Promise<InboundPlan>;
+  confirm(id: string): Promise<InboundPlan>;
+  cancel(id: string): Promise<InboundPlan>;
   downloadLineImportTemplate(): Promise<Blob>;
   previewLineImport(
     file: File,
