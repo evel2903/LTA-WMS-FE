@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ROUTES } from '@app/Config/Routes';
@@ -113,6 +113,43 @@ function renderPage(roleCode: string) {
   );
 }
 
+/** Same tree as `renderPage`, plus an in-app link to a second role so a test can navigate
+ * between two role-detail URLs WITHOUT unmounting `RoleDetailPage` (the route has no `key`
+ * tied to `roleCode`, mirroring real navigation via `RolesMasterPage`'s "Chi tiết" links). */
+function renderPageWithNav(initialRoleCode: string, otherRoleCode: string) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(initialRoleCode)]}>
+        <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(otherRoleCode)}>Sang vai trò khác</Link>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+/** Like `renderPageWithNav`, but with links BOTH ways so a test can navigate A -> B -> A. */
+function renderPageWithBidirectionalNav(roleCodeA: string, roleCodeB: string) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(roleCodeA)]}>
+        <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(roleCodeB)}>Sang B</Link>
+        <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(roleCodeA)}>Sang A</Link>
+        <Routes>
+          <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
 function checkbox(name: string): HTMLInputElement {
   return screen.getByRole('checkbox', { name });
 }
@@ -120,7 +157,11 @@ function checkbox(name: string): HTMLInputElement {
 async function chooseReason(actor: ReturnType<typeof userEvent.setup>) {
   const combo = screen.getByRole('combobox', { name: 'Lý do' });
   await actor.click(combo);
-  await actor.click(await screen.findByText('RC-ROLE-PERMISSION-UPDATE - Cập nhật quyền vai trò'));
+  // Scoped to the open dialog -- a previously-chosen reason still shows as the trigger's
+  // current-value text on screen, which would otherwise collide with the dropdown's own
+  // option text (ambiguous `screen.findByText`) when choosing a reason a second time.
+  const dialog = await screen.findByRole('dialog');
+  await actor.click(within(dialog).getByText('RC-ROLE-PERMISSION-UPDATE - Cập nhật quyền vai trò'));
 }
 
 beforeEach(() => {
@@ -348,5 +389,290 @@ describe('RoleDetailPage (RA-04)', () => {
       expect.objectContaining({ reasonCode: 'RC-ROLE-PERMISSION-UPDATE' }),
     );
     vi.restoreAllMocks();
+  });
+});
+
+describe('RoleDetailPage (RA-04) — re-review 2026-07-16', () => {
+  it('sends the FRESH version from the last Save response on an immediate second Save, not the stale initial one', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.setRolePermissions = vi.fn(() =>
+      Promise.resolve({ permissions: [{ action: 'Read', objectType: 'SKU' }], version: 7 }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(1);
+    expect(fake.setRolePermissions.mock.calls[0][1].version).toBe(0); // customRole's initial permissionsVersion
+
+    // Immediate second edit + Save, before any query refetch could possibly land.
+    await actor.click(checkbox('SKU Tạo mới'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(2);
+    expect(fake.setRolePermissions.mock.calls[1][1].version).toBe(7); // from the FIRST response, not stale 0
+  });
+
+  it('ignores a Save that resolves for a DIFFERENT role after navigating away (no stale reconcile/error leak)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    let resolveSave: (value: { permissions: { action: string; objectType: string }[]; version: number }) => void =
+      () => {};
+    fake.setRolePermissions = vi.fn(
+      () =>
+        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(1);
+
+    // Navigate to a different role WHILE the Save above is still in flight.
+    await actor.click(screen.getByRole('link', { name: 'Sang vai trò khác' }));
+    await screen.findByText('WMS Admin');
+
+    // The stale Save now resolves -- must not touch WMS_ADMIN's displayed state.
+    resolveSave({ permissions: [{ action: 'Update', objectType: 'SKU' }], version: 99 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // WMS_ADMIN's own real baseline (Update:Role granted) must still show, untouched by the
+    // stale INVENTORY_LEAD reconcile overwriting pendingGrants/baselineGrants with keys that
+    // don't even match WMS_ADMIN's matrix (matrixCellKey embeds roleCode) -- so a leaked
+    // reconcile would make every WMS_ADMIN cell look unchecked instead of its true baseline.
+    expect(checkbox('Vai trò Cập nhật').checked).toBe(true);
+  });
+});
+
+describe('RoleDetailPage (RA-04) — re-review of post-merge fixes 2026-07-16', () => {
+  it("keeps a role's Save result across navigation even before its query cache has refetched (return-to-role race)", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.setRolePermissions = vi.fn(() =>
+      Promise.resolve({
+        permissions: [
+          { action: 'Read', objectType: 'SKU' },
+          { action: 'Update', objectType: 'SKU' },
+        ],
+        version: 5,
+      }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(1);
+
+    // Navigate away and back -- FakeRepository.getRole keeps returning the ORIGINAL fixture
+    // (permissionsVersion: 0, no Update:SKU) every time, simulating a query cache that never
+    // caught up with the Save that just happened (e.g. the invalidated GET hasn't resolved yet).
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('WMS Admin');
+    await actor.click(screen.getByRole('link', { name: 'Sang A' }));
+    await screen.findByText('Inventory Lead');
+
+    // The Save's real result (Update:SKU granted) must still show, not the stale pre-Save fixture.
+    expect(checkbox('SKU Cập nhật').checked).toBe(true);
+
+    // A follow-up Save must use the cached fresh version (5), not the stale fixture's (0).
+    await actor.click(checkbox('SKU Tạo mới'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(2);
+    expect(fake.setRolePermissions.mock.calls[1][1].version).toBe(5);
+  });
+});
+
+describe('RoleDetailPage (RA-04) — final re-review 2026-07-16', () => {
+  it("reconciles Role A's own Save result even when Role B's Save starts before A settles (mutate() per-call callback overwrite, TanStack Query)", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    const resolvers = new Map<
+      string,
+      (value: { permissions: { action: string; objectType: string }[]; version: number }) => void
+    >();
+    fake.setRolePermissions = vi.fn(
+      (id: string) =>
+        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+          resolvers.set(id, resolve);
+        }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    // Start Save on Role A (customRole, id 'role-custom') -- leave it pending.
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(1);
+
+    // Navigate to Role B WHILE A is still pending, then ALSO start a Save on B (id
+    // 'role-admin') before A settles -- both now share the SAME underlying mutation object.
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('WMS Admin');
+    await actor.click(checkbox('SKU Tạo mới')); // Create:SKU -- not in wmsAdmin's baseline, editable
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(2);
+
+    // Resolve A's Save AFTER B's was already started (realistic -- network order isn't call order).
+    resolvers.get('role-custom')!({
+      permissions: [
+        { action: 'Read', objectType: 'SKU' },
+        { action: 'Update', objectType: 'SKU' },
+      ],
+      version: 9,
+    });
+    resolvers.get('role-admin')!({
+      permissions: [
+        { action: 'Read', objectType: 'SKU' },
+        { action: 'Update', objectType: 'SKU' },
+        { action: 'Read', objectType: 'Role' },
+        { action: 'Update', objectType: 'Role' },
+        { action: 'Create', objectType: 'SKU' },
+      ],
+      version: 3,
+    });
+
+    // Navigate back to Role A -- its OWN Save result must have been reconciled (cached), not
+    // silently dropped because Role B's later mutate() call reused the same mutation object.
+    await actor.click(screen.getByRole('link', { name: 'Sang A' }));
+    await screen.findByText('Inventory Lead');
+    expect(checkbox('SKU Cập nhật').checked).toBe(true);
+  });
+});
+
+describe('RoleDetailPage (RA-04) — re-review after final fixes 2026-07-16', () => {
+  it("keeps Role A's own pending state visible (Reset disabled by isPending, not isDirty) when returning to A while its Save is still in flight, even after Role B's Save has since become the mutation cache's latest entry", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    const resolvers = new Map<
+      string,
+      (value: { permissions: { action: string; objectType: string }[]; version: number }) => void
+    >();
+    fake.setRolePermissions = vi.fn(
+      (id: string) =>
+        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+          resolvers.set(id, resolve);
+        }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('WMS_ADMIN', 'INVENTORY_LEAD');
+
+    // Start Save on Role A (WMS_ADMIN, a system role -- has a Reset button) -- leave it pending.
+    await screen.findByText('WMS Admin');
+    await actor.click(checkbox('SKU Tạo mới'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(1);
+
+    // Navigate to Role B and also start a Save there -- this becomes the mutation cache's
+    // LATEST entry (by submittedAt) across ALL roles, but must not affect A's own pending state.
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(fake.setRolePermissions).toHaveBeenCalledTimes(2);
+
+    // Return to A WHILE its own Save is still genuinely pending. Reset is disabled only by
+    // `!reasonCode || isPending` (never `isDirty`), which isolates whether `isPending` is scoped
+    // to THIS role rather than reflecting whichever role's mutate() call ran last.
+    await actor.click(screen.getByRole('link', { name: 'Sang A' }));
+    await screen.findByText('WMS Admin');
+    expect(screen.getByRole('button', { name: 'Khôi phục về mặc định' }).disabled).toBe(true);
+
+    resolvers.get('role-admin')!({ permissions: [], version: 1 });
+    resolvers.get('role-custom')!({ permissions: [], version: 1 });
+  });
+
+  it("keeps Role A's own Save failure visible (inline error) when returning to A, even after Role B's Save has since succeeded and become the mutation cache's latest entry", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.setRolePermissions = vi.fn((id: string) => {
+      if (id === 'role-custom') {
+        return Promise.reject(
+          new ApiError({ status: 400, code: 'BUSINESS_RULE', message: 'Cặp quyền A không hợp lệ' }),
+        );
+      }
+      return Promise.resolve({ permissions: [], version: 1 });
+    });
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    // Role A (INVENTORY_LEAD) Saves and fails right away.
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    expect(await screen.findByText('Cặp quyền A không hợp lệ')).toBeTruthy();
+
+    // Navigate to Role B and Save it successfully -- this becomes the mutation cache's LATEST
+    // entry across ALL roles.
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('WMS Admin');
+    await actor.click(checkbox('SKU Tạo mới'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Đã lưu thay đổi quyền'));
+
+    // Return to A -- its OWN earlier failure must still be visible, not hidden by B's later
+    // success becoming the shared observer's "current" mutation.
+    await actor.click(screen.getByRole('link', { name: 'Sang A' }));
+    await screen.findByText('Inventory Lead');
+    expect(await screen.findByText('Cặp quyền A không hợp lệ')).toBeTruthy();
+  });
+
+  it("keeps a role's Save result after this page fully unmounts and remounts through a shared QueryClient (e.g. via the roles list), not just across in-app navigation between two roles", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.setRolePermissions = vi.fn(() =>
+      Promise.resolve({
+        permissions: [
+          { action: 'Read', objectType: 'SKU' },
+          { action: 'Update', objectType: 'SKU' },
+        ],
+        version: 5,
+      }),
+    );
+    repo.current = fake as unknown as IAccessControlRepository;
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const renderInventoryLead = () =>
+      render(
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL('INVENTORY_LEAD')]}>
+            <Routes>
+              <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+    const first = renderInventoryLead();
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('SKU Cập nhật'));
+    await chooseReason(actor);
+    await actor.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith('Đã lưu thay đổi quyền'));
+    first.unmount(); // simulate leaving this page entirely (e.g. back to the roles list)
+
+    renderInventoryLead(); // fresh mount of the SAME role, reusing the SAME QueryClient
+    await screen.findByText('Inventory Lead');
+    expect(checkbox('SKU Cập nhật').checked).toBe(true); // must still reflect the earlier Save
   });
 });

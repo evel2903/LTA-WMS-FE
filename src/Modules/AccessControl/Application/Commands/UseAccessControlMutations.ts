@@ -8,6 +8,7 @@ import {
   toMutationErrorMessage,
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import { accessControlQueryKeys } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
+import type { RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type {
   AssignDataScopeInput,
@@ -17,6 +18,48 @@ import type {
   SetRolePermissionsInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
+
+/** Mutation keys for `setRolePermissions`/`resetRolePermissions` — lets `useMutationState`
+ * (React Query's mutation-cache query hook) track pending/error state per role/invocation
+ * instead of through a single `useMutation()` observer's own reactive fields, which only ever
+ * reflect the LATEST call regardless of which role it was for (Review Finding, latest re-review). */
+export const ROLE_PERMISSIONS_MUTATION_KEYS = {
+  set: ['setRolePermissions'] as const,
+  reset: ['resetRolePermissions'] as const,
+};
+
+/** Patches the role-detail query cache directly with a PUT/reset response so it's immediately
+ * authoritative for THIS role, regardless of which route is on screen or whether this page later
+ * unmounts entirely (e.g. back to the roles list and into a detail page again) before some OTHER
+ * future refetch would have resolved — a persistent, cache-backed fix, not a component-local one
+ * (Review Finding, latest re-review: a component ref cache doesn't survive unmount). Deliberately
+ * NOT followed by `invalidateQueries` (see call sites) — the response is already the freshest
+ * possible truth, and invalidating would risk a redundant refetch racing/reverting this patch.
+ * `id`/`permissionCode` are left as empty-string placeholders (the response only carries
+ * `action`/`objectType` pairs, contract §4) — nothing reads them off a role's own grant list, only
+ * `buildPermissionMatrix` does, and only via `action`/`objectType`, so this is permanently
+ * harmless, not a temporary gap waiting on a refetch to fill in. */
+function patchRoleDetailCache(
+  queryClient: ReturnType<typeof useQueryClient>,
+  roleCode: RoleCode,
+  result: { permissions: { action: string; objectType: string }[]; version: number },
+) {
+  queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(roleCode), (old) =>
+    old
+      ? {
+          ...old,
+          permissions: result.permissions.map((p) => ({
+            id: '',
+            permissionCode: '',
+            action: p.action,
+            objectType: p.objectType,
+            description: null,
+          })),
+          permissionsVersion: result.version,
+        }
+      : old,
+  );
+}
 
 export function useAccessControlMutations() {
   const queryClient = useQueryClient();
@@ -55,10 +98,16 @@ export function useAccessControlMutations() {
     // 400 (N/A/rider/add-only violation) is an inline form state for RolePermissionEditor, not a
     // toast (mirrors createRole's AC2 pattern); 403 demotes the Save/Reset actions instead.
     setRolePermissions: useMutation({
+      mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.set,
       mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: SetRolePermissionsInput }) =>
         accessControlRepository.setRolePermissions(id, input),
-      onSuccess: (_permissions, variables) => {
-        void invalidate(accessControlQueryKeys.roleDetail(variables.roleCode));
+      // No `invalidate()` here on purpose: the response IS the authoritative fresh state (it's
+      // the literal return value of the PUT that just succeeded), so `patchRoleDetailCache`
+      // alone keeps the cache correct. Also invalidating would trigger a redundant background
+      // refetch that could race the patch and silently revert to older data (e.g. read-replica
+      // lag), undermining the very consistency this patch exists for.
+      onSuccess: (result, variables) => {
+        patchRoleDetailCache(queryClient, variables.roleCode, result);
         toast.success('Đã lưu thay đổi quyền');
       },
       onError: (error) => {
@@ -68,10 +117,13 @@ export function useAccessControlMutations() {
       },
     }),
     resetRolePermissions: useMutation({
+      mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.reset,
       mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: ResetRolePermissionsInput }) =>
         accessControlRepository.resetRolePermissions(id, input),
-      onSuccess: (_permissions, variables) => {
-        void invalidate(accessControlQueryKeys.roleDetail(variables.roleCode));
+      // Same rationale as `setRolePermissions` above -- no `invalidate()`, the response is
+      // already authoritative and `patchRoleDetailCache` alone keeps the cache correct.
+      onSuccess: (result, variables) => {
+        patchRoleDetailCache(queryClient, variables.roleCode, result);
         toast.success('Đã khôi phục quyền về mặc định');
       },
       onError: (error) => {

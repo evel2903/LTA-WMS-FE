@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useMutationState } from '@tanstack/react-query';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -17,13 +18,28 @@ import {
   isForbiddenError,
   toMutationErrorMessage,
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
-import { useAccessControlMutations } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
+import {
+  ROLE_PERMISSIONS_MUTATION_KEYS,
+  useAccessControlMutations,
+} from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
 import {
   useAllPermissions,
   useRoleDetail,
 } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 import { buildPermissionMatrix, matrixCellKey } from '@modules/AccessControl/Application/UseCases/BuildPermissionMatrix';
 import { RolePermissionEditor } from '@modules/AccessControl/Presentation/Components/RolePermissionEditor';
+
+/** One row of mutation-cache state for a role-permissions Save/Reset, as read via
+ * `useMutationState` — deriving pending/error from the CACHE (filtered by role + mutationKey)
+ * rather than a single `useMutation()` observer's own reactive fields, which only ever reflect
+ * the LATEST call across ALL roles (Review Finding, latest re-review). */
+interface RolePermissionsMutationSnapshot {
+  kind: 'save' | 'reset';
+  status: 'idle' | 'pending' | 'error' | 'success';
+  error: unknown;
+  submittedAt: number;
+  roleCode: string | undefined;
+}
 
 function detailState(params: {
   roleCode: string;
@@ -69,30 +85,79 @@ export function RoleDetailPage() {
 
   const [pendingGrants, setPendingGrants] = useState<Set<string>>(new Set());
   const [baselineGrants, setBaselineGrants] = useState<Set<string>>(new Set());
+  const [permissionsVersion, setPermissionsVersion] = useState(0);
   const [reasonCode, setReasonCode] = useState('');
   const [reasonNote, setReasonNote] = useState('');
   const loadedRoleId = useRef<string | null>(null);
+  // Updated synchronously on every render (not gated on this role's data finishing loading) so a
+  // mutation for the OLD role that settles in the narrow window after navigating away but before
+  // the NEW role's own data has arrived is still correctly recognized as stale by `reconcile()`
+  // (Review Finding, re-review of post-merge fixes).
+  const currentRoleCodeRef = useRef(roleCode);
+  currentRoleCodeRef.current = roleCode;
 
   // Initialize local editable state once per role — deliberately NOT re-synced on a background
   // refetch of the same role (e.g. window focus), which would silently discard unsaved edits.
+  // `role`/`matrix` are always trustworthy here: `UseAccessControlMutations.ts`'s onSuccess
+  // handlers patch the role-detail query cache directly and synchronously with every Save/Reset
+  // response, so this needs no separate local cache of its own (Review Finding, latest re-review
+  // — a component-ref cache doesn't survive this page unmounting, e.g. via the roles list).
   useEffect(() => {
     if (!role || !matrix) return;
     if (loadedRoleId.current === role.id) return;
     loadedRoleId.current = role.id;
     setBaselineGrants(new Set(matrix.grants));
     setPendingGrants(new Set(matrix.grants));
+    setPermissionsVersion(role.permissionsVersion);
   }, [role, matrix]);
 
-  const saveError = mutations.setRolePermissions.error;
-  const resetError = mutations.resetRolePermissions.error;
-  const forbidden =
-    isForbiddenError(saveError) || isForbiddenError(resetError) || isForbiddenError(roleQuery.error);
-  const inlineSaveError = isBadRequestError(saveError) ? toMutationErrorMessage(saveError) : null;
-  const inlineResetError = isBadRequestError(resetError) ? toMutationErrorMessage(resetError) : null;
-  const inlineConflictError = isConflictError(saveError) ? conflictMessage(saveError) : null;
+  // Pending/error for Save and Reset are derived from the MUTATION CACHE (via `useMutationState`,
+  // filtered by mutationKey), not from `mutations.setRolePermissions`/`resetRolePermissions`'s own
+  // reactive fields — a single `useMutation()` observer only ever reflects its LATEST `.mutate*()`
+  // call, across ALL roles, since the route has no per-roleCode `key` and this page never
+  // unmounts between two role-detail views. Save Role A, navigate to B, Save B before A settles,
+  // return to A: the observer would show only B's state, hiding A's own pending/failure (Review
+  // Finding, latest re-review). Filtering the cache by THIS role's `roleCode` and taking the
+  // overall-latest entry across BOTH mutation types (by `submittedAt`) reflects the true state of
+  // whichever action most recently ran for THIS role specifically, and — since a fresh attempt
+  // immediately becomes cache's newest entry — naturally supersedes a stale error from the OTHER
+  // mutation type without needing explicit `.reset()` calls.
+  const saveStates = useMutationState<RolePermissionsMutationSnapshot>({
+    filters: { mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.set },
+    select: (m) => ({
+      kind: 'save',
+      status: m.state.status,
+      error: m.state.error,
+      submittedAt: m.state.submittedAt,
+      roleCode: (m.state.variables as { roleCode?: string } | undefined)?.roleCode,
+    }),
+  });
+  const resetStates = useMutationState<RolePermissionsMutationSnapshot>({
+    filters: { mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.reset },
+    select: (m) => ({
+      kind: 'reset',
+      status: m.state.status,
+      error: m.state.error,
+      submittedAt: m.state.submittedAt,
+      roleCode: (m.state.variables as { roleCode?: string } | undefined)?.roleCode,
+    }),
+  });
+  const latestForRole = [...saveStates, ...resetStates]
+    .filter((entry) => entry.roleCode === roleCode)
+    .sort((a, b) => a.submittedAt - b.submittedAt)
+    .at(-1);
+
+  const currentError = latestForRole?.status === 'error' ? latestForRole.error : null;
+  const forbidden = isForbiddenError(currentError) || isForbiddenError(roleQuery.error);
+  const inlineSaveError =
+    latestForRole?.kind === 'save' && isBadRequestError(currentError) ? toMutationErrorMessage(currentError) : null;
+  const inlineResetError =
+    latestForRole?.kind === 'reset' && isBadRequestError(currentError) ? toMutationErrorMessage(currentError) : null;
+  const inlineConflictError =
+    latestForRole?.kind === 'save' && isConflictError(currentError) ? conflictMessage(currentError) : null;
 
   const isDirty = !grantSetsEqual(pendingGrants, baselineGrants);
-  const isPending = mutations.setRolePermissions.isPending || mutations.resetRolePermissions.isPending;
+  const isPending = latestForRole?.status === 'pending';
 
   const state = detailState({
     roleCode,
@@ -101,37 +166,46 @@ export function RoleDetailPage() {
   });
 
   function reconcile(result: { permissions: { action: string; objectType: string }[]; version: number }) {
-    if (!role) return;
+    // Bail out on applying to the VISIBLE editor if this mutation was started for a role the
+    // user has since navigated away from (the route has no per-roleCode `key`, so the component
+    // stays mounted) — otherwise a late-settling Save/Reset for the OLD role would overwrite the
+    // NEW role's editor state. The role-detail query cache itself is already kept correct for
+    // EVERY role regardless (patched in `UseAccessControlMutations.ts`'s onSuccess), so skipping
+    // the local-state update here only means "don't show it on screen right now", not "lose it".
+    if (!role || role.roleCode !== currentRoleCodeRef.current) return;
     const next = new Set(
       result.permissions.map((pair) => matrixCellKey(role.roleCode, pair.action, pair.objectType)),
     );
     setBaselineGrants(next);
     setPendingGrants(next);
+    setPermissionsVersion(result.version);
     setReasonCode('');
     setReasonNote('');
-    // A stale error from the OTHER mutation (e.g. a failed Reset) must not keep showing
-    // once this one succeeds — both share this success handler.
-    mutations.setRolePermissions.reset();
-    mutations.resetRolePermissions.reset();
   }
 
   function handleSave() {
     if (!role || !reasonCode) return;
-    mutations.resetRolePermissions.reset(); // clear a stale Reset error before a fresh Save attempt
     const permissionPairs = [...pendingGrants].map(parseGrantKey);
-    mutations.setRolePermissions.mutate(
-      {
+    // `mutateAsync` (not `mutate` + a per-call `onSuccess`) — TanStack Query overwrites a
+    // `mutate()` call's own callback options with whichever `mutate()` call happens next on the
+    // same observer, even if the earlier call hasn't settled yet (documented behavior: "Callbacks
+    // passed to mutate fire only once for the last call... as the observer is reset with each
+    // call"). Save-Role-A-then-Save-Role-B-before-A-settles would silently drop A's own
+    // `reconcile()` call. `mutateAsync`'s returned Promise is independent per call and isn't
+    // affected by later calls on the same observer (Review Finding, final re-review).
+    mutations.setRolePermissions
+      .mutateAsync({
         id: role.id,
         roleCode: role.roleCode,
         input: {
           permissions: permissionPairs,
-          version: role.permissionsVersion,
+          version: permissionsVersion,
           reasonCode,
           reasonNote: reasonNote || undefined,
         },
-      },
-      { onSuccess: reconcile },
-    );
+      })
+      .then(reconcile)
+      .catch(() => {}); // error state is already tracked reactively via `latestForRole` (mutation cache)
   }
 
   function handleReset() {
@@ -139,11 +213,10 @@ export function RoleDetailPage() {
     if (!window.confirm('Khôi phục vai trò này về đúng quyền mặc định (seed)? Mọi quyền thêm sau seed sẽ mất.')) {
       return;
     }
-    mutations.setRolePermissions.reset(); // clear a stale Save error before a fresh Reset attempt
-    mutations.resetRolePermissions.mutate(
-      { id: role.id, roleCode: role.roleCode, input: { reasonCode, reasonNote: reasonNote || undefined } },
-      { onSuccess: reconcile },
-    );
+    mutations.resetRolePermissions
+      .mutateAsync({ id: role.id, roleCode: role.roleCode, input: { reasonCode, reasonNote: reasonNote || undefined } })
+      .then(reconcile)
+      .catch(() => {});
   }
 
   return (
