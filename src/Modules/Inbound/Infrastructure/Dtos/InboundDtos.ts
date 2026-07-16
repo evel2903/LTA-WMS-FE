@@ -85,6 +85,27 @@ export interface CreateInboundPlanRequestDto {
   Lines: CreateInboundPlanLineRequestDto[];
 }
 
+export interface UpdateInboundPlanLineRequestDto {
+  LineNumber: number;
+  SkuId: string;
+  UomId: string;
+  ExpectedQuantity: number;
+  ExternalLineReference?: string | null;
+}
+
+export interface UpdateInboundPlanRequestDto {
+  SourceSystem: string;
+  SourceDocumentType: string;
+  SourceDocumentNumber: string;
+  SupplierId: string;
+  OwnerId: string;
+  WarehouseId: string;
+  WarehouseProfileId?: string | null;
+  ExpectedArrivalAt?: string | null;
+  ExpectedUpdatedAt: string;
+  Lines: UpdateInboundPlanLineRequestDto[];
+}
+
 export interface InboundLineImportRowDto {
   RowNumber: number;
   SkuCode: string;

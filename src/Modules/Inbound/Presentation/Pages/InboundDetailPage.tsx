@@ -20,6 +20,7 @@ import {
   type InboundCompletedStepSummaryViewModel,
 } from '@modules/Inbound/Presentation/Components/InboundCompletedStepSummary';
 import { InboundDiscrepancySheet } from '@modules/Inbound/Presentation/Components/InboundDiscrepancySheet';
+import { InboundEditPanel } from '@modules/Inbound/Presentation/Components/InboundEditPanel';
 import { InboundGateInPanel } from '@modules/Inbound/Presentation/Components/InboundGateInPanel';
 import { InboundLineConsole } from '@modules/Inbound/Presentation/Components/InboundLineConsole';
 import { InboundLineRail } from '@modules/Inbound/Presentation/Components/InboundLineRail';
@@ -55,6 +56,7 @@ import type {
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/Inbound/Domain/Types/InboundPlan';
+import type { UpdateInboundPlanInput } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 
 interface DraftLine {
   id: number;
@@ -100,6 +102,7 @@ const INBOUND_ALLOWED_ACTIONS = new Set([
   'lpn',
   'release',
   'discrepancy',
+  'edit',
 ]);
 
 function resolveWorkflowStepState(
@@ -150,8 +153,28 @@ function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
+interface InboundOperatorHeaderProps {
+  plan: InboundPlan;
+  onEdit?: () => void;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  isConfirming?: boolean;
+  isCancelling?: boolean;
+}
+
+// IFB-24: Draft is the only status where the plan can still be edited or
+// soft-cancelled -- once confirmed it has real downstream state (CoreFlow
+// instance, outbox event) that these actions do not know how to unwind.
+function InboundOperatorHeader({
+  plan,
+  onEdit,
+  onConfirm,
+  onCancel,
+  isConfirming = false,
+  isCancelling = false,
+}: InboundOperatorHeaderProps) {
   const [expanded, setExpanded] = useState(false);
+  const isDraft = plan.status === 'Draft';
 
   return (
     <Card data-testid="inbound-operator-header">
@@ -184,6 +207,42 @@ function InboundOperatorHeader({ plan }: { plan: InboundPlan }) {
             </button>
           </div>
         </div>
+        {isDraft && (onEdit || onConfirm || onCancel) ? (
+          <div className="flex flex-wrap gap-2" data-testid="inbound-draft-actions">
+            {onEdit ? (
+              <button
+                type="button"
+                className="min-h-10 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+                data-testid="inbound-edit-trigger"
+                onClick={onEdit}
+              >
+                Sửa
+              </button>
+            ) : null}
+            {onConfirm ? (
+              <button
+                type="button"
+                className="min-h-10 rounded-md border px-3 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid="inbound-confirm-trigger"
+                disabled={isConfirming}
+                onClick={onConfirm}
+              >
+                Xác nhận
+              </button>
+            ) : null}
+            {onCancel ? (
+              <button
+                type="button"
+                className="border-destructive text-destructive min-h-10 rounded-md border px-3 text-sm font-medium hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid="inbound-cancel-trigger"
+                disabled={isCancelling}
+                onClick={onCancel}
+              >
+                Xóa
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="grid gap-2 sm:grid-cols-3">
@@ -1222,6 +1281,38 @@ export function InboundDetailPage() {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
   }
 
+  function openEdit() {
+    if (!selected) return;
+    void navigate(ROUTES.INBOUND.ACTION(selected.id, 'edit'));
+  }
+
+  function closeEdit() {
+    if (!selected) return;
+    void navigate(ROUTES.INBOUND.DETAIL(selected.id));
+  }
+
+  function submitEdit(input: UpdateInboundPlanInput) {
+    if (!selected) return;
+    mutations.updateInboundPlan.mutate(
+      { id: selected.id, input },
+      { onSuccess: () => void navigate(ROUTES.INBOUND.DETAIL(selected.id)) },
+    );
+  }
+
+  function submitConfirm() {
+    if (!selected) return;
+    mutations.confirmInboundPlan.mutate({ id: selected.id });
+  }
+
+  function submitCancelPlan() {
+    if (!selected) return;
+    if (!window.confirm(`Xóa kế hoạch nhập kho ${selected.sourceDocumentNumber}?`)) return;
+    mutations.cancelInboundPlan.mutate(
+      { id: selected.id },
+      { onSuccess: () => void navigate(ROUTES.INBOUND.ROOT) },
+    );
+  }
+
   function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canCreate) return;
@@ -1638,6 +1729,12 @@ export function InboundDetailPage() {
     return <Navigate to={ROUTES.INBOUND.DETAIL(routePlanId)} replace />;
   }
 
+  // IFB-24: edit is Draft-only -- a direct URL visit to /:id/edit for an already
+  // confirmed/cancelled plan bounces back to the read-only detail view.
+  if (routeAction === 'edit' && selected && selected.status !== 'Draft') {
+    return <Navigate to={ROUTES.INBOUND.DETAIL(selected.id)} replace />;
+  }
+
   if (routePlanId && detailQuery.error) {
     return (
       <Card>
@@ -1702,15 +1799,47 @@ export function InboundDetailPage() {
     <div className="mx-auto w-full max-w-[1536px] space-y-4">
       {selected && (
         <>
-          <InboundOperatorHeader plan={selected} />
-          <InboundWorkflowProgressBand
-            caption={focusedLineRibbonCaption}
-            completedSummaryStepKey={completedSummaryStepKey}
-            lineCue={focusedLineStepCue}
-            steps={workflowSteps}
-            onStepSelect={selectWorkflowStep}
+          <InboundOperatorHeader
+            plan={selected}
+            onEdit={openEdit}
+            onConfirm={submitConfirm}
+            onCancel={submitCancelPlan}
+            isConfirming={mutations.confirmInboundPlan.isPending}
+            isCancelling={mutations.cancelInboundPlan.isPending}
           />
+          {routeAction !== 'edit' && (
+            <InboundWorkflowProgressBand
+              caption={focusedLineRibbonCaption}
+              completedSummaryStepKey={completedSummaryStepKey}
+              lineCue={focusedLineStepCue}
+              steps={workflowSteps}
+              onStepSelect={selectWorkflowStep}
+            />
+          )}
         </>
+      )}
+
+      {selected && routeAction === 'edit' && (
+        <InboundEditPanel
+          // IFB-24 review fix: force a remount when the plan id changes. `selected`
+          // usually (but not always -- see the recordGateIn-cache edge case below)
+          // goes through a null render during a routePlanId change because
+          // `selectedId` lags one tick behind via its own sync effect; WITHOUT this
+          // key, a case where `selected` resolves straight from one plan's data to
+          // another's without that null in between (e.g. mutations.recordGateIn.data
+          // still cached under the OLD id at the exact moment selectedId is also
+          // still the old id) would keep this panel mounted and its useState-seeded
+          // fields would silently keep showing the previous plan's values.
+          key={selected.id}
+          plan={selected}
+          isPending={mutations.updateInboundPlan.isPending}
+          errorMessage={toPanelErrorMessage(
+            mutations.updateInboundPlan.error,
+            'Không thể lưu thay đổi kế hoạch nhập kho.',
+          )}
+          onSubmit={submitEdit}
+          onCancel={closeEdit}
+        />
       )}
 
       {isCreateRoute && (
@@ -1858,7 +1987,7 @@ export function InboundDetailPage() {
             </Card>
           )}
 
-      {selected && (
+      {selected && routeAction !== 'edit' && (
         <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)]">
           {/* Mobile (below xl): rail is rendered SECOND (collapsible `Dòng khác`
               below the pinned console) via order-2; desktop keeps it as the

@@ -17,6 +17,7 @@ import {
 import { ListPageShell } from '@shared/Components/Page/ListPageShell';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
+import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
 import { useInboundPlans } from '@modules/Inbound/Application/Queries/UseInboundPlans';
 import type { InboundPlan } from '@modules/Inbound/Domain/Types/InboundPlan';
 
@@ -24,7 +25,43 @@ function statusLabel(plan: InboundPlan) {
   return `${vietnameseOperationalLabel(plan.status)} / ${vietnameseOperationalLabel(plan.gateInStatus)}`;
 }
 
-function InboundPlanCard({ plan }: { plan: InboundPlan }) {
+interface DraftRowActionsProps {
+  plan: InboundPlan;
+  isCancelling: boolean;
+  onCancel: (plan: InboundPlan) => void;
+}
+
+// IFB-24: a plan is only editable/cancellable while still Draft — once confirmed it
+// has real downstream state (CoreFlow instance, outbox event) that Sửa/Xóa here do
+// not know how to unwind.
+function DraftRowActions({ plan, isCancelling, onCancel }: DraftRowActionsProps) {
+  if (plan.status !== 'Draft') return null;
+  return (
+    <>
+      <Button asChild variant="secondary" size="sm">
+        <Link to={ROUTES.INBOUND.ACTION(plan.id, 'edit')}>Sửa</Link>
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={isCancelling}
+        onClick={() => onCancel(plan)}
+      >
+        Xóa
+      </Button>
+    </>
+  );
+}
+
+function InboundPlanCard({
+  plan,
+  isCancelling,
+  onCancel,
+}: {
+  plan: InboundPlan;
+  isCancelling: boolean;
+  onCancel: (plan: InboundPlan) => void;
+}) {
   return (
     <article className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
@@ -65,6 +102,7 @@ function InboundPlanCard({ plan }: { plan: InboundPlan }) {
         <Button asChild variant="secondary" size="sm">
           <Link to={ROUTES.INBOUND.ACTION(plan.id, 'receiving')}>Thao tác tiếp nhận</Link>
         </Button>
+        <DraftRowActions plan={plan} isCancelling={isCancelling} onCancel={onCancel} />
       </div>
     </article>
   );
@@ -74,7 +112,15 @@ function InboundPlanCard({ plan }: { plan: InboundPlan }) {
 // dense table for faster scanning/column comparison on wide screens. Reuses the shared
 // Ui/Table primitives (no new dependency). The status cell mirrors the card's bordered
 // span on purpose — Badge unification is owned by the FOUNDATION-UX-REUI epic.
-function InboundPlanTable({ plans }: { plans: InboundPlan[] }) {
+function InboundPlanTable({
+  plans,
+  isCancelling,
+  onCancel,
+}: {
+  plans: InboundPlan[];
+  isCancelling: (plan: InboundPlan) => boolean;
+  onCancel: (plan: InboundPlan) => void;
+}) {
   return (
     <Table data-testid="inbound-plan-table">
       <TableHeader>
@@ -106,13 +152,14 @@ function InboundPlanTable({ plans }: { plans: InboundPlan[] }) {
             <TableCell>{plan.lines.length}</TableCell>
             <TableCell>{plan.coreFlowInstanceId ?? 'chưa liên kết'}</TableCell>
             <TableCell>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button asChild size="sm">
                   <Link to={ROUTES.INBOUND.DETAIL(plan.id)}>Mở chi tiết</Link>
                 </Button>
                 <Button asChild variant="secondary" size="sm">
                   <Link to={ROUTES.INBOUND.ACTION(plan.id, 'receiving')}>Thao tác tiếp nhận</Link>
                 </Button>
+                <DraftRowActions plan={plan} isCancelling={isCancelling(plan)} onCancel={onCancel} />
               </div>
             </TableCell>
           </TableRow>
@@ -132,7 +179,14 @@ export function InboundPage() {
     sourceSystem: debouncedSourceSystem || undefined,
     sourceDocumentNumber: debouncedDocument || undefined,
   });
+  const mutations = useInboundMutations();
   const plans = useMemo(() => query.data?.items ?? [], [query.data?.items]);
+  const isCancelling = (plan: InboundPlan) =>
+    mutations.cancelInboundPlan.isPending && mutations.cancelInboundPlan.variables?.id === plan.id;
+  const handleCancel = (plan: InboundPlan) => {
+    if (!window.confirm(`Xóa kế hoạch nhập kho ${plan.sourceDocumentNumber}?`)) return;
+    mutations.cancelInboundPlan.mutate({ id: plan.id });
+  };
   const apiError = query.error instanceof ApiError ? query.error : null;
   const state = query.isLoading
     ? 'loading'
@@ -206,12 +260,17 @@ export function InboundPage() {
       {/* Mobile (< md): card grid — easier to tap. Hidden from md up. */}
       <div className="grid gap-3 md:hidden">
         {plans.map((plan) => (
-          <InboundPlanCard key={plan.id} plan={plan} />
+          <InboundPlanCard
+            key={plan.id}
+            plan={plan}
+            isCancelling={isCancelling(plan)}
+            onCancel={handleCancel}
+          />
         ))}
       </div>
       {/* Desktop (>= md): dense table for scanning/column comparison. */}
       <div className="hidden md:block">
-        <InboundPlanTable plans={plans} />
+        <InboundPlanTable plans={plans} isCancelling={isCancelling} onCancel={handleCancel} />
       </div>
     </ListPageShell>
   );

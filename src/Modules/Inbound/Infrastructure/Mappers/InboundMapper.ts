@@ -22,6 +22,7 @@ import type {
   RecordGateInInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
+  UpdateInboundPlanInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import type {
@@ -29,6 +30,7 @@ import type {
   ConfirmInboundLpnRequestDto,
   ConfirmReceiptLineRequestDto,
   CreateInboundPlanRequestDto,
+  UpdateInboundPlanRequestDto,
   EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
   InboundLineImportPreviewDto,
@@ -406,6 +408,29 @@ export const InboundMapper = {
         }),
       ),
     }) as CreateInboundPlanRequestDto;
+  },
+
+  toUpdateRequest(input: UpdateInboundPlanInput): UpdateInboundPlanRequestDto {
+    return removeEmpty({
+      SourceSystem: input.sourceSystem,
+      SourceDocumentType: input.sourceDocumentType,
+      SourceDocumentNumber: input.sourceDocumentNumber,
+      SupplierId: input.supplierId,
+      OwnerId: input.ownerId,
+      WarehouseId: input.warehouseId,
+      WarehouseProfileId: input.warehouseProfileId,
+      ExpectedArrivalAt: input.expectedArrivalAt,
+      ExpectedUpdatedAt: input.expectedUpdatedAt,
+      Lines: input.lines.map((line) =>
+        removeEmpty({
+          LineNumber: line.lineNumber,
+          SkuId: line.skuId,
+          UomId: line.uomId,
+          ExpectedQuantity: line.expectedQuantity,
+          ExternalLineReference: line.externalLineReference,
+        }),
+      ),
+    }) as UpdateInboundPlanRequestDto;
   },
 
   toGateInRequest(input: RecordGateInInput): RecordGateInRequestDto {

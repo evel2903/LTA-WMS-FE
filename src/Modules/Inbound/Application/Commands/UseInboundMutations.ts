@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { toast } from '@shared/Components/Ui/Toast';
+import { ApiError } from '@shared/Services/Http/ApiError';
 import { toMutationErrorMessage } from '@modules/MasterData/Application/Commands/MasterDataMutationError';
 import { inboundQueryKeys } from '@modules/Inbound/Application/Queries/InboundQueryKeys';
 import type {
@@ -13,6 +14,7 @@ import type {
   RecordGateInInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
+  UpdateInboundPlanInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import { inboundRepository } from '@modules/Inbound/Infrastructure/Repositories/InboundRepositoryInstance';
@@ -25,6 +27,29 @@ export function useInboundMutations() {
   return {
     createInboundPlan: useMutation({
       mutationFn: (input: CreateInboundPlanInput) => inboundRepository.create(input),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    updateInboundPlan: useMutation({
+      mutationFn: ({ id, input }: { id: string; input: UpdateInboundPlanInput }) =>
+        inboundRepository.update(id, input),
+      onSuccess: invalidateInbound,
+      onError: (error: unknown) => {
+        notifyError(error);
+        // Re-review fix (P1 decision): a 409 here means a concurrent edit landed first --
+        // invalidate so the NEXT time this plan is opened (e.g. after Hủy + reopening
+        // Edit) it shows the fresh data, without touching the operator's own
+        // still-open, in-progress form right now.
+        if (error instanceof ApiError && error.status === 409) void invalidateInbound();
+      },
+    }),
+    confirmInboundPlan: useMutation({
+      mutationFn: ({ id }: { id: string }) => inboundRepository.confirm(id),
+      onSuccess: invalidateInbound,
+      onError: notifyError,
+    }),
+    cancelInboundPlan: useMutation({
+      mutationFn: ({ id }: { id: string }) => inboundRepository.cancel(id),
       onSuccess: invalidateInbound,
       onError: notifyError,
     }),

@@ -29,6 +29,7 @@ import type {
   RecordGateInInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
+  UpdateInboundPlanInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 import { INBOUND_ENDPOINTS } from '@modules/Inbound/Infrastructure/Api/InboundEndpoints';
@@ -92,6 +93,24 @@ export class InboundRepository implements IInboundRepository {
       INBOUND_ENDPOINTS.PLANS,
       InboundMapper.toCreateRequest(input),
     );
+    return InboundMapper.toInboundPlan(dto);
+  }
+
+  async update(id: string, input: UpdateInboundPlanInput): Promise<InboundPlan> {
+    const dto = await this.http.patch<InboundPlanDto>(
+      INBOUND_ENDPOINTS.PLAN_BY_ID(id),
+      InboundMapper.toUpdateRequest(input),
+    );
+    return InboundMapper.toInboundPlan(dto);
+  }
+
+  async confirm(id: string): Promise<InboundPlan> {
+    const dto = await this.http.post<InboundPlanDto>(INBOUND_ENDPOINTS.PLAN_CONFIRM(id), {});
+    return InboundMapper.toInboundPlan(dto);
+  }
+
+  async cancel(id: string): Promise<InboundPlan> {
+    const dto = await this.http.post<InboundPlanDto>(INBOUND_ENDPOINTS.PLAN_CANCEL(id), {});
     return InboundMapper.toInboundPlan(dto);
   }
 

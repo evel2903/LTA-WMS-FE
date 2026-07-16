@@ -1,38 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Upload, X } from 'lucide-react';
 
 import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import { Input } from '@shared/Components/Ui/Input';
 import { downloadBlob } from '@shared/Utils/DownloadBlob';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
-import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
-import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { useInboundMutations } from '@modules/Inbound/Application/Commands/UseInboundMutations';
-import {
-  useActiveOwners,
-  useActiveUoms,
-  useSkus,
-} from '@modules/MasterData/Application/Queries/CatalogQueries';
-import { useActiveWarehouses } from '@modules/MasterData/Application/Queries/UseSiteLocationTree';
-import { usePartners } from '@modules/PartnerMaster/Application/Queries/UsePartners';
-import { useWarehouseProfiles } from '@modules/WarehouseProfile/Application/Queries/UseWarehouseProfiles';
+import { InboundPlanLinesEditor } from '@modules/Inbound/Presentation/Components/InboundPlanLinesEditor';
+import type { InboundPlanLineDraft } from '@modules/Inbound/Presentation/Components/InboundPlanLinesEditor';
+import { InboundPlanScopeFields } from '@modules/Inbound/Presentation/Components/InboundPlanScopeFields';
+import { InboundPlanTextFields } from '@modules/Inbound/Presentation/Components/InboundPlanTextFields';
+import { useInboundPlanFormLookups } from '@modules/Inbound/Presentation/Components/UseInboundPlanFormLookups';
 import type { InboundLineImportPreview } from '@modules/Inbound/Domain/Types/InboundPlan';
-
-interface DraftLine {
-  id: number;
-  skuId: string;
-  uomId: string;
-  expectedQuantity: string;
-  externalLineReference: string;
-}
 
 let nextDraftLineId = 0;
 
-const initialLine = (): DraftLine => ({
+const initialLine = (): InboundPlanLineDraft => ({
   id: (nextDraftLineId += 1),
   skuId: '',
   uomId: '',
@@ -43,14 +28,7 @@ const initialLine = (): DraftLine => ({
 export function InboundCreatePage() {
   const navigate = useNavigate();
   const mutations = useInboundMutations();
-  const supplierQuery = usePartners({ partnerType: 'Supplier', status: 'Active', pageSize: 100 });
-  const ownerQuery = useActiveOwners();
-  const [warehouseSearch, setWarehouseSearch] = useState('');
-  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch, 300);
-  const warehouseQuery = useActiveWarehouses(debouncedWarehouseSearch);
-  const warehouseProfileQuery = useWarehouseProfiles({ status: 'ACTIVE', pageSize: 100 });
-  const skuQuery = useSkus({ itemStatus: 'Active', pageSize: 100 });
-  const uomQuery = useActiveUoms();
+  const lookups = useInboundPlanFormLookups();
   const [sourceSystem, setSourceSystem] = useState('');
   const [sourceDocumentType, setSourceDocumentType] = useState('ASN');
   const [sourceDocumentNumber, setSourceDocumentNumber] = useState('');
@@ -59,7 +37,7 @@ export function InboundCreatePage() {
   const [warehouseId, setWarehouseId] = useState('');
   const [warehouseProfileId, setWarehouseProfileId] = useState('');
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('');
-  const [lineDrafts, setLineDrafts] = useState<DraftLine[]>(() => [initialLine()]);
+  const [lineDrafts, setLineDrafts] = useState<InboundPlanLineDraft[]>(() => [initialLine()]);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelPreview, setExcelPreview] = useState<InboundLineImportPreview | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -78,55 +56,8 @@ export function InboundCreatePage() {
     () => lineDrafts.reduce((sum, line) => sum + (Number(line.expectedQuantity) || 0), 0),
     [lineDrafts],
   );
-  const supplierOptions = useMemo(
-    () =>
-      (supplierQuery.data?.items ?? []).map((supplier) => ({
-        value: supplier.id,
-        label: `${supplier.partnerCode} - ${supplier.partnerName}`,
-      })),
-    [supplierQuery.data?.items],
-  );
-  const ownerOptions = useMemo(
-    () =>
-      (ownerQuery.data?.items ?? []).map((owner) => ({
-        value: owner.id,
-        label: `${owner.ownerCode} - ${owner.ownerName}`,
-      })),
-    [ownerQuery.data?.items],
-  );
-  const warehouseOptions = useMemo(
-    () =>
-      (warehouseQuery.data?.items ?? []).map((warehouse) => ({
-        value: warehouse.id,
-        label: `${warehouse.warehouseCode} - ${warehouse.warehouseName}`,
-      })),
-    [warehouseQuery.data?.items],
-  );
-  const warehouseProfileOptions = useMemo(
-    () =>
-      (warehouseProfileQuery.data?.items ?? []).map((profile) => ({
-        value: profile.id,
-        label: `${profile.profileCode} - ${profile.profileName}`,
-      })),
-    [warehouseProfileQuery.data?.items],
-  );
-  const skuOptions = useMemo(
-    () =>
-      (skuQuery.data?.items ?? []).map((sku) => ({
-        value: sku.id,
-        label: `${sku.skuCode} - ${sku.skuName}`,
-      })),
-    [skuQuery.data?.items],
-  );
-  const uomOptions = useMemo(
-    () =>
-      (uomQuery.data?.items ?? []).map((uom) => ({
-        value: uom.id,
-        label: `${uom.uomCode} - ${uom.uomName}`,
-      })),
-    [uomQuery.data?.items],
-  );
-  function updateLine(id: number, patch: Partial<DraftLine>) {
+
+  function updateLine(id: number, patch: Partial<InboundPlanLineDraft>) {
     setLineDrafts((lines) => lines.map((line) => (line.id === id ? { ...line, ...patch } : line)));
   }
 
@@ -163,7 +94,7 @@ export function InboundCreatePage() {
   // effect above on every character typed, silently wiping an already-validated import mid-edit.
   useEffect(() => {
     setWarehouseId('');
-  }, [debouncedWarehouseSearch]);
+  }, [lookups.debouncedWarehouseSearch]);
 
   // Đóng popup import bằng phím Escape (mirror pattern InboundDiscrepancySheet).
   useEffect(() => {
@@ -260,47 +191,18 @@ export function InboundCreatePage() {
           <CardHeader>
             <CardTitle>Thông tin chứng từ nguồn</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <label className="grid gap-1 text-sm" htmlFor="inbound-source-system">
-              Hệ thống nguồn
-              <Input
-                id="inbound-source-system"
-                name="sourceSystem"
-                value={sourceSystem}
-                onChange={(event) => setSourceSystem(event.target.value)}
-                placeholder="ERP"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-source-document-type">
-              Loại chứng từ nguồn
-              <Input
-                id="inbound-source-document-type"
-                name="sourceDocumentType"
-                value={sourceDocumentType}
-                onChange={(event) => setSourceDocumentType(event.target.value)}
-                placeholder="ASN"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-source-document-number">
-              Số chứng từ nguồn
-              <Input
-                id="inbound-source-document-number"
-                name="sourceDocumentNumber"
-                value={sourceDocumentNumber}
-                onChange={(event) => setSourceDocumentNumber(event.target.value)}
-                placeholder="ASN-10001"
-              />
-            </label>
-            <label className="grid gap-1 text-sm" htmlFor="inbound-expected-arrival-at">
-              Thời gian đến dự kiến
-              <Input
-                id="inbound-expected-arrival-at"
-                name="expectedArrivalAt"
-                type="datetime-local"
-                value={expectedArrivalAt}
-                onChange={(event) => setExpectedArrivalAt(event.target.value)}
-              />
-            </label>
+          <CardContent>
+            <InboundPlanTextFields
+              idPrefix="inbound"
+              sourceSystem={sourceSystem}
+              onSourceSystemChange={setSourceSystem}
+              sourceDocumentType={sourceDocumentType}
+              onSourceDocumentTypeChange={setSourceDocumentType}
+              sourceDocumentNumber={sourceDocumentNumber}
+              onSourceDocumentNumberChange={setSourceDocumentNumber}
+              expectedArrivalAt={expectedArrivalAt}
+              onExpectedArrivalAtChange={setExpectedArrivalAt}
+            />
           </CardContent>
         </Card>
 
@@ -308,62 +210,18 @@ export function InboundCreatePage() {
           <CardHeader>
             <CardTitle>Đối tượng và kho</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <LookupSelect
-              id="inbound-supplier-id"
-              name="supplierId"
-              label="Nhà cung cấp"
-              value={supplierId}
-              placeholder="Chọn nhà cung cấp"
-              options={supplierOptions}
-              isLoading={supplierQuery.isLoading}
-              isError={supplierQuery.isError}
-              emptyMessage="Chưa có nhà cung cấp active để chọn."
-              errorMessage="Không tải được danh sách nhà cung cấp."
-              onChange={setSupplierId}
-            />
-            <LookupSelect
-              id="inbound-owner-id"
-              name="ownerId"
-              label="Chủ hàng"
-              value={ownerId}
-              placeholder="Chọn chủ hàng"
-              options={ownerOptions}
-              isLoading={ownerQuery.isLoading}
-              isError={ownerQuery.isError}
-              emptyMessage="Chưa có chủ hàng active để chọn."
-              errorMessage="Không tải được danh sách chủ hàng."
-              onChange={setOwnerId}
-            />
-            <SearchableLookupSelect
-              id="inbound-warehouse-id"
-              name="warehouseId"
-              label="Kho"
-              value={warehouseId}
-              placeholder="Chọn kho"
-              options={warehouseOptions}
-              isLoading={warehouseQuery.isLoading}
-              isError={warehouseQuery.isError}
-              emptyMessage="Chưa có kho active để chọn."
-              errorMessage="Không tải được danh sách kho."
-              onChange={setWarehouseId}
-              searchValue={warehouseSearch}
-              onSearchChange={setWarehouseSearch}
-              searchPlaceholder="Tìm theo mã/tên kho..."
-            />
-            <LookupSelect
-              id="inbound-warehouse-profile-id"
-              name="warehouseProfileId"
-              label="Hồ sơ kho"
-              value={warehouseProfileId}
-              placeholder="Không chọn hồ sơ kho"
-              options={warehouseProfileOptions}
-              isLoading={warehouseProfileQuery.isLoading}
-              isError={warehouseProfileQuery.isError}
-              emptyMessage="Chưa có hồ sơ kho active để chọn."
-              errorMessage="Không tải được danh sách hồ sơ kho."
-              optional
-              onChange={setWarehouseProfileId}
+          <CardContent>
+            <InboundPlanScopeFields
+              idPrefix="inbound"
+              supplierId={supplierId}
+              onSupplierIdChange={setSupplierId}
+              ownerId={ownerId}
+              onOwnerIdChange={setOwnerId}
+              warehouseId={warehouseId}
+              onWarehouseIdChange={setWarehouseId}
+              warehouseProfileId={warehouseProfileId}
+              onWarehouseProfileIdChange={setWarehouseProfileId}
+              lookups={lookups}
             />
           </CardContent>
         </Card>
@@ -578,84 +436,13 @@ export function InboundCreatePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {lineDrafts.map((line, index) => (
-              <div
-                key={line.id}
-                className="grid gap-3 rounded-md border p-3 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]"
-              >
-                <LookupSelect
-                  id={`inbound-line-${line.id}-sku-id`}
-                  name={`lines[${index}].skuId`}
-                  label="SKU"
-                  value={line.skuId}
-                  placeholder="Chọn SKU"
-                  options={skuOptions}
-                  isLoading={skuQuery.isLoading}
-                  isError={skuQuery.isError}
-                  emptyMessage="Chưa có SKU active để chọn."
-                  errorMessage="Không tải được danh sách SKU."
-                  onChange={(value) => updateLine(line.id, { skuId: value })}
-                />
-                <LookupSelect
-                  id={`inbound-line-${line.id}-uom-id`}
-                  name={`lines[${index}].uomId`}
-                  label="Đơn vị tính"
-                  value={line.uomId}
-                  placeholder="Chọn đơn vị tính"
-                  options={uomOptions}
-                  isLoading={uomQuery.isLoading}
-                  isError={uomQuery.isError}
-                  emptyMessage="Chưa có đơn vị tính active để chọn."
-                  errorMessage="Không tải được danh sách đơn vị tính."
-                  onChange={(value) => updateLine(line.id, { uomId: value })}
-                />
-                <label
-                  className="grid gap-1 text-sm"
-                  htmlFor={`inbound-line-${line.id}-expected-quantity`}
-                >
-                  Số lượng dự kiến
-                  <Input
-                    id={`inbound-line-${line.id}-expected-quantity`}
-                    name={`lines[${index}].expectedQuantity`}
-                    type="number"
-                    min="0.0001"
-                    step="any"
-                    value={line.expectedQuantity}
-                    onChange={(event) =>
-                      updateLine(line.id, { expectedQuantity: event.target.value })
-                    }
-                  />
-                </label>
-                <label
-                  className="grid gap-1 text-sm"
-                  htmlFor={`inbound-line-${line.id}-external-reference`}
-                >
-                  Tham chiếu dòng ngoài
-                  <Input
-                    id={`inbound-line-${line.id}-external-reference`}
-                    name={`lines[${index}].externalLineReference`}
-                    value={line.externalLineReference}
-                    onChange={(event) =>
-                      updateLine(line.id, { externalLineReference: event.target.value })
-                    }
-                    placeholder="10"
-                  />
-                </label>
-                <Button
-                  id={`inbound-line-${line.id}-remove`}
-                  name={`lines[${index}].remove`}
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="self-end"
-                  aria-label={`Xóa dòng ${index + 1}`}
-                  disabled={lineDrafts.length === 1}
-                  onClick={() => removeLine(line.id)}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            ))}
+            <InboundPlanLinesEditor
+              idPrefix="inbound"
+              lines={lineDrafts}
+              onUpdateLine={updateLine}
+              onRemoveLine={removeLine}
+              lookups={lookups}
+            />
           </CardContent>
         </Card>
 

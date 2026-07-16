@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundRepository } from '@modules/Inbound/Application/Interfaces/IInboundRepository';
+import { inboundQueryKeys } from '@modules/Inbound/Application/Queries/InboundQueryKeys';
 import { isPlanLineFullyReleased } from '@modules/Inbound/Presentation/Components/InboundLineStage';
 import type {
   InboundDiscrepancy,
@@ -34,6 +36,7 @@ import type {
   RecordGateInInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
+  UpdateInboundPlanInput,
   ValidateReceivingReadinessInput,
 } from '@modules/Inbound/Domain/Types/InboundPlanQuery';
 
@@ -515,6 +518,60 @@ class FakeRepository implements Partial<IInboundRepository> {
     return Promise.resolve(created);
   });
 
+  update = vi.fn((id: string, input: UpdateInboundPlanInput) => {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) {
+      return Promise.reject(
+        new ApiError({ status: 404, code: 'NOT_FOUND', message: `Inbound plan ${id} not found` }),
+      );
+    }
+    const updated: InboundPlan = {
+      ...this.items[index],
+      sourceSystem: input.sourceSystem,
+      sourceDocumentType: input.sourceDocumentType,
+      sourceDocumentNumber: input.sourceDocumentNumber,
+      supplierId: input.supplierId,
+      ownerId: input.ownerId,
+      warehouseId: input.warehouseId,
+      warehouseProfileId: input.warehouseProfileId ?? null,
+      expectedArrivalAt: input.expectedArrivalAt ?? null,
+      lines: input.lines.map((line, lineIndex) => ({
+        id: `line-${lineIndex + 1}`,
+        lineNumber: line.lineNumber,
+        skuId: line.skuId,
+        skuCode: line.skuId,
+        uomId: line.uomId,
+        uomCode: line.uomId,
+        expectedQuantity: line.expectedQuantity,
+        externalLineReference: line.externalLineReference ?? null,
+      })),
+    };
+    this.items[index] = updated;
+    return Promise.resolve(updated);
+  });
+
+  confirm = vi.fn((id: string) => {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) {
+      return Promise.reject(
+        new ApiError({ status: 404, code: 'NOT_FOUND', message: `Inbound plan ${id} not found` }),
+      );
+    }
+    this.items[index] = { ...this.items[index], status: 'Planned' };
+    return Promise.resolve(this.items[index]);
+  });
+
+  cancel = vi.fn((id: string) => {
+    const index = this.items.findIndex((item) => item.id === id);
+    if (index < 0) {
+      return Promise.reject(
+        new ApiError({ status: 404, code: 'NOT_FOUND', message: `Inbound plan ${id} not found` }),
+      );
+    }
+    this.items[index] = { ...this.items[index], status: 'Cancelled' };
+    return Promise.resolve(this.items[index]);
+  });
+
   downloadLineImportTemplate = vi.fn((): Promise<Blob> => Promise.resolve(new Blob()));
 
   previewLineImport = vi.fn(
@@ -825,14 +882,15 @@ async function openTechnicalDetails(actor: ReturnType<typeof userEvent.setup>, t
   return details;
 }
 
-function renderPage(entry = '/inbound/inbound-plan-1') {
-  const client = new QueryClient({
+function renderPage(entry = '/inbound/inbound-plan-1', client?: QueryClient) {
+  client ??= new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry]}>
         <LocationProbe />
+        <NavigateProbe />
         <Routes>
           <Route path="/inbound/new" element={<InboundCreatePage />} />
           <Route path="/inbound/:id" element={<InboundDetailPage />} />
@@ -858,6 +916,19 @@ function renderListPage(entry = '/inbound') {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+// IFB-24 review fix: lets a test navigate the SAME mounted router to a different route
+// matching the identical Route pattern (e.g. another plan's /:id/edit) without
+// unmounting the page component -- exactly the real "switch between two edit routes"
+// scenario the key={plan.id} fix targets, which a fresh renderPage() with a different
+// initialEntries can't reproduce (that unmounts/remounts from scratch).
+function NavigateProbe() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    (window as unknown as { __testNavigate: (to: string) => void }).__testNavigate = navigate;
+  }, [navigate]);
+  return null;
 }
 
 function LocationProbe() {
@@ -4784,6 +4855,236 @@ describe('InboundPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toBe('Đã release'),
     );
+  });
+
+  describe('IFB-24: Draft-only edit/confirm/cancel actions', () => {
+    it('shows Sửa/Xóa on the list only for Draft plans, hides them once Planned', async () => {
+      const fake = new FakeRepository([
+        makePlan({ id: 'draft-plan', sourceDocumentNumber: 'ASN-DRAFT', status: 'Draft' }),
+        makePlan({ id: 'planned-plan', sourceDocumentNumber: 'ASN-PLANNED', status: 'Planned' }),
+      ]);
+      repo.current = fake;
+      renderListPage();
+
+      await screen.findByTestId('inbound-plan-table');
+      const draftRow = screen.getByTestId('inbound-plan-row-draft-plan');
+      const plannedRow = screen.getByTestId('inbound-plan-row-planned-plan');
+
+      expect(within(draftRow).getByRole('link', { name: 'Sửa' })).toBeTruthy();
+      expect(within(draftRow).getByRole('button', { name: 'Xóa' })).toBeTruthy();
+      expect(within(plannedRow).queryByRole('link', { name: 'Sửa' })).toBeNull();
+      expect(within(plannedRow).queryByRole('button', { name: 'Xóa' })).toBeNull();
+    });
+
+    it('cancels a Draft plan from the list only after the confirm dialog is accepted', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Draft' })]);
+      repo.current = fake;
+      renderListPage();
+
+      const row = await screen.findByTestId('inbound-plan-row-inbound-plan-1');
+      const confirmSpy = vi
+        .spyOn(window, 'confirm')
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+
+      fireEvent.click(within(row).getByRole('button', { name: 'Xóa' }));
+      expect(fake.cancel).not.toHaveBeenCalled();
+
+      fireEvent.click(within(row).getByRole('button', { name: 'Xóa' }));
+      await waitFor(() => expect(fake.cancel).toHaveBeenCalledWith('inbound-plan-1'));
+
+      confirmSpy.mockRestore();
+    });
+
+    it('shows Sửa/Xóa/Xác nhận on the detail header only while Draft, and Xác nhận confirms the plan', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Draft' })]);
+      repo.current = fake;
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      fireEvent.click(screen.getByTestId('inbound-confirm-trigger'));
+      await waitFor(() => expect(fake.confirm).toHaveBeenCalledWith('inbound-plan-1'));
+    });
+
+    it('hides the detail header Draft actions once the plan is no longer Draft', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Planned' })]);
+      repo.current = fake;
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-operator-header');
+      expect(screen.queryByTestId('inbound-draft-actions')).toBeNull();
+    });
+
+    it('cancels a Draft plan from the detail header after confirming and returns to the list', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Draft' })]);
+      repo.current = fake;
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      fireEvent.click(screen.getByTestId('inbound-cancel-trigger'));
+
+      await waitFor(() => expect(fake.cancel).toHaveBeenCalledWith('inbound-plan-1'));
+      await waitFor(() => expect(screen.getByTestId('location-probe').textContent).toBe('/inbound'));
+      confirmSpy.mockRestore();
+    });
+
+    it('opens the edit form pre-filled from the plan and saves via the update mutation', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Draft' })]);
+      repo.current = fake;
+      setLookupRepositories();
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      fireEvent.click(screen.getByTestId('inbound-edit-trigger'));
+
+      const panel = await screen.findByTestId('inbound-edit-panel');
+      expect(within(panel).getByLabelText('Số chứng từ nguồn')).toHaveProperty('value', 'ASN-10001');
+
+      fireEvent.click(within(panel).getByRole('button', { name: 'Lưu thay đổi' }));
+
+      await waitFor(() =>
+        expect(fake.update).toHaveBeenCalledWith(
+          'inbound-plan-1',
+          expect.objectContaining({ sourceDocumentNumber: 'ASN-10001', supplierId: 'supplier-1' }),
+        ),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/inbound-plan-1'),
+      );
+    });
+
+    it('redirects away from the edit route once the plan is no longer Draft', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Planned' })]);
+      repo.current = fake;
+      renderPage('/inbound/inbound-plan-1/edit');
+
+      await waitFor(() =>
+        expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/inbound-plan-1'),
+      );
+      expect(screen.queryByTestId('inbound-edit-panel')).toBeNull();
+    });
+
+    it("shows the newly-routed plan's own data when navigating directly between two /edit routes, not the previous plan's stale values", async () => {
+      const planA = makePlan({ id: 'plan-a', sourceDocumentNumber: 'ASN-PLAN-A', status: 'Draft' });
+      const planB = makePlan({ id: 'plan-b', sourceDocumentNumber: 'ASN-PLAN-B', status: 'Draft' });
+      const fake = new FakeRepository([planA, planB]);
+      repo.current = fake;
+      setLookupRepositories();
+      // Pre-seed planB's detail query cache so navigating to it resolves INSTANTLY
+      // (no loading gap that would itself unmount/remount the panel and mask the bug --
+      // the real-world case this guards is a warm cache, e.g. planB was already open
+      // earlier in the session).
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+      client.setQueryData(inboundQueryKeys.detail('plan-b'), planB);
+      renderPage('/inbound/plan-a/edit', client);
+
+      const panelA = await screen.findByTestId('inbound-edit-panel');
+      expect(within(panelA).getByLabelText('Số chứng từ nguồn')).toHaveProperty('value', 'ASN-PLAN-A');
+
+      act(() => {
+        (window as unknown as { __testNavigate: (to: string) => void }).__testNavigate('/inbound/plan-b/edit');
+      });
+
+      await waitFor(() =>
+        expect(
+          within(screen.getByTestId('inbound-edit-panel')).getByLabelText('Số chứng từ nguồn'),
+        ).toHaveProperty('value', 'ASN-PLAN-B'),
+      );
+    });
+
+    it("preserves an existing Draft line's LineNumber instead of renumbering it by position on save (re-review fix)", async () => {
+      const fake = new FakeRepository([
+        makePlan({
+          status: 'Draft',
+          lines: [
+            {
+              id: 'line-1',
+              lineNumber: 3,
+              skuId: 'sku-1',
+              skuCode: 'SKU-A',
+              uomId: 'uom-1',
+              uomCode: 'EA',
+              expectedQuantity: 12,
+              externalLineReference: '10',
+            },
+          ],
+        }),
+      ]);
+      repo.current = fake;
+      setLookupRepositories();
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      fireEvent.click(screen.getByTestId('inbound-edit-trigger'));
+      const panel = await screen.findByTestId('inbound-edit-panel');
+
+      fireEvent.click(within(panel).getByRole('button', { name: 'Lưu thay đổi' }));
+
+      await waitFor(() =>
+        expect(fake.update).toHaveBeenCalledWith(
+          'inbound-plan-1',
+          expect.objectContaining({ lines: [expect.objectContaining({ lineNumber: 3 })] }),
+        ),
+      );
+    });
+
+    it('disables submit when a Draft has no lines instead of sending an empty lines array (re-review fix)', async () => {
+      const fake = new FakeRepository([makePlan({ status: 'Draft', lines: [] })]);
+      repo.current = fake;
+      setLookupRepositories();
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      fireEvent.click(screen.getByTestId('inbound-edit-trigger'));
+      const panel = await screen.findByTestId('inbound-edit-panel');
+
+      expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty('disabled', true);
+      expect(fake.update).not.toHaveBeenCalled();
+    });
+
+    it("disables submit when a line's Số dòng is cleared to a duplicate value (re-review fix)", async () => {
+      const fake = new FakeRepository([
+        makePlan({
+          status: 'Draft',
+          lines: [
+            {
+              id: 'line-1',
+              lineNumber: 1,
+              skuId: 'sku-1',
+              skuCode: 'SKU-A',
+              uomId: 'uom-1',
+              uomCode: 'EA',
+              expectedQuantity: 12,
+              externalLineReference: '10',
+            },
+            {
+              id: 'line-2',
+              lineNumber: 2,
+              skuId: 'sku-1',
+              skuCode: 'SKU-A',
+              uomId: 'uom-1',
+              uomCode: 'EA',
+              expectedQuantity: 5,
+              externalLineReference: null,
+            },
+          ],
+        }),
+      ]);
+      repo.current = fake;
+      setLookupRepositories();
+      renderPage('/inbound/inbound-plan-1');
+
+      await screen.findByTestId('inbound-draft-actions');
+      fireEvent.click(screen.getByTestId('inbound-edit-trigger'));
+      const panel = await screen.findByTestId('inbound-edit-panel');
+
+      const lineNumberInputs = within(panel).getAllByLabelText('Số dòng');
+      fireEvent.change(lineNumberInputs[1], { target: { value: '1' } });
+
+      expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty('disabled', true);
+      expect(fake.update).not.toHaveBeenCalled();
+    });
   });
 });
 
