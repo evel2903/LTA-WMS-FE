@@ -29,6 +29,11 @@ export function useRoleDetails(roleCodes: RoleCode[]) {
   });
 }
 
+/** Single-role detail — thin wrapper over `useRoleDetails` for the role-detail/editor page. */
+export function useRoleDetail(roleCode: RoleCode) {
+  return useRoleDetails([roleCode])[0];
+}
+
 export function useUsers(filter: UserListFilter = {}) {
   return useQuery({
     queryKey: accessControlQueryKeys.users(filter),

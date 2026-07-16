@@ -36,3 +36,22 @@ export interface PermissionListFilter extends PageFilter {
   action?: string;
   objectType?: string;
 }
+
+/**
+ * Set-role-permissions input for `PUT /access-control/roles/:id/permissions` (RA-02/04).
+ * `permissions` is the FULL desired set (declarative, not a diff) — the caller must include
+ * every currently-granted cell, including Read auto-tick and rider-locked write-action cells.
+ */
+export interface SetRolePermissionsInput {
+  permissions: { action: string; objectType: string }[];
+  /** The role's `permissionsVersion` as last read from GET — mismatch is a 409 (optimistic lock). */
+  version: number;
+  reasonCode: string;
+  reasonNote?: string;
+}
+
+/** Reset-role-permissions input for `POST /access-control/roles/:id/permissions/reset` (system role only). */
+export interface ResetRolePermissionsInput {
+  reasonCode: string;
+  reasonNote?: string;
+}

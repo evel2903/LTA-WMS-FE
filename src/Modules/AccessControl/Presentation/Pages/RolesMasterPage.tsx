@@ -139,7 +139,7 @@ export function RolesMasterPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Button asChild size="sm" variant="outline">
-                      <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(role.id)} state={{ role }}>
+                      <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(role.roleCode)} state={{ role }}>
                         Chi tiết
                       </Link>
                     </Button>

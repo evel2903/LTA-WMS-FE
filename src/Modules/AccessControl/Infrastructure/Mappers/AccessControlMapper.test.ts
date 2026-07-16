@@ -28,7 +28,7 @@ describe('AccessControlMapper', () => {
     expect(result.totalItems).toBe(0);
   });
 
-  it('toRole maps the header shape including id (RA-03)', () => {
+  it('toRole maps the header shape including id (RA-03) and permissionsVersion (RA-04)', () => {
     const dto: RoleDto = {
       Id: 'r1',
       RoleCode: 'CUSTOM_ROLE',
@@ -36,6 +36,7 @@ describe('AccessControlMapper', () => {
       Description: 'A custom role',
       IsSystem: false,
       Status: 'ACTIVE',
+      PermissionsVersion: 3,
     };
     expect(AccessControlMapper.toRole(dto)).toEqual({
       id: 'r1',
@@ -44,6 +45,7 @@ describe('AccessControlMapper', () => {
       description: 'A custom role',
       isSystem: false,
       status: 'ACTIVE',
+      permissionsVersion: 3,
     });
   });
 
@@ -72,6 +74,7 @@ describe('AccessControlMapper', () => {
       Description: null,
       IsSystem: true,
       Status: 'ACTIVE',
+      PermissionsVersion: 0,
       Permissions: [{ Id: 'p1', PermissionCode: 'QC.READ.SKU', Action: 'Read', ObjectType: 'SKU', Description: null }],
     };
     expect(AccessControlMapper.toRoleDetail(withPerms).permissions).toHaveLength(1);
@@ -105,5 +108,51 @@ describe('AccessControlMapper', () => {
     });
     expect(result.roles).toEqual(['WMS_ADMIN']);
     expect(result.permissions[0]).toEqual({ action: 'Read', objectType: 'SKU', permissionCode: 'X' });
+  });
+
+  it('toSetRolePermissionsRequest maps to lower-camel, includes version (RA-04 review), and strips an absent reasonNote', () => {
+    expect(
+      AccessControlMapper.toSetRolePermissionsRequest({
+        permissions: [{ action: 'Update', objectType: 'SKU' }],
+        version: 0,
+        reasonCode: 'RC-ROLE-PERMISSION-UPDATE',
+      }),
+    ).toEqual({
+      permissions: [{ action: 'Update', objectType: 'SKU' }],
+      version: 0,
+      reasonCode: 'RC-ROLE-PERMISSION-UPDATE',
+    });
+
+    const withNote = AccessControlMapper.toSetRolePermissionsRequest({
+      permissions: [],
+      version: 2,
+      reasonCode: 'RC-ROLE-PERMISSION-UPDATE',
+      reasonNote: 'note',
+    });
+    expect(withNote).toEqual({
+      permissions: [],
+      version: 2,
+      reasonCode: 'RC-ROLE-PERMISSION-UPDATE',
+      reasonNote: 'note',
+    });
+  });
+
+  it('toResetRolePermissionsRequest maps to lower-camel and strips an absent reasonNote (RA-04)', () => {
+    expect(
+      AccessControlMapper.toResetRolePermissionsRequest({ reasonCode: 'RC-ROLE-PERMISSION-UPDATE' }),
+    ).toEqual({ reasonCode: 'RC-ROLE-PERMISSION-UPDATE' });
+  });
+
+  it('toEffectivePermissionsResult maps the lower-camel permissions + version response (defaults permissions to [] when absent, RA-04)', () => {
+    expect(
+      AccessControlMapper.toEffectivePermissionsResult({
+        permissions: [{ action: 'Update', objectType: 'SKU' }],
+        version: 1,
+      }),
+    ).toEqual({ permissions: [{ action: 'Update', objectType: 'SKU' }], version: 1 });
+
+    expect(
+      AccessControlMapper.toEffectivePermissionsResult({ permissions: undefined as never, version: 0 }),
+    ).toEqual({ permissions: [], version: 0 });
   });
 });

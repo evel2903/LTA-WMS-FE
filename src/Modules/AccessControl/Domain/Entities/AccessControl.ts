@@ -17,6 +17,8 @@ export interface Role {
   description: string | null;
   isSystem: boolean;
   status: string;
+  /** Optimistic-lock counter for permission writes — see SetRolePermissionsInput.version. */
+  permissionsVersion: number;
 }
 
 /** A role with its granted permissions (detail shape — feeds the matrix cells). */

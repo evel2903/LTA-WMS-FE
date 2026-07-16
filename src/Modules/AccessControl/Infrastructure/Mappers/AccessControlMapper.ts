@@ -11,6 +11,8 @@ import type {
   AssignDataScopeInput,
   AssignRoleInput,
   CreateRoleInput,
+  ResetRolePermissionsInput,
+  SetRolePermissionsInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import type {
   AssignDataScopeRequestDto,
@@ -18,9 +20,12 @@ import type {
   CreateRoleRequestDto,
   DataScopeDto,
   EffectivePermissionsDto,
+  EffectivePermissionsResponseDto,
   PagedDto,
   PermissionDto,
+  ResetRolePermissionsRequestDto,
   RoleDto,
+  SetRolePermissionsRequestDto,
   UserDto,
 } from '@modules/AccessControl/Infrastructure/Dtos/AccessControlDtos';
 
@@ -68,6 +73,7 @@ export const AccessControlMapper = {
       description: dto.Description,
       isSystem: dto.IsSystem,
       status: dto.Status,
+      permissionsVersion: dto.PermissionsVersion,
     };
   },
 
@@ -133,5 +139,35 @@ export const AccessControlMapper = {
       ScopeValueCode: input.scopeValueCode,
       IncludeAll: input.includeAll,
     }) as AssignDataScopeRequestDto;
+  },
+
+  // ── Role-permissions (lower-camel — Signal 3 exception, see AccessControlDtos.ts) ────
+
+  toSetRolePermissionsRequest(input: SetRolePermissionsInput): SetRolePermissionsRequestDto {
+    return removeEmpty({
+      permissions: input.permissions,
+      version: input.version,
+      reasonCode: input.reasonCode,
+      reasonNote: input.reasonNote,
+    });
+  },
+
+  toResetRolePermissionsRequest(input: ResetRolePermissionsInput): ResetRolePermissionsRequestDto {
+    return removeEmpty({
+      reasonCode: input.reasonCode,
+      reasonNote: input.reasonNote,
+    });
+  },
+
+  toEffectivePermissionsResult(
+    dto: EffectivePermissionsResponseDto,
+  ): { permissions: { action: string; objectType: string }[]; version: number } {
+    return {
+      permissions: (dto.permissions ?? []).map((permission) => ({
+        action: permission.action,
+        objectType: permission.objectType,
+      })),
+      version: dto.version,
+    };
   },
 };

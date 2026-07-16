@@ -21,6 +21,7 @@ const adminRole: RoleDetail = {
   description: null,
   isSystem: true,
   status: 'ACTIVE',
+  permissionsVersion: 0,
   permissions: [perm('Read', 'SKU'), perm('Create', 'SKU')],
 };
 
@@ -31,6 +32,7 @@ const qcRole: RoleDetail = {
   description: null,
   isSystem: true,
   status: 'ACTIVE',
+  permissionsVersion: 0,
   permissions: [perm('Read', 'SKU')],
 };
 
