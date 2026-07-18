@@ -182,7 +182,12 @@ export function SkuForm({
           id="sku-default-owner"
           name="defaultOwnerId"
           label="Chủ hàng mặc định"
-          value={defaultOwnerId}
+          // `defaultOwnerId` is typed `string | undefined` because the Zod schema wraps
+          // it in `optionalText` (preprocess '' -> undefined for validation), but at
+          // runtime this field is always seeded with '' and only ever set to a real
+          // string via ComboboxSelect's own onChange -- coerce the type here rather than
+          // touching the shared schema.
+          value={defaultOwnerId ?? ''}
           placeholder="Không chọn"
           optional
           options={defaultOwnerOptions}

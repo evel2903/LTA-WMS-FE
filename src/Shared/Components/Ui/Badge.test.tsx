@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { InboundLineStageChip } from '@modules/Inbound/Presentation/Components/InboundLineStageChip';
+import { InboundLineStageChip } from '@modules/InboundReceiving/Presentation/Components/InboundLineStageChip';
 import { FoundationStatusBadge } from '@modules/FoundationOverview/Presentation/Components/FoundationStatusBadge';
 import { StockStatusBadge } from '@modules/Inventory/Presentation/Components/StockStatusBadge';
 import { STOCK_STATUS_LABELS } from '@modules/Inventory/Domain/Constants/InventoryConstants';

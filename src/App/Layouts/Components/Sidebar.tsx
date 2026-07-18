@@ -111,7 +111,7 @@ const NAV_ENTRIES: NavEntry[] = [
     label: 'Vận hành',
     icon: Warehouse,
     children: [
-      { label: 'Nhập kho', to: ROUTES.INBOUND.ROOT, icon: PackageOpen },
+      { label: 'Nhập kho', to: ROUTES.INBOUND_PLAN.ROOT, icon: PackageOpen },
       { label: 'Cất hàng', to: ROUTES.PUTAWAY.ROOT, icon: PackageCheck },
       { label: 'Bổ sung hàng', to: ROUTES.REPLENISHMENT.ROOT, icon: PackagePlus },
       { label: 'Xuất kho', to: ROUTES.OUTBOUND.ROOT, icon: ShoppingCart },

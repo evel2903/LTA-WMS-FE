@@ -1,0 +1,406 @@
+import type { FormEvent, ReactNode } from 'react';
+
+import { PackageCheck } from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
+import { Input } from '@shared/Components/Ui/Input';
+import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
+import type {
+  InboundLpn,
+  InboundPutawayRelease,
+  ReceiptLine,
+  ReceivingSession,
+} from '@modules/InboundReceiving/Domain/Types/Receipt';
+
+interface InboundReleasePutawayPanelProps {
+  canConfirmInboundLpn: boolean;
+  canReleaseInboundToPutaway: boolean;
+  confirmedInboundLpn: InboundLpn | null;
+  confirmedReceiptLine: ReceiptLine | null;
+  hasConfirmInboundLpnError: boolean;
+  isConfirmInboundLpnPending: boolean;
+  isReleaseInboundToPutawayPending: boolean;
+  lpnCode: string;
+  lpnIdempotencyKey: string;
+  onLpnCodeChange: (value: string) => void;
+  onLpnIdempotencyKeyChange: (value: string) => void;
+  onReleaseAttemptLabelOverrideChange: (value: boolean) => void;
+  onReleaseCurrentLocationCodeChange: (value: string) => void;
+  onReleaseEvidenceRefsChange: (value: string) => void;
+  onReleaseIdempotencyKeyChange: (value: string) => void;
+  onReleaseReasonCodeChange: (value: string) => void;
+  onReleaseRequireLpnChange: (value: boolean) => void;
+  onSsccCodeChange: (value: string) => void;
+  onSubmitInboundLpn: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmitReleaseInboundToPutaway: (event: FormEvent<HTMLFormElement>) => void;
+  isCreatingPutawayTask: boolean;
+  putawayReady: boolean;
+  putawayRelease: InboundPutawayRelease | null;
+  putawayTaskCode: string | null;
+  putawayTaskErrorMessage: string | null;
+  receivingSession: ReceivingSession | null;
+  // IFB-21: this receipt-line was released, but the plan line's cumulative
+  // received quantity is still below its expected quantity (SerialControlled
+  // multi-unit lines are released one unit at a time) -- surface a real
+  // action to go scan the remaining units instead of leaving the operator
+  // with no visible next step.
+  onReceiveMoreUnitsClick: () => void;
+  showReceiveMoreUnitsAction: boolean;
+  // IFB-22: RELEASE-axis analog -- the plan line is fully received but its
+  // cumulative released quantity is still below expected (release is also
+  // per-unit), so the badge/stepper can no longer honestly say "done" -- give
+  // the operator a real action to go release the remaining units instead of
+  // leaving them with no visible next step (mutually exclusive with the
+  // receive-axis action above; the two states never both apply).
+  onReleaseRemainingUnitsClick: () => void;
+  showReleaseRemainingUnitsAction: boolean;
+  releaseAttemptLabelOverride: boolean;
+  releaseCurrentLocationCode: string;
+  releaseErrorMessage: string | null;
+  releaseEvidenceRefs: string;
+  releaseIdempotencyKey: string;
+  releaseReasonCode: string;
+  releaseRequireLpn: boolean;
+  ssccCode: string;
+}
+
+function getLpnHelper({
+  confirmedReceiptLine,
+  isPending,
+  lpnCode,
+  lpnIdempotencyKey,
+  receivingSession,
+}: {
+  confirmedReceiptLine: ReceiptLine | null;
+  isPending: boolean;
+  lpnCode: string;
+  lpnIdempotencyKey: string;
+  receivingSession: ReceivingSession | null;
+}) {
+  if (!receivingSession) return 'Cần phiên tiếp nhận trước khi xác nhận LPN/SSCC.';
+  if (!confirmedReceiptLine) return 'Cần xác nhận dòng tiếp nhận trước khi xác nhận LPN/SSCC.';
+  if (isPending) return 'Đang xác nhận LPN/SSCC.';
+  if (!lpnCode.trim()) return 'Nhập mã LPN để xác nhận.';
+  if (!lpnIdempotencyKey.trim()) return 'Cần khóa idempotency LPN.';
+  return 'Sẵn sàng xác nhận LPN/SSCC.';
+}
+
+function TechnicalDetails({ children, testId }: { children: ReactNode; testId: string }) {
+  return (
+    <details className="rounded-md border bg-muted/30 p-3 text-sm" data-testid={testId}>
+      <summary className="cursor-pointer font-medium">Chi tiết kỹ thuật</summary>
+      <div className="mt-3 space-y-3">{children}</div>
+    </details>
+  );
+}
+
+function getReleaseHelper({
+  confirmedInboundLpn,
+  confirmedReceiptLine,
+  isPending,
+  putawayReady,
+  receivingSession,
+  releaseIdempotencyKey,
+  releaseRequireLpn,
+}: {
+  confirmedInboundLpn: InboundLpn | null;
+  confirmedReceiptLine: ReceiptLine | null;
+  isPending: boolean;
+  putawayReady: boolean;
+  receivingSession: ReceivingSession | null;
+  releaseIdempotencyKey: string;
+  releaseRequireLpn: boolean;
+}) {
+  if (!receivingSession) return 'Cần phiên tiếp nhận trước khi phát hành cất hàng.';
+  if (!confirmedReceiptLine) return 'Cần xác nhận dòng tiếp nhận trước khi phát hành cất hàng.';
+  if (!putawayReady) return 'Cần trạng thái READY_FOR_PUTAWAY trước khi phát hành cất hàng.';
+  if (releaseRequireLpn && !confirmedInboundLpn)
+    return 'Cần xác nhận LPN vì cấu hình đang yêu cầu LPN.';
+  if (isPending) return 'Đang phát hành sang cất hàng.';
+  if (!releaseIdempotencyKey.trim()) return 'Cần khóa idempotency phát hành.';
+  if (!releaseRequireLpn && !confirmedInboundLpn) {
+    return 'LPN đang được bỏ yêu cầu trên UI; nếu WarehouseProfile yêu cầu LPN, backend vẫn có thể chặn phát hành.';
+  }
+  return 'Sẵn sàng phát hành sang cất hàng.';
+}
+
+export function InboundReleasePutawayPanel({
+  canConfirmInboundLpn,
+  canReleaseInboundToPutaway,
+  confirmedInboundLpn,
+  confirmedReceiptLine,
+  hasConfirmInboundLpnError,
+  isConfirmInboundLpnPending,
+  isCreatingPutawayTask,
+  isReleaseInboundToPutawayPending,
+  lpnCode,
+  lpnIdempotencyKey,
+  onLpnCodeChange,
+  onLpnIdempotencyKeyChange,
+  onReleaseAttemptLabelOverrideChange,
+  onReleaseCurrentLocationCodeChange,
+  onReleaseEvidenceRefsChange,
+  onReleaseIdempotencyKeyChange,
+  onReleaseReasonCodeChange,
+  onReleaseRequireLpnChange,
+  onSsccCodeChange,
+  onSubmitInboundLpn,
+  onSubmitReleaseInboundToPutaway,
+  onReceiveMoreUnitsClick,
+  showReceiveMoreUnitsAction,
+  onReleaseRemainingUnitsClick,
+  showReleaseRemainingUnitsAction,
+  putawayReady,
+  putawayRelease,
+  putawayTaskCode,
+  putawayTaskErrorMessage,
+  receivingSession,
+  releaseAttemptLabelOverride,
+  releaseCurrentLocationCode,
+  releaseErrorMessage,
+  releaseEvidenceRefs,
+  releaseIdempotencyKey,
+  releaseReasonCode,
+  releaseRequireLpn,
+  ssccCode,
+}: InboundReleasePutawayPanelProps) {
+  // ReleaseInboundToPutawayUseCase actually validates Action=Update, ObjectType=Receipt
+  // (not Override — verified live: {action:'Override'} matches 0 ACTIVE codes, which made
+  // this dropdown permanently empty; {action:'Update', objectType:'Receipt'} matches
+  // RC-V1-DISCREPANCY).
+  const {
+    options: reasonCodeOptions,
+    isLoading: reasonCodesLoading,
+    isError: reasonCodesError,
+  } = useReasonCodeOptions({ action: 'Update', objectType: 'Receipt' });
+  const lpnHelper = getLpnHelper({
+    confirmedReceiptLine,
+    isPending: isConfirmInboundLpnPending,
+    lpnCode,
+    lpnIdempotencyKey,
+    receivingSession,
+  });
+  const releaseHelper = getReleaseHelper({
+    confirmedInboundLpn,
+    confirmedReceiptLine,
+    isPending: isReleaseInboundToPutawayPending,
+    putawayReady,
+    receivingSession,
+    releaseIdempotencyKey,
+    releaseRequireLpn,
+  });
+
+  return (
+    <Card data-testid="inbound-release-putaway-panel">
+      <CardHeader>
+        <CardTitle className="text-base">LPN/SSCC và phát hành cất hàng</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form className="space-y-3" onSubmit={onSubmitInboundLpn}>
+          {/* LPN + SSCC codes pair into 2 columns only at 2xl (single column below);
+              adjacent in the original order so the flow is preserved. */}
+          <div className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-code">
+              Mã LPN
+              <Input
+                id="inbound-lpn-code"
+                name="lpnCode"
+                value={lpnCode}
+                onChange={(event) => onLpnCodeChange(event.target.value)}
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-sscc-code">
+              Mã SSCC
+              <Input
+                id="inbound-sscc-code"
+                name="ssccCode"
+                value={ssccCode}
+                onChange={(event) => onSsccCodeChange(event.target.value)}
+              />
+            </label>
+          </div>
+          <TechnicalDetails testId="inbound-lpn-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-lpn-idempotency-key">
+              Khóa idempotency LPN
+              <Input
+                id="inbound-lpn-idempotency-key"
+                name="lpnIdempotencyKey"
+                value={lpnIdempotencyKey}
+                onChange={(event) => onLpnIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
+          <p className="break-words text-sm text-muted-foreground" data-testid="inbound-lpn-helper">
+            {lpnHelper}
+          </p>
+          <button
+            type="submit"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canConfirmInboundLpn || isConfirmInboundLpnPending}
+          >
+            <PackageCheck className="size-4" />
+            Xác nhận LPN/SSCC
+          </button>
+        </form>
+
+        {confirmedInboundLpn && (
+          <p className="break-words text-sm text-muted-foreground">
+            LPN {confirmedInboundLpn.lpnCode}
+            {confirmedInboundLpn.ssccCode ? ` / ${confirmedInboundLpn.ssccCode}` : ''}
+            {confirmedInboundLpn.isDuplicate ? ' đã dùng lại' : ''}
+          </p>
+        )}
+
+        <form className="space-y-3 border-t pt-3" onSubmit={onSubmitReleaseInboundToPutaway}>
+          <TechnicalDetails testId="inbound-release-technical-details">
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-current-location-code">
+              Mã vị trí hiện tại
+              <Input
+                id="inbound-release-current-location-code"
+                name="releaseCurrentLocationCode"
+                value={releaseCurrentLocationCode}
+                onChange={(event) => onReleaseCurrentLocationCodeChange(event.target.value)}
+              />
+            </label>
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="inbound-release-require-lpn"
+            >
+              <input
+                id="inbound-release-require-lpn"
+                name="releaseRequireLpn"
+                type="checkbox"
+                checked={releaseRequireLpn}
+                onChange={(event) => onReleaseRequireLpnChange(event.target.checked)}
+              />
+              Yêu cầu LPN
+            </label>
+            {!releaseRequireLpn && (
+              <p
+                className="break-words text-sm text-muted-foreground"
+                data-testid="inbound-release-require-lpn-warning"
+              >
+                Kho có thể vẫn yêu cầu LPN dù tắt tùy chọn này.
+              </p>
+            )}
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="inbound-release-attempt-label-override"
+            >
+              <input
+                id="inbound-release-attempt-label-override"
+                name="releaseAttemptLabelOverride"
+                type="checkbox"
+                checked={releaseAttemptLabelOverride}
+                onChange={(event) => onReleaseAttemptLabelOverrideChange(event.target.checked)}
+              />
+              Ghi đè nhãn
+            </label>
+            <LookupSelect
+              id="inbound-release-reason-code"
+              name="releaseReasonCode"
+              label="Mã lý do phát hành"
+              value={releaseReasonCode}
+              placeholder="Chọn mã lý do"
+              options={reasonCodeOptions}
+              isLoading={reasonCodesLoading}
+              isError={reasonCodesError}
+              emptyMessage="Chưa có mã lý do khả dụng."
+              errorMessage="Không tải được danh sách mã lý do."
+              onChange={onReleaseReasonCodeChange}
+            />
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-evidence-refs">
+              Tham chiếu bằng chứng phát hành
+              <Input
+                id="inbound-release-evidence-refs"
+                name="releaseEvidenceRefs"
+                value={releaseEvidenceRefs}
+                onChange={(event) => onReleaseEvidenceRefsChange(event.target.value)}
+                placeholder="photo://label/override-1"
+              />
+            </label>
+            <label className="grid gap-1 text-sm" htmlFor="inbound-release-idempotency-key">
+              Khóa idempotency phát hành
+              <Input
+                id="inbound-release-idempotency-key"
+                name="releaseIdempotencyKey"
+                value={releaseIdempotencyKey}
+                onChange={(event) => onReleaseIdempotencyKeyChange(event.target.value)}
+              />
+            </label>
+          </TechnicalDetails>
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-helper"
+          >
+            {releaseHelper}
+          </p>
+          <button
+            type="submit"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!canReleaseInboundToPutaway || isReleaseInboundToPutawayPending}
+          >
+            <PackageCheck className="size-4" />
+            Phát hành sang cất hàng
+          </button>
+        </form>
+
+        {putawayRelease && (
+          <p className="break-words text-sm text-muted-foreground">
+            Đã phát hành {putawayRelease.quantity} {putawayRelease.uomCode ?? putawayRelease.uomId}{' '}
+            / {putawayRelease.inventoryStatusCode}
+            {putawayRelease.currentLocationCode ? ` / ${putawayRelease.currentLocationCode}` : ''}
+          </p>
+        )}
+        {putawayRelease && showReceiveMoreUnitsAction && (
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+            onClick={onReceiveMoreUnitsClick}
+            data-testid="inbound-receive-more-units-button"
+          >
+            Nhận thêm đơn vị
+          </button>
+        )}
+        {putawayRelease && showReleaseRemainingUnitsAction && (
+          <button
+            type="button"
+            className="flex min-h-10 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted"
+            onClick={onReleaseRemainingUnitsClick}
+            data-testid="inbound-release-remaining-units-button"
+          >
+            Release đơn vị còn lại
+          </button>
+        )}
+        {putawayRelease && isCreatingPutawayTask && (
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-putaway-task-pending"
+          >
+            Đang tạo tác vụ cất hàng...
+          </p>
+        )}
+        {putawayRelease && putawayTaskCode && (
+          <p
+            className="break-words text-sm text-muted-foreground"
+            data-testid="inbound-release-putaway-task-code"
+          >
+            Tác vụ cất hàng {putawayTaskCode} đã sẵn sàng ở màn Cất hàng.
+          </p>
+        )}
+        {hasConfirmInboundLpnError ? (
+          <p className="text-sm text-destructive">Không thể xác nhận LPN/SSCC.</p>
+        ) : null}
+        {releaseErrorMessage ? (
+          <p className="text-sm text-destructive">{releaseErrorMessage}</p>
+        ) : null}
+        {putawayRelease && putawayTaskErrorMessage ? (
+          <p className="text-sm text-destructive" data-testid="inbound-release-putaway-task-error">
+            {putawayTaskErrorMessage}
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}

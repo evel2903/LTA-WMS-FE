@@ -83,12 +83,18 @@ export const ROUTES = {
     EXCEPTION_ACTION: (id = ':id') => `/foundation/exceptions/${id}/action`,
   },
   WAREHOUSE: { ROOT: '/warehouse' },
-  INBOUND: {
+  INBOUND_PLAN: {
     ROOT: '/inbound',
     NEW: '/inbound/new',
-    DETAIL: (id = ':id') => `/inbound/${id}`,
-    ACTION: (id = ':id', action = ':action') => `/inbound/${id}/${action}`,
-    DISCREPANCY: (id = ':id', lineId = ':lineId') => `/inbound/${id}/discrepancy/${lineId}`,
+    DETAIL: (id = ':id') => `/inbound/${routeParam(id)}`,
+    EDIT: (id = ':id') => `/inbound/${routeParam(id)}/edit`,
+    GATE_IN: (id = ':id') => `/inbound/${routeParam(id)}/gate-in`,
+  },
+  INBOUND_RECEIVING: {
+    DETAIL: (id = ':id') => `/inbound-receiving/${routeParam(id)}`,
+    ACTION: (id = ':id', action = ':action') => `/inbound-receiving/${id}/${action}`,
+    DISCREPANCY: (id = ':id', lineId = ':lineId') =>
+      `/inbound-receiving/${id}/discrepancy/${lineId}`,
   },
   PUTAWAY: {
     ROOT: '/putaway',
