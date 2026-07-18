@@ -89,7 +89,8 @@ const placeholderOnlySurfaces: PlaceholderSurface[] = [
 ] as const;
 
 const implementedRouteRegistrations = [
-  'inboundRoutes',
+  'inboundPlanRoutes',
+  'inboundReceivingRoutes',
   'putawayRoutes',
   'replenishmentRoutes',
   'outboundRoutes',
@@ -111,7 +112,7 @@ const implementedRouteRegistrations = [
 ] as const;
 
 const implementedSidebarRouteRefs = [
-  'ROUTES.INBOUND.ROOT',
+  'ROUTES.INBOUND_PLAN.ROOT',
   'ROUTES.PUTAWAY.ROOT',
   'ROUTES.REPLENISHMENT.ROOT',
   'ROUTES.OUTBOUND.ROOT',

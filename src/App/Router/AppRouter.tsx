@@ -26,7 +26,8 @@ import { controlValidationCatalogRoutes } from '@modules/ControlValidationCatalo
 import { partnerMasterRoutes } from '@modules/PartnerMaster/Presentation/Routes/PartnerMasterRoutes';
 import { taskExecutionRoutes } from '@modules/TaskExecution/Presentation/Routes/TaskExecutionRoutes';
 import { barcodeLabelRoutes } from '@modules/BarcodeLabel/Presentation/Routes/BarcodeLabelRoutes';
-import { inboundRoutes } from '@modules/Inbound/Presentation/Routes/InboundRoutes';
+import { inboundPlanRoutes } from '@modules/InboundPlan/Presentation/Routes/InboundPlanRoutes';
+import { inboundReceivingRoutes } from '@modules/InboundReceiving/Presentation/Routes/InboundReceivingRoutes';
 import { putawayRoutes } from '@modules/Putaway/Presentation/Routes/PutawayRoutes';
 import { cycleCountRoutes } from '@modules/CycleCount/Presentation/Routes/CycleCountRoutes';
 import { replenishmentRoutes } from '@modules/Replenishment/Presentation/Routes/ReplenishmentRoutes';
@@ -75,7 +76,8 @@ const router = createBrowserRouter([
           ...partnerMasterRoutes,
           ...taskExecutionRoutes,
           ...barcodeLabelRoutes,
-          ...inboundRoutes,
+          ...inboundPlanRoutes,
+          ...inboundReceivingRoutes,
           ...putawayRoutes,
           ...cycleCountRoutes,
           ...replenishmentRoutes,

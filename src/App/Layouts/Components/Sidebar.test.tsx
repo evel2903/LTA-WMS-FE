@@ -50,7 +50,7 @@ describe('Sidebar V1 route hygiene', () => {
     renderSidebar();
 
     for (const [label, href] of [
-      ['Nhập kho', ROUTES.INBOUND.ROOT],
+      ['Nhập kho', ROUTES.INBOUND_PLAN.ROOT],
       ['Cất hàng', ROUTES.PUTAWAY.ROOT],
       ['Bổ sung hàng', ROUTES.REPLENISHMENT.ROOT],
       ['Xuất kho', ROUTES.OUTBOUND.ROOT],
