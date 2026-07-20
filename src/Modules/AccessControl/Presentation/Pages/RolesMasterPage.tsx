@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
@@ -15,8 +16,10 @@ import {
   toMutationErrorMessage,
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import { useAccessControlMutations } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
+import { accessControlQueryKeys } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
 import { useRoleDetails, useRoles } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';
+import type { RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import { RoleForm } from '@modules/AccessControl/Presentation/Forms/RoleForm';
 
 function listState(params: { error: unknown; isLoading: boolean; itemCount: number }): PageBoundaryState | null {
@@ -33,6 +36,8 @@ const roleStatusLabel = (status: string) => (status === 'ACTIVE' ? 'Đang hoạt
 /** RA-03: roles list + "Tạo vai trò". "Chi tiết" only navigates — RA-04 owns the editor. */
 export function RolesMasterPage() {
   const store = useAccessControlStore();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const rolesQuery = useRoles({ page: store.rolesPage });
   const roles = rolesQuery.data?.items ?? [];
   const detailQueries = useRoleDetails(roles.map((role) => role.roleCode));
@@ -75,9 +80,6 @@ export function RolesMasterPage() {
         }
         toolbar={
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to={ROUTES.FOUNDATION.ACCESS.PERMISSION_MATRIX}>Xem ma trận quyền (audit)</Link>
-            </Button>
             {!forbiddenToCreate ? (
               <Button type="button" size="sm" onClick={openCreateModal}>
                 Tạo vai trò
@@ -156,7 +158,25 @@ export function RolesMasterPage() {
           pending={mutations.createRole.isPending}
           error={inlineCreateError}
           onSubmit={(values) =>
-            mutations.createRole.mutate(values, { onSuccess: () => setCreateOpen(false) })
+            mutations.createRole.mutate(values, {
+              onSuccess: (role) => {
+                setCreateOpen(false);
+                // Navigate straight to the new role's own detail page instead of relying on
+                // it appearing in THIS page's `roles()` list — that refetch can fail, pause
+                // (offline), or return a stale/replica-lagged page, which would otherwise
+                // leave no "Chi tiết" link to click and block the AC3 create -> detail ->
+                // permission chain (Review Finding, round 13). Seed the detail cache with the
+                // mutation's own response first — `{ ...role, permissions: [] }` is truthful
+                // (a brand-new role has zero grants by construction, no grant call has
+                // happened yet) — so `RoleDetailPage` renders immediately, not blocked by its
+                // own `getRole` GET, which could be affected by the same staleness risk.
+                queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(role.roleCode), {
+                  ...role,
+                  permissions: [],
+                });
+                void navigate(ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(role.roleCode));
+              },
+            })
           }
         />
       </FormModal>

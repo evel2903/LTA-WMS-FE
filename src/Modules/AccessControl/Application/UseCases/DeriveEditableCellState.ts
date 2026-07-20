@@ -89,15 +89,37 @@ export function toggleGrantCell(
   return setGrantCell(pendingGrants, roleCode, objectType, action, !pendingGrants.has(key));
 }
 
-/** Sets multiple cells to the same checked value in one pass — for bulk row/column toggle. */
+/** Sets multiple cells to the same checked value in one pass — for bulk row/column toggle.
+ * On a bulk UNCHECK, also clears a `Read` grant left with no remaining dependent action for its
+ * object type (an orphaned auto-added dependency, not a protected baseline grant) — a plain
+ * per-cell unset would otherwise leave "bỏ chọn tất cả" not actually clearing the row/column,
+ * since `Read` is excluded from `cells` (it was `read-dependency-locked`, not `editable`, at the
+ * moment the bulk operation was computed) (Review Finding, round 6). */
 export function bulkSetGrantCells(
   pendingGrants: Set<string>,
   roleCode: string,
   cells: { objectType: string; action: string }[],
   checked: boolean,
+  dependencyCleanup?: { allActions: string[]; isSystem: boolean; baselineGrants: Set<string> },
 ): Set<string> {
-  return cells.reduce(
+  const next = cells.reduce(
     (grants, cell) => setGrantCell(grants, roleCode, cell.objectType, cell.action, checked),
     pendingGrants,
   );
+  if (checked || !dependencyCleanup) return next;
+
+  const { allActions, isSystem, baselineGrants } = dependencyCleanup;
+  let result = next;
+  for (const objectType of new Set(cells.map((cell) => cell.objectType))) {
+    const readKey = matrixCellKey(roleCode, 'Read', objectType);
+    if (!result.has(readKey) || (isSystem && baselineGrants.has(readKey))) continue;
+    const hasOtherGrant = allActions.some(
+      (action) => action !== 'Read' && result.has(matrixCellKey(roleCode, action, objectType)),
+    );
+    if (!hasOtherGrant) {
+      result = new Set(result);
+      result.delete(readKey);
+    }
+  }
+  return result;
 }

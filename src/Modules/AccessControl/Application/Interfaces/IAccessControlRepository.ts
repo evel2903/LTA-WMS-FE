@@ -23,6 +23,9 @@ import type {
 export interface IAccessControlRepository {
   // Roles & permissions
   listRoles(filter?: RoleListFilter): Promise<PaginatedResponse<Role>>;
+  /** Pages through the whole role catalog (no silent truncation past PageSize ≤ 100); always
+   * starts at page 1 — there is no meaningful "page" for "the whole catalog". */
+  listAllRoles(): Promise<Role[]>;
   getRole(roleCode: RoleCode): Promise<RoleDetail>;
   createRole(input: CreateRoleInput): Promise<Role>;
   /** Pages through the whole permission catalog (no silent truncation). */

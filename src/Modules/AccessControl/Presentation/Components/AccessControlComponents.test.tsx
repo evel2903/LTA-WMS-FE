@@ -5,6 +5,7 @@ import { AccessStateView } from '@modules/AccessControl/Presentation/Components/
 import { UserAssignmentPanel } from '@modules/AccessControl/Presentation/Components/UserAssignmentPanel';
 import { AssignDataScopeForm } from '@modules/AccessControl/Presentation/Forms/AssignDataScopeForm';
 import { AssignRoleForm } from '@modules/AccessControl/Presentation/Forms/AssignRoleForm';
+import type { Role } from '@modules/AccessControl/Domain/Entities/AccessControl';
 
 const user = {
   id: 'user-1',
@@ -12,6 +13,16 @@ const user = {
   lastName: 'Nguyen',
   email: 'an.nguyen@example.com',
   createdAt: '2026-06-29T00:00:00.000Z',
+};
+
+const operatorRole: Role = {
+  id: 'role-operator',
+  roleCode: 'OPERATOR',
+  roleName: 'Nhân viên vận hành',
+  description: null,
+  isSystem: true,
+  status: 'ACTIVE',
+  permissionsVersion: 0,
 };
 
 const pending = {
@@ -50,7 +61,10 @@ describe('AccessControl ReUI helper alerts', () => {
     const html = renderToStaticMarkup(
       <UserAssignmentPanel
         user={user}
+        roles={[operatorRole]}
+        rolesStatus="ready"
         effective={{ userId: user.id, roles: [], permissions: [] }}
+        reservedRoleCodes={[]}
         dataScopes={[]}
         canManage={false}
         pending={pending}
@@ -73,7 +87,7 @@ describe('AccessControl ReUI helper alerts', () => {
     const emptyRolesHtml = renderToStaticMarkup(<AssignRoleForm availableRoles={[]} onSubmit={() => undefined} />);
     const conflictHtml = renderToStaticMarkup(
       <AssignRoleForm
-        availableRoles={['OPERATOR']}
+        availableRoles={[operatorRole]}
         conflict="Xung đột gán vai trò"
         onSubmit={() => undefined}
       />,

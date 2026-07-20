@@ -13,25 +13,6 @@ export type { SystemRoleCode };
 /** Any role code, core or admin-created custom (RA-03). Capability comes 100% from role_permissions, never from the code itself. */
 export type RoleCode = string;
 
-/** Display order + labels for the matrix columns and assignment selects. */
-export const CORE_ROLE_CODES: SystemRoleCode[] = [
-  'WMS_ADMIN',
-  'WAREHOUSE_SUPERVISOR',
-  'WAREHOUSE_COORDINATOR',
-  'OPERATOR',
-  'QC',
-  'INVENTORY_ACCOUNTANT',
-];
-
-export const ROLE_LABELS: Record<RoleCode, string> = {
-  WMS_ADMIN: 'WMS Admin',
-  WAREHOUSE_SUPERVISOR: 'Giám sát kho',
-  WAREHOUSE_COORDINATOR: 'Điều phối kho',
-  OPERATOR: 'Nhân viên vận hành',
-  QC: 'QC',
-  INVENTORY_ACCOUNTANT: 'Kế toán kho',
-};
-
 /** The four data-scope dimensions (BE DataScopeType). */
 export type DataScopeType = 'WAREHOUSE' | 'ZONE' | 'OWNER' | 'CUSTOMER';
 

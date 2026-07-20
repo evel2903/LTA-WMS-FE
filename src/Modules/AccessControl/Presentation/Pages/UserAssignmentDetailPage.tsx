@@ -10,6 +10,8 @@ import type { PageBoundaryState } from '@shared/Components/Page/PageStateBoundar
 import { conflictMessage } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import { useAccessControlMutations } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
 import {
+  useAllRoles,
+  useReservedRoleCodes,
   useUserDataScopes,
   useUserEffectivePermissions,
   useUsers,
@@ -55,11 +57,26 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
   const isEdit = mode === 'edit';
 
   const usersQuery = useUsers({ page: 1, pageSize: 100 });
+  const rolesQuery = useAllRoles();
   const effectiveQuery = useUserEffectivePermissions(userId || null);
   const dataScopesQuery = useUserDataScopes(userId || null);
+  const reservedQuery = useReservedRoleCodes(userId || null);
+  const reservedRoleCodes = Object.keys(reservedQuery.data ?? {});
   const mutations = useAccessControlMutations();
 
   const user = usersQuery.data?.items.find((item) => item.id === userId) ?? fallbackUser(userId);
+  // Full catalog (not Active-filtered) so an assigned role that later becomes inactive keeps
+  // its real name (Review Finding) — UserAssignmentPanel applies the Active filter itself,
+  // only for what's selectable to assign (RA-05 Decision #4: client-side, no BE status param).
+  const roleCatalog = rolesQuery.data ?? [];
+  // Data-presence-first, not status-string-first (Review Finding): `isLoading` is false while
+  // a first fetch is offline-paused (no data yet, but not "fetching" either), and `isError`
+  // goes true on a background refetch failure even when older data is still perfectly usable
+  // (TanStack Query's `isRefetchError = isError && hasData`). Block only when there is truly
+  // no catalog to show yet; a retained stale catalog after a failed refetch still counts as
+  // ready.
+  const rolesStatus: 'loading' | 'error' | 'ready' =
+    rolesQuery.data !== undefined ? 'ready' : rolesQuery.isError ? 'error' : 'loading';
   const detailError =
     (effectiveQuery.error instanceof ApiError ? effectiveQuery.error : null) ??
     (dataScopesQuery.error instanceof ApiError ? dataScopesQuery.error : null);
@@ -110,7 +127,10 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
         <UserAssignmentPanel
           key={userId}
           user={user}
+          roles={roleCatalog}
+          rolesStatus={rolesStatus}
           effective={effectiveQuery.data}
+          reservedRoleCodes={reservedRoleCodes}
           dataScopes={dataScopesQuery.data ?? []}
           canManage={canMutate}
           readOnlyMessage={readOnlyMessage}

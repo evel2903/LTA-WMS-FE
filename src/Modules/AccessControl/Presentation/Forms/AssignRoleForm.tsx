@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Alert, AlertDescription } from '@shared/Components/Reui/alert';
-import { ROLE_LABELS, type RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type { Role } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { AssignRoleInput } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import {
   assignRoleFormSchema,
@@ -11,7 +12,7 @@ import {
 } from '@modules/AccessControl/Presentation/Forms/AssignmentFormSchema';
 
 interface AssignRoleFormProps {
-  availableRoles: RoleCode[];
+  availableRoles: Role[];
   disabled?: boolean;
   pending?: boolean;
   conflict?: string;
@@ -27,13 +28,27 @@ export function AssignRoleForm({
 }: AssignRoleFormProps) {
   const form = useForm<AssignRoleFormValues>({
     resolver: zodResolver(assignRoleFormSchema),
-    defaultValues: { roleCode: availableRoles[0] ?? 'WMS_ADMIN' },
+    defaultValues: { roleCode: availableRoles[0]?.roleCode ?? '' },
   });
+  const selectedRoleCode = form.watch('roleCode');
+
+  // Stays mounted across a catalog refresh (no remount-via-`key` trick) — an admin mid-way
+  // through picking a non-first option must not have that silently reset to option 1 just
+  // because the set reordered or gained an entry elsewhere. Only reseed the field when the
+  // CURRENTLY selected role actually stops being a valid option (removed/deactivated/just
+  // assigned) — the last case already covers "reset after a successful assignment" for free,
+  // since assigning a role always removes it from `availableRoles` (Review Finding).
+  useEffect(() => {
+    const stillValid = availableRoles.some((role) => role.roleCode === selectedRoleCode);
+    if (!stillValid) {
+      form.setValue('roleCode', availableRoles[0]?.roleCode ?? '');
+    }
+  }, [availableRoles, selectedRoleCode, form]);
 
   if (availableRoles.length === 0) {
     return (
       <Alert variant="info" role="status">
-        <AlertDescription>Đã gán tất cả vai trò lõi.</AlertDescription>
+        <AlertDescription>Đã gán tất cả vai trò khả dụng.</AlertDescription>
       </Alert>
     );
   }
@@ -50,8 +65,8 @@ export function AssignRoleForm({
           {...form.register('roleCode')}
         >
           {availableRoles.map((role) => (
-            <option key={role} value={role}>
-              {ROLE_LABELS[role]}
+            <option key={role.roleCode} value={role.roleCode}>
+              {role.roleName}
             </option>
           ))}
         </select>
