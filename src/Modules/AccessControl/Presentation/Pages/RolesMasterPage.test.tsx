@@ -278,4 +278,52 @@ describe('RolesMasterPage (RA-03)', () => {
     expect(await screen.findByText('Ma trận quyền')).toBeTruthy();
     expect(fake.getRole).toHaveBeenCalledWith('WMS_ADMIN');
   });
+
+  it("navigates straight to the newly created role's detail page on success, seeding its cache so a stale/failed roles() list refetch never blocks the AC3 create -> detail -> permission chain (Review Finding, round 13)", async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    let resolveGetRoleForNewRole: (() => void) | undefined;
+    const originalGetRole = fake.getRole;
+    fake.getRole = vi.fn((roleCode: string) => {
+      if (roleCode === 'QC_LEAD') {
+        return new Promise<RoleDetail>((resolve) => {
+          resolveGetRoleForNewRole = () =>
+            resolve({
+              id: 'role-qc-lead',
+              roleCode: 'QC_LEAD',
+              roleName: 'QC Lead',
+              description: null,
+              isSystem: false,
+              status: 'ACTIVE',
+              permissionsVersion: 0,
+              permissions: [],
+            });
+        });
+      }
+      return originalGetRole(roleCode);
+    });
+    // The roles() paginated list refetch that create's onSuccess triggers fails outright -- the
+    // new role would never appear in the table, so there'd be no "Chi tiết" link to click.
+    fake.listRoles = vi
+      .fn()
+      .mockResolvedValueOnce(page(fake.roles))
+      .mockRejectedValue(new Error('network blip'));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    await screen.findByText('WMS Admin');
+    await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
+    await actor.type(screen.getByLabelText('Mã vai trò'), 'QC_LEAD');
+    await actor.type(screen.getByLabelText('Tên vai trò'), 'QC Lead');
+    await actor.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Tạo vai trò' }));
+
+    // Lands directly on QC_LEAD's OWN detail page -- the matrix renders from the seeded cache
+    // immediately, without waiting on the still-pending `getRole('QC_LEAD')` GET, and despite
+    // the roles() list refetch having failed.
+    expect(await screen.findByText('Ma trận quyền')).toBeTruthy();
+    expect(screen.getByText('QC Lead')).toBeTruthy();
+    expect(screen.getByText('Mã: QC_LEAD — Tuỳ chỉnh')).toBeTruthy();
+
+    resolveGetRoleForNewRole?.();
+  });
 });

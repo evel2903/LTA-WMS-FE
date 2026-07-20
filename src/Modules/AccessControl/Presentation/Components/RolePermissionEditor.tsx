@@ -102,6 +102,15 @@ export function RolePermissionEditor({
 }: RolePermissionEditorProps) {
   const [search, setSearch] = useState('');
   const [objectTypeFilter, setObjectTypeFilter] = useState('ALL');
+  // `<details open>` as a static JSX literal is uncontrolled: if the DOM's native `open` state
+  // ever diverges (e.g. a native toggle), React never re-applies it on later renders, since the
+  // prop value never changes across renders from React's point of view. That desync silently
+  // collapses `<details>` down to its closed (summary-only) height, which shrinks `main`'s
+  // scrollable content and can strand the Save button below the fold with no obvious cause.
+  // Driving `open` from real state keeps the DOM and React in sync on every render.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(FAMILY_GROUPS.map((group) => [group.label, true])),
+  );
 
   const validCellKeys = useMemo(
     () => new Set(matrix.rows.map((row) => `${row.objectType}::${row.action}`)),
@@ -139,14 +148,44 @@ export function RolePermissionEditor({
     const cells = ACTION_CODES.filter((action) => cellState(objectType, action).kind === 'editable').map(
       (action) => ({ objectType, action }),
     );
-    onChange(bulkSetGrantCells(pendingGrants, roleCode, cells, checked));
+    onChange(
+      bulkSetGrantCells(pendingGrants, roleCode, cells, checked, {
+        allActions: ACTION_CODES,
+        isSystem,
+        baselineGrants,
+      }),
+    );
   }
 
-  function handleBulkColumn(action: string, checked: boolean) {
-    const cells = visibleObjectTypes
+  // Scoped to the CALLER-supplied object types, not `visibleObjectTypes` as a whole -- each
+  // group renders its own column checkbox, and must only ever touch its own group's rows
+  // (Review Finding: bulk column toggle was leaking into every other accordion group).
+  //
+  // Deliberately NO `dependencyCleanup` here (unlike `handleBulkRow`) -- a column bulk action
+  // is scoped to exactly ONE action across many objects, so it must never reach into a
+  // DIFFERENT action's cell (Read) for any of them. Row-wide clear is an unambiguous "wipe
+  // everything for this object" signal; a single-action column clear is not (Review Finding,
+  // round 7/8: column-clearing the last dependent action was deleting an independently
+  // granted Read that predated the whole bulk operation).
+  function handleBulkColumn(action: string, checked: boolean, objectTypes: string[]) {
+    const cells = objectTypes
       .filter((objectType) => cellState(objectType, action).kind === 'editable')
       .map((objectType) => ({ objectType, action }));
     onChange(bulkSetGrantCells(pendingGrants, roleCode, cells, checked));
+  }
+
+  /** Derives the tri-state (all/some/none) + disabled state for a bulk row/column checkbox
+   * from its OWN editable cells only — an uncontrolled checkbox otherwise keeps whatever the
+   * user last clicked, so a single cell edit can silently desync it from reality and the next
+   * click then clears grants instead of selecting them (Review Finding, round 6). */
+  function bulkCheckboxState(cellStates: { kind: string; checked: boolean }[]) {
+    const editable = cellStates.filter((state) => state.kind === 'editable');
+    const checkedCount = editable.filter((state) => state.checked).length;
+    return {
+      checked: editable.length > 0 && checkedCount === editable.length,
+      indeterminate: checkedCount > 0 && checkedCount < editable.length,
+      disabled: editable.length === 0,
+    };
   }
 
   return (
@@ -195,7 +234,14 @@ export function RolePermissionEditor({
         return (
           <details
             key={group.label}
-            open
+            open={openGroups[group.label] ?? true}
+            onToggle={(event) => {
+              // Read `currentTarget.open` synchronously — the DOM resets `currentTarget` to
+              // null once dispatch finishes, and the functional setState updater below can run
+              // after that point, so it must close over a plain boolean, not the event itself.
+              const isOpen = event.currentTarget.open;
+              setOpenGroups((prev) => ({ ...prev, [group.label]: isOpen }));
+            }}
             className="rounded-md border bg-card p-3 text-sm"
             data-testid={`permission-group-${group.label}`}
           >
@@ -207,57 +253,52 @@ export function RolePermissionEditor({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Đối tượng</TableHead>
-                    {ACTION_CODES.map((action) => (
-                      <TableHead key={action} className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span>{actionLabel(action)}</span>
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              disabled={disabled}
-                              className="text-xs underline disabled:opacity-50"
-                              onClick={() => handleBulkColumn(action, true)}
-                            >
-                              Tất cả
-                            </button>
-                            <button
-                              type="button"
-                              disabled={disabled}
-                              className="text-xs underline disabled:opacity-50"
-                              onClick={() => handleBulkColumn(action, false)}
-                            >
-                              Không
-                            </button>
+                    {ACTION_CODES.map((action) => {
+                      const columnState = bulkCheckboxState(
+                        groupObjectTypes.map((objectType) => cellState(objectType, action)),
+                      );
+                      return (
+                        <TableHead key={action} className="text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span>{actionLabel(action)}</span>
+                            <input
+                              type="checkbox"
+                              ref={(element) => {
+                                if (element) element.indeterminate = columnState.indeterminate;
+                              }}
+                              checked={columnState.checked}
+                              disabled={disabled || columnState.disabled}
+                              aria-label={`Chọn tất cả ${actionLabel(action)}`}
+                              title="Tick: chọn tất cả — Bỏ tick: bỏ chọn tất cả cho các ô có thể sửa"
+                              onChange={(event) => handleBulkColumn(action, event.target.checked, groupObjectTypes)}
+                            />
                           </div>
-                        </div>
-                      </TableHead>
-                    ))}
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {groupObjectTypes.map((objectType) => (
+                  {groupObjectTypes.map((objectType) => {
+                    const rowState = bulkCheckboxState(
+                      ACTION_CODES.map((action) => cellState(objectType, action)),
+                    );
+                    return (
                     <TableRow key={objectType}>
                       <TableCell className="font-medium">
-                        <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            ref={(element) => {
+                              if (element) element.indeterminate = rowState.indeterminate;
+                            }}
+                            checked={rowState.checked}
+                            disabled={disabled || rowState.disabled}
+                            aria-label={`Chọn tất cả ${objectTypeLabel(objectType)}`}
+                            title="Tick: chọn tất cả — Bỏ tick: bỏ chọn tất cả cho các ô có thể sửa"
+                            onChange={(event) => handleBulkRow(objectType, event.target.checked)}
+                          />
                           <span>{objectTypeLabel(objectType)}</span>
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              disabled={disabled}
-                              className="text-xs underline disabled:opacity-50"
-                              onClick={() => handleBulkRow(objectType, true)}
-                            >
-                              Tất cả
-                            </button>
-                            <button
-                              type="button"
-                              disabled={disabled}
-                              className="text-xs underline disabled:opacity-50"
-                              onClick={() => handleBulkRow(objectType, false)}
-                            >
-                              Không
-                            </button>
-                          </div>
                         </div>
                       </TableCell>
                       {ACTION_CODES.map((action) => {
@@ -292,7 +333,8 @@ export function RolePermissionEditor({
                         );
                       })}
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -306,5 +348,3 @@ export function RolePermissionEditor({
     </div>
   );
 }
-
-export { ACTION_CODES, FAMILY_GROUPS };

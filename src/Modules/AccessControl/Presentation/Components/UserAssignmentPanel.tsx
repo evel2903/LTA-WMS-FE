@@ -3,14 +3,11 @@ import { Button } from '@shared/Components/Ui/Button';
 import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 import type {
   EffectivePermissions,
+  Role,
   UserDataScope,
   UserSummary,
 } from '@modules/AccessControl/Domain/Entities/AccessControl';
-import {
-  CORE_ROLE_CODES,
-  ROLE_LABELS,
-  type RoleCode,
-} from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type {
   AssignDataScopeInput,
   AssignRoleInput,
@@ -36,7 +33,21 @@ interface ConflictMessages {
 
 interface UserAssignmentPanelProps {
   user: UserSummary;
+  /** Full role catalog (RA-05) — dynamic, not the old hardcoded 6-core-role set, so a
+   * custom role created via RolesMasterPage can be selected too. Used for BOTH label lookups
+   * (including roles that later became inactive) and, once Active-filtered below, assignment
+   * options. */
+  roles: Role[];
+  /** Catalog fetch state — gates the assign-role form so it never claims "none available"
+   * while the catalog is still loading or failed to load (Review Finding). */
+  rolesStatus: 'loading' | 'error' | 'ready';
   effective?: EffectivePermissions;
+  /** Role codes with a just-succeeded, not-yet-removed assignment for this user — excluded
+   * from `availableRoles` to close the gap between a successful assign and the effective-
+   * permissions refetch landing (Review Finding, round 9), without depending on the mutation
+   * cache's own GC timing to know when that reservation should end (Review Finding, round 11:
+   * lifted from `useAccessControlMutations()`'s own local state instead). */
+  reservedRoleCodes: string[];
   dataScopes: UserDataScope[];
   canManage: boolean;
   readOnlyMessage?: string;
@@ -55,7 +66,10 @@ function scopeValueLabel(scope: UserDataScope): string {
 
 export function UserAssignmentPanel({
   user,
+  roles,
+  rolesStatus,
   effective,
+  reservedRoleCodes,
   dataScopes,
   canManage,
   readOnlyMessage = 'Bạn không có quyền chỉnh sửa phân quyền của người dùng này.',
@@ -67,8 +81,19 @@ export function UserAssignmentPanel({
   onRemoveScope,
 }: UserAssignmentPanelProps) {
   const assignedRoles = effective?.roles ?? [];
-  const availableRoles = CORE_ROLE_CODES.filter((role) => !assignedRoles.includes(role));
+  // Active-only for what's selectable (RA-05 Decision #4) — `roles` itself stays the full
+  // catalog so `roleNameByCode` below still resolves an assigned role that later went inactive.
+  const availableRoles = roles.filter(
+    (role) =>
+      role.status === 'ACTIVE' &&
+      !assignedRoles.includes(role.roleCode) &&
+      !reservedRoleCodes.includes(role.roleCode),
+  );
   const permissionCount = effective?.permissions.length ?? 0;
+  const roleNameByCode = new Map(roles.map((role) => [role.roleCode, role.roleName]));
+  // Falls back to the raw code (never blank/"undefined") — a role can be assigned but no
+  // longer appear in `roles` if it was deactivated after assignment (RA-05 AC1).
+  const roleLabel = (roleCode: string) => roleNameByCode.get(roleCode) ?? roleCode;
 
   return (
     <div className="space-y-6">
@@ -96,10 +121,10 @@ export function UserAssignmentPanel({
             {assignedRoles.map((role) => (
               <li key={role}>
                 <Badge variant="secondary" className="max-w-full gap-2 whitespace-normal break-words">
-                  <span className="min-w-0 break-words">{ROLE_LABELS[role]}</span>
+                  <span className="min-w-0 break-words">{roleLabel(role)}</span>
                   {canManage && (
                     <button
-                      aria-label={`Gỡ vai trò ${ROLE_LABELS[role]}`}
+                      aria-label={`Gỡ vai trò ${roleLabel(role)}`}
                       className="text-destructive"
                       disabled={pending.removeRole}
                       onClick={() => onRemoveRole(role)}
@@ -112,11 +137,22 @@ export function UserAssignmentPanel({
             ))}
           </ul>
         )}
-        {canManage && (
+        {canManage && rolesStatus === 'loading' && (
+          <Alert variant="info" role="status">
+            <AlertDescription>Đang tải danh sách vai trò...</AlertDescription>
+          </Alert>
+        )}
+        {canManage && rolesStatus === 'error' && (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>Không thể tải danh sách vai trò để gán. Thử tải lại trang.</AlertDescription>
+          </Alert>
+        )}
+        {canManage && rolesStatus === 'ready' && (
+          // No remount-on-change `key` here (Review Finding) — `AssignRoleForm` now stays
+          // mounted across a catalog refresh and reseeds its own selection only when the
+          // currently-selected role actually stops being valid, preserving an in-progress
+          // pick of a non-first option instead of silently resetting to option 1.
           <AssignRoleForm
-            // Remount when the available set changes (after assign/remove) so the
-            // default selection re-seeds to a still-valid role — avoids a stale submit.
-            key={availableRoles.join('|') || 'none'}
             availableRoles={availableRoles}
             pending={pending.assignRole}
             conflict={conflicts.role}

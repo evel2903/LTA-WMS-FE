@@ -159,6 +159,14 @@ function button(name: string): HTMLButtonElement {
   return screen.getByRole('button', { name });
 }
 
+function permissionGroup(testId: string): HTMLDetailsElement {
+  return screen.getByTestId(testId);
+}
+
+function findPermissionGroup(testId: string): Promise<HTMLDetailsElement> {
+  return screen.findByTestId(testId);
+}
+
 async function chooseReason(actor: ReturnType<typeof userEvent.setup>) {
   const combo = screen.getByRole('combobox', { name: 'Lý do' });
   await actor.click(combo);
@@ -255,6 +263,31 @@ describe('RoleDetailPage (RA-04)', () => {
     expect(checkbox('SKU Tạo mới').checked).toBe(false);
   });
 
+  it('remembers a permission-group panel was manually collapsed even after it is filtered out and back in (Review Finding: static `open` JSX literal reset a remounted <details> back open, silently discarding the user’s choice)', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage('WMS_ADMIN');
+
+    await screen.findByText('WMS Admin');
+    const group = permissionGroup('permission-group-Dữ liệu nền tảng');
+    const summary = group.querySelector('summary') as HTMLElement;
+    expect(group.open).toBe(true);
+
+    await actor.click(summary);
+    expect(group.open).toBe(false);
+
+    // Search for a term that only matches the OTHER group ("Vận hành"'s CoreFlow) -- this
+    // group's `<details>` unmounts entirely (`groupObjectTypes.length === 0` -> `return null`).
+    await actor.type(screen.getByLabelText('Tìm đối tượng'), 'Luồng nghiệp vụ lõi');
+    expect(screen.queryByTestId('permission-group-Dữ liệu nền tảng')).toBeNull();
+
+    // Clearing the search remounts this group's <details> under the SAME `key` -- it must
+    // still reflect the user's earlier choice to collapse it, not silently reopen.
+    await actor.clear(screen.getByLabelText('Tìm đối tượng'));
+    const remountedGroup = await findPermissionGroup('permission-group-Dữ liệu nền tảng');
+    expect(remountedGroup.open).toBe(false);
+  });
+
   it('bulk row toggle only affects editable cells for that object', async () => {
     const actor = userEvent.setup();
     repo.current = new FakeRepository() as unknown as IAccessControlRepository;
@@ -262,11 +295,112 @@ describe('RoleDetailPage (RA-04)', () => {
 
     await screen.findByText('WMS Admin');
     const skuRow = checkbox('SKU Tạo mới').closest('tr') as HTMLElement;
-    await actor.click(within(skuRow).getByRole('button', { name: 'Tất cả' }));
+    await actor.click(within(skuRow).getByRole('checkbox', { name: 'Chọn tất cả SKU' }));
 
     expect(checkbox('SKU Tạo mới').checked).toBe(true);
     // Already-locked cells are untouched by bulk (still locked, not toggled off).
     expect(checkbox('SKU Cập nhật').disabled).toBe(true);
+  });
+
+  it('bulk column toggle only affects rows within its own accordion group, not a different group (Review Finding: leaked across groups)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    // UserAssignment lives in the "Quản trị" group (separate from SKU's "Dữ liệu nền tảng")
+    // and, unlike Role, is not a rider-locked object type -- its Create cell is genuinely
+    // editable, so a cross-group leak actually flips it instead of being masked by a lock.
+    fake.listAllPermissions = vi.fn(() => Promise.resolve([...CATALOG, permission('Create', 'UserAssignment')]));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage('WMS_ADMIN');
+
+    await screen.findByText('WMS Admin');
+    expect(checkbox('Phân quyền người dùng Tạo mới').checked).toBe(false);
+    const foundationGroup = permissionGroup('permission-group-Dữ liệu nền tảng');
+    await actor.click(within(foundationGroup).getByRole('checkbox', { name: 'Chọn tất cả Tạo mới' }));
+
+    expect(checkbox('SKU Tạo mới').checked).toBe(true); // this group's own cell
+    expect(checkbox('Phân quyền người dùng Tạo mới').checked).toBe(false); // a DIFFERENT group must be untouched
+  });
+
+  it('column bulk clear does not delete an independently selected Read grant for a different action (Review Finding, round 7/8)', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByText('Inventory Lead');
+    // Independently grant Read:Owner directly (not as a side effect of any bulk operation) --
+    // nothing else is ever granted for Owner in this test.
+    await actor.click(checkbox('Chủ hàng Xem'));
+    expect(checkbox('Chủ hàng Xem').checked).toBe(true);
+
+    const foundationGroup = permissionGroup('permission-group-Dữ liệu nền tảng');
+    const updateColumn = () =>
+      within(foundationGroup).getByRole('checkbox', { name: 'Chọn tất cả Cập nhật' });
+    await actor.click(updateColumn()); // bulk-check the whole "Cập nhật" column (includes Owner)
+    expect(checkbox('Chủ hàng Cập nhật').checked).toBe(true);
+
+    await actor.click(updateColumn()); // bulk-uncheck the same column
+    expect(checkbox('Chủ hàng Cập nhật').checked).toBe(false);
+    // The independently-granted Read:Owner must survive -- column bulk actions must stay
+    // scoped to their OWN action, never reaching into Read (a different action/column) just
+    // because it happens to have no sibling grant left after this unrelated column clears.
+    expect(checkbox('Chủ hàng Xem').checked).toBe(true);
+  });
+
+  it('bulk row checkbox reflects a real tri-state (checked/indeterminate) derived from its own editable cells, not whatever was last clicked (Review Finding, round 6)', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByText('Inventory Lead');
+    const skuRow = () => checkbox('Chọn tất cả SKU');
+
+    // SKU's 3 catalog actions (Read/Update/Create) are all editable for this non-system role;
+    // only the baseline Read:SKU grant is checked so far -- 1 of 3, a genuine partial state.
+    expect(skuRow().checked).toBe(false);
+    expect(skuRow().indeterminate).toBe(true);
+
+    await actor.click(checkbox('SKU Cập nhật'));
+    // Update:SKU is now granted, which locks Read:SKU as a dependency (excluded from the
+    // editable count) -- leaving Update checked and Create not, still a real partial state.
+    // A genuinely uncontrolled checkbox would instead silently keep showing whatever the row
+    // checkbox itself was last clicked to, not this derived value.
+    expect(skuRow().checked).toBe(false);
+    expect(skuRow().indeterminate).toBe(true);
+
+    await actor.click(checkbox('SKU Tạo mới'));
+    // Every still-editable action for SKU (Update, Create -- Read stays excluded/locked) is
+    // now checked -- the row must report "all", not stay stuck showing partial.
+    expect(skuRow().checked).toBe(true);
+    expect(skuRow().indeterminate).toBe(false);
+  });
+
+  it('bulk row checkbox is disabled when every action for its object is locked or not in the catalog (Review Finding, round 6)', async () => {
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage('WMS_ADMIN');
+
+    await screen.findByText('WMS Admin');
+    // Role's Create/Update are always rider-locked, Read is dependency-locked because
+    // Update:Role is granted, and the remaining actions aren't in this fixture's catalog --
+    // there is nothing left this checkbox could legitimately bulk-toggle.
+    expect(checkbox('Chọn tất cả Vai trò').disabled).toBe(true);
+  });
+
+  it('bulk-unchecking a row also clears a Read grant left with no remaining dependent action, not just the actions that depended on it (Review Finding, round 6)', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByText('Inventory Lead');
+    await actor.click(checkbox('Chọn tất cả SKU')); // bulk-check every editable SKU action
+    expect(checkbox('SKU Cập nhật').checked).toBe(true);
+    expect(checkbox('SKU Xem').checked).toBe(true);
+    expect(checkbox('SKU Xem').disabled).toBe(true); // now dependency-locked by Update/Create
+
+    await actor.click(checkbox('Chọn tất cả SKU')); // bulk-uncheck the whole row
+    expect(checkbox('SKU Cập nhật').checked).toBe(false);
+    // "Bỏ chọn tất cả" must really clear the row -- including Read, which is now an orphaned
+    // dependency with nothing left requiring it.
+    expect(checkbox('SKU Xem').checked).toBe(false);
   });
 
   it('Save sends the FULL currently-ticked set (not a diff), including auto-ticked Read', async () => {

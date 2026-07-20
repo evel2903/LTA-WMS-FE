@@ -3,12 +3,6 @@ import type { RouteObject } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
 
-const RolePermissionMatrixPage = lazy(() =>
-  import('@modules/AccessControl/Presentation/Pages/RolePermissionMatrixPage').then((module) => ({
-    default: module.RolePermissionMatrixPage,
-  })),
-);
-
 const RolesMasterPage = lazy(() =>
   import('@modules/AccessControl/Presentation/Pages/RolesMasterPage').then((module) => ({
     default: module.RolesMasterPage,
@@ -36,7 +30,6 @@ const UserAssignmentDetailPage = lazy(() =>
 export const accessControlRoutes: RouteObject[] = [
   { path: ROUTES.FOUNDATION.ACCESS.ROLES, element: <RolesMasterPage /> },
   { path: ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(), element: <RoleDetailPage /> },
-  { path: ROUTES.FOUNDATION.ACCESS.PERMISSION_MATRIX, element: <RolePermissionMatrixPage /> },
   { path: ROUTES.FOUNDATION.ACCESS.USERS, element: <UsersAssignmentsPage /> },
   {
     path: ROUTES.FOUNDATION.ACCESS.USER_DETAIL(),

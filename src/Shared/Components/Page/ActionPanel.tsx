@@ -110,10 +110,14 @@ export function ActionPanel({
       {children != null || footer != null ? (
         <fieldset
           disabled={lockControls}
-          className="space-y-4 disabled:cursor-not-allowed disabled:opacity-70"
+          // `min-w-0`: browsers default `fieldset` to `min-width: min-content`, so without this
+          // it refuses to shrink below its content's natural width (e.g. a wide table) and
+          // pushes the whole PAGE into horizontal overflow instead of letting the table's own
+          // `overflow-x-auto` wrapper take over (Review Finding, re-review round 3).
+          className="min-w-0 space-y-4 disabled:cursor-not-allowed disabled:opacity-70"
           aria-disabled={lockControls ? true : undefined}
         >
-          {children != null ? <div className="space-y-4">{children}</div> : null}
+          {children != null ? <div className="min-w-0 space-y-4">{children}</div> : null}
           {footer != null ? (
             <div className="border-border flex flex-wrap justify-end gap-2 border-t pt-4">{footer}</div>
           ) : null}
