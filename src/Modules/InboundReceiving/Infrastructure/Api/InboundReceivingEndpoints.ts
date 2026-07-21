@@ -1,4 +1,7 @@
 export const INBOUND_RECEIVING_ENDPOINTS = {
+  RECEIPTS: '/receipts',
+  RECEIPT_BY_ID: (receiptId: string) => `/receipts/${receiptId}`,
+  RECEIPT_OPERATIONAL_STATE: (receiptId: string) => `/receipts/${receiptId}/operational-state`,
   PLAN_OPERATIONAL_STATE: (planId: string) => `/inbound-plans/${planId}/operational-state`,
   RECEIVING_READINESS: (planId: string) => `/inbound-plans/${planId}/receiving-readiness`,
   RECEIVING_SESSIONS: (planId: string) => `/inbound-plans/${planId}/receiving-sessions`,

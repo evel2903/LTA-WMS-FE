@@ -12,6 +12,7 @@ export interface OwnerListFilter extends PageFilter {
   status?: MasterDataStatus;
   ownerCode?: string;
   ownerName?: string;
+  search?: string;
 }
 
 export interface UomListFilter extends PageFilter {
@@ -19,6 +20,7 @@ export interface UomListFilter extends PageFilter {
   uomCode?: string;
   uomName?: string;
   uomType?: string;
+  search?: string;
 }
 
 export interface SkuListFilter extends PageFilter {
@@ -27,6 +29,7 @@ export interface SkuListFilter extends PageFilter {
   skuName?: string;
   defaultOwnerId?: string;
   itemClass?: string;
+  search?: string;
 }
 
 export interface SkuBarcodeListFilter extends PageFilter {

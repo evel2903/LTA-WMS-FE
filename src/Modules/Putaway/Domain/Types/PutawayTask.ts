@@ -9,8 +9,8 @@ export interface PutawayTask {
   inboundPutawayReleaseId: string;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   inboundLpnId: string | null;
   ownerId: string;
   ownerCode: string | null;

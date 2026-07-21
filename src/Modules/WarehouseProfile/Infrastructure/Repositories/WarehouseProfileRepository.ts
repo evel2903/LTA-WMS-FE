@@ -63,6 +63,7 @@ export class WarehouseProfileRepository implements IWarehouseProfileRepository {
           Status: filter.status,
           WarehouseTypeCode: filter.warehouseTypeCode,
           WarehouseId: filter.warehouseId,
+          Search: filter.search,
         },
       },
     );

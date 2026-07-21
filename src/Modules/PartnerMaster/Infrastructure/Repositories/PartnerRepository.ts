@@ -14,7 +14,10 @@ import type {
   UpdatePartnerInput,
 } from '@modules/PartnerMaster/Domain/Types/PartnerQuery';
 import { PARTNER_ENDPOINTS } from '@modules/PartnerMaster/Infrastructure/Api/PartnerEndpoints';
-import type { PagedPartnerDto, PartnerDto } from '@modules/PartnerMaster/Infrastructure/Dtos/PartnerDtos';
+import type {
+  PagedPartnerDto,
+  PartnerDto,
+} from '@modules/PartnerMaster/Infrastructure/Dtos/PartnerDtos';
 import { PartnerMapper } from '@modules/PartnerMaster/Infrastructure/Mappers/PartnerMapper';
 
 function pageSize(value?: number): number {
@@ -44,6 +47,7 @@ export class PartnerRepository implements IPartnerRepository {
         PartnerCode: filter.partnerCode,
         PartnerName: filter.partnerName,
         ExternalReference: filter.externalReference,
+        Search: filter.search,
       }),
     });
     return PartnerMapper.toPaged(dto);

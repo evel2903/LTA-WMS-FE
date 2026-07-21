@@ -2,6 +2,10 @@ function routeParam(value: string): string {
   return value === ':id' ? value : encodeURIComponent(value);
 }
 
+function receiptRouteParam(value: string): string {
+  return value.startsWith(':') ? value : encodeURIComponent(value);
+}
+
 /**
  * Centralised route path registry. Reference these constants instead of
  * hard-coding string paths so refactors stay safe across modules.
@@ -90,10 +94,16 @@ export const ROUTES = {
     GATE_IN: (id = ':id') => `/inbound/${routeParam(id)}/gate-in`,
   },
   INBOUND_RECEIVING: {
+    ROOT: '/inbound-receiving',
+    NEW: '/inbound-receiving/new',
     DETAIL: (id = ':id') => `/inbound-receiving/${routeParam(id)}`,
     ACTION: (id = ':id', action = ':action') => `/inbound-receiving/${id}/${action}`,
     DISCREPANCY: (id = ':id', lineId = ':lineId') =>
       `/inbound-receiving/${id}/discrepancy/${lineId}`,
+    RECEIPT_DETAIL: (receiptId = ':receiptId') =>
+      `/inbound-receiving/receipts/${receiptRouteParam(receiptId)}`,
+    RECEIPT_ACTION: (receiptId = ':receiptId', action = ':action') =>
+      `/inbound-receiving/receipts/${receiptRouteParam(receiptId)}/${action}`,
   },
   PUTAWAY: {
     ROOT: '/putaway',
@@ -128,10 +138,12 @@ export const ROUTES = {
   INTEGRATION: {
     ROOT: '/integration',
     DEAD_LETTER_DETAIL: (id = ':id') => `/integration/dead-letters/${id}`,
-    DEAD_LETTER_ACTION: (id = ':id', action = ':action') => `/integration/dead-letters/${id}/${action}`,
+    DEAD_LETTER_ACTION: (id = ':id', action = ':action') =>
+      `/integration/dead-letters/${id}/${action}`,
     RECONCILIATION: '/integration/reconciliation',
     RECONCILIATION_DETAIL: (id = ':id') => `/integration/reconciliation/${id}`,
-    RECONCILIATION_ACTION: (id = ':id', action = ':action') => `/integration/reconciliation/${id}/${action}`,
+    RECONCILIATION_ACTION: (id = ':id', action = ':action') =>
+      `/integration/reconciliation/${id}/${action}`,
   },
   MOBILE: {
     TASKS: '/mobile/tasks',

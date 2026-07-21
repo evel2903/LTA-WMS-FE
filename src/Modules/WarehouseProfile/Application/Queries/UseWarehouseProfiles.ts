@@ -11,6 +11,14 @@ export function useWarehouseProfiles(filter: WarehouseProfileListFilter = {}) {
   });
 }
 
+export function useWarehouseProfile(id: string | null) {
+  return useQuery({
+    queryKey: warehouseProfileQueryKeys.profileDetail(id ?? ''),
+    queryFn: () => warehouseProfileRepository.getProfile(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useProfileAssignments(profileId: string | null) {
   return useQuery({
     queryKey: warehouseProfileQueryKeys.assignments(profileId ?? ''),

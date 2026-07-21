@@ -27,9 +27,15 @@ describe('Sidebar V1 route hygiene', () => {
     expect(screen.getByRole('link', { name: 'Loại kho' }).getAttribute('href')).toBe(
       ROUTES.FOUNDATION.WAREHOUSE_TYPES,
     );
-    expect(screen.getByRole('link', { name: 'Site' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.SITES);
-    expect(screen.getByRole('link', { name: 'Kho' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.LOCATIONS);
-    expect(screen.getByRole('link', { name: 'Zone' }).getAttribute('href')).toBe(ROUTES.FOUNDATION.ZONES);
+    expect(screen.getByRole('link', { name: 'Site' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.SITES,
+    );
+    expect(screen.getByRole('link', { name: 'Kho' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.LOCATIONS,
+    );
+    expect(screen.getByRole('link', { name: 'Zone' }).getAttribute('href')).toBe(
+      ROUTES.FOUNDATION.ZONES,
+    );
     expect(screen.getByRole('link', { name: 'Vị trí vật lý' }).getAttribute('href')).toBe(
       ROUTES.FOUNDATION.PHYSICAL_LOCATIONS,
     );
@@ -43,14 +49,17 @@ describe('Sidebar V1 route hygiene', () => {
     expect(navOrder.indexOf('Hồ sơ vị trí')).toBeGreaterThan(navOrder.indexOf('Hồ sơ kho'));
     expect(navOrder.indexOf('Hồ sơ vị trí')).toBeLessThan(navOrder.indexOf('Ma trận quy tắc'));
     // After "Sản phẩm và đóng gói" proves it left the earlier "Cấu trúc vật lý" section.
-    expect(navOrder.indexOf('Hồ sơ vị trí')).toBeGreaterThan(navOrder.indexOf('Sản phẩm và đóng gói'));
+    expect(navOrder.indexOf('Hồ sơ vị trí')).toBeGreaterThan(
+      navOrder.indexOf('Sản phẩm và đóng gói'),
+    );
   });
 
   it('shows only implemented operational route groups in V1', () => {
     renderSidebar();
 
     for (const [label, href] of [
-      ['Nhập kho', ROUTES.INBOUND_PLAN.ROOT],
+      ['Kế hoạch nhập kho', ROUTES.INBOUND_PLAN.ROOT],
+      ['Phiếu nhập kho', ROUTES.INBOUND_RECEIVING.ROOT],
       ['Cất hàng', ROUTES.PUTAWAY.ROOT],
       ['Bổ sung hàng', ROUTES.REPLENISHMENT.ROOT],
       ['Xuất kho', ROUTES.OUTBOUND.ROOT],
