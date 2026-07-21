@@ -24,3 +24,11 @@ export const DATA_SCOPE_LABELS: Record<DataScopeType, string> = {
   OWNER: 'Owner',
   CUSTOMER: 'Customer',
 };
+
+/** Single source for role-status labels — shared between `RoleStatusBadge` (display) and
+ * `RolesMasterPage`'s sort key, so displayed text and sort order can never drift apart
+ * (Review Finding, RA-06). Not a union type: `Role.status` is a bare `string` (BE-owned). */
+export const ROLE_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Đang hoạt động',
+  INACTIVE: 'Ngừng hoạt động',
+};
