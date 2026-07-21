@@ -11,6 +11,7 @@ export interface PartnerListFilter extends PageFilter {
   partnerCode?: string;
   partnerName?: string;
   externalReference?: string;
+  search?: string;
 }
 
 export interface ResolvePartnerByReferenceInput {

@@ -46,7 +46,7 @@ export interface ReceivingReadiness {
 
 export interface ReceivingSession {
   id: string;
-  inboundPlanId: string;
+  inboundPlanId: string | null;
   receiptId: string;
   receiptNumber: string;
   sessionKey: string;
@@ -62,6 +62,27 @@ export interface ReceivingSession {
   createdAt: string;
   updatedAt: string;
   startedBy: string | null;
+  updatedBy: string | null;
+}
+
+export interface Receipt {
+  id: string;
+  inboundPlanId: string | null;
+  receiptNumber: string;
+  businessReference: string;
+  ownerId: string;
+  ownerCode: string | null;
+  warehouseId: string;
+  warehouseCode: string | null;
+  warehouseProfileId: string | null;
+  supplierId: string;
+  supplierCode: string | null;
+  supplierName: string | null;
+  status: ReceiptDocumentStatus;
+  coreFlowInstanceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
   updatedBy: string | null;
 }
 
@@ -83,14 +104,14 @@ export interface ReceiptLineScanEvidence {
 export interface ReceiptLine {
   id: string;
   receiptId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   lineNumber: number;
   skuId: string;
   skuCode: string | null;
   uomId: string;
   uomCode: string | null;
-  expectedQuantity: number;
+  expectedQuantity: number | null;
   actualQuantity: number;
   status: ReceiptLineStatus;
   manualConfirm: boolean;
@@ -114,8 +135,8 @@ export interface InboundLpn {
   id: string;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   ownerId: string;
   ownerCode: string | null;
   warehouseId: string;
@@ -144,8 +165,8 @@ export interface InboundPutawayRelease {
   inboundLpnId: string | null;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   ownerId: string;
   ownerCode: string | null;
   warehouseId: string;
@@ -183,8 +204,8 @@ export interface InboundDiscrepancy {
   id: string;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   discrepancyType: InboundDiscrepancyType;
   status: InboundDiscrepancyStatus;
   toleranceDecision: InboundDiscrepancyToleranceDecision;
@@ -210,8 +231,8 @@ export interface QcTask {
   id: string;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   ownerId: string;
   ownerCode: string | null;
   warehouseId: string;
@@ -244,8 +265,8 @@ export interface QcResult {
   qcTaskId: string;
   receiptId: string;
   receiptLineId: string;
-  inboundPlanId: string;
-  inboundPlanLineId: string;
+  inboundPlanId: string | null;
+  inboundPlanLineId: string | null;
   ownerId: string;
   ownerCode: string | null;
   warehouseId: string;
@@ -274,6 +295,19 @@ export interface QcResult {
 
 export interface InboundOperationalState {
   inboundPlanId: string;
+  receivingSessions: ReceivingSession[];
+  receiptLines: ReceiptLine[];
+  qcTasks: QcTask[];
+  qcResults: QcResult[];
+  lpns: InboundLpn[];
+  releases: InboundPutawayRelease[];
+  discrepancies: InboundDiscrepancy[];
+}
+
+export interface ReceiptOperationalState {
+  receiptId: string;
+  inboundPlanId: string | null;
+  receipt: Receipt;
   receivingSessions: ReceivingSession[];
   receiptLines: ReceiptLine[];
   qcTasks: QcTask[];

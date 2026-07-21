@@ -18,7 +18,9 @@ import type {
   InboundPutawayRelease,
   QcResult,
   QcTask,
+  Receipt,
   ReceiptLine,
+  ReceiptOperationalState,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/InboundReceiving/Domain/Types/Receipt';
@@ -27,6 +29,7 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
+  CreateManualReceiptInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   ReleaseInboundToPutawayInput,
@@ -48,11 +51,14 @@ vi.mock('@modules/InboundPlan/Infrastructure/Repositories/InboundPlanRepositoryI
 }));
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IInboundReceivingRepository }));
-vi.mock('@modules/InboundReceiving/Infrastructure/Repositories/InboundReceivingRepositoryInstance', () => ({
-  get inboundReceivingRepository() {
-    return repo.current;
-  },
-}));
+vi.mock(
+  '@modules/InboundReceiving/Infrastructure/Repositories/InboundReceivingRepositoryInstance',
+  () => ({
+    get inboundReceivingRepository() {
+      return repo.current;
+    },
+  }),
+);
 
 const catalogRepo = vi.hoisted(() => ({
   current: null as unknown as { getSku: ReturnType<typeof vi.fn> },
@@ -222,6 +228,33 @@ class FakeInboundReceivingRepository implements Partial<IInboundReceivingReposit
   // tests behave as before via fallback); set `operationalState` to simulate reload rehydrate.
   public operationalState: InboundOperationalState | null = null;
 
+  listReceipts = vi.fn(() =>
+    Promise.resolve({
+      items: [],
+      page: 1,
+      pageSize: 50,
+      totalItems: 0,
+      totalPages: 0,
+    }),
+  );
+
+  getReceipt = vi.fn(
+    (_receiptId: string): Promise<Receipt> =>
+      Promise.reject(new Error('Not used by the plan receiving page tests')),
+  );
+
+  getReceiptOperationalState = vi.fn(
+    (_receiptId: string): Promise<ReceiptOperationalState> =>
+      Promise.reject(new Error('Not used by the plan receiving page tests')),
+  );
+
+  createManualReceipt = vi.fn(
+    (
+      _input: CreateManualReceiptInput,
+    ): Promise<{ receipt: Receipt; session: ReceivingSession; isDuplicate: boolean }> =>
+      Promise.reject(new Error('Not used by the plan receiving page tests')),
+  );
+
   getOperationalState = vi.fn(
     (id: string): Promise<InboundOperationalState> =>
       Promise.resolve(
@@ -279,7 +312,7 @@ class FakeInboundReceivingRepository implements Partial<IInboundReceivingReposit
         id: 'receipt-line-1',
         receiptId: 'receipt-1',
         inboundPlanId: 'inbound-plan-1',
-        inboundPlanLineId: input.inboundPlanLineId,
+        inboundPlanLineId: input.inboundPlanLineId ?? null,
         lineNumber: 1,
         skuId: 'sku-1',
         skuCode: 'SKU-A',
@@ -756,9 +789,7 @@ describe('InboundReceivingDetailPage', () => {
 
     await expectReadinessAllowed();
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
-    expect(
-      await screen.findByText('Receiving session already closed for this plan.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Receiving session already closed for this plan.')).toBeTruthy();
 
     // Retry succeeds so the flow can reach the confirm-receipt-line form.
     await actor.click(screen.getByRole('button', { name: 'Bắt đầu tiếp nhận' }));
@@ -909,7 +940,10 @@ describe('InboundReceivingDetailPage', () => {
     // the Plan module now; only a redirect link into it is rendered here.
     expect(screen.queryByTestId('inbound-gate-in-panel')).toBeNull();
     const redirectLink = screen.getByRole('link', { name: 'Đi tới Vào cổng' });
-    expect(redirectLink).toHaveProperty('href', expect.stringContaining('/inbound/inbound-plan-1/gate-in'));
+    expect(redirectLink).toHaveProperty(
+      'href',
+      expect.stringContaining('/inbound/inbound-plan-1/gate-in'),
+    );
     expect(screen.getByTestId('inbound-action-blocked').textContent).toContain(
       'Cần vào cổng trước khi tiếp tục — thao tác vào cổng nằm ở trang Kế hoạch.',
     );
@@ -1187,7 +1221,10 @@ describe('InboundReceivingDetailPage', () => {
     await actor.type(screen.getByLabelText('Quét mã hàng'), DEFAULT_RAW_SCAN);
     await openTechnicalDetails(actor, 'inbound-receipt-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency'));
-    await actor.type(screen.getByLabelText('Khóa idempotency'), 'receipt-line-focus-trap-collapsed');
+    await actor.type(
+      screen.getByLabelText('Khóa idempotency'),
+      'receipt-line-focus-trap-collapsed',
+    );
     const confirmButton = screen.getByRole('button', { name: 'Xác nhận nhận hàng' });
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
     fireEvent.submit(confirmButton.closest('form') as HTMLFormElement);
@@ -1484,7 +1521,11 @@ describe('InboundReceivingDetailPage', () => {
 
     await waitFor(() => expect(receivingFake.confirmReceiptLine).toHaveBeenCalledTimes(1));
     const [, receiptInput] = receivingFake.confirmReceiptLine.mock.calls[0];
-    expect(receiptInput).toMatchObject({ lotNumber: 'LOT-XYZ', expiryDate: null, serialNumber: null });
+    expect(receiptInput).toMatchObject({
+      lotNumber: 'LOT-XYZ',
+      expiryDate: null,
+      serialNumber: null,
+    });
   }, 15_000);
 
   it('shows and requires Hạn dùng when the selected SKU is expiryControlled, and passes it to confirmReceiptLine (IDC-03)', async () => {
@@ -2120,14 +2161,18 @@ describe('InboundReceivingDetailPage', () => {
       idempotencyKey: 'lpn-1',
     });
     await waitFor(() => expect(receivingFake.releaseInboundToPutaway).toHaveBeenCalledTimes(1));
-    expect(receivingFake.releaseInboundToPutaway).toHaveBeenCalledWith('receipt-1', 'receipt-line-1', {
-      currentLocationCode: 'RCV-01',
-      requireLpn: true,
-      attemptLabelOverride: false,
-      reasonCode: null,
-      evidenceRefs: [],
-      idempotencyKey: 'release-1',
-    });
+    expect(receivingFake.releaseInboundToPutaway).toHaveBeenCalledWith(
+      'receipt-1',
+      'receipt-line-1',
+      {
+        currentLocationCode: 'RCV-01',
+        requireLpn: true,
+        attemptLabelOverride: false,
+        reasonCode: null,
+        evidenceRefs: [],
+        idempotencyKey: 'release-1',
+      },
+    );
     expect(
       await screen.findByText(/Đã phát hành 12 EA \/ READY_FOR_PUTAWAY \/ RCV-01/i),
     ).toBeTruthy();
@@ -2674,17 +2719,21 @@ describe('InboundReceivingDetailPage', () => {
 
     const rail = await screen.findByTestId('inbound-receipt-line-rail');
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
-    expect(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute(
-      'aria-pressed',
-    )).toBe('true');
+    expect(
+      within(rail)
+        .getByTestId('inbound-receipt-line-rail-button-rl-new')
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
 
     await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old'));
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain(
       'Đã tiếp nhận',
     );
-    expect(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old').getAttribute(
-      'aria-pressed',
-    )).toBe('true');
+    expect(
+      within(rail)
+        .getByTestId('inbound-receipt-line-rail-button-rl-old')
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
 
     await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new'));
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
@@ -2759,8 +2808,12 @@ describe('InboundReceivingDetailPage', () => {
     // filter (e.g. memoized on the wrong dependency) leaks line-2's empty receipt-line
     // set into line-1's re-render instead of correctly re-showing both rl-old/rl-new.
     const railAfterRoundTrip = await screen.findByTestId('inbound-receipt-line-rail');
-    expect(within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-old')).toBeTruthy();
-    expect(within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-new')).toBeTruthy();
+    expect(
+      within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-old'),
+    ).toBeTruthy();
+    expect(
+      within(railAfterRoundTrip).getByTestId('inbound-receipt-line-rail-button-rl-new'),
+    ).toBeTruthy();
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
     expect(
       screen.getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute('aria-pressed'),
@@ -2795,7 +2848,9 @@ describe('InboundReceivingDetailPage', () => {
     const rail = await screen.findByTestId('inbound-receipt-line-rail');
     await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old'));
     expect(
-      within(rail).getByTestId('inbound-receipt-line-rail-button-rl-old').getAttribute('aria-pressed'),
+      within(rail)
+        .getByTestId('inbound-receipt-line-rail-button-rl-old')
+        .getAttribute('aria-pressed'),
     ).toBe('true');
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain(
       'Đã tiếp nhận',
@@ -2803,7 +2858,9 @@ describe('InboundReceivingDetailPage', () => {
 
     await actor.click(within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new'));
     expect(
-      within(rail).getByTestId('inbound-receipt-line-rail-button-rl-new').getAttribute('aria-pressed'),
+      within(rail)
+        .getByTestId('inbound-receipt-line-rail-button-rl-new')
+        .getAttribute('aria-pressed'),
     ).toBe('true');
     expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toContain('Đã QC');
   });
@@ -2829,7 +2886,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-partial', receiptLineId: 'rl-partial', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-partial',
+          receiptLineId: 'rl-partial',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3012,7 +3073,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-correct-sku', receiptLineId: 'rl-correct-sku', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-correct-sku',
+          receiptLineId: 'rl-correct-sku',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3066,7 +3131,11 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-partial', receiptLineId: 'rl-partial', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-partial',
+          receiptLineId: 'rl-partial',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3141,8 +3210,16 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-full-1', receiptLineId: 'rl-full-1', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-full-2', receiptLineId: 'rl-full-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-full-1',
+          receiptLineId: 'rl-full-1',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-full-2',
+          receiptLineId: 'rl-full-2',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3226,7 +3303,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-22-full', receiptLineId: 'rl-22-full-3', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-22-full',
+          receiptLineId: 'rl-22-full-3',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3280,7 +3361,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-22-stepper', receiptLineId: 'rl-22-stepper-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-22-stepper',
+          receiptLineId: 'rl-22-stepper-2',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3361,8 +3446,16 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-22-action-1', receiptLineId: 'rl-22-action-1', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-22-action-2', receiptLineId: 'rl-22-action-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-22-action-1',
+          receiptLineId: 'rl-22-action-1',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-22-action-2',
+          receiptLineId: 'rl-22-action-2',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3376,7 +3469,9 @@ describe('InboundReceivingDetailPage', () => {
     });
     renderReceivingPage('/inbound-receiving/inbound-plan-1');
 
-    const releaseRemainingButton = await screen.findByTestId('inbound-release-remaining-units-button');
+    const releaseRemainingButton = await screen.findByTestId(
+      'inbound-release-remaining-units-button',
+    );
     // AC7: the two continue-actions are mutually exclusive by state.
     expect(screen.queryByTestId('inbound-receive-more-units-button')).toBeNull();
     await actor.click(releaseRemainingButton);
@@ -3390,10 +3485,14 @@ describe('InboundReceivingDetailPage', () => {
     // the one already released) -- the button must instead target the still-
     // outstanding rl-22-action-1.
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-22-action-1').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-22-action-1')
+        .getAttribute('aria-current'),
     ).toBe('true');
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-22-action-2').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-22-action-2')
+        .getAttribute('aria-current'),
     ).toBeNull();
   });
 
@@ -3449,7 +3548,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-line2-22', receiptLineId: 'rl-line2-22-2', inboundPlanLineId: 'line-2' } as unknown as InboundLpn,
+        {
+          id: 'lpn-line2-22',
+          receiptLineId: 'rl-line2-22-2',
+          inboundPlanLineId: 'line-2',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3581,7 +3684,11 @@ describe('InboundReceivingDetailPage', () => {
       qcTasks: [],
       qcResults: [],
       lpns: [
-        { id: 'lpn-22-sku', receiptLineId: 'rl-22-sku-2', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-22-sku',
+          receiptLineId: 'rl-22-sku-2',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         // Released against a substituted SKU sharing the same lineId -- must not
@@ -3690,8 +3797,16 @@ describe('InboundReceivingDetailPage', () => {
         } as unknown as QcResult,
       ],
       lpns: [
-        { id: 'lpn-23-nav-outstanding', receiptLineId: 'rl-23-nav-outstanding', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-23-nav-released', receiptLineId: 'rl-23-nav-released', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-23-nav-outstanding',
+          receiptLineId: 'rl-23-nav-outstanding',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-23-nav-released',
+          receiptLineId: 'rl-23-nav-released',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3705,7 +3820,9 @@ describe('InboundReceivingDetailPage', () => {
     });
     renderReceivingPage('/inbound-receiving/inbound-plan-1');
 
-    const releaseRemainingButton = await screen.findByTestId('inbound-release-remaining-units-button');
+    const releaseRemainingButton = await screen.findByTestId(
+      'inbound-release-remaining-units-button',
+    );
     await actor.click(releaseRemainingButton);
 
     expect(screen.getByTestId('location-probe').textContent).toBe(
@@ -3713,13 +3830,19 @@ describe('InboundReceivingDetailPage', () => {
     );
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-23-nav-outstanding').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-23-nav-outstanding')
+        .getAttribute('aria-current'),
     ).toBe('true');
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-23-nav-blocked').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-23-nav-blocked')
+        .getAttribute('aria-current'),
     ).toBeNull();
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-23-nav-released').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-23-nav-released')
+        .getAttribute('aria-current'),
     ).toBeNull();
   });
 
@@ -3770,7 +3893,11 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-23-nogate-released', receiptLineId: 'rl-23-nogate-released', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-23-nogate-released',
+          receiptLineId: 'rl-23-nogate-released',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3847,7 +3974,11 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-lpn-released', receiptLineId: 'rl-lpn-released', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-lpn-released',
+          receiptLineId: 'rl-lpn-released',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3950,9 +4081,21 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-tie-b', receiptLineId: 'rl-tie-b', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-tie-a', receiptLineId: 'rl-tie-a', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-tie-released', receiptLineId: 'rl-tie-released', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-tie-b',
+          receiptLineId: 'rl-tie-b',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-tie-a',
+          receiptLineId: 'rl-tie-a',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-tie-released',
+          receiptLineId: 'rl-tie-released',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -3966,7 +4109,9 @@ describe('InboundReceivingDetailPage', () => {
     });
     renderReceivingPage('/inbound-receiving/inbound-plan-1');
 
-    const releaseRemainingButton = await screen.findByTestId('inbound-release-remaining-units-button');
+    const releaseRemainingButton = await screen.findByTestId(
+      'inbound-release-remaining-units-button',
+    );
     await actor.click(releaseRemainingButton);
 
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
@@ -4058,9 +4203,21 @@ describe('InboundReceivingDetailPage', () => {
       ],
       qcResults: [],
       lpns: [
-        { id: 'lpn-sort-later', receiptLineId: 'rl-sort-later', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-sort-earlier', receiptLineId: 'rl-sort-earlier', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
-        { id: 'lpn-sort-released', receiptLineId: 'rl-sort-released', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-sort-later',
+          receiptLineId: 'rl-sort-later',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-sort-earlier',
+          receiptLineId: 'rl-sort-earlier',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
+        {
+          id: 'lpn-sort-released',
+          receiptLineId: 'rl-sort-released',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -4074,15 +4231,21 @@ describe('InboundReceivingDetailPage', () => {
     });
     renderReceivingPage('/inbound-receiving/inbound-plan-1');
 
-    const releaseRemainingButton = await screen.findByTestId('inbound-release-remaining-units-button');
+    const releaseRemainingButton = await screen.findByTestId(
+      'inbound-release-remaining-units-button',
+    );
     await actor.click(releaseRemainingButton);
 
     expect(await screen.findByTestId('inbound-release-putaway-panel')).toBeTruthy();
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-sort-earlier').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-sort-earlier')
+        .getAttribute('aria-current'),
     ).toBe('true');
     expect(
-      screen.getByTestId('inbound-receipt-line-rail-button-rl-sort-later').getAttribute('aria-current'),
+      screen
+        .getByTestId('inbound-receipt-line-rail-button-rl-sort-later')
+        .getAttribute('aria-current'),
     ).toBeNull();
   });
 
@@ -4123,7 +4286,11 @@ describe('InboundReceivingDetailPage', () => {
         } as unknown as QcResult,
       ],
       lpns: [
-        { id: 'lpn-23-reinspect', receiptLineId: 'rl-23-reinspect', inboundPlanLineId: 'line-1' } as unknown as InboundLpn,
+        {
+          id: 'lpn-23-reinspect',
+          receiptLineId: 'rl-23-reinspect',
+          inboundPlanLineId: 'line-1',
+        } as unknown as InboundLpn,
       ],
       releases: [
         {
@@ -4150,13 +4317,18 @@ describe('InboundReceivingDetailPage', () => {
       expect(screen.getByTestId('inbound-line-stage-chip-line-1').textContent).toBe('Đã release'),
     );
   });
-
 });
 
 describe('isPlanLineFullyReleased (review fix)', () => {
   it('returns false when there is no matching receipt line even if a release record matches lineId/skuId', () => {
     const releases = [
-      { receiptLineId: 'rl-orphan', inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1, releasedAt: '2026-07-13T01:00:00Z' },
+      {
+        receiptLineId: 'rl-orphan',
+        inboundPlanLineId: 'line-1',
+        skuId: 'sku-1',
+        quantity: 1,
+        releasedAt: '2026-07-13T01:00:00Z',
+      },
     ];
 
     expect(isPlanLineFullyReleased([], releases, [], 'line-1', 'sku-1')).toBe(false);
@@ -4168,13 +4340,25 @@ describe('isPlanLineFullyReleased (review fix)', () => {
       { id: 'rl-b', inboundPlanLineId: 'line-1', actualQuantity: 1, skuId: 'sku-1' },
     ];
     const qcResults = [
-      { receiptLineId: 'rl-b', targetInventoryStatusCode: 'QUARANTINE', recordedAt: '2026-07-13T01:00:00Z' },
+      {
+        receiptLineId: 'rl-b',
+        targetInventoryStatusCode: 'QUARANTINE',
+        recordedAt: '2026-07-13T01:00:00Z',
+      },
     ];
     const releases = [
-      { receiptLineId: 'rl-a', inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1, releasedAt: '2026-07-13T02:00:00Z' },
+      {
+        receiptLineId: 'rl-a',
+        inboundPlanLineId: 'line-1',
+        skuId: 'sku-1',
+        quantity: 1,
+        releasedAt: '2026-07-13T02:00:00Z',
+      },
     ];
 
-    expect(isPlanLineFullyReleased(receiptLines, releases, qcResults, 'line-1', 'sku-1')).toBe(true);
+    expect(isPlanLineFullyReleased(receiptLines, releases, qcResults, 'line-1', 'sku-1')).toBe(
+      true,
+    );
   });
 
   it('IFB-23 review fix: dedupes a receipt line with 2 release rows before summing, instead of double-counting it', () => {
@@ -4183,8 +4367,20 @@ describe('isPlanLineFullyReleased (review fix)', () => {
       { id: 'rl-b', inboundPlanLineId: 'line-1', actualQuantity: 1, skuId: 'sku-1' },
     ];
     const releases = [
-      { receiptLineId: 'rl-a', inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1, releasedAt: '2026-07-13T01:00:00Z' },
-      { receiptLineId: 'rl-a', inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1, releasedAt: '2026-07-13T02:00:00Z' },
+      {
+        receiptLineId: 'rl-a',
+        inboundPlanLineId: 'line-1',
+        skuId: 'sku-1',
+        quantity: 1,
+        releasedAt: '2026-07-13T01:00:00Z',
+      },
+      {
+        receiptLineId: 'rl-a',
+        inboundPlanLineId: 'line-1',
+        skuId: 'sku-1',
+        quantity: 1,
+        releasedAt: '2026-07-13T02:00:00Z',
+      },
     ];
 
     // rl-a's duplicate release rows must collapse to ONE unit's worth of
@@ -4193,18 +4389,36 @@ describe('isPlanLineFullyReleased (review fix)', () => {
   });
 
   it('code-review patch: keeps counting an already-released receipt line even after it is re-inspected to a worse QC status', () => {
-    const receiptLines = [{ id: 'rl-a', inboundPlanLineId: 'line-1', actualQuantity: 1, skuId: 'sku-1' }];
+    const receiptLines = [
+      { id: 'rl-a', inboundPlanLineId: 'line-1', actualQuantity: 1, skuId: 'sku-1' },
+    ];
     const releases = [
-      { receiptLineId: 'rl-a', inboundPlanLineId: 'line-1', skuId: 'sku-1', quantity: 1, releasedAt: '2026-07-13T02:00:00Z' },
+      {
+        receiptLineId: 'rl-a',
+        inboundPlanLineId: 'line-1',
+        skuId: 'sku-1',
+        quantity: 1,
+        releasedAt: '2026-07-13T02:00:00Z',
+      },
     ];
     const qcResults = [
-      { receiptLineId: 'rl-a', targetInventoryStatusCode: 'READY_FOR_PUTAWAY', recordedAt: '2026-07-13T01:00:00Z' },
-      { receiptLineId: 'rl-a', targetInventoryStatusCode: 'QUARANTINE', recordedAt: '2026-07-13T03:00:00Z' },
+      {
+        receiptLineId: 'rl-a',
+        targetInventoryStatusCode: 'READY_FOR_PUTAWAY',
+        recordedAt: '2026-07-13T01:00:00Z',
+      },
+      {
+        receiptLineId: 'rl-a',
+        targetInventoryStatusCode: 'QUARANTINE',
+        recordedAt: '2026-07-13T03:00:00Z',
+      },
     ];
 
     // rl-a already has a release covering its full actualQuantity -- the
     // LATER re-inspection to QUARANTINE must not strip it out of the
     // completeness math retroactively; it stays fully released.
-    expect(isPlanLineFullyReleased(receiptLines, releases, qcResults, 'line-1', 'sku-1')).toBe(true);
+    expect(isPlanLineFullyReleased(receiptLines, releases, qcResults, 'line-1', 'sku-1')).toBe(
+      true,
+    );
   });
 });

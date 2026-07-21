@@ -8,6 +8,7 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
+  CreateManualReceiptInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   ReleaseInboundToPutawayInput,
@@ -33,6 +34,20 @@ export function useInboundReceivingMutations(planId: string | null) {
   const notifyError = (error: unknown) => toast.error(toMutationErrorMessage(error));
 
   return {
+    createManualReceipt: useMutation({
+      mutationFn: (input: CreateManualReceiptInput) =>
+        inboundReceivingRepository.createManualReceipt(input),
+      onSuccess: async (result) => {
+        await queryClient.invalidateQueries({ queryKey: inboundReceivingQueryKeys.receiptLists() });
+        await queryClient.invalidateQueries({
+          queryKey: inboundReceivingQueryKeys.receiptDetail(result.receipt.id),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: inboundReceivingQueryKeys.receiptOperationalState(result.receipt.id),
+        });
+      },
+      onError: notifyError,
+    }),
     validateReadiness: useMutation({
       mutationFn: ({ id, input }: { id: string; input: ValidateReceivingReadinessInput }) =>
         inboundReceivingRepository.validateReadiness(id, input),

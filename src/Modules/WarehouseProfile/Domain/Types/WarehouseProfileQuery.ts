@@ -16,6 +16,7 @@ export interface WarehouseProfileListFilter extends PageFilter {
   status?: WarehouseProfileStatus;
   warehouseTypeCode?: string;
   warehouseId?: string;
+  search?: string;
 }
 
 /** List filter for `GET /rule-definitions` (B2 whitelisted set). */

@@ -36,8 +36,9 @@ export interface ReceiptLineScanEvidenceInput {
 }
 
 export interface ConfirmReceiptLineInput {
-  inboundPlanLineId: string;
+  inboundPlanLineId?: string | null;
   actualQuantity: number;
+  expectedQuantity?: number | null;
   skuId?: string | null;
   uomId?: string | null;
   manualConfirm?: boolean;
@@ -48,6 +49,28 @@ export interface ConfirmReceiptLineInput {
   serialNumber?: string | null;
   idempotencyKey: string;
   scanEvidence?: ReceiptLineScanEvidenceInput | null;
+}
+
+export interface ReceiptListFilter {
+  page?: number;
+  pageSize?: number;
+  warehouseId?: string;
+  ownerId?: string;
+  search?: string;
+  sortBy?: 'CreatedAt' | 'ReceiptNumber';
+  sortDirection?: 'ASC' | 'DESC';
+}
+
+export interface CreateManualReceiptInput {
+  ownerId: string;
+  warehouseId: string;
+  warehouseProfileId?: string | null;
+  supplierId: string;
+  receiptNumber: string;
+  businessReference: string;
+  sessionKey: string;
+  deviceCode?: string | null;
+  idempotencyKey: string;
 }
 
 export interface ConfirmInboundLpnInput {

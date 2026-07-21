@@ -3,10 +3,11 @@ import { putawayQueryKeys } from '@modules/Putaway/Application/Queries/PutawayQu
 import type { PutawayTaskListFilter } from '@modules/Putaway/Domain/Types/PutawayTaskQuery';
 import { putawayRepository } from '@modules/Putaway/Infrastructure/Repositories/PutawayRepositoryInstance';
 
-export function usePutawayTasks(filter: PutawayTaskListFilter = {}) {
+export function usePutawayTasks(filter: PutawayTaskListFilter = {}, enabled = true) {
   return useQuery({
     queryKey: putawayQueryKeys.list(filter),
     queryFn: () => putawayRepository.list(filter),
+    enabled,
   });
 }
 

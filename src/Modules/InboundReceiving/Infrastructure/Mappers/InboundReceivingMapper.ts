@@ -5,7 +5,9 @@ import type {
   InboundPutawayRelease,
   QcResult,
   QcTask,
+  Receipt,
   ReceiptLine,
+  ReceiptOperationalState,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/InboundReceiving/Domain/Types/Receipt';
@@ -13,16 +15,19 @@ import type {
   CaptureInboundDiscrepancyInput,
   ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
+  CreateManualReceiptInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   ReleaseInboundToPutawayInput,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/InboundReceiving/Domain/Types/ReceiptQuery';
+import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   CaptureInboundDiscrepancyRequestDto,
   ConfirmInboundLpnRequestDto,
   ConfirmReceiptLineRequestDto,
+  CreateManualReceiptRequestDto,
   EvaluateQcTaskRequestDto,
   InboundDiscrepancyDto,
   InboundLpnDto,
@@ -30,7 +35,10 @@ import type {
   InboundPutawayReleaseDto,
   QcResultDto,
   QcTaskDto,
+  PagedReceiptDto,
+  ReceiptDto,
   RecordQcResultRequestDto,
+  ReceiptOperationalStateDto,
   ReceiptLineDto,
   ReceivingReadinessDto,
   ReceivingSessionDto,
@@ -46,6 +54,52 @@ function removeEmpty<T extends Record<string, unknown>>(value: T): Partial<T> {
 }
 
 export const InboundReceivingMapper = {
+  toReceipt(dto: ReceiptDto): Receipt {
+    return {
+      id: dto.Id,
+      inboundPlanId: dto.InboundPlanId,
+      receiptNumber: dto.ReceiptNumber,
+      businessReference: dto.BusinessReference,
+      ownerId: dto.OwnerId,
+      ownerCode: dto.OwnerCode,
+      warehouseId: dto.WarehouseId,
+      warehouseCode: dto.WarehouseCode,
+      warehouseProfileId: dto.WarehouseProfileId,
+      supplierId: dto.SupplierId,
+      supplierCode: dto.SupplierCode ?? null,
+      supplierName: dto.SupplierName ?? null,
+      status: dto.Status,
+      coreFlowInstanceId: dto.CoreFlowInstanceId,
+      createdAt: dto.CreatedAt,
+      updatedAt: dto.UpdatedAt,
+      createdBy: dto.CreatedBy,
+      updatedBy: dto.UpdatedBy,
+    };
+  },
+
+  toPagedReceipts(dto: PagedReceiptDto): PaginatedResponse<Receipt> {
+    return {
+      items: (dto.Items ?? []).map((item) => InboundReceivingMapper.toReceipt(item)),
+      page: dto.Meta.Page,
+      pageSize: dto.Meta.PageSize,
+      totalItems: dto.Meta.TotalItems,
+      totalPages: dto.Meta.TotalPages,
+    };
+  },
+
+  toCreateManualReceiptRequest(input: CreateManualReceiptInput): CreateManualReceiptRequestDto {
+    return removeEmpty({
+      OwnerId: input.ownerId,
+      WarehouseId: input.warehouseId,
+      WarehouseProfileId: input.warehouseProfileId,
+      SupplierId: input.supplierId,
+      ReceiptNumber: input.receiptNumber,
+      BusinessReference: input.businessReference,
+      SessionKey: input.sessionKey,
+      DeviceCode: input.deviceCode,
+      IdempotencyKey: input.idempotencyKey,
+    }) as CreateManualReceiptRequestDto;
+  },
   toReadiness(dto: ReceivingReadinessDto): ReceivingReadiness {
     return {
       allowed: dto.Allowed,
@@ -294,11 +348,38 @@ export const InboundReceivingMapper = {
       receivingSessions: (dto.ReceivingSessions ?? []).map((item) =>
         InboundReceivingMapper.toReceivingSession(item),
       ),
-      receiptLines: (dto.ReceiptLines ?? []).map((item) => InboundReceivingMapper.toReceiptLine(item)),
+      receiptLines: (dto.ReceiptLines ?? []).map((item) =>
+        InboundReceivingMapper.toReceiptLine(item),
+      ),
       qcTasks: (dto.QcTasks ?? []).map((item) => InboundReceivingMapper.toQcTask(item)),
       qcResults: (dto.QcResults ?? []).map((item) => InboundReceivingMapper.toQcResult(item)),
       lpns: (dto.Lpns ?? []).map((item) => InboundReceivingMapper.toInboundLpn(item)),
-      releases: (dto.Releases ?? []).map((item) => InboundReceivingMapper.toInboundPutawayRelease(item)),
+      releases: (dto.Releases ?? []).map((item) =>
+        InboundReceivingMapper.toInboundPutawayRelease(item),
+      ),
+      discrepancies: (dto.Discrepancies ?? []).map((item) =>
+        InboundReceivingMapper.toInboundDiscrepancy(item),
+      ),
+    };
+  },
+
+  toReceiptOperationalState(dto: ReceiptOperationalStateDto): ReceiptOperationalState {
+    return {
+      receiptId: dto.ReceiptId,
+      inboundPlanId: dto.InboundPlanId,
+      receipt: InboundReceivingMapper.toReceipt(dto.Receipt),
+      receivingSessions: (dto.ReceivingSessions ?? []).map((item) =>
+        InboundReceivingMapper.toReceivingSession(item),
+      ),
+      receiptLines: (dto.ReceiptLines ?? []).map((item) =>
+        InboundReceivingMapper.toReceiptLine(item),
+      ),
+      qcTasks: (dto.QcTasks ?? []).map((item) => InboundReceivingMapper.toQcTask(item)),
+      qcResults: (dto.QcResults ?? []).map((item) => InboundReceivingMapper.toQcResult(item)),
+      lpns: (dto.Lpns ?? []).map((item) => InboundReceivingMapper.toInboundLpn(item)),
+      releases: (dto.Releases ?? []).map((item) =>
+        InboundReceivingMapper.toInboundPutawayRelease(item),
+      ),
       discrepancies: (dto.Discrepancies ?? []).map((item) =>
         InboundReceivingMapper.toInboundDiscrepancy(item),
       ),
@@ -331,6 +412,7 @@ export const InboundReceivingMapper = {
     return removeEmpty({
       InboundPlanLineId: input.inboundPlanLineId,
       ActualQuantity: input.actualQuantity,
+      ExpectedQuantity: input.expectedQuantity,
       SkuId: input.skuId,
       UomId: input.uomId,
       ManualConfirm: input.manualConfirm,

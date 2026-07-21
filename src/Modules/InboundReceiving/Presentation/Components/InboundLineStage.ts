@@ -31,7 +31,10 @@ export type InboundLineStage =
  * the correct SKU's cumulative count.
  */
 export function isPlanLineFullyReceived(
-  receiptLines: Pick<ReceiptLine, 'inboundPlanLineId' | 'actualQuantity' | 'expectedQuantity' | 'skuId'>[],
+  receiptLines: Pick<
+    ReceiptLine,
+    'inboundPlanLineId' | 'actualQuantity' | 'expectedQuantity' | 'skuId'
+  >[],
   lineId: string,
   skuId: string,
 ): boolean {
@@ -39,8 +42,13 @@ export function isPlanLineFullyReceived(
     (line) => line.inboundPlanLineId === lineId && line.skuId === skuId,
   );
   if (linesForPlanLine.length === 0) return false;
-  const cumulativeActualQuantity = linesForPlanLine.reduce((sum, line) => sum + line.actualQuantity, 0);
-  return cumulativeActualQuantity >= linesForPlanLine[0].expectedQuantity;
+  const expectedQuantity = linesForPlanLine[0].expectedQuantity;
+  if (expectedQuantity === null) return false;
+  const cumulativeActualQuantity = linesForPlanLine.reduce(
+    (sum, line) => sum + line.actualQuantity,
+    0,
+  );
+  return cumulativeActualQuantity >= expectedQuantity;
 }
 
 /**
@@ -158,7 +166,8 @@ export function deriveFocusedLineStage(flags: {
   fullyReceived: boolean;
   fullyReleased: boolean;
 }): InboundLineStage {
-  if (flags.releaseDone) return flags.fullyReceived && flags.fullyReleased ? 'released' : 'released-partial';
+  if (flags.releaseDone)
+    return flags.fullyReceived && flags.fullyReleased ? 'released' : 'released-partial';
   if (flags.lpnDone) return 'lpn';
   if (flags.qcDone) return 'qc';
   if (flags.receivingDone) return 'receiving';
@@ -212,7 +221,11 @@ export function deriveLineStage(params: {
       (release) => release.inboundPlanLineId === lineId && release.skuId === skuId,
     ),
   );
-  const fullyReceived = isPlanLineFullyReceived(operationalState?.receiptLines ?? [], lineId, skuId);
+  const fullyReceived = isPlanLineFullyReceived(
+    operationalState?.receiptLines ?? [],
+    lineId,
+    skuId,
+  );
   const fullyReleased = isPlanLineFullyReleased(
     operationalState?.receiptLines ?? [],
     operationalState?.releases ?? [],

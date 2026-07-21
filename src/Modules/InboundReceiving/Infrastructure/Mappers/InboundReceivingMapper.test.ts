@@ -6,6 +6,7 @@ import type {
   InboundPutawayReleaseDto,
   QcResultDto,
   QcTaskDto,
+  ReceiptDto,
   ReceiptLineDto,
   ReceivingReadinessDto,
   ReceivingSessionDto,
@@ -30,6 +31,27 @@ const receivingSessionDto: ReceivingSessionDto = {
   CreatedAt: '2026-06-22T09:05:00.000Z',
   UpdatedAt: '2026-06-22T09:05:00.000Z',
   StartedBy: 'user-1',
+  UpdatedBy: null,
+};
+
+const manualReceiptDto: ReceiptDto = {
+  Id: 'receipt-manual-1',
+  InboundPlanId: null,
+  ReceiptNumber: 'RCPT-MANUAL-001',
+  BusinessReference: 'MANUAL:DOCK:001',
+  OwnerId: 'owner-1',
+  OwnerCode: 'OWN-A',
+  WarehouseId: 'warehouse-1',
+  WarehouseCode: 'WT-01',
+  WarehouseProfileId: null,
+  SupplierId: 'supplier-1',
+  SupplierCode: 'SUP-1',
+  SupplierName: 'Nhà cung cấp 1',
+  Status: 'Open',
+  CoreFlowInstanceId: null,
+  CreatedAt: '2026-07-18T08:00:00.000Z',
+  UpdatedAt: '2026-07-18T08:00:00.000Z',
+  CreatedBy: 'user-1',
   UpdatedBy: null,
 };
 
@@ -226,6 +248,52 @@ const qcResultDto: QcResultDto = {
 };
 
 describe('InboundReceivingMapper', () => {
+  it('maps a manual receipt and keeps nullable plan/expected quantity semantics', () => {
+    expect(InboundReceivingMapper.toReceipt(manualReceiptDto)).toMatchObject({
+      id: 'receipt-manual-1',
+      inboundPlanId: null,
+      supplierId: 'supplier-1',
+      warehouseProfileId: null,
+    });
+
+    expect(
+      InboundReceivingMapper.toReceiptLine({
+        ...receiptLineDto,
+        InboundPlanId: null,
+        InboundPlanLineId: null,
+        ExpectedQuantity: null,
+      }),
+    ).toMatchObject({
+      inboundPlanId: null,
+      inboundPlanLineId: null,
+      expectedQuantity: null,
+    });
+  });
+
+  it('builds a manual receipt request and omits nullable optional fields', () => {
+    expect(
+      InboundReceivingMapper.toCreateManualReceiptRequest({
+        ownerId: 'owner-1',
+        warehouseId: 'warehouse-1',
+        warehouseProfileId: null,
+        supplierId: 'supplier-1',
+        receiptNumber: 'RCPT-MANUAL-001',
+        businessReference: 'MANUAL:DOCK:001',
+        sessionKey: 'dock-1',
+        deviceCode: null,
+        idempotencyKey: 'manual-receipt-1',
+      }),
+    ).toEqual({
+      OwnerId: 'owner-1',
+      WarehouseId: 'warehouse-1',
+      SupplierId: 'supplier-1',
+      ReceiptNumber: 'RCPT-MANUAL-001',
+      BusinessReference: 'MANUAL:DOCK:001',
+      SessionKey: 'dock-1',
+      IdempotencyKey: 'manual-receipt-1',
+    });
+  });
+
   it('maps an ApprovalRequired readiness decision and its ruleCode into the domain object (IFB-05)', () => {
     const approvalRequiredDto: ReceivingReadinessDto = {
       Allowed: false,
@@ -348,7 +416,10 @@ describe('InboundReceivingMapper', () => {
 
   it('builds PascalCase readiness, receiving session and receipt line payloads', () => {
     expect(
-      InboundReceivingMapper.toReadinessRequest({ attemptOverride: true, reasonCode: 'RC-V1-HANDOFF' }),
+      InboundReceivingMapper.toReadinessRequest({
+        attemptOverride: true,
+        reasonCode: 'RC-V1-HANDOFF',
+      }),
     ).toEqual({
       AttemptOverride: true,
       ReasonCode: 'RC-V1-HANDOFF',

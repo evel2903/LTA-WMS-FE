@@ -55,13 +55,21 @@ export function useSku(id: string | null) {
 }
 
 /** Active owners for select inputs (FK pickers). */
-export function useActiveOwners() {
-  return useOwners({ status: 'Active', pageSize: CATALOG_DEFAULT_PAGE_SIZE });
+export function useActiveOwners(search?: string) {
+  return useOwners({
+    status: 'Active',
+    pageSize: CATALOG_DEFAULT_PAGE_SIZE,
+    search: search || undefined,
+  });
 }
 
 /** Active UOMs for select inputs (FK pickers). */
-export function useActiveUoms() {
-  return useUoms({ status: 'Active', pageSize: CATALOG_DEFAULT_PAGE_SIZE });
+export function useActiveUoms(search?: string) {
+  return useUoms({
+    status: 'Active',
+    pageSize: CATALOG_DEFAULT_PAGE_SIZE,
+    search: search || undefined,
+  });
 }
 
 /**

@@ -111,7 +111,8 @@ const NAV_ENTRIES: NavEntry[] = [
     label: 'Vận hành',
     icon: Warehouse,
     children: [
-      { label: 'Nhập kho', to: ROUTES.INBOUND_PLAN.ROOT, icon: PackageOpen },
+      { label: 'Kế hoạch nhập kho', to: ROUTES.INBOUND_PLAN.ROOT, icon: PackageOpen },
+      { label: 'Phiếu nhập kho', to: ROUTES.INBOUND_RECEIVING.ROOT, icon: PackageSearch },
       { label: 'Cất hàng', to: ROUTES.PUTAWAY.ROOT, icon: PackageCheck },
       { label: 'Bổ sung hàng', to: ROUTES.REPLENISHMENT.ROOT, icon: PackagePlus },
       { label: 'Xuất kho', to: ROUTES.OUTBOUND.ROOT, icon: ShoppingCart },
@@ -162,7 +163,12 @@ function NavGroupItem({ group, defaultOpen }: { group: NavGroup; defaultOpen: bo
                 {child.section}
               </div>
             ) : (
-              <NavLink key={child.to} to={child.to} end={child.to === ROUTES.FOUNDATION.ROOT} className={leafLinkClass}>
+              <NavLink
+                key={child.to}
+                to={child.to}
+                end={child.to === ROUTES.FOUNDATION.ROOT}
+                className={leafLinkClass}
+              >
                 <child.icon className="size-4" />
                 {child.label}
               </NavLink>
@@ -189,7 +195,9 @@ export function Sidebar() {
             <NavGroupItem
               key={entry.label}
               group={entry}
-              defaultOpen={entry.children.some((child) => !isSection(child) && pathname.startsWith(child.to))}
+              defaultOpen={entry.children.some(
+                (child) => !isSection(child) && pathname.startsWith(child.to),
+              )}
             />
           ) : (
             <NavLink

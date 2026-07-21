@@ -7,17 +7,22 @@ import type {
   InboundPutawayRelease,
   QcResult,
   QcTask,
+  Receipt,
   ReceiptLine,
+  ReceiptOperationalState,
   ReceivingReadiness,
   ReceivingSession,
 } from '@modules/InboundReceiving/Domain/Types/Receipt';
+import type { PaginatedResponse } from '@shared/Types/Api';
 import type {
   CaptureInboundDiscrepancyInput,
   ConfirmInboundLpnInput,
   ConfirmReceiptLineInput,
+  CreateManualReceiptInput,
   EvaluateQcTaskInput,
   RecordQcResultInput,
   ReleaseInboundToPutawayInput,
+  ReceiptListFilter,
   StartReceivingSessionInput,
   ValidateReceivingReadinessInput,
 } from '@modules/InboundReceiving/Domain/Types/ReceiptQuery';
@@ -27,8 +32,12 @@ import type {
   InboundLpnDto,
   InboundOperationalStateDto,
   InboundPutawayReleaseDto,
+  CreateManualReceiptResultDto,
   QcResultDto,
   QcTaskDto,
+  PagedReceiptDto,
+  ReceiptDto,
+  ReceiptOperationalStateDto,
   ReceiptLineDto,
   ReceivingReadinessDto,
   ReceivingSessionDto,
@@ -37,6 +46,47 @@ import { InboundReceivingMapper } from '@modules/InboundReceiving/Infrastructure
 
 export class InboundReceivingRepository implements IInboundReceivingRepository {
   constructor(private readonly http: HttpClient) {}
+
+  async listReceipts(filter: ReceiptListFilter = {}): Promise<PaginatedResponse<Receipt>> {
+    const dto = await this.http.get<PagedReceiptDto>(INBOUND_RECEIVING_ENDPOINTS.RECEIPTS, {
+      params: {
+        Page: filter.page ?? 1,
+        PageSize: Math.min(Math.max(filter.pageSize ?? 50, 1), 100),
+        WarehouseId: filter.warehouseId,
+        OwnerId: filter.ownerId,
+        Search: filter.search,
+        SortBy: filter.sortBy,
+        SortDirection: filter.sortDirection,
+      },
+    });
+    return InboundReceivingMapper.toPagedReceipts(dto);
+  }
+
+  async getReceipt(receiptId: string): Promise<Receipt> {
+    const dto = await this.http.get<ReceiptDto>(
+      INBOUND_RECEIVING_ENDPOINTS.RECEIPT_BY_ID(receiptId),
+    );
+    return InboundReceivingMapper.toReceipt(dto);
+  }
+
+  async getReceiptOperationalState(receiptId: string): Promise<ReceiptOperationalState> {
+    const dto = await this.http.get<ReceiptOperationalStateDto>(
+      INBOUND_RECEIVING_ENDPOINTS.RECEIPT_OPERATIONAL_STATE(receiptId),
+    );
+    return InboundReceivingMapper.toReceiptOperationalState(dto);
+  }
+
+  async createManualReceipt(input: CreateManualReceiptInput) {
+    const dto = await this.http.post<CreateManualReceiptResultDto>(
+      INBOUND_RECEIVING_ENDPOINTS.RECEIPTS,
+      InboundReceivingMapper.toCreateManualReceiptRequest(input),
+    );
+    return {
+      receipt: InboundReceivingMapper.toReceipt(dto.Receipt),
+      session: InboundReceivingMapper.toReceivingSession(dto.Session),
+      isDuplicate: dto.IsDuplicate,
+    };
+  }
 
   async getOperationalState(planId: string): Promise<InboundOperationalState> {
     const dto = await this.http.get<InboundOperationalStateDto>(

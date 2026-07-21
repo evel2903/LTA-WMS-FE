@@ -74,6 +74,7 @@ export class CatalogRepository implements ICatalogRepository {
         Status: filter.status,
         OwnerCode: filter.ownerCode,
         OwnerName: filter.ownerName,
+        Search: filter.search,
       },
     });
     return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toOwner(item));
@@ -87,6 +88,7 @@ export class CatalogRepository implements ICatalogRepository {
         UomCode: filter.uomCode,
         UomName: filter.uomName,
         UomType: filter.uomType,
+        Search: filter.search,
       },
     });
     return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toUom(item));
@@ -101,14 +103,13 @@ export class CatalogRepository implements ICatalogRepository {
         SkuName: filter.skuName,
         DefaultOwnerId: filter.defaultOwnerId,
         ItemClass: filter.itemClass,
+        Search: filter.search,
       },
     });
     return CatalogMapper.toPaged(dto, (item) => CatalogMapper.toSku(item));
   }
 
-  async listSkuBarcodes(
-    filter: SkuBarcodeListFilter = {},
-  ): Promise<PaginatedResponse<SkuBarcode>> {
+  async listSkuBarcodes(filter: SkuBarcodeListFilter = {}): Promise<PaginatedResponse<SkuBarcode>> {
     const dto = await this.http.get<PagedMasterDataDto<SkuBarcodeDto>>(
       CATALOG_ENDPOINTS.SKU_BARCODES,
       {
@@ -293,10 +294,7 @@ export class CatalogRepository implements ICatalogRepository {
     return CatalogMapper.toUomConversion(dto);
   }
 
-  async updateUomConversion(
-    id: string,
-    input: UpdateUomConversionInput,
-  ): Promise<UomConversion> {
+  async updateUomConversion(id: string, input: UpdateUomConversionInput): Promise<UomConversion> {
     const dto = await this.http.patch<UomConversionDto>(
       CATALOG_ENDPOINTS.UOM_CONVERSION_BY_ID(id),
       CatalogMapper.toUpdateUomConversionRequest(input),
