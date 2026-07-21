@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,10 @@ import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
 import type { Permission, Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
-import type { CreateRoleInput } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
+import type {
+  CreateRoleInput,
+  RoleListFilter,
+} from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IAccessControlRepository }));
 vi.mock('@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance', () => ({
@@ -72,7 +75,27 @@ const detail = (role: Role, permissionCount: number): RoleDetail => ({
 
 class FakeRepository implements Partial<IAccessControlRepository> {
   roles: Role[] = [wmsAdmin, customRole];
-  listRoles = vi.fn(() => Promise.resolve(page(this.roles)));
+  listRoles = vi.fn((filter: RoleListFilter = {}) => {
+    const currentPage = filter.page ?? 1;
+    const pageSize = filter.pageSize ?? 50;
+    const start = (currentPage - 1) * pageSize;
+    return Promise.resolve({
+      items: this.roles.slice(start, start + pageSize),
+      page: currentPage,
+      pageSize,
+      totalItems: this.roles.length,
+      totalPages: Math.max(1, Math.ceil(this.roles.length / pageSize)),
+    });
+  });
+  listAllRoles = vi.fn(async () => {
+    const first = await this.listRoles({ page: 1, pageSize: 100 });
+    const roles = [...first.items];
+    for (let currentPage = 2; currentPage <= first.totalPages; currentPage += 1) {
+      const next = await this.listRoles({ page: currentPage, pageSize: 100 });
+      roles.push(...next.items);
+    }
+    return roles;
+  });
   getRole = vi.fn((roleCode: string) => {
     const role = this.roles.find((item) => item.roleCode === roleCode);
     if (!role) return Promise.reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'not found' }));
@@ -110,6 +133,10 @@ function renderPage() {
   );
 }
 
+async function findDesktopText(text: string) {
+  return within(await screen.findByRole('table')).findByText(text);
+}
+
 beforeEach(() => {
   useAccessControlStore.setState({ rolesPage: 1 });
   toastError.mockClear();
@@ -122,13 +149,28 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = new FakeRepository() as unknown as IAccessControlRepository;
     renderPage();
 
-    expect(await screen.findByText('WMS Admin')).toBeTruthy();
-    expect(screen.getByText('WMS_ADMIN')).toBeTruthy();
-    expect(screen.getByText('Hệ thống')).toBeTruthy();
-    expect(screen.getByText('Tuỳ chỉnh')).toBeTruthy();
+    const table = await screen.findByRole('table');
+    expect(within(table).getByText('WMS Admin')).toBeTruthy();
+    expect(within(table).getByText('WMS_ADMIN')).toBeTruthy();
+    expect(within(table).getByText('Hệ thống')).toBeTruthy();
+    expect(within(table).getByText('Tùy chỉnh')).toBeTruthy();
     // Permission counts come from useRoleDetails, populated after the detail fetches resolve.
-    expect(await screen.findByText('5')).toBeTruthy();
-    expect(await screen.findByText('2')).toBeTruthy();
+    expect(await within(table).findByText('5')).toBeTruthy();
+    expect(await within(table).findByText('2')).toBeTruthy();
+    expect(screen.getAllByLabelText('Trạng thái: Đang hoạt động').length).toBeGreaterThan(0);
+  });
+
+  it('renders each visible role as a responsive mobile row card with its detail action (RA-06 AC5)', async () => {
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    const { container } = renderPage();
+
+    await findDesktopText('WMS Admin');
+    const mobileRows = container.querySelectorAll('[data-catalog-mobile-row]');
+    expect(mobileRows).toHaveLength(2);
+    expect(within(mobileRows[0] as HTMLElement).getByText('WMS_ADMIN')).toBeTruthy();
+    expect(
+      within(mobileRows[0] as HTMLElement).getByRole('link', { name: 'Chi tiết' }).getAttribute('href'),
+    ).toBe('/foundation/access/roles/WMS_ADMIN');
   });
 
   it('shows an empty state with no roles', async () => {
@@ -141,13 +183,118 @@ describe('RolesMasterPage (RA-03)', () => {
     expect(await screen.findByText('Chưa có vai trò.')).toBeTruthy();
   });
 
+  it('searches and filters the complete role catalog, including a role outside the first API page (RA-06 AC2/AC7)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.roles = Array.from({ length: 101 }, (_, index) => ({
+      ...customRole,
+      id: `role-${index + 1}`,
+      roleCode: `ROLE_${String(index + 1).padStart(3, '0')}`,
+      roleName: index === 100 ? 'Vai trò ngoài trang đầu' : `Vai trò ${index + 1}`,
+      status: index === 100 ? 'INACTIVE' : 'ACTIVE',
+    }));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    await screen.findAllByText('Vai trò 1');
+    expect(screen.queryByText('Vai trò ngoài trang đầu')).toBeNull();
+
+    await actor.type(screen.getByLabelText('Tìm'), 'ngoài trang đầu');
+    expect((await screen.findAllByText('Vai trò ngoài trang đầu')).length).toBeGreaterThan(0);
+    expect(fake.listRoles).toHaveBeenCalledWith({ page: 2, pageSize: 100 });
+
+    await actor.click(screen.getByRole('combobox', { name: 'Trạng thái' }));
+    await actor.click(screen.getByRole('option', { name: 'Ngừng hoạt động' }));
+    expect(screen.getAllByText('Vai trò ngoài trang đầu').length).toBeGreaterThan(0);
+
+    // Search by roleCode specifically -- "ROLE_050" is not a substring of its own roleName
+    // ("Vai trò 50"), so a match here can only come from the roleCode branch of
+    // filterRoles's `[role.roleCode, role.roleName].some(...)` check (RA-06 AC7).
+    await actor.click(screen.getByRole('combobox', { name: 'Trạng thái' }));
+    await actor.click(screen.getByRole('option', { name: 'Tất cả' }));
+    await actor.clear(screen.getByLabelText('Tìm'));
+    await actor.type(screen.getByLabelText('Tìm'), 'ROLE_050');
+    await findDesktopText('Vai trò 50');
+    expect(screen.queryByText('Vai trò 51')).toBeNull();
+  });
+
+  it('distinguishes an empty catalog from a filter with no matches (RA-06 AC2/AC6)', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage();
+
+    await findDesktopText('WMS Admin');
+    await actor.type(screen.getByLabelText('Tìm'), 'không tồn tại');
+
+    expect(await screen.findByText('Không tìm thấy vai trò phù hợp với bộ lọc hiện tại.')).toBeTruthy();
+    expect(screen.queryByText('Chưa có vai trò.')).toBeNull();
+  });
+
+  it('cycles stable role-code sorting through ascending, descending, then source order (RA-06 AC3)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    // Source order (GAMMA, ALPHA, BETA) is deliberately distinct from BOTH its ascending
+    // (ALPHA, BETA, GAMMA) and descending (GAMMA, BETA, ALPHA) sort — with only two roles,
+    // descending and source order coincide, which lets a broken third-click reset (stuck at
+    // descending instead of returning to null) pass unnoticed (Review Finding).
+    fake.roles = [
+      { ...customRole, id: 'role-gamma', roleCode: 'GAMMA', roleName: 'Gamma' },
+      { ...customRole, id: 'role-alpha', roleCode: 'ALPHA', roleName: 'Alpha' },
+      { ...customRole, id: 'role-beta', roleCode: 'BETA', roleName: 'Beta' },
+    ];
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    await screen.findAllByText('GAMMA');
+    const codeOrder = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell')[0]?.textContent);
+    const sortButton = screen.getByRole('button', { name: /Mã vai trò/i });
+
+    expect(codeOrder()).toEqual(['GAMMA', 'ALPHA', 'BETA']);
+    await actor.click(sortButton);
+    expect(codeOrder()).toEqual(['ALPHA', 'BETA', 'GAMMA']);
+    await actor.click(sortButton);
+    expect(codeOrder()).toEqual(['GAMMA', 'BETA', 'ALPHA']);
+    await actor.click(sortButton);
+    expect(codeOrder()).toEqual(['GAMMA', 'ALPHA', 'BETA']);
+  });
+
+  it('paginates after filtering and only loads role details for visible rows (RA-06 AC4)', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.roles = Array.from({ length: 21 }, (_, index) => ({
+      ...customRole,
+      id: `role-${index + 1}`,
+      roleCode: `ROLE_${String(index + 1).padStart(3, '0')}`,
+      roleName: `Vai trò ${index + 1}`,
+    }));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage();
+
+    await screen.findAllByText('ROLE_001');
+    await waitFor(() => expect(fake.getRole).toHaveBeenCalledTimes(20));
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(21);
+
+    await actor.click(screen.getByRole('button', { name: 'Tiếp' }));
+    expect(await screen.findAllByText('ROLE_021')).toHaveLength(2);
+    await waitFor(() => expect(fake.getRole).toHaveBeenCalledTimes(21));
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(2);
+
+    await actor.selectOptions(screen.getByLabelText('Số dòng/trang'), '50');
+    expect(await screen.findAllByText('ROLE_001')).toHaveLength(2);
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(22);
+  });
+
   it('creates a role via the modal and refetches the list (AC2)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'QC_LEAD');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'QC Lead');
@@ -172,7 +319,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'WMS_ADMIN');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'Dup');
@@ -193,7 +340,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'bad code');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'Bad');
@@ -210,7 +357,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'QC_LEAD');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'QC Lead');
@@ -230,7 +377,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'WMS_ADMIN');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'Dup');
@@ -253,7 +400,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'X');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'X');
@@ -270,7 +417,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     const [detailLink] = await screen.findAllByRole('link', { name: 'Chi tiết' });
     expect(detailLink.getAttribute('href')).toBe('/foundation/access/roles/WMS_ADMIN');
     await actor.click(detailLink);
@@ -311,7 +458,7 @@ describe('RolesMasterPage (RA-03)', () => {
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage();
 
-    await screen.findByText('WMS Admin');
+    await findDesktopText('WMS Admin');
     await actor.click(screen.getByRole('button', { name: 'Tạo vai trò' }));
     await actor.type(screen.getByLabelText('Mã vai trò'), 'QC_LEAD');
     await actor.type(screen.getByLabelText('Tên vai trò'), 'QC Lead');

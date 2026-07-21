@@ -13,10 +13,7 @@ import {
 import { catalogRoutes } from '@modules/MasterData/Presentation/Routes/CatalogRoutes';
 import { AuditMetadata } from '@modules/MasterData/Presentation/Components/AuditMetadata';
 import { OwnerPolicyView } from '@modules/MasterData/Presentation/Components/OwnerPolicyView';
-import {
-  CatalogListView,
-  type CatalogColumn,
-} from '@modules/MasterData/Presentation/Components/CatalogListView';
+import { CatalogListView, type CatalogColumn } from '@shared/Components/Page/CatalogListView';
 import { MasterDataStatusBadge } from '@modules/MasterData/Presentation/Components/MasterDataStatusBadge';
 import { SkuStatusBadge } from '@modules/MasterData/Presentation/Components/SkuStatusBadge';
 import { OwnerForm } from '@modules/MasterData/Presentation/Forms/OwnerForm';

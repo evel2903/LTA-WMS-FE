@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { ROUTES } from '@app/Config/Routes';
-import { ApiError } from '@shared/Services/Http/ApiError';
+import {
+  CatalogListView,
+  type CatalogColumn,
+  type CatalogListState,
+  type CatalogSortState,
+} from '@shared/Components/Page/CatalogListView';
 import { Button } from '@shared/Components/Ui/Button';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { FormModal } from '@shared/Components/Ui/FormModal';
-import { ListPageShell } from '@shared/Components/Page/ListPageShell';
-import type { PageBoundaryState } from '@shared/Components/Page/PageStateBoundary';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shared/Components/Ui/Table';
+import { Input } from '@shared/Components/Ui/Input';
+import { ApiError } from '@shared/Services/Http/ApiError';
 import {
   isBadRequestError,
   isConflictError,
@@ -17,141 +22,243 @@ import {
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import { useAccessControlMutations } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
 import { accessControlQueryKeys } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
-import { useRoleDetails, useRoles } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
-import { useAccessControlStore } from '@modules/AccessControl/Application/Stores/AccessControlStore';
-import type { RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import { useAllRoles, useRoleDetails } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
+import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import { ROLE_STATUS_LABELS } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import { RoleStatusBadge } from '@modules/AccessControl/Presentation/Components/RoleStatusBadge';
 import { RoleForm } from '@modules/AccessControl/Presentation/Forms/RoleForm';
 
-function listState(params: { error: unknown; isLoading: boolean; itemCount: number }): PageBoundaryState | null {
-  const apiError = params.error instanceof ApiError ? params.error : null;
-  if (apiError?.isForbidden) return 'forbidden';
-  if (params.isLoading) return 'loading';
-  if (params.error) return 'error';
-  if (params.itemCount === 0) return 'empty';
-  return null;
+const DEFAULT_PAGE_SIZE = 20;
+const EMPTY_ROLES: Role[] = [];
+const ROLE_COLLATOR = new Intl.Collator('vi-VN', { numeric: true, sensitivity: 'base' });
+
+function normalizeSearch(value: string) {
+  return value.normalize('NFC').trim().toLocaleLowerCase('vi-VN');
 }
 
-const roleStatusLabel = (status: string) => (status === 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hoạt động');
+function roleTypeLabel(role: Role) {
+  return role.isSystem ? 'Hệ thống' : 'Tùy chỉnh';
+}
 
-/** RA-03: roles list + "Tạo vai trò". "Chi tiết" only navigates — RA-04 owns the editor. */
+function filterRoles(roles: Role[], searchTerm: string, statusFilter: string) {
+  const normalizedSearch = normalizeSearch(searchTerm);
+  return roles.filter((role) => {
+    if (statusFilter && role.status !== statusFilter) return false;
+    if (!normalizedSearch) return true;
+    return [role.roleCode, role.roleName].some((value) => normalizeSearch(value).includes(normalizedSearch));
+  });
+}
+
+function roleSortValue(role: Role, column: string) {
+  switch (column) {
+    case 'role-code':
+      return role.roleCode;
+    case 'role-name':
+      return role.roleName;
+    case 'role-type':
+      return roleTypeLabel(role);
+    case 'status':
+      return ROLE_STATUS_LABELS[role.status] ?? role.status;
+    default:
+      return '';
+  }
+}
+
+function sortRoles(roles: Role[], sort: CatalogSortState | null) {
+  if (!sort) return roles;
+  return [...roles].sort((left, right) => {
+    const primary = ROLE_COLLATOR.compare(roleSortValue(left, sort.column), roleSortValue(right, sort.column));
+    if (primary !== 0) return sort.direction === 'desc' ? -primary : primary;
+    return ROLE_COLLATOR.compare(left.roleCode, right.roleCode);
+  });
+}
+
+function catalogState(params: { error: unknown; hasData: boolean; itemCount: number }): CatalogListState {
+  const apiError = params.error instanceof ApiError ? params.error : null;
+  if (apiError?.isForbidden) return 'denied';
+  if (!params.hasData) return params.error ? 'error' : 'loading';
+  if (params.itemCount === 0) return 'empty';
+  return 'ready';
+}
+
+/** RA-06: Site-aligned role catalog. Role detail/editor remains owned by RA-04. */
 export function RolesMasterPage() {
-  const store = useAccessControlStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const rolesQuery = useRoles({ page: store.rolesPage });
-  const roles = rolesQuery.data?.items ?? [];
-  const detailQueries = useRoleDetails(roles.map((role) => role.roleCode));
+  const rolesQuery = useAllRoles();
+  const roles = rolesQuery.data ?? EMPTY_ROLES;
   const mutations = useAccessControlMutations();
 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<CatalogSortState | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  const filteredRoles = useMemo(
+    () => filterRoles(roles, searchTerm, statusFilter),
+    [roles, searchTerm, statusFilter],
+  );
+  const sortedRoles = useMemo(() => sortRoles(filteredRoles, sort), [filteredRoles, sort]);
+  const totalPages = Math.max(1, Math.ceil(sortedRoles.length / pageSize));
+  const effectivePage = Math.min(Math.max(page, 1), totalPages);
+  const visibleRoles = useMemo(
+    () => sortedRoles.slice((effectivePage - 1) * pageSize, effectivePage * pageSize),
+    [effectivePage, pageSize, sortedRoles],
+  );
+  const detailQueries = useRoleDetails(visibleRoles.map((role) => role.roleCode));
+  const detailQueryByRoleCode = useMemo(
+    () => new Map(visibleRoles.map((role, index) => [role.roleCode, detailQueries[index]])),
+    [detailQueries, visibleRoles],
+  );
 
   const createError = mutations.createRole.error;
   const forbiddenToCreate = isForbiddenError(createError);
   const inlineCreateError =
     isConflictError(createError) || isBadRequestError(createError) ? toMutationErrorMessage(createError) : null;
 
-  // 403 only surfaces after a submit attempt (no preflight check) — close any open modal
-  // and demote the "Tạo vai trò" action for subsequent renders (AC2).
   useEffect(() => {
     if (forbiddenToCreate) setCreateOpen(false);
   }, [forbiddenToCreate]);
 
-  // A previous attempt's 400/409 must not reappear when the modal is reopened for a
-  // fresh create — the mutation's error state otherwise persists across close/reopen.
   const openCreateModal = () => {
     mutations.createRole.reset();
     setCreateOpen(true);
   };
 
+  const handleSortChange = (column: string) => {
+    setSort((current) => {
+      if (current?.column !== column) return { column, direction: 'asc' };
+      if (current.direction === 'asc') return { column, direction: 'desc' };
+      return null;
+    });
+    setPage(1);
+  };
+
   const apiError = rolesQuery.error instanceof ApiError ? rolesQuery.error : null;
-  const state = listState({ error: rolesQuery.error, isLoading: rolesQuery.isLoading, itemCount: roles.length });
-  const totalPages = rolesQuery.data?.totalPages ?? 1;
+  const state = catalogState({
+    error: rolesQuery.error,
+    hasData: rolesQuery.data !== undefined,
+    itemCount: filteredRoles.length,
+  });
+  const canCreate = !apiError?.isForbidden && !forbiddenToCreate;
+
+  const columns = useMemo<CatalogColumn<Role>[]>(
+    () => [
+      {
+        id: 'role-code',
+        header: 'Mã vai trò',
+        render: (role) => <span className="font-medium">{role.roleCode}</span>,
+        sortable: true,
+      },
+      {
+        id: 'role-name',
+        header: 'Tên vai trò',
+        render: (role) => role.roleName,
+        sortable: true,
+      },
+      {
+        id: 'role-type',
+        header: 'Loại',
+        render: roleTypeLabel,
+        sortable: true,
+      },
+      {
+        id: 'status',
+        header: 'Trạng thái',
+        render: (role) => <RoleStatusBadge status={role.status} />,
+        sortable: true,
+      },
+      {
+        header: 'Số quyền',
+        render: (role) => {
+          const detail = detailQueryByRoleCode.get(role.roleCode);
+          return detail?.data?.permissions.length ?? (detail?.isLoading ? '…' : '—');
+        },
+        className: 'text-right',
+      },
+      {
+        header: 'Hành động',
+        render: (role) => (
+          <Button asChild size="sm" variant="outline">
+            <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(role.roleCode)} state={{ role }}>
+              Chi tiết
+            </Link>
+          </Button>
+        ),
+        className: 'text-right',
+      },
+    ],
+    [detailQueryByRoleCode],
+  );
 
   return (
     <>
-      <ListPageShell
+      <CatalogListView
         title="Vai trò"
-        description="Danh sách vai trò RBAC — tạo vai trò tuỳ chỉnh hoặc mở chi tiết để xem quyền."
-        contentAriaLabel="Danh sách vai trò"
+        description="Danh sách vai trò RBAC — tạo vai trò tùy chỉnh hoặc mở chi tiết để xem quyền."
         state={state}
-        stateTitle={state === 'forbidden' ? 'Không có quyền xem' : undefined}
-        stateMessage={
-          state === 'empty' ? 'Chưa có vai trò.' : (apiError?.message ?? 'Không thể tải danh sách vai trò.')
+        columns={columns}
+        rows={visibleRoles}
+        rowKey={(role) => role.roleCode}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setPage(1);
+        }}
+        sort={sort}
+        onSortChange={handleSortChange}
+        canCreate={canCreate}
+        readOnlyMessage="Bạn không có quyền tạo vai trò trong phạm vi này."
+        emptyLabel={
+          roles.length === 0 ? 'Chưa có vai trò.' : 'Không tìm thấy vai trò phù hợp với bộ lọc hiện tại.'
         }
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
-            {!forbiddenToCreate ? (
-              <Button type="button" size="sm" onClick={openCreateModal}>
-                Tạo vai trò
-              </Button>
-            ) : null}
-          </div>
-        }
-        pagination={
-          totalPages > 1 ? (
-            <div className="flex items-center gap-2 text-sm">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={store.rolesPage <= 1}
-                onClick={() => store.setRolesPage(store.rolesPage - 1)}
-              >
-                Trước
-              </Button>
-              <span>
-                Trang {store.rolesPage}/{totalPages}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={store.rolesPage >= totalPages}
-                onClick={() => store.setRolesPage(store.rolesPage + 1)}
-              >
-                Sau
-              </Button>
-            </div>
+        errorMessage={apiError?.message ?? (rolesQuery.error ? 'Không thể tải danh sách vai trò.' : undefined)}
+        headerAction={
+          canCreate ? (
+            <Button type="button" size="sm" onClick={openCreateModal}>
+              Tạo vai trò
+            </Button>
           ) : null
         }
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tên vai trò</TableHead>
-              <TableHead>Mã vai trò</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Số quyền</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roles.map((role, index) => {
-              const detail = detailQueries[index];
-              const permissionCount = detail?.data?.permissions.length;
-              return (
-                <TableRow key={role.id}>
-                  <TableCell className="font-medium">{role.roleName}</TableCell>
-                  <TableCell>{role.roleCode}</TableCell>
-                  <TableCell>{role.isSystem ? 'Hệ thống' : 'Tuỳ chỉnh'}</TableCell>
-                  <TableCell>{roleStatusLabel(role.status)}</TableCell>
-                  <TableCell className="text-right">
-                    {permissionCount ?? (detail?.isLoading ? '…' : '—')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild size="sm" variant="outline">
-                      <Link to={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL(role.roleCode)} state={{ role }}>
-                        Chi tiết
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </ListPageShell>
+        toolbar={
+          <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_180px] md:items-end">
+            <label className="grid min-w-0 gap-1 text-sm">
+              Tìm
+              <Input
+                className="min-w-0"
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Mã hoặc tên vai trò"
+              />
+            </label>
+            <ComboboxSelect
+              id="role-status-filter"
+              name="statusFilter"
+              label="Trạng thái"
+              value={statusFilter}
+              placeholder="Tất cả"
+              optional
+              options={[
+                { value: '', label: 'Tất cả' },
+                { value: 'ACTIVE', label: 'Đang hoạt động' },
+                { value: 'INACTIVE', label: 'Ngừng hoạt động' },
+              ]}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
+            />
+          </div>
+        }
+      />
 
       <FormModal title="Tạo vai trò" open={createOpen} onClose={() => setCreateOpen(false)}>
         <RoleForm
@@ -161,15 +268,12 @@ export function RolesMasterPage() {
             mutations.createRole.mutate(values, {
               onSuccess: (role) => {
                 setCreateOpen(false);
-                // Navigate straight to the new role's own detail page instead of relying on
-                // it appearing in THIS page's `roles()` list — that refetch can fail, pause
-                // (offline), or return a stale/replica-lagged page, which would otherwise
-                // leave no "Chi tiết" link to click and block the AC3 create -> detail ->
-                // permission chain (Review Finding, round 13). Seed the detail cache with the
-                // mutation's own response first — `{ ...role, permissions: [] }` is truthful
-                // (a brand-new role has zero grants by construction, no grant call has
-                // happened yet) — so `RoleDetailPage` renders immediately, not blocked by its
-                // own `getRole` GET, which could be affected by the same staleness risk.
+                // Navigate straight to the new role's detail page instead of relying on it
+                // appearing in this catalog's own list refetch, which can be stale/paused/
+                // failed — seed the detail cache first so RoleDetailPage renders immediately
+                // (0 permissions is truthful: no grant call has happened yet). This is the
+                // AC3/AC6 create-to-detail bridge; do not simplify back to just closing the
+                // modal (Review Finding, RA-05 round 13).
                 queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(role.roleCode), {
                   ...role,
                   permissions: [],
