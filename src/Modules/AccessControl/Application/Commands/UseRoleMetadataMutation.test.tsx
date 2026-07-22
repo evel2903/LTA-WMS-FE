@@ -66,7 +66,7 @@ function setup(fake: Partial<IAccessControlRepository>) {
 }
 
 describe('role metadata mutation', () => {
-  it('patches detail and catalog caches with the exact authoritative response token', async () => {
+  it('patches detail/legacy caches but leaves the verified complete catalog untouched until revalidation', async () => {
     const updateRole = vi.fn(() => Promise.resolve(updated));
     const { client, hook } = setup({ updateRole });
     const mutation = hook.result.current as typeof hook.result.current & {
@@ -92,8 +92,51 @@ describe('role metadata mutation', () => {
       ...original,
       ...updated,
     });
-    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([updated]);
+    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([original]);
     expect(client.getQueryData<PaginatedResponse<Role>>(accessControlQueryKeys.roles())?.items).toEqual([updated]);
+  });
+
+  it('patches display-only Description without invalidating the verified complete catalog', async () => {
+    const descriptionUpdated: Role = {
+      ...original,
+      description: 'Display-only note',
+      updatedAt: '2026-07-22T06:00:00.124Z',
+    };
+    const updateRole = vi.fn(() => Promise.resolve(descriptionUpdated));
+    const { client, hook } = setup({ updateRole });
+
+    await act(async () => {
+      await hook.result.current.updateRole.mutateAsync({
+        id: original.id,
+        roleCode: original.roleCode,
+        input: { expectedUpdatedAt: original.updatedAt, description: 'Display-only note' },
+      });
+    });
+
+    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([descriptionUpdated]);
+    expect(client.getQueryState(accessControlQueryKeys.allRoles())?.isInvalidated).toBe(false);
+  });
+
+  it('does not patch or re-verify a display-only mutation while the complete catalog is unconfirmed', async () => {
+    const descriptionUpdated: Role = {
+      ...original,
+      description: 'Display-only note',
+      updatedAt: '2026-07-22T06:00:00.124Z',
+    };
+    const updateRole = vi.fn(() => Promise.resolve(descriptionUpdated));
+    const { client, hook } = setup({ updateRole });
+    await client.invalidateQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true });
+
+    await act(async () => {
+      await hook.result.current.updateRole.mutateAsync({
+        id: original.id,
+        roleCode: original.roleCode,
+        input: { expectedUpdatedAt: original.updatedAt, description: 'Display-only note' },
+      });
+    });
+
+    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([original]);
+    expect(client.getQueryState(accessControlQueryKeys.allRoles())?.isInvalidated).toBe(true);
   });
 
   it('on ROLE_METADATA_STALE refetches once, preserves the rejected draft outside cache, and never retries', async () => {
@@ -139,6 +182,32 @@ describe('role metadata mutation', () => {
     expect(client.getQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(original.roleCode))).toEqual(current);
   });
 
+  it('invalidates the complete catalog when an identity conflict is handled as ROLE_METADATA_STALE', async () => {
+    const current: RoleDetail = {
+      ...original,
+      roleName: 'Changed elsewhere',
+      updatedAt: '2026-07-22T06:00:00.125Z',
+    };
+    const updateRole = vi.fn(() => Promise.reject(new ApiError({
+      status: 409,
+      code: 'CONFLICT',
+      message: 'Stale',
+      details: { Reason: 'ROLE_METADATA_STALE', CurrentUpdatedAt: current.updatedAt },
+    })));
+    const getRole = vi.fn(() => Promise.resolve(current));
+    const { client, hook } = setup({ updateRole, getRole });
+    await client.refetchQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true });
+    await act(async () => {
+      await expect(hook.result.current.updateRole.mutateAsync({
+        id: original.id,
+        roleCode: original.roleCode,
+        input: { expectedUpdatedAt: original.updatedAt, roleName: 'My draft' },
+      })).rejects.toMatchObject({ status: 409 });
+    });
+
+    expect(client.getQueryState(accessControlQueryKeys.allRoles())?.isInvalidated).toBe(true);
+  });
+
   it('does not let an older in-flight GET roll back a newer metadata token already in cache', async () => {
     const newer: RoleDetail = {
       ...original,
@@ -157,7 +226,7 @@ describe('role metadata mutation', () => {
     expect(client.getQueryData(accessControlQueryKeys.roleDetail(original.roleCode))).toEqual(newer);
   });
 
-  it('fences late paginated/full-catalog GETs and restores a PATCH-confirmed role missing from allRoles', async () => {
+  it('fences late paginated GETs while accepting only a separately verified full-catalog result', async () => {
     let resolvePage!: (value: PaginatedResponse<Role>) => void;
     let resolveCatalog!: (value: Role[]) => void;
     const listRoles = vi.fn(
@@ -167,6 +236,7 @@ describe('role metadata mutation', () => {
     const updateRole = vi.fn(() => Promise.resolve(updated));
     const { client, hook, wrapper } = setup({ listRoles, listAllRoles, updateRole });
     client.setQueryData<Role[]>(accessControlQueryKeys.allRoles(), []);
+    await client.invalidateQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true });
 
     const pageQuery = renderHook(() => useRoles(), { wrapper });
     const catalogQuery = renderHook(() => useAllRoles(), { wrapper });
@@ -187,7 +257,7 @@ describe('role metadata mutation', () => {
     await waitFor(() => expect(catalogQuery.result.current.isFetching).toBe(false));
 
     expect(client.getQueryData<PaginatedResponse<Role>>(accessControlQueryKeys.roles())?.items).toEqual([updated]);
-    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([updated]);
+    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([original]);
   });
 
   it('reconciles metadata and permissions as independent monotonic dimensions', async () => {

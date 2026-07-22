@@ -27,6 +27,7 @@ import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/Ac
 import { ROLE_STATUS_LABELS } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import { RoleStatusBadge } from '@modules/AccessControl/Presentation/Components/RoleStatusBadge';
 import { RoleForm } from '@modules/AccessControl/Presentation/Forms/RoleForm';
+import { Alert, AlertDescription, AlertTitle } from '@shared/Components/Reui/alert';
 
 const DEFAULT_PAGE_SIZE = 20;
 const EMPTY_ROLES: Role[] = [];
@@ -55,8 +56,6 @@ function roleSortValue(role: Role, column: string) {
       return role.roleCode;
     case 'role-name':
       return role.roleName;
-    case 'role-type':
-      return roleTypeLabel(role);
     case 'status':
       return ROLE_STATUS_LABELS[role.status] ?? role.status;
     default:
@@ -162,7 +161,6 @@ export function RolesMasterPage() {
         id: 'role-type',
         header: 'Loại',
         render: roleTypeLabel,
-        sortable: true,
       },
       {
         id: 'status',
@@ -195,6 +193,14 @@ export function RolesMasterPage() {
 
   return (
     <>
+      {rolesQuery.isCatalogUnconfirmed ? (
+        <Alert variant="warning" role="status" className="mb-4">
+          <AlertTitle>Danh mục vai trò chưa được xác nhận lại</AlertTitle>
+          <AlertDescription>
+            Đang hiển thị bản đầy đủ gần nhất. Lần làm mới vừa chờ xử lý hoặc thất bại; dữ liệu có thể chưa phản ánh thay đổi mới nhất.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <CatalogListView
         title="Vai trò"
         description="Danh sách vai trò RBAC — tạo vai trò tùy chỉnh hoặc mở chi tiết để xem quyền."

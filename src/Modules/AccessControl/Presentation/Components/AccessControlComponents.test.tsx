@@ -58,6 +58,79 @@ describe('AccessStateView', () => {
 });
 
 describe('AccessControl ReUI helper alerts', () => {
+  it('keeps last-known-good labels readable but locks role assignment while the catalog is unconfirmed', () => {
+    const html = renderToStaticMarkup(
+      <UserAssignmentPanel
+        user={user}
+        roles={[operatorRole]}
+        rolesStatus="unconfirmed"
+        effective={{ userId: user.id, roles: ['OPERATOR'], permissions: [] }}
+        reservedRoleCodes={[]}
+        dataScopes={[]}
+        canManage
+        pending={pending}
+        conflicts={{}}
+        onAssignRole={() => undefined}
+        onRemoveRole={() => undefined}
+        onAssignScope={() => undefined}
+        onRemoveScope={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('Nhân viên vận hành');
+    expect(html).toContain('Danh mục vai trò chưa được xác nhận');
+    expect(html).not.toContain('Gỡ vai trò Nhân viên vận hành');
+    expect(html).not.toContain('Gán vai trò');
+  });
+
+  it('keeps an empty unconfirmed catalog distinct from a verified empty catalog', () => {
+    const html = renderToStaticMarkup(
+      <UserAssignmentPanel
+        user={user}
+        roles={[]}
+        rolesStatus="unconfirmed"
+        effective={{ userId: user.id, roles: [], permissions: [] }}
+        reservedRoleCodes={[]}
+        dataScopes={[]}
+        canManage
+        pending={pending}
+        conflicts={{}}
+        onAssignRole={() => undefined}
+        onRemoveRole={() => undefined}
+        onAssignScope={() => undefined}
+        onRemoveScope={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('role="status"');
+    expect(html).not.toContain('id="assign-role-code"');
+    expect(html).toContain('id="assign-data-scope-type"');
+  });
+
+  it('restores role controls after a verified catalog recovers', () => {
+    const html = renderToStaticMarkup(
+      <UserAssignmentPanel
+        user={user}
+        roles={[operatorRole]}
+        rolesStatus="ready"
+        effective={{ userId: user.id, roles: [], permissions: [] }}
+        reservedRoleCodes={[]}
+        dataScopes={[]}
+        canManage
+        pending={pending}
+        conflicts={{}}
+        onAssignRole={() => undefined}
+        onRemoveRole={() => undefined}
+        onAssignScope={() => undefined}
+        onRemoveScope={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('id="assign-role-code"');
+    expect(html).toContain('OPERATOR');
+    expect(html).not.toContain('Danh mục vai trò chưa được xác nhận');
+  });
+
   it('renders user-assignment read-only and empty helpers as polite status alerts', () => {
     const html = renderToStaticMarkup(
       <UserAssignmentPanel

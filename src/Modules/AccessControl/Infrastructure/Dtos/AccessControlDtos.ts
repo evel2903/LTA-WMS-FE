@@ -35,6 +35,19 @@ export interface RoleDto {
   Permissions?: PermissionDto[];
 }
 
+export interface CompleteRoleCatalogDto {
+  Items: RoleDto[];
+  Page: number;
+  PageSize: number;
+  TotalItems: number;
+  TotalPages: number;
+  CatalogToken: string | null;
+  CrawlShape: {
+    PageSize: number;
+    Order: 'ROLE_CODE_C_ASC';
+  };
+}
+
 export interface UserDto {
   Id: string;
   FirstName: string;
