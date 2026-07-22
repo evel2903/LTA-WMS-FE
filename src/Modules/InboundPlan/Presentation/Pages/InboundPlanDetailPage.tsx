@@ -15,6 +15,7 @@ import {
 import { useInboundPlan } from '@modules/InboundPlan/Application/Queries/UseInboundPlans';
 import { InboundPlanEditPanel } from '@modules/InboundPlan/Presentation/Components/InboundPlanEditPanel';
 import { InboundPlanGateInPanel } from '@modules/InboundPlan/Presentation/Components/InboundPlanGateInPanel';
+import { InboundPlanLinesTable } from '@modules/InboundPlan/Presentation/Components/InboundPlanLinesTable';
 import type { InboundPlan } from '@modules/InboundPlan/Domain/Types/InboundPlan';
 import type { UpdateInboundPlanInput } from '@modules/InboundPlan/Domain/Types/InboundPlanQuery';
 
@@ -491,6 +492,7 @@ export function InboundPlanDetailPage() {
               </div>
             </CardContent>
           </Card>
+          <InboundPlanLinesTable lines={selected.lines} />
           <InboundRecentActivity items={recentActivityItems} />
           <InboundTechnicalDetails plan={selected} />
         </div>
