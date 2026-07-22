@@ -34,6 +34,7 @@ const existingRole: Role = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
 };
 
 const newRole: Role = {
@@ -44,6 +45,7 @@ const newRole: Role = {
   isSystem: false,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
 };
 
 describe('useAccessControlMutations', () => {
@@ -165,6 +167,7 @@ describe('useAccessControlMutations', () => {
       isSystem: false,
       status: 'ACTIVE',
       permissionsVersion: 0,
+      updatedAt: '2026-07-22T06:00:00.001Z',
     };
     const roleB: Role = {
       id: 'role-b',
@@ -174,6 +177,7 @@ describe('useAccessControlMutations', () => {
       isSystem: false,
       status: 'ACTIVE',
       permissionsVersion: 0,
+      updatedAt: '2026-07-22T06:00:00.002Z',
     };
     const listAllRoles = vi.fn(() => Promise.resolve([existingRole]));
     const createRole = vi.fn().mockResolvedValueOnce(roleA).mockResolvedValueOnce(roleB);

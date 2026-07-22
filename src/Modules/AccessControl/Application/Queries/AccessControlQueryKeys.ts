@@ -13,7 +13,8 @@ export type ReservedRolesState = Record<string, Record<string, true>>;
 
 export const accessControlQueryKeys = {
   all: [QUERY_NAMESPACES.ACCESS_CONTROL] as const,
-  roles: (filter?: RoleListFilter) => [...accessControlQueryKeys.all, 'roles', filter ?? {}] as const,
+  roleLists: () => [...accessControlQueryKeys.all, 'roles'] as const,
+  roles: (filter?: RoleListFilter) => [...accessControlQueryKeys.roleLists(), filter ?? {}] as const,
   allRoles: () => [...accessControlQueryKeys.all, 'allRoles'] as const,
   /** Server-confirmed role creations, kept in the query cache (not a component ref) so they
    * survive a route change to a DIFFERENT `useAccessControlMutations()` call site (Review

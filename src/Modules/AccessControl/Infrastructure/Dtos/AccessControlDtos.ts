@@ -1,4 +1,8 @@
-import type { DataScopeType, RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type {
+  DataScopeType,
+  RoleCode,
+  RoleStatus,
+} from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 
 /** Paginated list envelope `{ Items, Meta }` (shared BE list shape). */
 export interface PagedDto<TItem> {
@@ -25,8 +29,9 @@ export interface RoleDto {
   RoleName: string;
   Description: string | null;
   IsSystem: boolean;
-  Status: string;
+  Status: RoleStatus;
   PermissionsVersion: number;
+  UpdatedAt: string;
   Permissions?: PermissionDto[];
 }
 
@@ -64,6 +69,13 @@ export interface CreateRoleRequestDto {
   Description?: string;
 }
 
+export interface UpdateRoleRequestDto {
+  ExpectedUpdatedAt: string;
+  RoleName?: string;
+  Description?: string | null;
+  Status?: RoleStatus;
+}
+
 export interface AssignDataScopeRequestDto {
   ScopeType: DataScopeType;
   ScopeValueId?: string;
@@ -87,8 +99,7 @@ export interface ResetRolePermissionsRequestDto {
   reasonNote?: string;
 }
 
-/** Response shape for both PUT and reset: the effective set after Read-auto-add, plus the
- * new PermissionsVersion (post-increment), no other role metadata. */
+/** Existing lower-camel response shape for both PUT and reset. */
 export interface EffectivePermissionsResponseDto {
   permissions: { action: string; objectType: string }[];
   version: number;

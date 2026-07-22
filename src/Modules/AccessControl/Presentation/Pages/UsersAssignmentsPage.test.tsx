@@ -53,12 +53,12 @@ const secondUser: UserSummary = {
 };
 
 const CORE_ROLE_CATALOG: Role[] = [
-  { id: 'role-wms-admin', roleCode: 'WMS_ADMIN', roleName: 'WMS Admin', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
-  { id: 'role-supervisor', roleCode: 'WAREHOUSE_SUPERVISOR', roleName: 'Giám sát kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
-  { id: 'role-coordinator', roleCode: 'WAREHOUSE_COORDINATOR', roleName: 'Điều phối kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
-  { id: 'role-operator', roleCode: 'OPERATOR', roleName: 'Nhân viên vận hành', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
-  { id: 'role-qc', roleCode: 'QC', roleName: 'QC', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
-  { id: 'role-accountant', roleCode: 'INVENTORY_ACCOUNTANT', roleName: 'Kế toán kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0 },
+  { id: 'role-wms-admin', roleCode: 'WMS_ADMIN', roleName: 'WMS Admin', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
+  { id: 'role-supervisor', roleCode: 'WAREHOUSE_SUPERVISOR', roleName: 'Giám sát kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
+  { id: 'role-coordinator', roleCode: 'WAREHOUSE_COORDINATOR', roleName: 'Điều phối kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
+  { id: 'role-operator', roleCode: 'OPERATOR', roleName: 'Nhân viên vận hành', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
+  { id: 'role-qc', roleCode: 'QC', roleName: 'QC', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
+  { id: 'role-accountant', roleCode: 'INVENTORY_ACCOUNTANT', roleName: 'Kế toán kho', description: null, isSystem: true, status: 'ACTIVE', permissionsVersion: 0, updatedAt: '2026-07-22T06:00:00.000Z' },
 ];
 
 /** Fake whose per-user roles/scopes mutate, so invalidated queries observe the change. */
@@ -195,6 +195,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
         isSystem: false,
         status: 'ACTIVE',
         permissionsVersion: 3,
+        updatedAt: '2026-07-22T06:00:00.003Z',
       },
     ];
     // Models a REAL saved grant on the role's own permission editor (not a hard-coded
@@ -320,6 +321,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
         isSystem: false,
         status: 'ACTIVE',
         permissionsVersion: 0,
+        updatedAt: '2026-07-22T06:00:00.001Z',
       },
     ];
     await client.invalidateQueries({ queryKey: accessControlQueryKeys.allRoles() });
@@ -344,6 +346,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
       isSystem: false,
       status: 'ACTIVE',
       permissionsVersion: 1,
+      updatedAt: '2026-07-22T06:00:00.001Z',
     };
     fake.allRoles = [...CORE_ROLE_CATALOG, customRole];
     repo.current = fake as unknown as IAccessControlRepository;
@@ -376,6 +379,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
         isSystem: false,
         status: 'INACTIVE',
         permissionsVersion: 0,
+        updatedAt: '2026-07-22T06:00:00.001Z',
       },
     ];
     repo.current = fake as unknown as IAccessControlRepository;

@@ -1,4 +1,8 @@
-import type { DataScopeType, RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type {
+  DataScopeType,
+  RoleCode,
+  RoleStatus,
+} from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 
 /** A permission definition: a single (action, object) pair the system understands. */
 export interface Permission {
@@ -16,9 +20,11 @@ export interface Role {
   roleName: string;
   description: string | null;
   isSystem: boolean;
-  status: string;
+  status: RoleStatus;
   /** Optimistic-lock counter for permission writes — see SetRolePermissionsInput.version. */
   permissionsVersion: number;
+  /** Server-issued ISO timestamp token for role metadata compare-and-set writes. */
+  updatedAt: string;
 }
 
 /** A role with its granted permissions (detail shape — feeds the matrix cells). */

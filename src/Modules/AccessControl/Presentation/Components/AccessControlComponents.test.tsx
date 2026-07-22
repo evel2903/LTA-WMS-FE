@@ -23,6 +23,7 @@ const operatorRole: Role = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
 };
 
 const pending = {

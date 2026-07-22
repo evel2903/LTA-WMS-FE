@@ -22,6 +22,7 @@ const adminRole: RoleDetail = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
   permissions: [perm('Read', 'SKU'), perm('Create', 'SKU')],
 };
 
@@ -33,6 +34,7 @@ const qcRole: RoleDetail = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
   permissions: [perm('Read', 'SKU')],
 };
 

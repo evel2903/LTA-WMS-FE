@@ -14,8 +14,10 @@ import type {
   CreateRoleInput,
   PermissionListFilter,
   ResetRolePermissionsInput,
+  RolePermissionsResult,
   RoleListFilter,
   SetRolePermissionsInput,
+  UpdateRoleInput,
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
@@ -28,18 +30,19 @@ export interface IAccessControlRepository {
   listAllRoles(): Promise<Role[]>;
   getRole(roleCode: RoleCode): Promise<RoleDetail>;
   createRole(input: CreateRoleInput): Promise<Role>;
+  updateRole(id: string, input: UpdateRoleInput): Promise<Role>;
   /** Pages through the whole permission catalog (no silent truncation). */
   listAllPermissions(filter?: PermissionListFilter): Promise<Permission[]>;
   /** Full-set declarative write — `id` is the role's UUID (`RoleDetail.id`), not `roleCode`. */
   setRolePermissions(
     id: string,
     input: SetRolePermissionsInput,
-  ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }>;
+  ): Promise<RolePermissionsResult>;
   /** System role only — BE rejects `is_system=false` with 400. */
   resetRolePermissions(
     id: string,
     input: ResetRolePermissionsInput,
-  ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }>;
+  ): Promise<RolePermissionsResult>;
 
   // Users + per-user assignments
   listUsers(filter?: UserListFilter): Promise<PaginatedResponse<UserSummary>>;

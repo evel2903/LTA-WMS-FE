@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 
 import { toast } from '@shared/Components/Ui/Toast';
+import type { PaginatedResponse } from '@shared/Types/Api';
 import {
   isBadRequestError,
   isConflictError,
   isForbiddenError,
+  roleMetadataStaleDetails,
   toMutationErrorMessage,
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import {
@@ -18,8 +20,14 @@ import type {
   AssignRoleInput,
   CreateRoleInput,
   ResetRolePermissionsInput,
+  RolePermissionsResult,
   SetRolePermissionsInput,
+  UpdateRoleInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
+import {
+  mergeRoleDetailSnapshots,
+  mergeRoleSnapshots,
+} from '@modules/AccessControl/Application/UseCases/MergeRoleSnapshots';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
 
 /** Mutation keys for `setRolePermissions`/`resetRolePermissions` — lets `useMutationState`
@@ -30,6 +38,7 @@ export const ROLE_PERMISSIONS_MUTATION_KEYS = {
   set: ['setRolePermissions'] as const,
   reset: ['resetRolePermissions'] as const,
 };
+export const ROLE_METADATA_MUTATION_KEY = ['updateRoleMetadata'] as const;
 
 /** Patches the role-detail query cache directly with a PUT/reset response so it's immediately
  * authoritative for THIS role, regardless of which route is on screen or whether this page later
@@ -45,14 +54,11 @@ export const ROLE_PERMISSIONS_MUTATION_KEYS = {
 function patchRoleDetailCache(
   queryClient: ReturnType<typeof useQueryClient>,
   roleCode: RoleCode,
-  result: { permissions: { action: string; objectType: string }[]; version: number },
+  result: RolePermissionsResult,
 ) {
   queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(roleCode), (old) => {
-    // Two Save/Reset calls for the same role can settle out of order (e.g. network delivery
-    // reordering) — never regress the cache to an older result once a newer one has already
-    // landed (Review Finding, final verification).
-    if (!old || result.version <= old.permissionsVersion) return old;
-    return {
+    if (!old) return old;
+    const incoming: RoleDetail = {
       ...old,
       permissions: result.permissions.map((p) => ({
         id: '',
@@ -62,7 +68,64 @@ function patchRoleDetailCache(
         description: null,
       })),
       permissionsVersion: result.version,
+      // Permission responses intentionally carry no role metadata token. The server advances
+      // the locked role row, so retaining this older token forces the next metadata PATCH into
+      // the 409/refetch path instead of pairing a fresh token with stale metadata fields.
+      updatedAt: old.updatedAt,
     };
+    return mergeRoleDetailSnapshots(old, incoming);
+  });
+
+  const mergePermissionVersion = (role: Role): Role => mergeRoleSnapshots(role, {
+    ...role,
+    permissionsVersion: result.version,
+    updatedAt: role.updatedAt,
+  });
+  queryClient.setQueriesData<PaginatedResponse<Role>>(
+    { queryKey: accessControlQueryKeys.roleLists() },
+    (page) => page ? { ...page, items: page.items.map((role) =>
+      role.roleCode === roleCode ? mergePermissionVersion(role) : role) } : page,
+  );
+  for (const key of [accessControlQueryKeys.allRoles(), accessControlQueryKeys.confirmedRoles()]) {
+    queryClient.setQueryData<Role[]>(key, (roles) =>
+      roles?.map((role) => role.roleCode === roleCode ? mergePermissionVersion(role) : role),
+    );
+  }
+}
+
+/** Applies an authoritative role representation across every AccessControl role cache without
+ * dropping the permission array held only by RoleDetail. Strict `updatedAt` prevents an older
+ * GET/mutation response from rolling metadata or its CAS token backward. */
+function patchRoleMetadataCaches(queryClient: QueryClient, incoming: Role) {
+  queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(incoming.roleCode), (current) => {
+    return mergeRoleDetailSnapshots(current, incoming);
+  });
+  queryClient.setQueriesData<PaginatedResponse<Role>>(
+    { queryKey: accessControlQueryKeys.roleLists() },
+    (page) =>
+      page
+        ? {
+            ...page,
+            items: page.items.map((role) =>
+              role.roleCode === incoming.roleCode ? mergeRoleSnapshots(role, incoming) : role,
+            ),
+          }
+        : page,
+  );
+  queryClient.setQueryData<Role[]>(accessControlQueryKeys.allRoles(), (roles) => {
+      if (!roles) return roles;
+      const index = roles.findIndex((role) => role.roleCode === incoming.roleCode);
+      if (index < 0) return [...roles, incoming];
+      return roles.map((role, roleIndex) =>
+        roleIndex === index ? mergeRoleSnapshots(role, incoming) : role,
+      );
+  });
+  queryClient.setQueryData<Role[]>(accessControlQueryKeys.confirmedRoles(), (roles = []) => {
+    const index = roles.findIndex((role) => role.roleCode === incoming.roleCode);
+    if (index < 0) return [...roles, incoming];
+    return roles.map((role, roleIndex) =>
+      roleIndex === index ? mergeRoleSnapshots(role, incoming) : role,
+    );
   });
 }
 
@@ -124,6 +187,10 @@ export function useAccessControlMutations() {
   // query-count growth while preserving cross-user isolation (Review Finding, round 14).
   queryClient.setQueryDefaults(accessControlQueryKeys.reservedRoles(), { gcTime: Infinity });
   const invalidate = (key: readonly unknown[]) => queryClient.invalidateQueries({ queryKey: key });
+  const cancelRoleCatalogReads = () => Promise.all([
+    queryClient.cancelQueries({ queryKey: accessControlQueryKeys.roleLists() }),
+    queryClient.cancelQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true }),
+  ]);
 
   // 409 CONFLICT is a distinct INLINE state and 403 FORBIDDEN demotes the panel to
   // read-only (AC3) — neither is toasted (single-surface per error). Everything else toasts.
@@ -139,6 +206,31 @@ export function useAccessControlMutations() {
   };
 
   return {
+    updateRole: useMutation({
+      mutationKey: ROLE_METADATA_MUTATION_KEY,
+      retry: false,
+      onMutate: cancelRoleCatalogReads,
+      mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: UpdateRoleInput }) =>
+        accessControlRepository.updateRole(id, input),
+      onSuccess: async (role) => {
+        await cancelRoleCatalogReads();
+        patchRoleMetadataCaches(queryClient, role);
+        toast.success('Đã cập nhật vai trò');
+      },
+      onError: async (error, variables) => {
+        if (roleMetadataStaleDetails(error)) {
+          try {
+            // Refetch once to acquire a fresh server-issued token. This only updates cache;
+            // the form owns and preserves its dirty draft, and no automatic resubmit occurs.
+            const authoritative = await accessControlRepository.getRole(variables.roleCode);
+            patchRoleMetadataCaches(queryClient, authoritative);
+          } catch {
+            // The form keeps the draft and exposes an in-place retry; it owns this error surface.
+          }
+          return;
+        }
+      },
+    }),
     // 409 (dup code) and 400 (bad role_code format — real BE error is BUSINESS_RULE, not
     // VALIDATION, so this checks HTTP status not code) are inline form states (AC2); 403
     // demotes the "Tạo vai trò" action for subsequent renders — neither toasts. Only an

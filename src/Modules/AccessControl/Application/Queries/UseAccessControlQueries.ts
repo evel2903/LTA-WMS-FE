@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { skipToken, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import type { PaginatedResponse } from '@shared/Types/Api';
 import {
   accessControlQueryKeys,
   type ReservedRolesState,
@@ -8,6 +9,10 @@ import {
 import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type { RoleListFilter, UserListFilter } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
+import {
+  mergeRoleDetailSnapshots,
+  mergeRoleSnapshots,
+} from '@modules/AccessControl/Application/UseCases/MergeRoleSnapshots';
 import { accessControlRepository } from '@modules/AccessControl/Infrastructure/Repositories/AccessControlRepositoryInstance';
 
 export function useAllPermissions() {
@@ -18,9 +23,20 @@ export function useAllPermissions() {
 }
 
 export function useRoles(filter: RoleListFilter = {}) {
+  const queryClient = useQueryClient();
+  const queryKey = accessControlQueryKeys.roles(filter);
   return useQuery({
-    queryKey: accessControlQueryKeys.roles(filter),
-    queryFn: () => accessControlRepository.listRoles(filter),
+    queryKey,
+    queryFn: async () => {
+      const fetched = await accessControlRepository.listRoles(filter);
+      const cached = queryClient.getQueryData<PaginatedResponse<Role>>(queryKey);
+      if (!cached) return fetched;
+      const cachedByCode = new Map(cached.items.map((role) => [role.roleCode, role]));
+      return {
+        ...fetched,
+        items: fetched.items.map((role) => mergeRoleSnapshots(cachedByCode.get(role.roleCode), role)),
+      };
+    },
   });
 }
 
@@ -29,7 +45,13 @@ export function useAllRoles() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: accessControlQueryKeys.allRoles(),
-    queryFn: () => accessControlRepository.listAllRoles(),
+    queryFn: async () => {
+      const fetched = await accessControlRepository.listAllRoles();
+      const cached = queryClient.getQueryData<Role[]>(accessControlQueryKeys.allRoles()) ?? [];
+      const confirmed = queryClient.getQueryData<Role[]>(accessControlQueryKeys.confirmedRoles()) ?? [];
+      const currentByCode = new Map([...cached, ...confirmed].map((role) => [role.roleCode, role]));
+      return fetched.map((role) => mergeRoleSnapshots(currentByCode.get(role.roleCode), role));
+    },
     // Merges in server-confirmed creations on every read, regardless of which
     // `useAccessControlMutations()` instance created them or whether this raw catalog
     // response is itself stale (e.g. read-replica lag) -- fixes a confirmed role
@@ -73,7 +95,7 @@ export function useRoleDetails(roleCodes: RoleCode[]) {
         // grants/version. Never let a GET's result overwrite a newer already-cached one (Review
         // Finding, final verification).
         const cached = queryClient.getQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(roleCode));
-        return cached && cached.permissionsVersion > fetched.permissionsVersion ? cached : fetched;
+        return mergeRoleDetailSnapshots(cached, fetched) ?? fetched;
       },
     })),
   });

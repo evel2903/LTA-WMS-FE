@@ -1,15 +1,18 @@
 import { Badge } from '@shared/Components/Reui/badge';
 import { cn } from '@shared/Utils/Cn';
-import { ROLE_STATUS_LABELS } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import {
+  ROLE_STATUS_LABELS,
+  type RoleStatus,
+} from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 
-const ROLE_STATUS_VARIANTS: Record<string, { variant: 'success-light' | 'info-light'; dot: string }> = {
+const ROLE_STATUS_VARIANTS: Record<RoleStatus, { variant: 'success-light' | 'info-light'; dot: string }> = {
   ACTIVE: { variant: 'success-light', dot: 'bg-success' },
   INACTIVE: { variant: 'info-light', dot: 'bg-muted-foreground' },
 };
 
-export function RoleStatusBadge({ status }: { status: string }) {
-  const label = ROLE_STATUS_LABELS[status] ?? status;
-  const config = ROLE_STATUS_VARIANTS[status] ?? { variant: 'info-light' as const, dot: 'bg-muted-foreground' };
+export function RoleStatusBadge({ status }: { status: RoleStatus }) {
+  const label = ROLE_STATUS_LABELS[status];
+  const config = ROLE_STATUS_VARIANTS[status];
 
   return (
     <Badge
