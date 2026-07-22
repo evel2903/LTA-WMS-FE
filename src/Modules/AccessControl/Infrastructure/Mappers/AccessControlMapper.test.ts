@@ -66,6 +66,30 @@ describe('AccessControlMapper', () => {
     });
   });
 
+  it('RH-03: role-code mapping is a verbatim pass-through — the server (RH-CODE-01) is the sole canonicalization boundary', () => {
+    // A deliberately mixed-case sentinel: any client-side .toUpperCase()/.toLowerCase() would
+    // change it, so a verbatim round-trip in BOTH directions proves the mapper never re-cases.
+    const MIXED = 'InVeNtOrY_LeAd';
+
+    // Read path (DTO -> domain): the code from the API is preserved character-for-character.
+    const role = AccessControlMapper.toRole({
+      Id: 'r1',
+      RoleCode: MIXED,
+      RoleName: 'Inventory Lead',
+      Description: 'Inventory lead role',
+      IsSystem: false,
+      Status: 'ACTIVE',
+      PermissionsVersion: 0,
+    });
+    expect(role.roleCode).toBe(MIXED);
+
+    // Write path (domain -> request DTO): the code is forwarded unchanged; the client can't drift
+    // from the stored canonical value because the backend is the sole normalization boundary.
+    expect(AccessControlMapper.toCreateRoleRequest({ roleCode: MIXED, roleName: 'Inventory Lead' }).RoleCode).toBe(
+      MIXED,
+    );
+  });
+
   it('toRoleDetail maps permissions (and defaults to [] when absent)', () => {
     const withPerms: RoleDto = {
       Id: 'r1',
