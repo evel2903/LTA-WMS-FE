@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -105,7 +105,20 @@ function invalidPreview(): InboundLineImportPreview {
 }
 
 function field(id: string) {
-  return document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+  return document.getElementById(id) as HTMLInputElement;
+}
+
+function combobox(id: string) {
+  return document.getElementById(id) as HTMLButtonElement;
+}
+
+async function selectComboboxOption(
+  actor: ReturnType<typeof userEvent.setup>,
+  id: string,
+  optionLabel: string,
+) {
+  await actor.click(combobox(id));
+  await actor.click(screen.getByRole('option', { name: optionLabel }));
 }
 
 function commitButton() {
@@ -113,14 +126,14 @@ function commitButton() {
 }
 
 async function selectScope(actor: ReturnType<typeof userEvent.setup>) {
-  await actor.selectOptions(field('inbound-owner-id'), 'owner-1');
-  await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
+  await selectComboboxOption(actor, 'inbound-owner-id', 'OWN - Chủ hàng 1');
+  await selectComboboxOption(actor, 'inbound-warehouse-id', 'WH - Kho 1');
 }
 
 async function fillCommitHeader(actor: ReturnType<typeof userEvent.setup>) {
   await actor.type(field('inbound-source-system'), 'ERP');
   await actor.type(field('inbound-source-document-number'), 'ASN-10001');
-  await actor.selectOptions(field('inbound-supplier-id'), 'supplier-1');
+  await selectComboboxOption(actor, 'inbound-supplier-id', 'SUP - Nhà cung cấp 1');
 }
 
 // The Excel flow now lives inside a popup opened from the "Import Excel" button.
@@ -166,7 +179,7 @@ describe('InboundPlanCreatePage Excel import (IFB-03)', () => {
     const actor = userEvent.setup();
     renderPage();
     await openImport(actor);
-    expect((field('inbound-excel-import') as HTMLInputElement).disabled).toBe(true);
+    expect(field('inbound-excel-import').disabled).toBe(true);
   });
 
   it('previews an upload with scope and shows summary + per-row errors without committing', async () => {
@@ -176,7 +189,7 @@ describe('InboundPlanCreatePage Excel import (IFB-03)', () => {
 
     await selectScope(actor);
     await openImport(actor);
-    await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
+    await actor.upload(field('inbound-excel-import'), new File(['x'], 'lines.xlsx'));
 
     expect(h.previewMutate).toHaveBeenCalledTimes(1);
     const previewVars = h.previewMutate.mock.calls[0][0];
@@ -188,7 +201,7 @@ describe('InboundPlanCreatePage Excel import (IFB-03)', () => {
     expect(commitButton().hasAttribute('disabled')).toBe(true);
     expect(h.commit).not.toHaveBeenCalled();
     // File input value is reset so re-selecting the same corrected file re-fires onChange.
-    expect((field('inbound-excel-import') as HTMLInputElement).value).toBe('');
+    expect(field('inbound-excel-import').value).toBe('');
   });
 
   it('invalidates a stale preview when the warehouse/owner scope changes after preview', async () => {
@@ -198,12 +211,12 @@ describe('InboundPlanCreatePage Excel import (IFB-03)', () => {
 
     await selectScope(actor);
     await openImport(actor);
-    await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
+    await actor.upload(field('inbound-excel-import'), new File(['x'], 'lines.xlsx'));
     expect(await screen.findByTestId('inbound-excel-import-preview')).toBeTruthy();
 
     // Switch owner A -> B: the preview was validated server-side against the old scope, so it
     // must be dropped (no committing a file validated under a different scope).
-    await actor.selectOptions(field('inbound-owner-id'), 'owner-2');
+    await selectComboboxOption(actor, 'inbound-owner-id', 'OWN2 - Chủ hàng 2');
 
     await waitFor(() =>
       expect(screen.queryByTestId('inbound-excel-import-preview')).toBeNull(),
@@ -219,7 +232,7 @@ describe('InboundPlanCreatePage Excel import (IFB-03)', () => {
     await selectScope(actor);
     await fillCommitHeader(actor);
     await openImport(actor);
-    await actor.upload(field('inbound-excel-import') as HTMLInputElement, new File(['x'], 'lines.xlsx'));
+    await actor.upload(field('inbound-excel-import'), new File(['x'], 'lines.xlsx'));
 
     await waitFor(() => expect(commitButton().hasAttribute('disabled')).toBe(false));
     await actor.click(commitButton());
@@ -248,28 +261,45 @@ describe('InboundPlanCreatePage warehouse search (IFB-16)', () => {
 
     expect(h.activeWarehousesSearch).toHaveBeenCalledWith('');
 
+    await actor.click(combobox('inbound-warehouse-id'));
     await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'HCM');
 
     await waitFor(() => expect(h.activeWarehousesSearch).toHaveBeenCalledWith('HCM'));
   });
 
-  it('still selects a warehouse option through the underlying select', async () => {
+  it('selects a warehouse option through the shared combobox', async () => {
     const actor = userEvent.setup();
     renderPage();
 
-    await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
-    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
+    await selectComboboxOption(actor, 'inbound-warehouse-id', 'WH - Kho 1');
+    expect(combobox('inbound-warehouse-id').textContent).toContain('WH - Kho 1');
   });
 
   it('clears the selected warehouse once the search debounce settles (review-fix)', async () => {
     const actor = userEvent.setup();
     renderPage();
 
-    await actor.selectOptions(field('inbound-warehouse-id'), 'wh-1');
-    expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe('wh-1');
+    await selectComboboxOption(actor, 'inbound-warehouse-id', 'WH - Kho 1');
+    expect(combobox('inbound-warehouse-id').textContent).toContain('WH - Kho 1');
 
+    await actor.click(combobox('inbound-warehouse-id'));
     await actor.type(screen.getByLabelText('Tìm kiếm Kho'), 'H');
 
-    await waitFor(() => expect((field('inbound-warehouse-id') as HTMLSelectElement).value).toBe(''));
+    await waitFor(() => expect(combobox('inbound-warehouse-id').textContent).toContain('Chọn kho'));
+  });
+
+  it('keeps the warehouse selected when an option is committed before the search debounce settles', async () => {
+    h.activeWarehousesSearch.mockClear();
+    const actor = userEvent.setup();
+    renderPage();
+
+    await actor.click(combobox('inbound-warehouse-id'));
+    fireEvent.change(screen.getByLabelText('Tìm kiếm Kho'), { target: { value: 'H' } });
+    fireEvent.click(screen.getByRole('option', { name: 'WH - Kho 1' }));
+
+    // Let both the stale search window and the reset-to-empty debounce window elapse.
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    expect(combobox('inbound-warehouse-id').textContent).toContain('WH - Kho 1');
   });
 });

@@ -2,7 +2,7 @@ import { Trash2 } from 'lucide-react';
 
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import type { InboundPlanFormLookups } from '@modules/InboundPlan/Presentation/Components/UseInboundPlanFormLookups';
 
 export interface InboundPlanLineDraft {
@@ -45,7 +45,9 @@ export function InboundPlanLinesEditor({
         <div
           key={line.id}
           className={`grid gap-3 rounded-md border p-3 ${
-            showLineNumber ? 'lg:grid-cols-[0.6fr_1fr_1fr_1fr_1fr_auto]' : 'lg:grid-cols-[1fr_1fr_1fr_1fr_auto]'
+            showLineNumber
+              ? 'lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]'
+              : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]'
           }`}
         >
           {showLineNumber ? (
@@ -62,7 +64,7 @@ export function InboundPlanLinesEditor({
               />
             </label>
           ) : null}
-          <LookupSelect
+          <ComboboxSelect
             id={`${idPrefix}-line-${line.id}-sku-id`}
             name={`lines[${index}].skuId`}
             label="SKU"
@@ -75,7 +77,7 @@ export function InboundPlanLinesEditor({
             errorMessage="Không tải được danh sách SKU."
             onChange={(value) => onUpdateLine(line.id, { skuId: value })}
           />
-          <LookupSelect
+          <ComboboxSelect
             id={`${idPrefix}-line-${line.id}-uom-id`}
             name={`lines[${index}].uomId`}
             label="Đơn vị tính"

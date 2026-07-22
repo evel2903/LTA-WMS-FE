@@ -20,6 +20,10 @@ export type CatalogListState = 'loading' | 'empty' | 'ready' | 'error' | 'denied
 export interface CatalogColumn<TRow> {
   header: string;
   render: (row: TRow) => ReactNode;
+  /** Optional richer value for the mobile card while retaining one shared column definition. */
+  mobileRender?: (row: TRow) => ReactNode;
+  /** Omits a column from mobile when its information is already composed into another mobile cell. */
+  mobileHidden?: boolean;
   className?: string;
   mobileLabel?: string;
   /** Marks this column as sortable — the parent owns the actual comparator via `onSortChange`. */
@@ -197,14 +201,20 @@ function ResponsiveCatalogRows<TRow>({
             className="border-border bg-card grid gap-3 rounded-lg border p-3"
             data-catalog-mobile-row
           >
-            {columns.map((column) => (
-              <div key={column.header} className="grid min-w-0 gap-1">
-                <span className="text-muted-foreground text-xs font-medium">
-                  {column.mobileLabel ?? column.header}
-                </span>
-                <div className="min-w-0 break-words text-sm">{column.render(row)}</div>
-              </div>
-            ))}
+            {columns.map((column) =>
+              column.mobileHidden ? null : (
+                <div key={column.header} className="grid min-w-0 gap-1">
+                  <span className="text-muted-foreground text-xs font-medium">
+                    {column.mobileLabel ?? column.header}
+                  </span>
+                  <div className="min-w-0 break-words text-sm">
+                    {typeof column.mobileRender === 'function'
+                      ? column.mobileRender(row)
+                      : column.render(row)}
+                  </div>
+                </div>
+              ),
+            )}
           </article>
         ))}
       </div>
@@ -338,7 +348,7 @@ function stateMessage({
     case 'error':
       return errorMessage ?? 'Đã xảy ra lỗi API không mong muốn.';
     case 'denied':
-      return `Bạn không có quyền xem ${title.toLowerCase()} trong phạm vi này.`;
+      return errorMessage ?? `Bạn không có quyền xem ${title.toLowerCase()} trong phạm vi này.`;
     default:
       return undefined;
   }

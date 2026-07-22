@@ -40,7 +40,7 @@ export interface ComboboxSelectProps {
 }
 
 const triggerClassName =
-  'flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
+  'flex h-10 w-full min-w-0 items-center justify-between gap-2 overflow-hidden rounded-md border bg-transparent px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50';
 
 export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelectProps>(function ComboboxSelect(
   {
@@ -68,6 +68,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
   const [internalQuery, setInternalQuery] = React.useState('');
   const [highlightIndex, setHighlightIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const optionRefs = React.useRef<Array<HTMLLIElement | null>>([]);
   const listboxId = `${id}-listbox`;
   const helperId = `${id}-helper`;
 
@@ -97,12 +98,18 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
         : null;
 
   const selectedOption = displayOptions.find((option) => option.value === value);
+  const highlightedOptionValue = filteredOptions[highlightIndex]?.value;
 
   // Keeps highlightIndex in range if `options` shrinks for a reason other than
   // typing (e.g. an async refetch), independent of the reset-to-0 in setQuery.
   React.useEffect(() => {
-    setHighlightIndex((index) => Math.min(index, Math.max(filteredOptions.length - 1, 0)));
+    setHighlightIndex((index) => Math.max(0, Math.min(index, Math.max(filteredOptions.length - 1, 0))));
   }, [filteredOptions.length]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    optionRefs.current[highlightIndex]?.scrollIntoView?.({ block: 'nearest' });
+  }, [highlightIndex, highlightedOptionValue, open]);
 
   function setQuery(next: string) {
     if (isControlledSearch) {
@@ -130,7 +137,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
   function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setHighlightIndex((index) => Math.min(index + 1, filteredOptions.length - 1));
+      setHighlightIndex((index) => Math.max(0, Math.min(index + 1, filteredOptions.length - 1)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setHighlightIndex((index) => Math.max(index - 1, 0));
@@ -154,7 +161,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
           else setQuery('');
         }}
       >
-        <div className="relative">
+        <div className="relative min-w-0">
           <PopoverPrimitive.Trigger asChild>
             <button
               ref={ref}
@@ -165,13 +172,17 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
               aria-expanded={open}
               aria-haspopup="listbox"
               aria-controls={listboxId}
+              aria-required={optional ? undefined : true}
               aria-describedby={helperText ? helperId : undefined}
               disabled={isDisabled}
               autoFocus={autoFocus}
+              title={selectedOption?.label}
               className={cn(triggerClassName)}
               onKeyDown={handleTriggerKeyDown}
             >
-              <span className={cn('min-w-0 flex-1 truncate text-left', !selectedOption && 'text-muted-foreground')}>
+              <span
+                className={cn('block min-w-0 max-w-full flex-1 truncate text-left', !selectedOption && 'text-muted-foreground')}
+              >
                 {isLoading ? 'Đang tải...' : (selectedOption?.label ?? placeholder)}
               </span>
               <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
@@ -222,6 +233,9 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
                   <li
                     key={option.value}
                     id={`${id}-option-${option.value}`}
+                    ref={(node) => {
+                      optionRefs.current[index] = node;
+                    }}
                     role="option"
                     aria-selected={option.value === value}
                     className={cn(
@@ -231,7 +245,7 @@ export const ComboboxSelect = React.forwardRef<HTMLButtonElement, ComboboxSelect
                     onMouseEnter={() => setHighlightIndex(index)}
                     onClick={() => commitSelection(option.value)}
                   >
-                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                    <span className="min-w-0 flex-1 break-words">{option.label}</span>
                     {option.value === value && <Check className="size-4 shrink-0" />}
                   </li>
                 ))
