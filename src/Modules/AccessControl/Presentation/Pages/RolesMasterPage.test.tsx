@@ -9,6 +9,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
+import { accessControlQueryKeys } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
 import type { Permission, Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type {
   CreateRoleInput,
@@ -124,7 +125,7 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const rendered = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLES]}>
         <Routes>
@@ -134,6 +135,7 @@ function renderPage() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return Object.assign(rendered, { client });
 }
 
 async function findDesktopText(text: string) {
@@ -148,6 +150,25 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe('RolesMasterPage (RA-03)', () => {
+  it('keeps the role type column display-only and never exposes it as a sort control', async () => {
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPage();
+    await screen.findByRole('table');
+    expect(screen.queryByRole('button', { name: /Loại/i })).toBeNull();
+  });
+
+  it('retains the last verified catalog with an explicit warning after a background refresh fails', async () => {
+    const fake = new FakeRepository();
+    repo.current = fake as unknown as IAccessControlRepository;
+    const { client } = renderPage();
+    await findDesktopText('WMS Admin');
+
+    fake.listAllRoles.mockRejectedValueOnce(new Error('catalog refresh failed'));
+    await client.refetchQueries({ queryKey: accessControlQueryKeys.allRoles() });
+
+    expect(await screen.findByText('Danh mục vai trò chưa được xác nhận lại')).toBeTruthy();
+    expect(await findDesktopText('WMS Admin')).toBeTruthy();
+  });
   it('lists roles from the API with type/status/permission count columns', async () => {
     repo.current = new FakeRepository() as unknown as IAccessControlRepository;
     renderPage();

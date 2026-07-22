@@ -16,9 +16,8 @@ export const accessControlQueryKeys = {
   roleLists: () => [...accessControlQueryKeys.all, 'roles'] as const,
   roles: (filter?: RoleListFilter) => [...accessControlQueryKeys.roleLists(), filter ?? {}] as const,
   allRoles: () => [...accessControlQueryKeys.all, 'allRoles'] as const,
-  /** Server-confirmed role creations, kept in the query cache (not a component ref) so they
-   * survive a route change to a DIFFERENT `useAccessControlMutations()` call site (Review
-   * Finding, round 12) — `useAllRoles()`'s `select` merges this into every read. */
+  /** Server-confirmed creation bridge for detail/read-lag bookkeeping only. RH-05 explicitly
+   * excludes this bucket from the verified complete-catalog query. */
   confirmedRoles: () => [...accessControlQueryKeys.all, 'confirmedRoles'] as const,
   roleDetail: (roleCode: RoleCode) => [...accessControlQueryKeys.all, 'role', roleCode] as const,
   /** One local-only cache entry for all not-yet-confirmed assignments. Nested user-id buckets

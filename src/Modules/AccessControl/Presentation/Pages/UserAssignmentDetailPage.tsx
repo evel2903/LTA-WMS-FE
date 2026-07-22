@@ -75,8 +75,14 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
   // (TanStack Query's `isRefetchError = isError && hasData`). Block only when there is truly
   // no catalog to show yet; a retained stale catalog after a failed refetch still counts as
   // ready.
-  const rolesStatus: 'loading' | 'error' | 'ready' =
-    rolesQuery.data !== undefined ? 'ready' : rolesQuery.isError ? 'error' : 'loading';
+  const rolesStatus: 'loading' | 'error' | 'unconfirmed' | 'ready' =
+    rolesQuery.data !== undefined
+      ? rolesQuery.isCatalogVerified
+        ? 'ready'
+        : 'unconfirmed'
+      : rolesQuery.isError
+        ? 'error'
+        : 'loading';
   const detailError =
     (effectiveQuery.error instanceof ApiError ? effectiveQuery.error : null) ??
     (dataScopesQuery.error instanceof ApiError ? dataScopesQuery.error : null);

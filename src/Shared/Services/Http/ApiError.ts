@@ -7,6 +7,7 @@ const STATUS_TO_CODE: Record<number, ApiErrorCode> = {
   404: 'NOT_FOUND',
   409: 'CONFLICT',
   500: 'UNKNOWN',
+  503: 'UNKNOWN',
 };
 
 /**

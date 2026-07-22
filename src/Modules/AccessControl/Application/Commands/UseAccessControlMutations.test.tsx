@@ -49,6 +49,46 @@ const newRole: Role = {
 };
 
 describe('useAccessControlMutations', () => {
+  it('does not promote an unconfirmed catalog when a permission-only mutation succeeds', async () => {
+    let catalogRead = Promise.resolve([existingRole]);
+    const listAllRoles = vi.fn(() => catalogRead);
+    const fake: Partial<IAccessControlRepository> = {
+      listAllRoles,
+      setRolePermissions: vi.fn(() => Promise.resolve({
+        permissions: [{ action: 'Read', objectType: 'SKU' }],
+        version: 1,
+        updatedAt: existingRole.updatedAt,
+      })),
+    };
+    repo.current = fake as IAccessControlRepository;
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    function wrapper({ children }: { children: ReactNode }) {
+      return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    }
+    const { result } = renderHook(
+      () => ({ mutations: useAccessControlMutations(), rolesQuery: useAllRoles() }),
+      { wrapper },
+    );
+    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole]));
+    catalogRead = new Promise(() => { /* keep the invalidated catalog unconfirmed */ });
+    void client.invalidateQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true });
+    await waitFor(() => expect(client.getQueryState(accessControlQueryKeys.allRoles())?.isInvalidated).toBe(true));
+
+    await act(async () => {
+      await result.current.mutations.setRolePermissions.mutateAsync({
+        id: existingRole.id,
+        roleCode: existingRole.roleCode,
+        input: { permissions: [], version: 0, reasonCode: 'RC-ROLE-PERMISSION-UPDATE' },
+      });
+    });
+
+    expect(client.getQueryData<Role[]>(accessControlQueryKeys.allRoles())).toEqual([existingRole]);
+    expect(client.getQueryState(accessControlQueryKeys.allRoles())?.isInvalidated).toBe(true);
+  });
+
   it('invalidates the full role catalog (allRoles), not only the paginated roles() list, after creating a role (Review Finding)', async () => {
     const listAllRoles = vi.fn(() => Promise.resolve([existingRole]));
     const fake: Partial<IAccessControlRepository> = {
@@ -82,6 +122,7 @@ describe('useAccessControlMutations', () => {
     });
 
     await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole, newRole]));
+    expect(result.current.rolesQuery.isCatalogVerified).toBe(true);
     expect(listAllRoles).toHaveBeenCalledTimes(2);
   });
 
@@ -118,7 +159,8 @@ describe('useAccessControlMutations', () => {
       });
     });
 
-    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole, newRole]));
+    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole]));
+    expect(result.current.rolesQuery.isCatalogUnconfirmed).toBe(true);
   });
 
   it('reconciles the newly created role into the cache even if the invalidated refetch SUCCEEDS with a stale catalog missing it (Review Finding, round 6)', async () => {
@@ -155,7 +197,7 @@ describe('useAccessControlMutations', () => {
       });
     });
 
-    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole, newRole]));
+    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole]));
   });
 
   it('preserves EVERY locally confirmed create across consecutive creates, even when each one\'s own refetch is independently stale (Review Finding, round 11)', async () => {
@@ -202,7 +244,7 @@ describe('useAccessControlMutations', () => {
     await act(async () => {
       await result.current.mutations.createRole.mutateAsync({ roleCode: 'ROLE_A', roleName: 'Role A' });
     });
-    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole, roleA]));
+    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole]));
 
     // Create B -- its OWN refetch is ALSO stale, and (being a generic catalog re-read) has no
     // idea A was ever created either.
@@ -213,7 +255,8 @@ describe('useAccessControlMutations', () => {
 
     // Both A and B must survive -- B's own stale-refetch reconcile must not silently drop A,
     // which a naive "only remember THIS invocation's role" implementation would do.
-    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole, roleA, roleB]));
+    await waitFor(() => expect(result.current.rolesQuery.data).toEqual([existingRole]));
+    expect(client.getQueryData(accessControlQueryKeys.confirmedRoles())).toEqual([roleA, roleB]);
   });
 
   it('keeps a confirmed role visible to a DIFFERENT hook instance after the creating one unmounts, even if the next catalog read is stale (Review Finding, round 12)', async () => {
@@ -249,7 +292,8 @@ describe('useAccessControlMutations', () => {
     listAllRoles.mockResolvedValueOnce([existingRole]);
     const assignmentPage = renderHook(() => useAllRoles(), { wrapper });
 
-    await waitFor(() => expect(assignmentPage.result.current.data).toEqual([existingRole, newRole]));
+    await waitFor(() => expect(assignmentPage.result.current.data).toEqual([existingRole]));
+    expect(client.getQueryData(accessControlQueryKeys.confirmedRoles())).toEqual([newRole]);
   });
 
   it('keeps a confirmed role durable past the default 5-minute query GC window, even though nothing ever observes it directly (Review Finding, round 13)', async () => {

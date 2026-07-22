@@ -45,40 +45,29 @@ export function useAllRoles() {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: accessControlQueryKeys.allRoles(),
-    queryFn: async () => {
-      const fetched = await accessControlRepository.listAllRoles();
-      const cached = queryClient.getQueryData<Role[]>(accessControlQueryKeys.allRoles()) ?? [];
-      const confirmed = queryClient.getQueryData<Role[]>(accessControlQueryKeys.confirmedRoles()) ?? [];
-      const currentByCode = new Map([...cached, ...confirmed].map((role) => [role.roleCode, role]));
-      return fetched.map((role) => mergeRoleSnapshots(currentByCode.get(role.roleCode), role));
-    },
-    // Merges in server-confirmed creations on every read, regardless of which
-    // `useAccessControlMutations()` instance created them or whether this raw catalog
-    // response is itself stale (e.g. read-replica lag) -- fixes a confirmed role
-    // disappearing after navigating from Roles Master to User Assignment (Review Finding,
-    // round 12).
-    select: (roles) => {
-      const confirmed = queryClient.getQueryData<Role[]>(accessControlQueryKeys.confirmedRoles()) ?? [];
-      const missing = confirmed.filter((c) => !roles.some((r) => r.roleCode === c.roleCode));
-      return missing.length === 0 ? roles : [...roles, ...missing];
-    },
+    queryFn: () => accessControlRepository.listAllRoles(),
+    retry: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
+  const hasLastKnownGood = query.data !== undefined;
+  const isCatalogVerified =
+    hasLastKnownGood &&
+    query.fetchStatus === 'idle' &&
+    !query.isFetching &&
+    !query.isError &&
+    !query.isStale;
+  const isCatalogUnconfirmed = hasLastKnownGood && !isCatalogVerified;
   useEffect(() => {
-    // Prunes a role from the confirmed-roles bridge once the RAW (pre-merge) catalog already
-    // contains it -- the bridge only needs to survive until an authoritative read catches up;
-    // otherwise it grows unboundedly for the rest of the session (Review Finding, round 13).
-    // Reads the raw cache directly (not `query.data`, already select-merged) and writes from a
-    // `useEffect`, not from `select` itself -- `select` can be invoked more than once per render
-    // for memoization and must stay a pure, cache-mutation-free function.
-    const raw = queryClient.getQueryData<Role[]>(accessControlQueryKeys.allRoles());
-    if (!raw) return;
+    if (!isCatalogVerified || !query.data) return;
     queryClient.setQueryData<Role[]>(accessControlQueryKeys.confirmedRoles(), (confirmed) => {
-      if (!confirmed || confirmed.length === 0) return confirmed;
-      const stillNeeded = confirmed.filter((c) => !raw.some((r) => r.roleCode === c.roleCode));
-      return stillNeeded.length === confirmed.length ? confirmed : stillNeeded;
+      if (!confirmed?.length) return confirmed;
+      const rawCodes = new Set(query.data.map((role) => role.roleCode));
+      const remaining = confirmed.filter((role) => !rawCodes.has(role.roleCode));
+      return remaining.length === confirmed.length ? confirmed : remaining;
     });
-  }, [query.dataUpdatedAt, queryClient]);
-  return query;
+  }, [isCatalogVerified, query.data, query.dataUpdatedAt, queryClient]);
+  return { ...query, isCatalogVerified, isCatalogUnconfirmed };
 }
 
 /** One detail query per given role code (parallel) — supplies matrix grant cells / permission counts. */

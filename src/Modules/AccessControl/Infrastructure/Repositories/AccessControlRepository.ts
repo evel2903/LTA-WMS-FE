@@ -24,6 +24,7 @@ import type {
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
 import { ACCESS_CONTROL_ENDPOINTS } from '@modules/AccessControl/Infrastructure/Api/AccessControlEndpoints';
 import type {
+  CompleteRoleCatalogDto,
   DataScopeDto,
   EffectivePermissionsDto,
   EffectivePermissionsResponseDto,
@@ -33,9 +34,13 @@ import type {
   UserDto,
 } from '@modules/AccessControl/Infrastructure/Dtos/AccessControlDtos';
 import { AccessControlMapper } from '@modules/AccessControl/Infrastructure/Mappers/AccessControlMapper';
+import { ApiError } from '@shared/Services/Http/ApiError';
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
+const MAX_CATALOG_TOKEN_LENGTH = 4096;
+const BASE64URL_SEGMENT = /^[A-Za-z0-9_-]+$/;
+const CANONICAL_UPDATED_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 function paging(filter: { page?: number; pageSize?: number } = {}) {
   return {
@@ -67,110 +72,168 @@ export class AccessControlRepository implements IAccessControlRepository {
   // response that doesn't honor that at runtime is a genuine contract break, not a case to
   // silently tolerate. `useAllRoles()`'s caller already renders a real error state for this.
   async listAllRoles(): Promise<Role[]> {
-    const all: Role[] = [];
-    const seenRoleCodes = new Set<string>();
-    // Defensive bound — a real role catalog never approaches 100k rows; this only guards
-    // against a malformed/looping backend response, not real usage.
-    const MAX_PAGES = 1000;
-    let totalPages: number | undefined;
-    let totalItems: number | undefined;
-    for (let page = 1; page <= MAX_PAGES; page += 1) {
-      const dto = await this.http.get<PagedDto<RoleDto>>(ACCESS_CONTROL_ENDPOINTS.ROLES, {
-        params: { Page: page, PageSize: MAX_PAGE_SIZE },
-      });
-      if (!Array.isArray(dto?.Items)) {
-        throw new Error(`listAllRoles: malformed response at page ${page} — Items is not an array`);
-      }
-      if (dto.Meta?.Page !== page) {
-        throw new Error(
-          `listAllRoles: backend echoed page ${dto.Meta?.Page} for a page ${page} request — cannot trust the accumulated result`,
-        );
-      }
-      const reportedTotalPages = dto.Meta?.TotalPages;
-      if (!Number.isInteger(reportedTotalPages) || reportedTotalPages <= 0) {
-        throw new Error(`listAllRoles: malformed TotalPages at page ${page} (${reportedTotalPages})`);
-      }
-      // Same "lock from first page only" rationale as `totalPages` below — validates the
-      // metadata shape at this boundary, not cross-page consistency (Review Finding, round 6).
-      const reportedTotalItems = dto.Meta?.TotalItems;
-      if (!Number.isInteger(reportedTotalItems) || reportedTotalItems < 0) {
-        throw new Error(`listAllRoles: malformed TotalItems at page ${page} (${reportedTotalItems})`);
-      }
-      // Captured once, from the first page — later drift (concurrent inserts/deletes shifting
-      // the real boundary) is a separate, already-deferred risk, not something this call can
-      // detect or fix without a backend cursor/snapshot.
-      if (totalPages === undefined) {
-        // Reject an implausible total up front — otherwise an obviously-wrong huge number
-        // still burns all `MAX_PAGES` sequential requests before the loop bound catches it
-        // (Review Finding, round 4/5).
-        if (reportedTotalPages > MAX_PAGES) {
-          throw new Error(
-            `listAllRoles: TotalPages (${reportedTotalPages}) exceeds the ${MAX_PAGES}-page bound — refusing to issue a request storm for an implausible catalog size`,
-          );
-        }
-        totalPages = reportedTotalPages;
-        totalItems = reportedTotalItems;
-        // The only valid BE empty-catalog contract is exactly one empty page (`TotalItems: 0`
-        // paired with `TotalPages: 1`) — `TotalItems: 0` with `TotalPages > 1` is self-
-        // contradictory (a truly empty catalog can't span more than one page) and must fail
-        // closed here rather than being silently accepted as complete (Review Finding, round 10).
-        if (totalItems === 0 && totalPages !== 1) {
-          throw new Error(
-            `listAllRoles: contradictory empty-catalog metadata — TotalItems=0 but TotalPages=${totalPages}`,
-          );
-        }
-      }
-
-      if (dto.Items.length === 0) {
-        // A genuinely empty catalog (`TotalItems: 0`) legitimately reports a single empty page
-        // as both the first AND the declared end (BE `ToPagedResult()` contract) — that is not
-        // an incomplete response, so only fail closed here when items were actually expected
-        // (Review Finding, round 9).
-        // `totalItems` is always assigned in lockstep with `totalPages` above (same `if`
-        // block), which TS has already narrowed by this point — the `!` reflects that same
-        // invariant for the one variable TS can't co-narrow on its own.
-        if (page <= totalPages && totalItems! > 0) {
-          throw new Error(
-            `listAllRoles: page ${page} was empty before the declared end (TotalPages=${totalPages})`,
-          );
-        }
-        if (all.length !== totalItems) {
-          throw new Error(
-            `listAllRoles: accumulated ${all.length} unique role(s) but TotalItems declared ${totalItems} — refusing to return a mismatched catalog`,
-          );
-        }
-        return all;
-      }
-      const roles = dto.Items.map((item) => AccessControlMapper.toRole(item));
-      // A role repeated across pages means the offset pagination overlapped/shifted — fail
-      // fast instead of silently rendering duplicate options in the assignment dropdown
-      // (Review Finding, round 4/5).
-      for (const role of roles) {
-        if (seenRoleCodes.has(role.roleCode)) {
-          throw new Error(
-            `listAllRoles: duplicate role code "${role.roleCode}" at page ${page} — malformed/overlapping pagination`,
-          );
-        }
-        seenRoleCodes.add(role.roleCode);
-      }
-      all.push(...roles);
-      if (page >= totalPages) {
-        // `TotalPages`/empty-page checks alone don't guarantee every page was fully
-        // utilized — a non-final page could under-report items without any single-page
-        // check catching it. Cross-check the accumulated unique count against
-        // `Meta.TotalItems` before trusting the catalog is really complete (Review Finding,
-        // round 6).
-        if (all.length !== totalItems) {
-          throw new Error(
-            `listAllRoles: accumulated ${all.length} unique role(s) but TotalItems declared ${totalItems} — refusing to return a mismatched catalog`,
-          );
-        }
-        return all;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await this.CrawlVerifiedRoleCatalog();
+      } catch (error) {
+        if (attempt === 0 && this.IsCatalogRestartError(error)) continue;
+        throw error;
       }
     }
-    throw new Error(
-      `listAllRoles: exceeded ${MAX_PAGES} pages without reaching the declared end — refusing to return a possibly-truncated catalog`,
-    );
+    throw new Error('listAllRoles: role catalog restart bound exhausted');
+  }
+
+  private async CrawlVerifiedRoleCatalog(): Promise<Role[]> {
+    const all: Role[] = [];
+    const seen = new Set<string>();
+    let expectedTotalItems: number | undefined;
+    let expectedTotalPages: number | undefined;
+    let token: string | undefined;
+    let previousCode: string | undefined;
+
+    for (let page = 1; ; page += 1) {
+      const params = {
+        CompleteCatalog: true as const,
+        Page: page,
+        PageSize: MAX_PAGE_SIZE,
+        ...(token ? { CatalogToken: token } : {}),
+      };
+      const dto = await this.FetchCatalogPage(params);
+      this.AssertCatalogPage(dto, page);
+
+      if (expectedTotalItems === undefined) {
+        expectedTotalItems = dto.TotalItems;
+        expectedTotalPages = dto.TotalPages;
+      } else if (dto.TotalItems !== expectedTotalItems || dto.TotalPages !== expectedTotalPages) {
+        throw new Error('listAllRoles: catalog totals changed within a signed attempt');
+      }
+
+      const roles = dto.Items.map((item) => AccessControlMapper.toRole(item));
+      for (const role of roles) {
+        if (seen.has(role.roleCode)) throw new Error(`listAllRoles: duplicate role code "${role.roleCode}"`);
+        if (previousCode !== undefined && this.CompareUtf8(previousCode, role.roleCode) >= 0) {
+          throw new Error('listAllRoles: role codes are not in canonical byte order');
+        }
+        seen.add(role.roleCode);
+        previousCode = role.roleCode;
+        all.push(role);
+      }
+
+      if (dto.CatalogToken === null) {
+        if (page !== expectedTotalPages || all.length !== expectedTotalItems) {
+          throw new Error('listAllRoles: final page/count geometry is inconsistent');
+        }
+        return all;
+      }
+      token = dto.CatalogToken;
+    }
+    throw new Error('listAllRoles: exceeded role catalog page safety bound');
+  }
+
+  private async FetchCatalogPage(params: {
+    CompleteCatalog: true;
+    Page: number;
+    PageSize: number;
+    CatalogToken?: string;
+  }): Promise<CompleteRoleCatalogDto> {
+    try {
+      return await this.http.get<CompleteRoleCatalogDto>(ACCESS_CONTROL_ENDPOINTS.ROLES, { params });
+    } catch (error) {
+      if (this.IsCatalogRestartError(error)) throw error;
+      if (!this.IsTransientCatalogError(error)) throw error;
+      return await this.http.get<CompleteRoleCatalogDto>(ACCESS_CONTROL_ENDPOINTS.ROLES, { params });
+    }
+  }
+
+  private AssertCatalogPage(dto: CompleteRoleCatalogDto, requestedPage: number): void {
+    if (!Array.isArray(dto?.Items)) throw new Error('listAllRoles: Items is not an array');
+    if (dto.Page !== requestedPage) throw new Error('listAllRoles: page echo mismatch');
+    if (dto.PageSize !== MAX_PAGE_SIZE || dto.CrawlShape?.PageSize !== MAX_PAGE_SIZE) {
+      throw new Error('listAllRoles: crawl PageSize mismatch');
+    }
+    if (dto.CrawlShape?.Order !== 'ROLE_CODE_C_ASC') throw new Error('listAllRoles: crawl order mismatch');
+    if (!Number.isSafeInteger(dto.TotalItems) || dto.TotalItems < 0) throw new Error('listAllRoles: invalid TotalItems');
+    if (!Number.isSafeInteger(dto.TotalPages) || dto.TotalPages < 1) throw new Error('listAllRoles: invalid TotalPages');
+    const computedPages = Math.max(1, Math.ceil(dto.TotalItems / MAX_PAGE_SIZE));
+    if (computedPages !== dto.TotalPages || requestedPage > dto.TotalPages) {
+      throw new Error('listAllRoles: invalid page geometry');
+    }
+    const expectedItems = dto.TotalItems === 0
+      ? 0
+      : requestedPage < dto.TotalPages
+        ? MAX_PAGE_SIZE
+        : dto.TotalItems - (requestedPage - 1) * MAX_PAGE_SIZE;
+    if (dto.Items.length !== expectedItems) throw new Error('listAllRoles: page item count mismatch');
+    for (const item of dto.Items) this.AssertCatalogRoleItem(item);
+    if (requestedPage < dto.TotalPages) {
+      if (!this.IsCatalogToken(dto.CatalogToken)) {
+        throw new Error('listAllRoles: missing successor token');
+      }
+    } else if (dto.CatalogToken !== null) {
+      throw new Error('listAllRoles: final page must have a null token');
+    }
+  }
+
+  private AssertCatalogRoleItem(item: unknown): asserts item is RoleDto {
+    if (!item || typeof item !== 'object') throw new Error('listAllRoles: role item is not an object');
+    const role = item as Partial<RoleDto>;
+    if (typeof role.Id !== 'string' || role.Id.length === 0) {
+      throw new Error('listAllRoles: role item has an invalid Id');
+    }
+    if (typeof role.RoleCode !== 'string' || !/^[A-Z][A-Z0-9_]{1,49}$/.test(role.RoleCode)) {
+      throw new Error('listAllRoles: role item has an invalid RoleCode');
+    }
+    if (typeof role.RoleName !== 'string' || role.RoleName.trim().length === 0) {
+      throw new Error('listAllRoles: role item has an invalid RoleName');
+    }
+    if (role.Description !== null && typeof role.Description !== 'string') {
+      throw new Error('listAllRoles: role item has an invalid Description');
+    }
+    if (typeof role.IsSystem !== 'boolean') {
+      throw new Error('listAllRoles: role item has an invalid IsSystem');
+    }
+    if (role.Status !== 'ACTIVE' && role.Status !== 'INACTIVE') {
+      throw new Error('listAllRoles: role item has an invalid Status');
+    }
+    if (!Number.isSafeInteger(role.PermissionsVersion) || (role.PermissionsVersion ?? -1) < 0) {
+      throw new Error('listAllRoles: role item has an invalid PermissionsVersion');
+    }
+    if (
+      typeof role.UpdatedAt !== 'string' ||
+      !CANONICAL_UPDATED_AT.test(role.UpdatedAt) ||
+      new Date(role.UpdatedAt).toISOString() !== role.UpdatedAt
+    ) {
+      throw new Error('listAllRoles: role item has an invalid UpdatedAt');
+    }
+  }
+
+  private IsCatalogToken(value: unknown): value is string {
+    if (typeof value !== 'string' || value.length === 0 || value.length > MAX_CATALOG_TOKEN_LENGTH) return false;
+    const parts = value.split('.');
+    return parts.length === 2 && parts.every((part) => part.length > 0 && part.length % 4 !== 1 && BASE64URL_SEGMENT.test(part));
+  }
+
+  private IsCatalogRestartError(error: unknown): boolean {
+    if (!(error instanceof ApiError)) return false;
+    const reason = (error.details as { Reason?: unknown } | undefined)?.Reason;
+    return reason === 'CATALOG_TOKEN_MISMATCH' || reason === 'CATALOG_TOKEN_INVALID';
+  }
+
+  private IsTransientCatalogError(error: unknown): boolean {
+    if (!(error instanceof ApiError)) return true;
+    if (error.code === 'CATALOG_VERSION_EXHAUSTED' || error.code === 'CATALOG_METADATA_RANGE') return false;
+    return error.code === 'NETWORK_ERROR' || error.status === 0 || error.status >= 500;
+  }
+
+  private CompareUtf8(left: string, right: string): number {
+    const encoder = new TextEncoder();
+    const a = encoder.encode(left);
+    const b = encoder.encode(right);
+    const length = Math.min(a.length, b.length);
+    for (let index = 0; index < length; index += 1) {
+      if (a[index] !== b[index]) return a[index] - b[index];
+    }
+    return a.length - b.length;
   }
 
   async getRole(roleCode: RoleCode): Promise<RoleDetail> {

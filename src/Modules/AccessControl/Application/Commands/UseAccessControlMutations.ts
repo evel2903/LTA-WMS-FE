@@ -86,16 +86,23 @@ function patchRoleDetailCache(
     (page) => page ? { ...page, items: page.items.map((role) =>
       role.roleCode === roleCode ? mergePermissionVersion(role) : role) } : page,
   );
-  for (const key of [accessControlQueryKeys.allRoles(), accessControlQueryKeys.confirmedRoles()]) {
+  for (const key of [accessControlQueryKeys.confirmedRoles()]) {
     queryClient.setQueryData<Role[]>(key, (roles) =>
+      roles?.map((role) => role.roleCode === roleCode ? mergePermissionVersion(role) : role),
+    );
+  }
+  if (canPatchVerifiedRoleCatalog(queryClient)) {
+    queryClient.setQueryData<Role[]>(accessControlQueryKeys.allRoles(), (roles) =>
       roles?.map((role) => role.roleCode === roleCode ? mergePermissionVersion(role) : role),
     );
   }
 }
 
-/** Applies an authoritative role representation across every AccessControl role cache without
+/** Applies an authoritative role representation to detail + legacy paginated caches without
  * dropping the permission array held only by RoleDetail. Strict `updatedAt` prevents an older
- * GET/mutation response from rolling metadata or its CAS token backward. */
+ * GET/mutation response from rolling metadata or its CAS token backward. The verified complete
+ * catalog is deliberately never patched here: identity changes must be re-proved by a fresh
+ * signed crawl. */
 function patchRoleMetadataCaches(queryClient: QueryClient, incoming: Role) {
   queryClient.setQueryData<RoleDetail>(accessControlQueryKeys.roleDetail(incoming.roleCode), (current) => {
     return mergeRoleDetailSnapshots(current, incoming);
@@ -112,14 +119,6 @@ function patchRoleMetadataCaches(queryClient: QueryClient, incoming: Role) {
           }
         : page,
   );
-  queryClient.setQueryData<Role[]>(accessControlQueryKeys.allRoles(), (roles) => {
-      if (!roles) return roles;
-      const index = roles.findIndex((role) => role.roleCode === incoming.roleCode);
-      if (index < 0) return [...roles, incoming];
-      return roles.map((role, roleIndex) =>
-        roleIndex === index ? mergeRoleSnapshots(role, incoming) : role,
-      );
-  });
   queryClient.setQueryData<Role[]>(accessControlQueryKeys.confirmedRoles(), (roles = []) => {
     const index = roles.findIndex((role) => role.roleCode === incoming.roleCode);
     if (index < 0) return [...roles, incoming];
@@ -127,6 +126,41 @@ function patchRoleMetadataCaches(queryClient: QueryClient, incoming: Role) {
       roleIndex === index ? mergeRoleSnapshots(role, incoming) : role,
     );
   });
+}
+
+function patchRoleCatalogDisplayCache(queryClient: QueryClient, incoming: Role) {
+  if (!canPatchVerifiedRoleCatalog(queryClient)) return;
+  queryClient.setQueryData<Role[]>(accessControlQueryKeys.allRoles(), (roles) =>
+    roles?.map((role) =>
+      role.roleCode === incoming.roleCode
+        ? {
+            ...role,
+            description: incoming.description,
+            permissionsVersion: incoming.permissionsVersion,
+            updatedAt: incoming.updatedAt,
+          }
+        : role,
+    ),
+  );
+}
+
+function canPatchVerifiedRoleCatalog(queryClient: QueryClient): boolean {
+  const state = queryClient.getQueryState<Role[]>(accessControlQueryKeys.allRoles());
+  return state?.status === 'success' && state.fetchStatus === 'idle' && !state.isInvalidated && state.error == null;
+}
+
+function changesRoleCatalogIdentity(input: UpdateRoleInput): boolean {
+  return input.roleName !== undefined || input.status !== undefined;
+}
+
+function roleCatalogIdentityMayChange(queryClient: QueryClient, roleCode: RoleCode, input: UpdateRoleInput): boolean {
+  if (!changesRoleCatalogIdentity(input)) return false;
+  const current = queryClient.getQueryData<Role[]>(accessControlQueryKeys.allRoles())
+    ?.find((role) => role.roleCode === roleCode);
+  if (!current) return true;
+  const nameChanged = input.roleName !== undefined && input.roleName.trim() !== current.roleName;
+  const statusChanged = input.status !== undefined && input.status !== current.status;
+  return nameChanged || statusChanged;
 }
 
 // QueryClient owns the cache subscription for its whole lifetime. The WeakSet prevents one
@@ -187,10 +221,12 @@ export function useAccessControlMutations() {
   // query-count growth while preserving cross-user isolation (Review Finding, round 14).
   queryClient.setQueryDefaults(accessControlQueryKeys.reservedRoles(), { gcTime: Infinity });
   const invalidate = (key: readonly unknown[]) => queryClient.invalidateQueries({ queryKey: key });
-  const cancelRoleCatalogReads = () => Promise.all([
-    queryClient.cancelQueries({ queryKey: accessControlQueryKeys.roleLists() }),
-    queryClient.cancelQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true }),
-  ]);
+  const cancelRoleCatalogReads = async (): Promise<void> => {
+    await Promise.all([
+      queryClient.cancelQueries({ queryKey: accessControlQueryKeys.roleLists() }),
+      queryClient.cancelQueries({ queryKey: accessControlQueryKeys.allRoles(), exact: true }),
+    ]);
+  };
 
   // 409 CONFLICT is a distinct INLINE state and 403 FORBIDDEN demotes the panel to
   // read-only (AC3) — neither is toasted (single-surface per error). Everything else toasts.
@@ -209,12 +245,18 @@ export function useAccessControlMutations() {
     updateRole: useMutation({
       mutationKey: ROLE_METADATA_MUTATION_KEY,
       retry: false,
-      onMutate: cancelRoleCatalogReads,
+      onMutate: (variables) =>
+        roleCatalogIdentityMayChange(queryClient, variables.roleCode, variables.input)
+          ? cancelRoleCatalogReads()
+          : Promise.resolve(),
       mutationFn: ({ id, input }: { id: string; roleCode: RoleCode; input: UpdateRoleInput }) =>
         accessControlRepository.updateRole(id, input),
-      onSuccess: async (role) => {
-        await cancelRoleCatalogReads();
+      onSuccess: async (role, variables) => {
+        const identityChanged = roleCatalogIdentityMayChange(queryClient, variables.roleCode, variables.input);
+        if (identityChanged) await cancelRoleCatalogReads();
         patchRoleMetadataCaches(queryClient, role);
+        if (identityChanged) void invalidate(accessControlQueryKeys.allRoles());
+        else patchRoleCatalogDisplayCache(queryClient, role);
         toast.success('Đã cập nhật vai trò');
       },
       onError: async (error, variables) => {
@@ -227,8 +269,13 @@ export function useAccessControlMutations() {
           } catch {
             // The form keeps the draft and exposes an in-place retry; it owns this error surface.
           }
+          // A stale identity conflict can arrive after another tab has changed the catalog. The
+          // one-shot GET above refreshes only this role detail; the complete identity catalog must
+          // still be re-verified before assignment controls reopen.
+          if (changesRoleCatalogIdentity(variables.input)) void invalidate(accessControlQueryKeys.allRoles());
           return;
         }
+        if (changesRoleCatalogIdentity(variables.input)) void invalidate(accessControlQueryKeys.allRoles());
       },
     }),
     // 409 (dup code) and 400 (bad role_code format — real BE error is BUSINESS_RULE, not
@@ -238,14 +285,8 @@ export function useAccessControlMutations() {
     createRole: useMutation({
       mutationFn: (input: CreateRoleInput) => accessControlRepository.createRole(input),
       onSuccess: async (role) => {
-        // Confirmed roles live in the query cache itself (not a component-local ref) so they
-        // survive a route change to a DIFFERENT `useAccessControlMutations()` call site — e.g.
-        // Roles Master creating a role, then User Assignment reading the catalog after
-        // navigating there. `useAllRoles()`'s own `select` merges this bucket into EVERY read,
-        // so a stale/lagged catalog response (read-replica lag, an uncached first fetch, or a
-        // refetch that was already in flight) never drops it — no matter which hook instance
-        // or how much later that read happens (Review Finding, round 12; supersedes the
-        // component-ref + manual cache-patch approach from rounds 4-11).
+        // This bridge is detail/read-lag bookkeeping only. `useAllRoles()` never consumes it,
+        // so it cannot turn a locally confirmed creation into a falsely complete catalog.
         const confirmed = queryClient.getQueryData<Role[]>(accessControlQueryKeys.confirmedRoles()) ?? [];
         if (!confirmed.some((existing) => existing.roleCode === role.roleCode)) {
           queryClient.setQueryData<Role[]>(accessControlQueryKeys.confirmedRoles(), [...confirmed, role]);

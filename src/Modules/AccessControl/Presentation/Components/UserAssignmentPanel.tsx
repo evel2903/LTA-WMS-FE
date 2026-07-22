@@ -40,7 +40,7 @@ interface UserAssignmentPanelProps {
   roles: Role[];
   /** Catalog fetch state — gates the assign-role form so it never claims "none available"
    * while the catalog is still loading or failed to load (Review Finding). */
-  rolesStatus: 'loading' | 'error' | 'ready';
+  rolesStatus: 'loading' | 'error' | 'unconfirmed' | 'ready';
   effective?: EffectivePermissions;
   /** Role codes with a just-succeeded, not-yet-removed assignment for this user — excluded
    * from `availableRoles` to close the gap between a successful assign and the effective-
@@ -122,7 +122,7 @@ export function UserAssignmentPanel({
               <li key={role}>
                 <Badge variant="secondary" className="max-w-full gap-2 whitespace-normal break-words">
                   <span className="min-w-0 break-words">{roleLabel(role)}</span>
-                  {canManage && (
+                  {canManage && rolesStatus === 'ready' && (
                     <button
                       aria-label={`Gỡ vai trò ${roleLabel(role)}`}
                       className="text-destructive"
@@ -137,14 +137,22 @@ export function UserAssignmentPanel({
             ))}
           </ul>
         )}
-        {canManage && rolesStatus === 'loading' && (
+        {rolesStatus === 'loading' && (
           <Alert variant="info" role="status">
             <AlertDescription>Đang tải danh sách vai trò...</AlertDescription>
           </Alert>
         )}
-        {canManage && rolesStatus === 'error' && (
+        {rolesStatus === 'error' && (
           <Alert variant="destructive" role="alert">
             <AlertDescription>Không thể tải danh sách vai trò để gán. Thử tải lại trang.</AlertDescription>
+          </Alert>
+        )}
+        {rolesStatus === 'unconfirmed' && (
+          <Alert variant="warning" role="status">
+            <AlertTitle>Danh mục vai trò chưa được xác nhận</AlertTitle>
+            <AlertDescription>
+              Đang dùng bản đầy đủ gần nhất để hiển thị nhãn. Tạm khóa thao tác gán và gỡ vai trò cho đến khi tải lại thành công.
+            </AlertDescription>
           </Alert>
         )}
         {canManage && rolesStatus === 'ready' && (
