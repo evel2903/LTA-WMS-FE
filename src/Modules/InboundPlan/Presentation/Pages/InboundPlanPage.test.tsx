@@ -7,10 +7,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { ApiError } from '@shared/Services/Http/ApiError';
+import { CatalogListView } from '@shared/Components/Page/CatalogListView';
 import type { PaginatedResponse } from '@shared/Types/Api';
 import type { IInboundPlanRepository } from '@modules/InboundPlan/Application/Interfaces/IInboundPlanRepository';
 import { inboundPlanQueryKeys } from '@modules/InboundPlan/Application/Queries/InboundPlanQueryKeys';
-import type { InboundLineImportPreview, InboundPlan } from '@modules/InboundPlan/Domain/Types/InboundPlan';
+import type {
+  InboundLineImportPreview,
+  InboundPlan,
+} from '@modules/InboundPlan/Domain/Types/InboundPlan';
 import type {
   CreateInboundPlanInput,
   InboundPlanFilter,
@@ -77,6 +81,25 @@ vi.setConfig({ testTimeout: 15_000 });
 
 function page<T>(items: T[]): PaginatedResponse<T> {
   return { items, page: 1, pageSize: 50, totalItems: items.length, totalPages: 1 };
+}
+
+async function selectComboboxOption(
+  actor: ReturnType<typeof userEvent.setup>,
+  id: string,
+  optionLabel: string,
+) {
+  await actor.click(document.getElementById(id) as HTMLButtonElement);
+  await actor.click(await screen.findByRole('option', { name: optionLabel }));
+}
+
+async function selectComboboxByLabel(
+  actor: ReturnType<typeof userEvent.setup>,
+  label: string,
+  optionLabel: string,
+  index = 0,
+) {
+  await actor.click(screen.getAllByRole('combobox', { name: label })[index]);
+  await actor.click(await screen.findByRole('option', { name: optionLabel }));
 }
 
 function setLookupRepositories() {
@@ -531,6 +554,7 @@ function renderListPage(entry = '/inbound') {
         <LocationProbe />
         <Routes>
           <Route path="/inbound" element={<InboundPlanListPage />} />
+          <Route path="/inbound/:id/edit" element={<span>Edit route</span>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -637,21 +661,19 @@ describe('InboundPlanPage (list)', () => {
     );
   }, 15_000);
 
-  it('renders the desktop table with columns and per-row actions alongside the mobile cards, routing "Thao tác tiếp nhận" into the Receiving module', async () => {
+  it('renders the shared CatalogListView for both desktop and mobile layouts', async () => {
     const fake = new FakeInboundPlanRepository([
       makePlan({ sourceDocumentNumber: 'ASN-10001', warehouseCode: 'WT-01' }),
     ]);
     repo.current = fake;
     renderListPage();
 
-    // Desktop table block (rendered in DOM regardless of viewport since responsive is CSS-only).
-    const table = await screen.findByTestId('inbound-plan-table');
-    expect(within(table).getByText('Số chứng từ')).toBeTruthy();
-    expect(within(table).getByText('Trạng thái')).toBeTruthy();
-    expect(within(table).getByText('CoreFlow')).toBeTruthy();
+    const table = await screen.findByRole('table');
+    expect(within(table).getByRole('columnheader', { name: 'Số chứng từ' })).toBeTruthy();
+    expect(within(table).getByRole('columnheader', { name: 'Trạng thái' })).toBeTruthy();
+    expect(within(table).getByRole('columnheader', { name: 'CoreFlow' })).toBeTruthy();
 
-    // The plan row carries its own testid and the same column data as the card.
-    const row = screen.getByTestId('inbound-plan-row-inbound-plan-1');
+    const row = within(table).getByText('ASN-10001').closest('tr') as HTMLElement;
     expect(within(row).getByText('WT-01')).toBeTruthy();
 
     // Per-row actions route to the Plan detail page and into the SEPARATE Receiving
@@ -664,11 +686,151 @@ describe('InboundPlanPage (list)', () => {
       expect.stringContaining('/inbound-receiving/inbound-plan-1'),
     );
 
-    // Mobile cards remain in the DOM too (responsive switch is Tailwind CSS).
+    expect(document.querySelector('[data-catalog-mobile-list]')).toBeTruthy();
+    const mobileRow = document.querySelector('[data-catalog-mobile-row]') as HTMLElement;
+    expect(mobileRow).toBeTruthy();
+    expect(within(mobileRow).getByRole('heading', { name: 'ASN-10001' })).toBeTruthy();
+    expect(within(mobileRow).getByText('ERP - ASN')).toBeTruthy();
+    expect(within(mobileRow).getByText('Đã lập kế hoạch / Chưa ghi nhận')).toBeTruthy();
+    expect(within(mobileRow).queryByText('Hệ thống / Loại')).toBeNull();
+    expect(within(mobileRow).queryByText('Trạng thái')).toBeNull();
+    expect(screen.queryByTestId('inbound-plan-table')).toBeNull();
     expect(screen.getAllByText('ASN-10001').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('IFB-24: shows Sửa/Xóa on the list only for Draft plans, hides them once Planned', async () => {
+  it('allows a mobile renderer to intentionally return no content', () => {
+    render(
+      <CatalogListView
+        title="Danh sách kiểm thử"
+        state="ready"
+        columns={[
+          {
+            header: 'Tên',
+            render: () => <span>Chỉ desktop</span>,
+            mobileRender: () => null,
+          },
+        ]}
+        rows={[{ id: 'row-1' }]}
+        rowKey={(row) => row.id}
+        page={1}
+        totalPages={1}
+        onPageChange={vi.fn()}
+      />,
+    );
+
+    const mobileRow = document.querySelector('[data-catalog-mobile-row]') as HTMLElement;
+    expect(within(mobileRow).queryByText('Chỉ desktop')).toBeNull();
+  });
+
+  it('uses server pagination metadata, forwards pageSize, and resets page when filters change', async () => {
+    const fake = new FakeInboundPlanRepository([
+      makePlan({ sourceDocumentNumber: 'ASN-10001', warehouseCode: 'WT-01' }),
+    ]);
+    fake.list.mockImplementation((filter?: InboundPlanFilter) => {
+      const requestedPageSize = filter?.pageSize ?? 50;
+      return Promise.resolve({
+        items: fake.items,
+        page: filter?.page ?? 1,
+        pageSize: requestedPageSize,
+        totalItems: 150,
+        totalPages: Math.ceil(150 / requestedPageSize),
+      });
+    });
+    repo.current = fake;
+
+    renderListPage();
+
+    await screen.findByText('Trang 1 / 3');
+    expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 50 }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tiếp' }));
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
+    );
+    expect(await screen.findByText('Trang 2 / 3')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Số dòng/trang'), { target: { value: '100' } });
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, pageSize: 100 })),
+    );
+    await screen.findByText('Trang 1 / 2');
+
+    fireEvent.change(screen.getByLabelText('Lọc hệ thống nguồn'), {
+      target: { value: 'ERP' },
+    });
+    await waitFor(
+      () =>
+        expect(fake.list).toHaveBeenCalledWith(
+          expect.objectContaining({ page: 1, pageSize: 100, sourceSystem: 'ERP' }),
+        ),
+      { timeout: 5_000 },
+    );
+  });
+
+  it('does not clamp back to page 1 while the next-page request is pending', async () => {
+    const fake = new FakeInboundPlanRepository([
+      makePlan({ sourceDocumentNumber: 'ASN-10001', warehouseCode: 'WT-01' }),
+    ]);
+    let resolvePageTwo!: (value: PaginatedResponse<InboundPlan>) => void;
+    fake.list.mockImplementation((filter?: InboundPlanFilter) => {
+      if (filter?.page === 2) {
+        return new Promise((resolve) => {
+          resolvePageTwo = resolve;
+        });
+      }
+      return Promise.resolve({
+        items: fake.items,
+        page: 1,
+        pageSize: 50,
+        totalItems: 150,
+        totalPages: 3,
+      });
+    });
+    repo.current = fake;
+    renderListPage();
+
+    await screen.findByText('Trang 1 / 3');
+    fireEvent.click(screen.getByRole('button', { name: 'Tiếp' }));
+    await waitFor(() =>
+      expect(fake.list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 50 })),
+    );
+
+    expect(screen.queryByText('Trang 1 / 3')).toBeNull();
+    expect(
+      fake.list.mock.calls.filter(([filter]) => filter?.page === 1),
+    ).toHaveLength(1);
+
+    resolvePageTwo({
+      items: fake.items,
+      page: 2,
+      pageSize: 50,
+      totalItems: 150,
+      totalPages: 3,
+    });
+    expect(await screen.findByText('Trang 2 / 3')).toBeTruthy();
+  });
+
+  it('preserves the backend message in a denied list state', async () => {
+    const fake = new FakeInboundPlanRepository();
+    fake.list.mockImplementation(() =>
+      Promise.reject(
+        new ApiError({
+          status: 403,
+          code: 'FORBIDDEN',
+          message: 'Không có quyền đọc kế hoạch trong kho WH-LOCKED.',
+        }),
+      ),
+    );
+    repo.current = fake;
+    renderListPage();
+
+    expect(
+      await screen.findByText('Không có quyền đọc kế hoạch trong kho WH-LOCKED.'),
+    ).toBeTruthy();
+  });
+
+  it('keeps primary actions visible and groups Draft-only Sửa/Xóa in one auxiliary menu', async () => {
+    const actor = userEvent.setup();
     const fake = new FakeInboundPlanRepository([
       makePlan({ id: 'draft-plan', sourceDocumentNumber: 'ASN-DRAFT', status: 'Draft' }),
       makePlan({ id: 'planned-plan', sourceDocumentNumber: 'ASN-PLANNED', status: 'Planned' }),
@@ -676,36 +838,59 @@ describe('InboundPlanPage (list)', () => {
     repo.current = fake;
     renderListPage();
 
-    await screen.findByTestId('inbound-plan-table');
-    const draftRow = screen.getByTestId('inbound-plan-row-draft-plan');
-    const plannedRow = screen.getByTestId('inbound-plan-row-planned-plan');
+    const table = await screen.findByRole('table');
+    const draftRow = within(table).getByText('ASN-DRAFT').closest('tr') as HTMLElement;
+    const plannedRow = within(table).getByText('ASN-PLANNED').closest('tr') as HTMLElement;
 
-    expect(within(draftRow).getByRole('link', { name: 'Sửa' })).toBeTruthy();
-    expect(within(draftRow).getByRole('button', { name: 'Xóa' })).toBeTruthy();
-    expect(within(plannedRow).queryByRole('link', { name: 'Sửa' })).toBeNull();
-    expect(within(plannedRow).queryByRole('button', { name: 'Xóa' })).toBeNull();
+    expect(within(draftRow).getByRole('link', { name: 'Mở chi tiết' })).toBeTruthy();
+    expect(within(draftRow).getByRole('link', { name: 'Thao tác tiếp nhận' })).toBeTruthy();
+    expect(within(plannedRow).getByRole('link', { name: 'Mở chi tiết' })).toBeTruthy();
+    expect(within(plannedRow).getByRole('link', { name: 'Thao tác tiếp nhận' })).toBeTruthy();
+
+    expect(within(draftRow).queryByRole('link', { name: 'Sửa' })).toBeNull();
+    expect(within(draftRow).queryByRole('button', { name: 'Xóa' })).toBeNull();
+    expect(
+      within(plannedRow).queryByRole('button', { name: 'Thao tác khác cho ASN-PLANNED' }),
+    ).toBeNull();
+
+    await actor.click(
+      within(draftRow).getByRole('button', { name: 'Thao tác khác cho ASN-DRAFT' }),
+    );
+
+    const editLink = screen.getByRole('menuitem', { name: 'Sửa' });
+    expect(editLink.tagName).toBe('A');
+    expect(editLink.getAttribute('href')).toBe('/inbound/draft-plan/edit');
+    expect(screen.getByRole('menuitem', { name: 'Xóa' })).toBeTruthy();
+
+    await actor.click(editLink);
+    await waitFor(() =>
+      expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/draft-plan/edit'),
+    );
   });
 
   it('IFB-24: cancels a Draft plan from the list only after the confirm dialog is accepted', async () => {
+    const actor = userEvent.setup();
     const fake = new FakeInboundPlanRepository([makePlan({ status: 'Draft' })]);
     repo.current = fake;
     renderListPage();
 
-    const row = await screen.findByTestId('inbound-plan-row-inbound-plan-1');
+    const table = await screen.findByRole('table');
+    const row = within(table).getByText('ASN-10001').closest('tr') as HTMLElement;
     const confirmSpy = vi
       .spyOn(window, 'confirm')
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Xóa' }));
+    await actor.click(within(row).getByRole('button', { name: 'Thao tác khác cho ASN-10001' }));
+    await actor.click(screen.getByRole('menuitem', { name: 'Xóa' }));
     expect(fake.cancel).not.toHaveBeenCalled();
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Xóa' }));
+    await actor.click(within(row).getByRole('button', { name: 'Thao tác khác cho ASN-10001' }));
+    await actor.click(screen.getByRole('menuitem', { name: 'Xóa' }));
     await waitFor(() => expect(fake.cancel).toHaveBeenCalledWith('inbound-plan-1'));
 
     confirmSpy.mockRestore();
   });
-
 });
 
 describe('InboundPlanCreatePage', () => {
@@ -729,15 +914,15 @@ describe('InboundPlanCreatePage', () => {
     expect(screen.queryByLabelText('ID chủ hàng')).toBeNull();
     expect(screen.queryByLabelText('ID kho')).toBeNull();
     expect(screen.queryByLabelText('ID hồ sơ kho')).toBeNull();
-    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
-    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
-    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
-    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
+    await selectComboboxOption(actor, 'inbound-supplier-id', 'SUP-A - Nhà cung cấp A');
+    await selectComboboxOption(actor, 'inbound-owner-id', 'OWN-A - Chủ hàng A');
+    await selectComboboxOption(actor, 'inbound-warehouse-id', 'WT-01 - Kho HCM');
+    await selectComboboxOption(actor, 'inbound-warehouse-profile-id', 'PROFILE-A - Hồ sơ kho A');
     await actor.type(screen.getByLabelText('Thời gian đến dự kiến'), '2026-06-22T08:00');
     expect(screen.queryByLabelText('ID SKU')).toBeNull();
     expect(screen.queryByLabelText('ID đơn vị tính')).toBeNull();
-    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
+    await selectComboboxByLabel(actor, 'SKU', 'SKU-A - Coca-Cola lon 330ml');
+    await selectComboboxByLabel(actor, 'Đơn vị tính', 'EA - Lon');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
     await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
     const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
@@ -776,12 +961,12 @@ describe('InboundPlanCreatePage', () => {
 
     await actor.type(await screen.findByLabelText('Hệ thống nguồn'), 'ERP');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'ASN-10001');
-    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
-    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
-    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
-    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
-    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
+    await selectComboboxOption(actor, 'inbound-supplier-id', 'SUP-A - Nhà cung cấp A');
+    await selectComboboxOption(actor, 'inbound-owner-id', 'OWN-A - Chủ hàng A');
+    await selectComboboxOption(actor, 'inbound-warehouse-id', 'WT-01 - Kho HCM');
+    await selectComboboxOption(actor, 'inbound-warehouse-profile-id', 'PROFILE-A - Hồ sơ kho A');
+    await selectComboboxByLabel(actor, 'SKU', 'SKU-A - Coca-Cola lon 330ml');
+    await selectComboboxByLabel(actor, 'Đơn vị tính', 'EA - Lon');
     const createButton = screen.getByRole('button', { name: 'Tạo kế hoạch nhập kho' });
     await waitFor(() => expect(createButton).toHaveProperty('disabled', false));
     await actor.click(createButton);
@@ -800,23 +985,21 @@ describe('InboundPlanCreatePage', () => {
     await actor.clear(screen.getByLabelText('Loại chứng từ nguồn'));
     await actor.type(screen.getByLabelText('Loại chứng từ nguồn'), 'PO');
     await actor.type(screen.getByLabelText('Số chứng từ nguồn'), 'PO-10001');
-    await actor.selectOptions(await screen.findByLabelText('Nhà cung cấp'), 'supplier-1');
-    await actor.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
-    await actor.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
-    await actor.selectOptions(screen.getByLabelText('Hồ sơ kho'), 'profile-1');
-    await actor.selectOptions(await screen.findByLabelText('SKU'), 'sku-1');
-    await actor.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
+    await selectComboboxOption(actor, 'inbound-supplier-id', 'SUP-A - Nhà cung cấp A');
+    await selectComboboxOption(actor, 'inbound-owner-id', 'OWN-A - Chủ hàng A');
+    await selectComboboxOption(actor, 'inbound-warehouse-id', 'WT-01 - Kho HCM');
+    await selectComboboxOption(actor, 'inbound-warehouse-profile-id', 'PROFILE-A - Hồ sơ kho A');
+    await selectComboboxByLabel(actor, 'SKU', 'SKU-A - Coca-Cola lon 330ml');
+    await selectComboboxByLabel(actor, 'Đơn vị tính', 'EA - Lon');
     await actor.clear(screen.getByLabelText('Số lượng dự kiến'));
     await actor.type(screen.getByLabelText('Số lượng dự kiến'), '12');
     await actor.type(screen.getByLabelText('Tham chiếu dòng ngoài'), '10');
 
     await actor.click(screen.getByRole('button', { name: 'Thêm dòng' }));
-    const skuInputs = screen.getAllByLabelText('SKU');
-    const uomInputs = screen.getAllByLabelText('Đơn vị tính');
     const qtyInputs = screen.getAllByLabelText('Số lượng dự kiến');
     const refInputs = screen.getAllByLabelText('Tham chiếu dòng ngoài');
-    await actor.selectOptions(skuInputs[1], 'sku-2');
-    await actor.selectOptions(uomInputs[1], 'uom-2');
+    await selectComboboxByLabel(actor, 'SKU', 'SKU-B - Coca-Cola thùng 24 lon', 1);
+    await selectComboboxByLabel(actor, 'Đơn vị tính', 'CASE - Thùng', 1);
     await actor.clear(qtyInputs[1]);
     await actor.type(qtyInputs[1], '8');
     await actor.type(refInputs[1], '20');
@@ -837,10 +1020,55 @@ describe('InboundPlanCreatePage', () => {
       ),
     );
   });
-
 });
 
 describe('InboundPlanDetailPage', () => {
+  it('shows the create/edit information on detail as read-only, including scope and line lookup values', async () => {
+    const fake = new FakeInboundPlanRepository([makePlan()]);
+    repo.current = fake;
+    renderDetailPage();
+
+    const readOnlyFields = await screen.findByTestId('inbound-readonly-form-fields');
+    expect(within(readOnlyFields).getByText('ERP')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('ASN')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('ASN-10001')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('SUP-A')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('OWN-A')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('WT-01')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('profile-1')).toBeTruthy();
+    expect(readOnlyFields.querySelectorAll('input,select,textarea,button')).toHaveLength(0);
+    expect(within(screen.getByTestId('inbound-plan-lines-table')).getByText('SKU-A')).toBeTruthy();
+    expect(within(screen.getByTestId('inbound-plan-lines-table')).getByText('EA')).toBeTruthy();
+  });
+
+  it('falls back to non-blank IDs when optional display codes are blank', async () => {
+    const fake = new FakeInboundPlanRepository([
+      makePlan({
+        sourceDocumentNumber: '   ',
+        businessReference: 'ERP:ASN:FALLBACK',
+        supplierCode: ' ',
+        supplierId: 'supplier-fallback',
+        ownerCode: '',
+        ownerId: 'owner-fallback',
+        warehouseCode: '   ',
+        warehouseId: 'warehouse-fallback',
+        warehouseProfileId: ' ',
+        expectedArrivalAt: 'not-a-date',
+      }),
+    ]);
+    repo.current = fake;
+    renderDetailPage();
+
+    const readOnlyFields = await screen.findByTestId('inbound-readonly-form-fields');
+    expect(within(readOnlyFields).getByText('Chưa thiết lập')).toBeTruthy();
+    expect(within(readOnlyFields).queryByText('ERP:ASN:FALLBACK')).toBeNull();
+    expect(within(readOnlyFields).getByText('supplier-fallback')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('owner-fallback')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('warehouse-fallback')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('Không chọn')).toBeTruthy();
+    expect(within(readOnlyFields).getByText('Chưa ghi nhận')).toBeTruthy();
+  });
+
   it('shows the operator header, document info and expected-arrival/CoreFlow trace', async () => {
     const fake = new FakeInboundPlanRepository([makePlan()]);
     repo.current = fake;
@@ -972,7 +1200,7 @@ describe('InboundPlanDetailPage', () => {
         '/inbound/plan-b',
       );
     });
-    await screen.findByText('ASN-PLAN-B');
+    await screen.findAllByText('ASN-PLAN-B');
 
     const priorSettledCount = mutationSettledCount();
 
@@ -1001,7 +1229,7 @@ describe('InboundPlanDetailPage', () => {
 
     // Must not have yanked the operator back to plan A.
     expect(screen.getByTestId('location-probe').textContent).toBe('/inbound/plan-b');
-    expect(screen.getByText('ASN-PLAN-B')).toBeTruthy();
+    expect(screen.getAllByText('ASN-PLAN-B').length).toBeGreaterThan(0);
     expect(screen.queryByText('ASN-PLAN-A')).toBeNull();
   });
 
@@ -1243,7 +1471,11 @@ describe('InboundPlanDetailPage', () => {
 
     // Gate-in's OWN repository call resolves...
     act(() => {
-      resolveGateIn?.({ ...originalItem, gateInStatus: 'Recorded', gateInAt: '2026-07-18T00:00:00.000Z' });
+      resolveGateIn?.({
+        ...originalItem,
+        gateInStatus: 'Recorded',
+        gateInAt: '2026-07-18T00:00:00.000Z',
+      });
     });
     // ...which triggers the post-success refetch (2nd getById call) -- confirm it actually
     // started before asserting anything about the lock's state relative to it.
@@ -1261,7 +1493,11 @@ describe('InboundPlanDetailPage', () => {
 
     // Now let the refetch land -- only now should the lock release.
     act(() => {
-      resolveRefetch?.({ ...originalItem, gateInStatus: 'Recorded', gateInAt: '2026-07-18T00:00:00.000Z' });
+      resolveRefetch?.({
+        ...originalItem,
+        gateInStatus: 'Recorded',
+        gateInAt: '2026-07-18T00:00:00.000Z',
+      });
     });
     await waitFor(() => expect(isButtonDisabled('inbound-confirm-trigger')).toBe(false));
     expect(isButtonDisabled('inbound-cancel-trigger')).toBe(false);
@@ -1312,9 +1548,11 @@ describe('InboundPlanDetailPage', () => {
       </QueryClientProvider>,
     );
 
-    const row = await screen.findByTestId('inbound-plan-row-inbound-plan-1');
+    const table = await screen.findByRole('table');
+    const row = within(table).getByText('ASN-10001').closest('tr') as HTMLElement;
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    await actor.click(within(row).getByRole('button', { name: 'Xóa' }));
+    await actor.click(within(row).getByRole('button', { name: 'Thao tác khác cho ASN-10001' }));
+    await actor.click(screen.getByRole('menuitem', { name: 'Xóa' }));
     expect(fake.cancel).toHaveBeenCalledTimes(1);
     confirmSpy.mockRestore();
 
@@ -1385,9 +1623,16 @@ describe('InboundPlanDetailPage', () => {
     act(() => {
       (window as unknown as { __testNavigate: (to: string) => void }).__testNavigate('/inbound');
     });
-    const row = await screen.findByTestId('inbound-plan-row-inbound-plan-1');
-    const xoaButton = () => within(row).getByRole('button', { name: 'Xóa' });
-    expect((xoaButton() as HTMLButtonElement).disabled).toBe(true);
+    const table = await screen.findByRole('table');
+    const row = within(table).getByText('ASN-10001').closest('tr') as HTMLElement;
+    await actor.click(within(row).getByRole('button', { name: 'Thao tác khác cho ASN-10001' }));
+    const suaItem = () => screen.getByRole('menuitem', { name: 'Sửa' });
+    const xoaItem = () => screen.getByRole('menuitem', { name: 'Xóa' });
+    expect(suaItem().getAttribute('aria-disabled')).toBe('true');
+    expect(xoaItem().getAttribute('aria-disabled')).toBe('true');
+    await actor.click(xoaItem());
+    expect(fake.cancel).not.toHaveBeenCalled();
+    await actor.keyboard('{Escape}');
 
     act(() => {
       resolveGateIn?.({
@@ -1396,7 +1641,14 @@ describe('InboundPlanDetailPage', () => {
         gateInAt: '2026-07-17T00:00:00.000Z',
       });
     });
-    await waitFor(() => expect((xoaButton() as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    const refreshedTable = await screen.findByRole('table');
+    const refreshedRow = within(refreshedTable).getByText('ASN-10001').closest('tr') as HTMLElement;
+    await actor.click(
+      within(refreshedRow).getByRole('button', { name: 'Thao tác khác cho ASN-10001' }),
+    );
+    expect(screen.getByRole('menuitem', { name: 'Sửa' }).getAttribute('aria-disabled')).toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'Xóa' }).getAttribute('aria-disabled')).toBeNull();
   });
 
   it('review fix: resolves route mode via useMatch, tolerating a trailing slash on /edit and /gate-in', async () => {
@@ -1405,12 +1657,18 @@ describe('InboundPlanDetailPage', () => {
     setLookupRepositories();
     renderDetailPage('/inbound/inbound-plan-1/edit/');
     expect(await screen.findByTestId('inbound-edit-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-readonly-form-fields')).toBeNull();
+    expect(screen.getByTestId('inbound-document-info')).toBeTruthy();
+    expect(screen.getByTestId('inbound-plan-lines-table')).toBeTruthy();
     cleanup();
 
     const fakeGateIn = new FakeInboundPlanRepository([makePlan({ status: 'Planned' })]);
     repo.current = fakeGateIn;
     renderDetailPage('/inbound/inbound-plan-1/gate-in/');
     expect(await screen.findByTestId('inbound-gate-in-panel')).toBeTruthy();
+    expect(screen.queryByTestId('inbound-readonly-form-fields')).toBeNull();
+    expect(screen.getByTestId('inbound-document-info')).toBeTruthy();
+    expect(screen.getByTestId('inbound-plan-lines-table')).toBeTruthy();
   });
 
   it('review fix: does not mistake a plan whose id literally equals "edit" or "gate-in" on the plain detail route for the edit/gate-in route', async () => {
@@ -1555,15 +1813,22 @@ describe('InboundPlanDetailPage', () => {
     // (no loading gap that would itself unmount/remount the panel and mask the bug --
     // the real-world case this guards is a warm cache, e.g. planB was already open
     // earlier in the session).
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
     client.setQueryData(inboundPlanQueryKeys.detail('plan-b'), planB);
     renderDetailPage('/inbound/plan-a/edit', client);
 
     const panelA = await screen.findByTestId('inbound-edit-panel');
-    expect(within(panelA).getByLabelText('Số chứng từ nguồn')).toHaveProperty('value', 'ASN-PLAN-A');
+    expect(within(panelA).getByLabelText('Số chứng từ nguồn')).toHaveProperty(
+      'value',
+      'ASN-PLAN-A',
+    );
 
     act(() => {
-      (window as unknown as { __testNavigate: (to: string) => void }).__testNavigate('/inbound/plan-b/edit');
+      (window as unknown as { __testNavigate: (to: string) => void }).__testNavigate(
+        '/inbound/plan-b/edit',
+      );
     });
 
     await waitFor(() =>
@@ -1619,7 +1884,10 @@ describe('InboundPlanDetailPage', () => {
     fireEvent.click(screen.getByTestId('inbound-edit-trigger'));
     const panel = await screen.findByTestId('inbound-edit-panel');
 
-    expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty('disabled', true);
+    expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(fake.update).not.toHaveBeenCalled();
   });
 
@@ -1662,8 +1930,10 @@ describe('InboundPlanDetailPage', () => {
     const lineNumberInputs = within(panel).getAllByLabelText('Số dòng');
     fireEvent.change(lineNumberInputs[1], { target: { value: '1' } });
 
-    expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty('disabled', true);
+    expect(within(panel).getByRole('button', { name: 'Lưu thay đổi' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(fake.update).not.toHaveBeenCalled();
   });
-
 });

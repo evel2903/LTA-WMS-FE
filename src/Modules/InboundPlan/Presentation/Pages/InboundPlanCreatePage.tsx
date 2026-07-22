@@ -93,8 +93,16 @@ export function InboundPlanCreatePage() {
   // round-1 regression: clearing on every keystroke re-fired the excelFile/excelPreview reset
   // effect above on every character typed, silently wiping an already-validated import mid-edit.
   useEffect(() => {
-    setWarehouseId('');
-  }, [lookups.debouncedWarehouseSearch]);
+    // ComboboxSelect clears its controlled search after committing an option. Do not treat
+    // that empty reset as a new narrowing search, or the warehouse selected immediately
+    // before it would be erased as soon as the debounce settles.
+    if (
+      lookups.debouncedWarehouseSearch &&
+      lookups.warehouseSearch === lookups.debouncedWarehouseSearch
+    ) {
+      setWarehouseId('');
+    }
+  }, [lookups.debouncedWarehouseSearch, lookups.warehouseSearch]);
 
   // Đóng popup import bằng phím Escape (mirror pattern InboundDiscrepancySheet).
   useEffect(() => {

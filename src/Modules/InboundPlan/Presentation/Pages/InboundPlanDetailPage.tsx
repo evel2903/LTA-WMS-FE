@@ -40,10 +40,16 @@ function LifecycleStatusBadge({ value }: { value: string }) {
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return 'Chưa ghi nhận';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Chưa ghi nhận';
   return new Intl.DateTimeFormat('vi-VN', {
     dateStyle: 'short',
     timeStyle: 'short',
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function firstNonBlank(...values: Array<string | null | undefined>) {
+  return values.find((value) => value?.trim())?.trim() ?? 'Chưa thiết lập';
 }
 
 // Durable inline error text for a mutation, instead of relying solely on the
@@ -55,11 +61,39 @@ function toPanelErrorMessage(error: unknown, fallback: string): string | null {
 }
 
 function DetailMetric({ label, value }: { label: string; value: ReactNode }) {
+  const textValue = typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   return (
     <div className="min-w-0 rounded-md border bg-background px-3 py-2">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate text-sm font-semibold text-foreground">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-semibold text-foreground" title={textValue}>
+        {value}
+      </dd>
     </div>
+  );
+}
+
+function InboundPlanReadOnlyFormFields({ plan }: { plan: InboundPlan }) {
+  return (
+    <Card data-testid="inbound-readonly-form-fields">
+      <CardHeader>
+        <CardTitle className="text-base">Thông tin kế hoạch</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailMetric label="Hệ thống nguồn" value={firstNonBlank(plan.sourceSystem)} />
+          <DetailMetric label="Loại chứng từ nguồn" value={firstNonBlank(plan.sourceDocumentType)} />
+          <DetailMetric
+            label="Số chứng từ nguồn"
+            value={firstNonBlank(plan.sourceDocumentNumber)}
+          />
+          <DetailMetric label="Nhà cung cấp" value={firstNonBlank(plan.supplierCode, plan.supplierId)} />
+          <DetailMetric label="Chủ hàng" value={firstNonBlank(plan.ownerCode, plan.ownerId)} />
+          <DetailMetric label="Kho" value={firstNonBlank(plan.warehouseCode, plan.warehouseId)} />
+          <DetailMetric label="Hồ sơ kho" value={firstNonBlank(plan.warehouseProfileId, 'Không chọn')} />
+          <DetailMetric label="Dự kiến đến" value={formatDateTime(plan.expectedArrivalAt)} />
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -92,7 +126,7 @@ function InboundOperatorHeader({ plan, onEdit, onConfirm, onCancel, isBusy = fal
           <div className="min-w-0">
             <CardTitle className="text-base sm:text-lg">Nhập kho {plan.businessReference}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              ASN {plan.sourceDocumentNumber || plan.businessReference}
+              ASN {firstNonBlank(plan.sourceDocumentNumber)}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -156,7 +190,7 @@ function InboundOperatorHeader({ plan, onEdit, onConfirm, onCancel, isBusy = fal
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="grid gap-2 sm:grid-cols-3">
-          <DetailMetric label="ASN" value={plan.sourceDocumentNumber || plan.businessReference} />
+          <DetailMetric label="ASN" value={firstNonBlank(plan.sourceDocumentNumber)} />
           <DetailMetric label="Nhà cung cấp" value={plan.supplierCode ?? 'Chưa có mã'} />
           <DetailMetric label="Kho" value={plan.warehouseCode ?? 'Chưa có mã'} />
         </dl>
@@ -472,6 +506,8 @@ export function InboundPlanDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {selected && mode === 'detail' ? <InboundPlanReadOnlyFormFields plan={selected} /> : null}
 
       {selected && (
         <div className="space-y-4">

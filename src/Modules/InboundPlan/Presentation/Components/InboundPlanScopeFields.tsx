@@ -1,5 +1,4 @@
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
-import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import type { InboundPlanFormLookups } from '@modules/InboundPlan/Presentation/Components/UseInboundPlanFormLookups';
 
 // IFB-24 review fix: shared by InboundPlanCreatePage and InboundPlanEditPanel (was duplicated
@@ -31,7 +30,7 @@ export function InboundPlanScopeFields({
 }: InboundPlanScopeFieldsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <LookupSelect
+      <ComboboxSelect
         id={`${idPrefix}-supplier-id`}
         name="supplierId"
         label="Nhà cung cấp"
@@ -44,7 +43,7 @@ export function InboundPlanScopeFields({
         errorMessage="Không tải được danh sách nhà cung cấp."
         onChange={onSupplierIdChange}
       />
-      <LookupSelect
+      <ComboboxSelect
         id={`${idPrefix}-owner-id`}
         name="ownerId"
         label="Chủ hàng"
@@ -57,7 +56,7 @@ export function InboundPlanScopeFields({
         errorMessage="Không tải được danh sách chủ hàng."
         onChange={onOwnerIdChange}
       />
-      <SearchableLookupSelect
+      <ComboboxSelect
         id={`${idPrefix}-warehouse-id`}
         name="warehouseId"
         label="Kho"
@@ -73,7 +72,7 @@ export function InboundPlanScopeFields({
         onSearchChange={lookups.setWarehouseSearch}
         searchPlaceholder="Tìm theo mã/tên kho..."
       />
-      <LookupSelect
+      <ComboboxSelect
         id={`${idPrefix}-warehouse-profile-id`}
         name="warehouseProfileId"
         label="Hồ sơ kho"
@@ -85,6 +84,7 @@ export function InboundPlanScopeFields({
         emptyMessage="Chưa có hồ sơ kho active để chọn."
         errorMessage="Không tải được danh sách hồ sơ kho."
         optional
+        disabled={!warehouseProfileId && lookups.warehouseProfileOptions.length === 0}
         onChange={onWarehouseProfileIdChange}
       />
     </div>

@@ -58,7 +58,7 @@ const migratedRootPages = [
   ['Modules/AccessControl/Presentation/Pages/UsersAssignmentsPage.tsx', 'ListPageShell'],
   ['Modules/Approval/Presentation/Pages/ApprovalQueuePage.tsx', 'ListPageShell'],
   ['Modules/Compliance/Presentation/Pages/ExceptionQueuePage.tsx', 'ListPageShell'],
-  ['Modules/InboundPlan/Presentation/Pages/InboundPlanPage.tsx', 'ListPageShell'],
+  ['Modules/InboundPlan/Presentation/Pages/InboundPlanPage.tsx', 'CatalogListView'],
   ['Modules/Putaway/Presentation/Pages/PutawayPage.tsx', 'ListPageShell'],
   ['Modules/TaskExecution/Presentation/Pages/TaskExecutionPage.tsx', 'ListPageShell'],
   ['Modules/BarcodeLabel/Presentation/Pages/BarcodeLabelPage.tsx', 'ListPageShell'],

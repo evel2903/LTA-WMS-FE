@@ -1,20 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, RefreshCw } from 'lucide-react';
+import { EllipsisVertical, Plus, RefreshCw } from 'lucide-react';
+import { DropdownMenu } from 'radix-ui';
 
 import { ROUTES } from '@app/Config/Routes';
 import { ApiError } from '@shared/Services/Http/ApiError';
 import { Button } from '@shared/Components/Ui/Button';
 import { Input } from '@shared/Components/Ui/Input';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@shared/Components/Ui/Table';
-import { ListPageShell } from '@shared/Components/Page/ListPageShell';
+  CatalogListView,
+  type CatalogColumn,
+  type CatalogListState,
+} from '@shared/Components/Page/CatalogListView';
 import { useDebouncedValue } from '@shared/Hooks/UseDebouncedValue';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import {
@@ -24,11 +21,13 @@ import {
 import { useInboundPlans } from '@modules/InboundPlan/Application/Queries/UseInboundPlans';
 import type { InboundPlan } from '@modules/InboundPlan/Domain/Types/InboundPlan';
 
+const DEFAULT_PAGE_SIZE = 50;
+
 function statusLabel(plan: InboundPlan) {
   return `${vietnameseOperationalLabel(plan.status)} / ${vietnameseOperationalLabel(plan.gateInStatus)}`;
 }
 
-interface DraftRowActionsProps {
+interface InboundPlanActionsProps {
   plan: InboundPlan;
   // Re-review fix (P1, round 4): renamed from `isCancelling` -- this now reflects ANY
   // lock-relevant plan mutation pending for this plan (Sửa/Xác nhận/Xóa/gate-in), not just
@@ -40,151 +39,65 @@ interface DraftRowActionsProps {
   onCancel: (plan: InboundPlan) => void;
 }
 
-// IFB-24: a plan is only editable/cancellable while still Draft — once confirmed it
-// has real downstream state (CoreFlow instance, outbox event) that Sửa/Xóa here do
-// not know how to unwind.
-function DraftRowActions({ plan, isBusy, onCancel }: DraftRowActionsProps) {
-  if (plan.status !== 'Draft') return null;
+function InboundPlanActions({ plan, isBusy, onCancel }: InboundPlanActionsProps) {
   return (
-    <>
+    <div className="flex flex-wrap gap-2">
+      <Button asChild size="sm">
+        <Link to={ROUTES.INBOUND_PLAN.DETAIL(plan.id)}>Mở chi tiết</Link>
+      </Button>
       <Button asChild variant="secondary" size="sm">
-        <Link to={ROUTES.INBOUND_PLAN.EDIT(plan.id)}>Sửa</Link>
+        <Link to={ROUTES.INBOUND_RECEIVING.DETAIL(plan.id)}>Thao tác tiếp nhận</Link>
       </Button>
-      <Button
-        variant="destructive"
-        size="sm"
-        disabled={isBusy}
-        onClick={() => onCancel(plan)}
-      >
-        Xóa
-      </Button>
-    </>
-  );
-}
-
-function InboundPlanCard({
-  plan,
-  isBusy,
-  onCancel,
-}: {
-  plan: InboundPlan;
-  isBusy: boolean;
-  onCancel: (plan: InboundPlan) => void;
-}) {
-  return (
-    <article className="border-border bg-card text-card-foreground space-y-3 rounded-lg border p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold">{plan.sourceDocumentNumber}</h2>
-          <p className="text-muted-foreground text-sm">
-            {plan.sourceSystem} - {plan.sourceDocumentType}
-          </p>
-        </div>
-        <span className="shrink-0 rounded-md border px-2 py-1 text-xs font-medium">
-          {statusLabel(plan)}
-        </span>
-      </div>
-
-      <dl className="text-muted-foreground grid gap-1 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="font-medium text-foreground">Kho</dt>
-          <dd>{plan.warehouseCode ?? plan.warehouseId}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-foreground">Chủ hàng</dt>
-          <dd>{plan.ownerCode ?? plan.ownerId}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-foreground">Số dòng</dt>
-          <dd>{plan.lines.length}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-foreground">CoreFlow</dt>
-          <dd>{plan.coreFlowInstanceId ?? 'chưa liên kết'}</dd>
-        </div>
-      </dl>
-
-      <div className="flex flex-wrap gap-2">
-        <Button asChild size="sm">
-          <Link to={ROUTES.INBOUND_PLAN.DETAIL(plan.id)}>Mở chi tiết</Link>
-        </Button>
-        <Button asChild variant="secondary" size="sm">
-          <Link to={ROUTES.INBOUND_RECEIVING.DETAIL(plan.id)}>Thao tác tiếp nhận</Link>
-        </Button>
-        <DraftRowActions plan={plan} isBusy={isBusy} onCancel={onCancel} />
-      </div>
-    </article>
-  );
-}
-
-// Desktop (>= md) presentation: same plan fields/actions as the card, laid out as a
-// dense table for faster scanning/column comparison on wide screens. Reuses the shared
-// Ui/Table primitives (no new dependency). The status cell mirrors the card's bordered
-// span on purpose — Badge unification is owned by the FOUNDATION-UX-REUI epic.
-function InboundPlanTable({
-  plans,
-  isBusy,
-  onCancel,
-}: {
-  plans: InboundPlan[];
-  isBusy: (plan: InboundPlan) => boolean;
-  onCancel: (plan: InboundPlan) => void;
-}) {
-  return (
-    <Table data-testid="inbound-plan-table">
-      <TableHeader>
-        <TableRow>
-          <TableHead>Số chứng từ</TableHead>
-          <TableHead>Hệ thống / Loại</TableHead>
-          <TableHead>Trạng thái</TableHead>
-          <TableHead>Kho</TableHead>
-          <TableHead>Chủ hàng</TableHead>
-          <TableHead>Số dòng</TableHead>
-          <TableHead>CoreFlow</TableHead>
-          <TableHead>Hành động</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {plans.map((plan) => (
-          <TableRow key={plan.id} data-testid={`inbound-plan-row-${plan.id}`}>
-            <TableCell className="font-medium text-foreground">{plan.sourceDocumentNumber}</TableCell>
-            <TableCell className="text-muted-foreground">
-              {plan.sourceSystem} - {plan.sourceDocumentType}
-            </TableCell>
-            <TableCell>
-              <span className="rounded-md border px-2 py-1 text-xs font-medium">
-                {statusLabel(plan)}
-              </span>
-            </TableCell>
-            <TableCell>{plan.warehouseCode ?? plan.warehouseId}</TableCell>
-            <TableCell>{plan.ownerCode ?? plan.ownerId}</TableCell>
-            <TableCell>{plan.lines.length}</TableCell>
-            <TableCell>{plan.coreFlowInstanceId ?? 'chưa liên kết'}</TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm">
-                  <Link to={ROUTES.INBOUND_PLAN.DETAIL(plan.id)}>Mở chi tiết</Link>
-                </Button>
-                <Button asChild variant="secondary" size="sm">
-                  <Link to={ROUTES.INBOUND_RECEIVING.DETAIL(plan.id)}>Thao tác tiếp nhận</Link>
-                </Button>
-                <DraftRowActions plan={plan} isBusy={isBusy(plan)} onCancel={onCancel} />
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+      {plan.status === 'Draft' ? (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={`Thao tác khác cho ${plan.sourceDocumentNumber}`}
+            >
+              <EllipsisVertical className="size-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              align="end"
+              sideOffset={4}
+              className="bg-popover text-popover-foreground z-50 min-w-36 rounded-md border p-1 shadow-md"
+            >
+              <DropdownMenu.Item
+                asChild
+                disabled={isBusy}
+                className="focus:bg-accent focus:text-accent-foreground relative flex cursor-default select-none items-center rounded-sm px-2 py-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+              >
+                <Link to={ROUTES.INBOUND_PLAN.EDIT(plan.id)}>Sửa</Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item
+                disabled={isBusy}
+                onSelect={() => onCancel(plan)}
+                className="focus:bg-destructive/10 focus:text-destructive text-destructive relative flex cursor-default select-none items-center rounded-sm px-2 py-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+              >
+                Xóa
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      ) : null}
+    </div>
   );
 }
 
 export function InboundPlanPage() {
   const [sourceSystemFilter, setSourceSystemFilter] = useState('');
   const [documentFilter, setDocumentFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const debouncedSourceSystem = useDebouncedValue(sourceSystemFilter, 250);
   const debouncedDocument = useDebouncedValue(documentFilter, 250);
   const query = useInboundPlans({
-    page: 1,
+    page,
+    pageSize,
     sourceSystem: debouncedSourceSystem || undefined,
     sourceDocumentNumber: debouncedDocument || undefined,
   });
@@ -203,21 +116,87 @@ export function InboundPlanPage() {
     mutations.cancelInboundPlan.mutate({ id: plan.id });
   };
   const apiError = query.error instanceof ApiError ? query.error : null;
-  const state = query.isLoading
+  const state: CatalogListState = query.isLoading
     ? 'loading'
     : apiError?.isForbidden
-      ? 'forbidden'
+      ? 'denied'
       : query.error
         ? 'error'
         : plans.length === 0
           ? 'empty'
-          : null;
+          : 'ready';
+  // During a page transition TanStack Query may still expose the previous page's
+  // metadata (or no data at all). Keep the requested page reachable until the
+  // response for that exact page arrives; CatalogPagination can then clamp only
+  // against authoritative metadata from the current request.
+  const totalPages =
+    query.data?.page === page
+      ? query.data.totalPages
+      : Math.max(query.data?.totalPages ?? 1, page);
+  const columns: CatalogColumn<InboundPlan>[] = [
+    {
+      header: 'Số chứng từ',
+      render: (plan) => (
+        <span className="font-medium text-foreground">{plan.sourceDocumentNumber}</span>
+      ),
+      mobileLabel: 'Kế hoạch nhập kho',
+      mobileRender: (plan) => (
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-semibold text-foreground">{plan.sourceDocumentNumber}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {plan.sourceSystem} - {plan.sourceDocumentType}
+          </p>
+          <span className="mt-2 inline-flex rounded-md border px-2 py-1 text-xs font-medium text-foreground">
+            {statusLabel(plan)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Hệ thống / Loại',
+      render: (plan) => (
+        <span className="text-muted-foreground">
+          {plan.sourceSystem} - {plan.sourceDocumentType}
+        </span>
+      ),
+      mobileHidden: true,
+    },
+    {
+      header: 'Trạng thái',
+      render: (plan) => (
+        <span className="rounded-md border px-2 py-1 text-xs font-medium">{statusLabel(plan)}</span>
+      ),
+      mobileHidden: true,
+    },
+    {
+      header: 'Kho',
+      render: (plan) => plan.warehouseCode ?? plan.warehouseId,
+    },
+    {
+      header: 'Chủ hàng',
+      render: (plan) => plan.ownerCode ?? plan.ownerId,
+    },
+    {
+      header: 'Số dòng',
+      render: (plan) => plan.lines.length,
+    },
+    {
+      header: 'CoreFlow',
+      render: (plan) => plan.coreFlowInstanceId ?? 'chưa liên kết',
+    },
+    {
+      header: 'Hành động',
+      render: (plan) => (
+        <InboundPlanActions plan={plan} isBusy={isBusy(plan)} onCancel={handleCancel} />
+      ),
+    },
+  ];
 
   return (
-    <ListPageShell
+    <CatalogListView
       title="Chứng từ nguồn nhập kho"
       description="Quét, lọc và chọn kế hoạch nhập kho. Tiếp nhận, QC, LPN và phát hành được xử lý ở trang chi tiết/thao tác."
-      toolbar={
+      headerAction={
         <>
           <Button asChild>
             <Link to={ROUTES.INBOUND_PLAN.NEW}>
@@ -225,18 +204,26 @@ export function InboundPlanPage() {
               Tạo kế hoạch nhập kho
             </Link>
           </Button>
-          <Button variant="secondary" size="icon" onClick={() => void query.refetch()} aria-label="Làm mới danh sách nhập kho">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => void query.refetch()}
+            aria-label="Làm mới danh sách nhập kho"
+          >
             <RefreshCw className="size-4" aria-hidden="true" />
           </Button>
         </>
       }
-      filters={
+      toolbar={
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm">
             Lọc hệ thống nguồn
             <Input
               value={sourceSystemFilter}
-              onChange={(event) => setSourceSystemFilter(event.target.value)}
+              onChange={(event) => {
+                setSourceSystemFilter(event.target.value);
+                setPage(1);
+              }}
               placeholder="ERP"
             />
           </label>
@@ -244,49 +231,36 @@ export function InboundPlanPage() {
             Lọc số chứng từ
             <Input
               value={documentFilter}
-              onChange={(event) => setDocumentFilter(event.target.value)}
+              onChange={(event) => {
+                setDocumentFilter(event.target.value);
+                setPage(1);
+              }}
               placeholder="ASN-10001"
             />
           </label>
         </div>
       }
       state={state}
-      stateTitle={
-        state === 'forbidden'
-          ? 'Từ chối quyền truy cập'
-          : state === 'error'
-            ? 'Không thể tải kế hoạch nhập kho'
-            : state === 'empty'
-              ? 'Chưa có kế hoạch nhập kho'
-              : undefined
+      columns={columns}
+      rows={plans}
+      rowKey={(plan) => plan.id}
+      page={page}
+      totalPages={totalPages}
+      onPageChange={setPage}
+      pageSize={pageSize}
+      onPageSizeChange={(nextPageSize) => {
+        setPageSize(nextPageSize);
+        setPage(1);
+      }}
+      errorMessage={
+        apiError?.message ??
+        (query.error instanceof Error
+          ? query.error.message
+          : query.error
+            ? 'Không thể tải kế hoạch nhập kho.'
+            : undefined)
       }
-      stateMessage={
-        state === 'forbidden'
-          ? apiError?.message
-          : state === 'error'
-            ? query.error instanceof Error
-              ? query.error.message
-              : 'Không thể tải kế hoạch nhập kho.'
-            : state === 'empty'
-              ? 'Không có chứng từ nguồn khớp bộ lọc hiện tại.'
-              : undefined
-      }
-    >
-      {/* Mobile (< md): card grid — easier to tap. Hidden from md up. */}
-      <div className="grid gap-3 md:hidden">
-        {plans.map((plan) => (
-          <InboundPlanCard
-            key={plan.id}
-            plan={plan}
-            isBusy={isBusy(plan)}
-            onCancel={handleCancel}
-          />
-        ))}
-      </div>
-      {/* Desktop (>= md): dense table for scanning/column comparison. */}
-      <div className="hidden md:block">
-        <InboundPlanTable plans={plans} isBusy={isBusy} onCancel={handleCancel} />
-      </div>
-    </ListPageShell>
+      emptyLabel="Không có chứng từ nguồn khớp bộ lọc hiện tại."
+    />
   );
 }
