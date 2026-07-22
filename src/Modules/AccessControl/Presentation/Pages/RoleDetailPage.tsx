@@ -19,6 +19,7 @@ import {
   toMutationErrorMessage,
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import {
+  ROLE_METADATA_MUTATION_KEY,
   ROLE_PERMISSIONS_MUTATION_KEYS,
   useAccessControlMutations,
 } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
@@ -28,6 +29,7 @@ import {
 } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 import { buildPermissionMatrix, matrixCellKey } from '@modules/AccessControl/Application/UseCases/BuildPermissionMatrix';
 import { RolePermissionEditor } from '@modules/AccessControl/Presentation/Components/RolePermissionEditor';
+import { RoleMetadataForm } from '@modules/AccessControl/Presentation/Forms/RoleMetadataForm';
 
 /** One row of mutation-cache state for a role-permissions Save/Reset, as read via
  * `useMutationState` — deriving pending/error from the CACHE (filtered by role + mutationKey)
@@ -35,6 +37,13 @@ import { RolePermissionEditor } from '@modules/AccessControl/Presentation/Compon
  * the LATEST call across ALL roles (Review Finding, latest re-review). */
 interface RolePermissionsMutationSnapshot {
   kind: 'save' | 'reset';
+  status: 'idle' | 'pending' | 'error' | 'success';
+  error: unknown;
+  submittedAt: number;
+  roleCode: string | undefined;
+}
+
+interface RoleMetadataMutationSnapshot {
   status: 'idle' | 'pending' | 'error' | 'success';
   error: unknown;
   submittedAt: number;
@@ -79,7 +88,7 @@ export function RoleDetailPage() {
   const role = roleQuery.data;
 
   const matrix = useMemo(
-    () => (role ? buildPermissionMatrix([role], permissionsQuery.data ?? []) : null),
+    () => (role && permissionsQuery.data ? buildPermissionMatrix([role], permissionsQuery.data) : null),
     [role, permissionsQuery.data],
   );
 
@@ -154,8 +163,27 @@ export function RoleDetailPage() {
     .sort((a, b) => a.submittedAt - b.submittedAt)
     .at(-1);
 
+  const metadataStates = useMutationState<RoleMetadataMutationSnapshot>({
+    filters: { mutationKey: ROLE_METADATA_MUTATION_KEY },
+    select: (m) => ({
+      status: m.state.status,
+      error: m.state.error,
+      submittedAt: m.state.submittedAt,
+      roleCode: (m.state.variables as { roleCode?: string } | undefined)?.roleCode,
+    }),
+  });
+  const latestMetadataForRole = metadataStates
+    .filter((entry) => entry.roleCode === roleCode)
+    .sort((a, b) => a.submittedAt - b.submittedAt)
+    .at(-1);
+
   const currentError = latestForRole?.status === 'error' ? latestForRole.error : null;
-  const forbidden = isForbiddenError(currentError) || isForbiddenError(roleQuery.error);
+  const metadataMutationError =
+    latestMetadataForRole?.status === 'error' ? latestMetadataForRole.error : null;
+  const forbidden =
+    isForbiddenError(currentError) ||
+    isForbiddenError(metadataMutationError) ||
+    isForbiddenError(roleQuery.error);
   const inlineSaveError =
     latestForRole?.kind === 'save' && isBadRequestError(currentError) ? toMutationErrorMessage(currentError) : null;
   const inlineResetError =
@@ -175,8 +203,8 @@ export function RoleDetailPage() {
 
   const state = detailState({
     roleCode,
-    isLoading: roleQuery.isLoading || permissionsQuery.isLoading,
-    error: roleQuery.error ?? permissionsQuery.error,
+    isLoading: roleQuery.isLoading,
+    error: roleQuery.error,
   });
 
   function reconcile(result: { permissions: { action: string; objectType: string }[]; version: number }) {
@@ -250,90 +278,126 @@ export function RoleDetailPage() {
         roleQuery.error instanceof Error ? roleQuery.error.message : 'Không thể tải thông tin vai trò.'
       }
     >
-      {role && matrix ? (
-        <ActionPanel
-          title="Ma trận quyền"
-          description="Tick/bỏ tick quyền theo đối tượng × hành động. Lưu để áp dụng."
-          governanceState={forbidden ? 'readOnly' : undefined}
-          governanceMessage={forbidden ? 'Bạn không có quyền sửa quyền của vai trò này.' : undefined}
-          footer={
-            !forbidden ? (
-              <div className="flex w-full flex-wrap items-end gap-3">
-                <ReasonCodeSelect
-                  id="role-permission-reason-code"
-                  name="reasonCode"
-                  label="Lý do"
-                  value={reasonCode}
-                  action="Update"
-                  objectType="Role"
-                  onChange={setReasonCode}
-                />
-                <label className="grid gap-1 text-sm">
-                  Ghi chú (tuỳ chọn)
-                  <Input
-                    value={reasonNote}
-                    onChange={(event) => setReasonNote(event.target.value)}
-                    className="w-56"
+      {role ? (
+        <>
+          <ActionPanel
+            title="Thông tin vai trò"
+            description="Cập nhật tên, mô tả và trạng thái bằng phiên bản mới nhất từ máy chủ."
+            governanceState={forbidden ? 'readOnly' : undefined}
+            governanceMessage={forbidden ? 'Bạn không có quyền sửa vai trò này.' : undefined}
+          >
+            {!forbidden ? (
+              <RoleMetadataForm
+                key={role.id}
+                role={role}
+                onSubmit={(input) =>
+                  mutations.updateRole.mutateAsync({ id: role.id, roleCode: role.roleCode, input })
+                }
+                onRefresh={async () => {
+                  const refreshed = await roleQuery.refetch();
+                  if (refreshed.error) throw refreshed.error;
+                  if (!refreshed.data) throw new Error('Role refresh returned no data');
+                  return refreshed.data;
+                }}
+              />
+            ) : null}
+          </ActionPanel>
+          <ActionPanel
+            title="Ma trận quyền"
+            description="Tick/bỏ tick quyền theo đối tượng × hành động. Lưu để áp dụng."
+            governanceState={forbidden ? 'readOnly' : undefined}
+            governanceMessage={forbidden ? 'Bạn không có quyền sửa quyền của vai trò này.' : undefined}
+            footer={
+              !forbidden && matrix ? (
+                <div className="flex w-full flex-wrap items-end gap-3">
+                  <ReasonCodeSelect
+                    id="role-permission-reason-code"
+                    name="reasonCode"
+                    label="Lý do"
+                    value={reasonCode}
+                    action="Update"
+                    objectType="Role"
+                    onChange={setReasonCode}
                   />
-                </label>
-                <div className="ml-auto flex gap-2">
-                  {role.isSystem ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!reasonCode || isPending}
-                      onClick={handleReset}
-                    >
-                      Khôi phục về mặc định
+                  <label className="grid gap-1 text-sm">
+                    Ghi chú (tuỳ chọn)
+                    <Input
+                      value={reasonNote}
+                      onChange={(event) => setReasonNote(event.target.value)}
+                      className="w-56"
+                    />
+                  </label>
+                  <div className="ml-auto flex gap-2">
+                    {role.isSystem ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!reasonCode || isPending}
+                        onClick={handleReset}
+                      >
+                        Khôi phục về mặc định
+                      </Button>
+                    ) : null}
+                    <Button type="button" disabled={!reasonCode || !isDirty || isPending} onClick={handleSave}>
+                      Lưu thay đổi
                     </Button>
-                  ) : null}
-                  <Button type="button" disabled={!reasonCode || !isDirty || isPending} onClick={handleSave}>
-                    Lưu thay đổi
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            ) : null
-          }
-        >
-          {isDirty && !forbidden && (
-            <Alert role="status" variant="warning">
-              <AlertDescription>Có thay đổi chưa lưu. Chọn lý do rồi bấm "Lưu thay đổi" để áp dụng.</AlertDescription>
-            </Alert>
-          )}
-          {inlineConflictError && (
-            <Alert role="alert" variant="destructive">
-              <AlertDescription>
-                {inlineConflictError}{' '}
-                <button
-                  type="button"
-                  className="font-medium underline"
-                  onClick={() => window.location.reload()}
-                >
-                  Tải lại trang
-                </button>
-              </AlertDescription>
-            </Alert>
-          )}
-          {inlineSaveError && !inlineConflictError && (
-            <p role="alert" className="text-destructive text-sm">
-              {inlineSaveError}
-            </p>
-          )}
-          {inlineResetError && (
-            <p role="alert" className="text-destructive text-sm">
-              {inlineResetError}
-            </p>
-          )}
-          <RolePermissionEditor
-            roleCode={role.roleCode}
-            isSystem={role.isSystem}
-            matrix={matrix}
-            pendingGrants={pendingGrants}
-            baselineGrants={baselineGrants}
-            disabled={forbidden || isPending}
-            onChange={setPendingGrants}
-          />
-        </ActionPanel>
+              ) : null
+            }
+          >
+            {permissionsQuery.isLoading ? (
+              <Alert role="status">
+                <AlertDescription>Đang tải danh mục quyền…</AlertDescription>
+              </Alert>
+            ) : permissionsQuery.error ? (
+              <Alert role="alert" variant="destructive">
+                <AlertDescription>Không thể tải danh mục quyền.</AlertDescription>
+              </Alert>
+            ) : matrix ? (
+              <>
+                {isDirty && !forbidden && (
+                  <Alert role="status" variant="warning">
+                    <AlertDescription>Có thay đổi chưa lưu. Chọn lý do rồi bấm "Lưu thay đổi" để áp dụng.</AlertDescription>
+                  </Alert>
+                )}
+                {inlineConflictError && (
+                  <Alert role="alert" variant="destructive">
+                    <AlertDescription>
+                      {inlineConflictError}{' '}
+                      <button
+                        type="button"
+                        className="font-medium underline"
+                        onClick={() => window.location.reload()}
+                      >
+                        Tải lại trang
+                      </button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {inlineSaveError && !inlineConflictError && (
+                  <p role="alert" className="text-destructive text-sm">
+                    {inlineSaveError}
+                  </p>
+                )}
+                {inlineResetError && (
+                  <p role="alert" className="text-destructive text-sm">
+                    {inlineResetError}
+                  </p>
+                )}
+                <RolePermissionEditor
+                  roleCode={role.roleCode}
+                  isSystem={role.isSystem}
+                  matrix={matrix}
+                  pendingGrants={pendingGrants}
+                  baselineGrants={baselineGrants}
+                  disabled={forbidden || isPending}
+                  onChange={setPendingGrants}
+                />
+              </>
+            ) : null}
+          </ActionPanel>
+        </>
       ) : null}
     </DetailPageShell>
   );

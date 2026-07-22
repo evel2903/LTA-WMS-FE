@@ -50,6 +50,7 @@ const wmsAdmin: Role = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
 };
 
 const customRole: Role = {
@@ -60,6 +61,7 @@ const customRole: Role = {
   isSystem: false,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.000Z',
 };
 
 const detail = (role: Role, permissionCount: number): RoleDetail => ({
@@ -110,6 +112,7 @@ class FakeRepository implements Partial<IAccessControlRepository> {
       isSystem: false,
       status: 'ACTIVE',
       permissionsVersion: 0,
+      updatedAt: '2026-07-22T06:00:00.001Z',
     };
     this.roles = [...this.roles, created];
     return Promise.resolve(created);
@@ -443,6 +446,7 @@ describe('RolesMasterPage (RA-03)', () => {
               isSystem: false,
               status: 'ACTIVE',
               permissionsVersion: 0,
+              updatedAt: '2026-07-22T06:00:00.001Z',
               permissions: [],
             });
         });

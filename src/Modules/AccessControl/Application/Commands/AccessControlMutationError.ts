@@ -12,6 +12,25 @@ export function isConflictError(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'CONFLICT';
 }
 
+export interface RoleMetadataStaleDetails {
+  Reason: 'ROLE_METADATA_STALE';
+  CurrentUpdatedAt: string;
+}
+
+/** Narrow discriminator for RH-CON-01 metadata conflicts; generic 409s are unrelated. */
+export function roleMetadataStaleDetails(error: unknown): RoleMetadataStaleDetails | null {
+  if (!(error instanceof ApiError) || error.status !== 409 || error.code !== 'CONFLICT') return null;
+  const details = error.details as Partial<RoleMetadataStaleDetails> | undefined;
+  if (
+    details?.Reason !== 'ROLE_METADATA_STALE' ||
+    typeof details.CurrentUpdatedAt !== 'string' ||
+    Number.isNaN(Date.parse(details.CurrentUpdatedAt))
+  ) {
+    return null;
+  }
+  return { Reason: details.Reason, CurrentUpdatedAt: details.CurrentUpdatedAt };
+}
+
 /**
  * True for ANY HTTP 400 — createRole surfaces this inline, not toasted. Deliberately
  * status-based, not `code === 'VALIDATION'`: the real role_code format check throws BE's

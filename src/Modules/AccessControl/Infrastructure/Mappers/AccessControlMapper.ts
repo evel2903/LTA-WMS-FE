@@ -12,7 +12,9 @@ import type {
   AssignRoleInput,
   CreateRoleInput,
   ResetRolePermissionsInput,
+  RolePermissionsResult,
   SetRolePermissionsInput,
+  UpdateRoleInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 import type {
   AssignDataScopeRequestDto,
@@ -26,6 +28,7 @@ import type {
   ResetRolePermissionsRequestDto,
   RoleDto,
   SetRolePermissionsRequestDto,
+  UpdateRoleRequestDto,
   UserDto,
 } from '@modules/AccessControl/Infrastructure/Dtos/AccessControlDtos';
 
@@ -74,6 +77,7 @@ export const AccessControlMapper = {
       isSystem: dto.IsSystem,
       status: dto.Status,
       permissionsVersion: dto.PermissionsVersion,
+      updatedAt: dto.UpdatedAt,
     };
   },
 
@@ -132,6 +136,16 @@ export const AccessControlMapper = {
     });
   },
 
+  toUpdateRoleRequest(input: UpdateRoleInput): UpdateRoleRequestDto {
+    return {
+      ExpectedUpdatedAt: input.expectedUpdatedAt,
+      ...(input.roleName !== undefined ? { RoleName: input.roleName } : {}),
+      // `null` is meaningful here (clear description), so do not use removeEmpty.
+      ...(input.description !== undefined ? { Description: input.description } : {}),
+      ...(input.status !== undefined ? { Status: input.status } : {}),
+    };
+  },
+
   toAssignDataScopeRequest(input: AssignDataScopeInput): AssignDataScopeRequestDto {
     return removeEmpty({
       ScopeType: input.scopeType,
@@ -161,7 +175,7 @@ export const AccessControlMapper = {
 
   toEffectivePermissionsResult(
     dto: EffectivePermissionsResponseDto,
-  ): { permissions: { action: string; objectType: string }[]; version: number } {
+  ): RolePermissionsResult {
     return {
       permissions: (dto.permissions ?? []).map((permission) => ({
         action: permission.action,

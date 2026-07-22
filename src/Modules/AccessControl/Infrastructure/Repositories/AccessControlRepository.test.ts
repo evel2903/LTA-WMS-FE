@@ -93,10 +93,76 @@ function roleDto(roleCode: string) {
     IsSystem: false,
     Status: 'ACTIVE',
     PermissionsVersion: 0,
+    UpdatedAt: '2026-07-22T06:00:00.123Z',
   };
 }
 
 describe('AccessControlRepository', () => {
+  it('PATCHes role metadata with ExpectedUpdatedAt and maps the authoritative response token', async () => {
+    class RolePatchHttpClient extends FakeHttpClient {
+      override patch<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
+        this.calls.push({ method: 'patch', url, body, config });
+        return Promise.resolve({
+          ...roleDto('CUSTOM_ROLE'),
+          RoleName: 'Updated role',
+          UpdatedAt: '2026-07-22T06:00:00.124Z',
+        } as T);
+      }
+    }
+    const http = new RolePatchHttpClient();
+    const repository = new AccessControlRepository(http) as AccessControlRepository & {
+      updateRole: (
+        id: string,
+        input: { expectedUpdatedAt: string; roleName: string },
+      ) => Promise<{ roleName: string; updatedAt: string }>;
+    };
+
+    const result = await repository.updateRole('role-1', {
+      expectedUpdatedAt: '2026-07-22T06:00:00.123Z',
+      roleName: 'Updated role',
+    });
+
+    expect(http.calls).toEqual([
+      {
+        method: 'patch',
+        url: '/access-control/roles/role-1',
+        body: {
+          ExpectedUpdatedAt: '2026-07-22T06:00:00.123Z',
+          RoleName: 'Updated role',
+        },
+        config: undefined,
+      },
+    ]);
+    expect(result).toMatchObject({
+      roleName: 'Updated role',
+      updatedAt: '2026-07-22T06:00:00.124Z',
+    });
+  });
+
+  it('preserves the lower-camel permission response contract without promoting metadata tokens', async () => {
+    class PermissionWriteHttpClient extends FakeHttpClient {
+      override put<T>(url: string, body?: unknown, config?: unknown): Promise<T> {
+        this.calls.push({ method: 'put', url, body, config });
+        return Promise.resolve({
+          permissions: [{ action: 'Read', objectType: 'SKU' }],
+          version: 3,
+          updatedAt: '2026-07-22T06:00:00.125Z',
+        } as T);
+      }
+    }
+    const repository = new AccessControlRepository(new PermissionWriteHttpClient());
+
+    const result = await repository.setRolePermissions('role-1', {
+      permissions: [{ action: 'Read', objectType: 'SKU' }],
+      version: 2,
+      reasonCode: 'RC-ROLE-PERMISSION-UPDATE',
+    });
+    expect(result).toMatchObject({
+      version: 3,
+    });
+    expect(result).not.toHaveProperty('updatedAt');
+  });
+
   it('normalizes user list paging to the V1 guardrail', async () => {
     const http = new FakeHttpClient();
     const repository = new AccessControlRepository(http);

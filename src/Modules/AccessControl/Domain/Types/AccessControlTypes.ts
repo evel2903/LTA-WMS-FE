@@ -1,4 +1,8 @@
-import type { DataScopeType, RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type {
+  DataScopeType,
+  RoleCode,
+  RoleStatus,
+} from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 
 /** Assign-role input for `POST /access-control/users/:userId/roles`. */
 export interface AssignRoleInput {
@@ -10,6 +14,19 @@ export interface CreateRoleInput {
   roleCode: string;
   roleName: string;
   description?: string;
+}
+
+/** PATCH role metadata input. The timestamp is always copied from the last server response. */
+export interface UpdateRoleInput {
+  expectedUpdatedAt: string;
+  roleName?: string;
+  description?: string | null;
+  status?: RoleStatus;
+}
+
+export interface RolePermissionsResult {
+  permissions: { action: string; objectType: string }[];
+  version: number;
 }
 
 /**

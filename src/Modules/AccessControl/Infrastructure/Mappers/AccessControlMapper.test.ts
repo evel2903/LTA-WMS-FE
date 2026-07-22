@@ -28,8 +28,8 @@ describe('AccessControlMapper', () => {
     expect(result.totalItems).toBe(0);
   });
 
-  it('toRole maps the header shape including id (RA-03) and permissionsVersion (RA-04)', () => {
-    const dto: RoleDto = {
+  it('toRole maps the metadata concurrency token independently of permissionsVersion', () => {
+    const dto = {
       Id: 'r1',
       RoleCode: 'CUSTOM_ROLE',
       RoleName: 'Custom Role',
@@ -37,7 +37,8 @@ describe('AccessControlMapper', () => {
       IsSystem: false,
       Status: 'ACTIVE',
       PermissionsVersion: 3,
-    };
+      UpdatedAt: '2026-07-22T06:00:00.123Z',
+    } as unknown as RoleDto;
     expect(AccessControlMapper.toRole(dto)).toEqual({
       id: 'r1',
       roleCode: 'CUSTOM_ROLE',
@@ -46,7 +47,34 @@ describe('AccessControlMapper', () => {
       isSystem: false,
       status: 'ACTIVE',
       permissionsVersion: 3,
+      updatedAt: '2026-07-22T06:00:00.123Z',
     });
+  });
+
+  it('toUpdateRoleRequest emits exact PascalCase token/fields and omits unsupplied values', () => {
+    const mapper = AccessControlMapper as unknown as {
+      toUpdateRoleRequest: (input: {
+        expectedUpdatedAt: string;
+        roleName?: string;
+        description?: string | null;
+        status?: string;
+      }) => unknown;
+    };
+
+    expect(
+      mapper.toUpdateRoleRequest({
+        expectedUpdatedAt: '2026-07-22T06:00:00.123Z',
+        roleName: 'Updated role',
+        description: null,
+      }),
+    ).toEqual({
+      ExpectedUpdatedAt: '2026-07-22T06:00:00.123Z',
+      RoleName: 'Updated role',
+      Description: null,
+    });
+    expect(
+      mapper.toUpdateRoleRequest({ expectedUpdatedAt: '2026-07-22T06:00:00.123Z' }),
+    ).toEqual({ ExpectedUpdatedAt: '2026-07-22T06:00:00.123Z' });
   });
 
   it('toCreateRoleRequest maps to PascalCase and strips an absent description', () => {
@@ -80,6 +108,7 @@ describe('AccessControlMapper', () => {
       IsSystem: false,
       Status: 'ACTIVE',
       PermissionsVersion: 0,
+      UpdatedAt: '2026-07-22T06:00:00.123Z',
     });
     expect(role.roleCode).toBe(MIXED);
 
@@ -91,7 +120,7 @@ describe('AccessControlMapper', () => {
   });
 
   it('toRoleDetail maps permissions (and defaults to [] when absent)', () => {
-    const withPerms: RoleDto = {
+    const withPerms = {
       Id: 'r1',
       RoleCode: 'QC',
       RoleName: 'QC',
@@ -99,8 +128,9 @@ describe('AccessControlMapper', () => {
       IsSystem: true,
       Status: 'ACTIVE',
       PermissionsVersion: 0,
+      UpdatedAt: '2026-07-22T06:00:00.123Z',
       Permissions: [{ Id: 'p1', PermissionCode: 'QC.READ.SKU', Action: 'Read', ObjectType: 'SKU', Description: null }],
-    };
+    } as unknown as RoleDto;
     expect(AccessControlMapper.toRoleDetail(withPerms).permissions).toHaveLength(1);
 
     const noPerms: RoleDto = { ...withPerms, Permissions: undefined };
@@ -173,10 +203,16 @@ describe('AccessControlMapper', () => {
         permissions: [{ action: 'Update', objectType: 'SKU' }],
         version: 1,
       }),
-    ).toEqual({ permissions: [{ action: 'Update', objectType: 'SKU' }], version: 1 });
+    ).toEqual({
+      permissions: [{ action: 'Update', objectType: 'SKU' }],
+      version: 1,
+    });
 
     expect(
-      AccessControlMapper.toEffectivePermissionsResult({ permissions: undefined as never, version: 0 }),
+      AccessControlMapper.toEffectivePermissionsResult({
+        permissions: undefined as never,
+        version: 0,
+      }),
     ).toEqual({ permissions: [], version: 0 });
   });
 });

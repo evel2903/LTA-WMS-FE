@@ -12,7 +12,9 @@ import type { IAccessControlRepository } from '@modules/AccessControl/Applicatio
 import type { Permission, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type {
   ResetRolePermissionsInput,
+  RolePermissionsResult,
   SetRolePermissionsInput,
+  UpdateRoleInput,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
 const repo = vi.hoisted(() => ({ current: null as unknown as IAccessControlRepository }));
@@ -61,6 +63,7 @@ const customRole: RoleDetail = {
   isSystem: false,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.100Z',
   permissions: [permission('Read', 'SKU')],
 };
 
@@ -72,6 +75,7 @@ const wmsAdmin: RoleDetail = {
   isSystem: true,
   status: 'ACTIVE',
   permissionsVersion: 0,
+  updatedAt: '2026-07-22T06:00:00.100Z',
   permissions: [permission('Read', 'SKU'), permission('Update', 'SKU'), permission('Read', 'Role'), permission('Update', 'Role')],
 };
 
@@ -83,19 +87,32 @@ class FakeRepository implements Partial<IAccessControlRepository> {
     return Promise.resolve(role);
   });
   listAllPermissions = vi.fn(() => Promise.resolve(CATALOG));
+  updateRole = vi.fn((_id: string, input: UpdateRoleInput) => {
+    const current = this.roles.find((role) => role.id === _id);
+    if (!current) return Promise.reject(new ApiError({ status: 404, code: 'NOT_FOUND', message: 'not found' }));
+    const updated: RoleDetail = {
+      ...current,
+      ...(input.roleName === undefined ? {} : { roleName: input.roleName }),
+      ...(input.description === undefined ? {} : { description: input.description }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+      updatedAt: '2026-07-22T06:00:00.101Z',
+    };
+    this.roles = this.roles.map((role) => (role.id === updated.id ? updated : role));
+    return Promise.resolve(updated);
+  });
   setRolePermissions = vi.fn(
     (
       _id: string,
       _input: SetRolePermissionsInput,
-    ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }> =>
-      Promise.resolve({ permissions: [], version: 1 }),
+    ): Promise<RolePermissionsResult> =>
+      Promise.resolve({ permissions: [], version: 1, updatedAt: '2026-07-22T06:00:00.101Z' }),
   );
   resetRolePermissions = vi.fn(
     (
       _id: string,
       _input: ResetRolePermissionsInput,
-    ): Promise<{ permissions: { action: string; objectType: string }[]; version: number }> =>
-      Promise.resolve({ permissions: [], version: 1 }),
+    ): Promise<RolePermissionsResult> =>
+      Promise.resolve({ permissions: [], version: 1, updatedAt: '2026-07-22T06:00:00.101Z' }),
   );
 }
 
@@ -213,6 +230,84 @@ describe('RoleDetailPage (RA-04)', () => {
 
     expect(await screen.findByText('Inventory Lead')).toBeTruthy();
     expect(fake.getRole).toHaveBeenCalledWith('INVENTORY_LEAD');
+  });
+
+  it('submits metadata through the RH-02 mutation and adopts the authoritative response', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByText('Inventory Lead');
+    const name = screen.getByLabelText('Tên vai trò');
+    await actor.clear(name);
+    await actor.type(name, 'Inventory Coordinator');
+    await actor.click(screen.getByRole('button', { name: 'Lưu metadata' }));
+
+    await waitFor(() =>
+      expect(fake.updateRole).toHaveBeenCalledWith('role-custom', {
+        expectedUpdatedAt: customRole.updatedAt,
+        roleName: 'Inventory Coordinator',
+      }),
+    );
+    await waitFor(() => expect(screen.getByDisplayValue('Inventory Coordinator')).toBeTruthy());
+    expect(toastSuccess).toHaveBeenCalledWith('Đã cập nhật vai trò');
+  });
+
+  it('keeps the metadata editor available when the permission catalog fails', async () => {
+    const fake = new FakeRepository();
+    fake.listAllPermissions = vi.fn(() => Promise.reject(
+      new ApiError({ status: 503, code: 'UNKNOWN', message: 'Catalog unavailable' }),
+    ));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPage('INVENTORY_LEAD');
+
+    await screen.findByDisplayValue('Inventory Lead');
+    expect(screen.getByRole('button', { name: 'Lưu metadata' })).toBeTruthy();
+    expect(await screen.findByText('Không thể tải danh mục quyền.')).toBeTruthy();
+  });
+
+  it('demotes only the current role metadata editor after a 403 and does not leak across route switch', async () => {
+    const actor = userEvent.setup();
+    const fake = new FakeRepository();
+    fake.updateRole = vi.fn(() => Promise.reject(
+      new ApiError({ status: 403, code: 'FORBIDDEN', message: 'Permission revoked' }),
+    ));
+    repo.current = fake as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    await screen.findByText('Inventory Lead');
+    const name = screen.getByLabelText('Tên vai trò');
+    await actor.clear(name);
+    await actor.type(name, 'Forbidden draft');
+    await actor.click(screen.getByRole('button', { name: 'Lưu metadata' }));
+
+    expect(await screen.findByText('Bạn không có quyền sửa vai trò này.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Lưu metadata' })).toBeNull();
+
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('WMS Admin');
+    expect(screen.getByRole('button', { name: 'Lưu metadata' })).toBeTruthy();
+  });
+
+  it('discards the previous role draft when the route switches to another role', async () => {
+    const actor = userEvent.setup();
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    renderPageWithBidirectionalNav('INVENTORY_LEAD', 'WMS_ADMIN');
+
+    await screen.findByText('Inventory Lead');
+    const name = screen.getByLabelText('Tên vai trò');
+    await actor.clear(name);
+    await actor.type(name, 'Unsaved role A draft');
+
+    await actor.click(screen.getByRole('link', { name: 'Sang B' }));
+    await screen.findByText('WMS Admin');
+    expect(screen.getByLabelText<HTMLInputElement>('Tên vai trò').value).toBe('WMS Admin');
+    expect(screen.queryByLabelText('Trạng thái')).toBeNull();
+
+    await actor.click(screen.getByRole('link', { name: 'Sang A' }));
+    await screen.findByText('Inventory Lead');
+    expect(screen.getByLabelText<HTMLInputElement>('Tên vai trò').value).toBe('Inventory Lead');
   });
 
   it('renders N/A for a catalog-absent cell and a plain checked cell for a granted one', async () => {
@@ -536,7 +631,10 @@ describe('RoleDetailPage (RA-04) — re-review 2026-07-16', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     fake.setRolePermissions = vi.fn(() =>
-      Promise.resolve({ permissions: [{ action: 'Read', objectType: 'SKU' }], version: 7 }),
+      Promise.resolve({
+        permissions: [{ action: 'Read', objectType: 'SKU' }],
+        version: 7,
+      }),
     );
     repo.current = fake as unknown as IAccessControlRepository;
     renderPage('INVENTORY_LEAD');
@@ -560,11 +658,11 @@ describe('RoleDetailPage (RA-04) — re-review 2026-07-16', () => {
   it('ignores a Save that resolves for a DIFFERENT role after navigating away (no stale reconcile/error leak)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
-    let resolveSave: (value: { permissions: { action: string; objectType: string }[]; version: number }) => void =
+    let resolveSave: (value: RolePermissionsResult) => void =
       () => {};
     fake.setRolePermissions = vi.fn(
       () =>
-        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+        new Promise<RolePermissionsResult>((resolve) => {
           resolveSave = resolve;
         }),
     );
@@ -582,7 +680,10 @@ describe('RoleDetailPage (RA-04) — re-review 2026-07-16', () => {
     await screen.findByText('WMS Admin');
 
     // The stale Save now resolves -- must not touch WMS_ADMIN's displayed state.
-    resolveSave({ permissions: [{ action: 'Update', objectType: 'SKU' }], version: 99 });
+    resolveSave({
+      permissions: [{ action: 'Update', objectType: 'SKU' }],
+      version: 99,
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // WMS_ADMIN's own real baseline (Update:Role granted) must still show, untouched by the
@@ -641,11 +742,11 @@ describe('RoleDetailPage (RA-04) — final re-review 2026-07-16', () => {
     const fake = new FakeRepository();
     const resolvers = new Map<
       string,
-      (value: { permissions: { action: string; objectType: string }[]; version: number }) => void
+      (value: RolePermissionsResult) => void
     >();
     fake.setRolePermissions = vi.fn(
       (id: string) =>
-        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+        new Promise<RolePermissionsResult>((resolve) => {
           resolvers.set(id, resolve);
         }),
     );
@@ -701,11 +802,11 @@ describe('RoleDetailPage (RA-04) — re-review after final fixes 2026-07-16', ()
     const fake = new FakeRepository();
     const resolvers = new Map<
       string,
-      (value: { permissions: { action: string; objectType: string }[]; version: number }) => void
+      (value: RolePermissionsResult) => void
     >();
     fake.setRolePermissions = vi.fn(
       (id: string) =>
-        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
+        new Promise<RolePermissionsResult>((resolve) => {
           resolvers.set(id, resolve);
         }),
     );
@@ -817,6 +918,37 @@ describe('RoleDetailPage (RA-04) — re-review after final fixes 2026-07-16', ()
 });
 
 describe('RoleDetailPage (RA-04) — Review Findings, final verification 2026-07-16', () => {
+  it("retains Role A's metadata 403 from the mutation cache after a later Role B mutation becomes newest", async () => {
+    repo.current = new FakeRepository() as unknown as IAccessControlRepository;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const forbiddenA = client.getMutationCache().build(client, {
+      mutationKey: ['updateRoleMetadata'],
+      mutationFn: (_vars: { roleCode: string }) => Promise.reject(
+        new ApiError({ status: 403, code: 'FORBIDDEN', message: 'Permission revoked for A' }),
+      ),
+    });
+    await expect(forbiddenA.execute({ roleCode: 'INVENTORY_LEAD' })).rejects.toMatchObject({ status: 403 });
+    const successB = client.getMutationCache().build(client, {
+      mutationKey: ['updateRoleMetadata'],
+      mutationFn: (_vars: { roleCode: string }) => Promise.resolve(wmsAdmin),
+    });
+    await successB.execute({ roleCode: 'WMS_ADMIN' });
+
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL('INVENTORY_LEAD')]}>
+          <Routes>
+            <Route path={ROUTES.FOUNDATION.ACCESS.ROLE_DETAIL()} element={<RoleDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByText('Inventory Lead');
+    expect(await screen.findByText('Bạn không có quyền sửa vai trò này.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Lưu metadata' })).toBeNull();
+  });
+
   it("derives isPending from ANY still-pending mutation for this role, not just whichever one was submitted last", async () => {
     repo.current = new FakeRepository() as unknown as IAccessControlRepository;
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -839,8 +971,11 @@ describe('RoleDetailPage (RA-04) — Review Findings, final verification 2026-07
     const olderMutation = client.getMutationCache().build(client, {
       mutationKey: ROLE_PERMISSIONS_MUTATION_KEYS.set,
       mutationFn: (_vars: { id: string; roleCode: string; input: unknown }) =>
-        new Promise<{ permissions: { action: string; objectType: string }[]; version: number }>((resolve) => {
-          resolveOlder = () => resolve({ permissions: [], version: 1 });
+        new Promise<RolePermissionsResult>((resolve) => {
+          resolveOlder = () => resolve({
+            permissions: [],
+            version: 1,
+          });
         }),
     });
     const olderExecution = olderMutation.execute({ id: 'role-custom', roleCode: 'INVENTORY_LEAD', input: {} });

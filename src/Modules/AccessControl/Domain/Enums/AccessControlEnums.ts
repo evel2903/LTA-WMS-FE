@@ -13,6 +13,9 @@ export type { SystemRoleCode };
 /** Any role code, core or admin-created custom (RA-03). Capability comes 100% from role_permissions, never from the code itself. */
 export type RoleCode = string;
 
+/** Mutable role lifecycle values accepted by the metadata PATCH contract. */
+export type RoleStatus = 'ACTIVE' | 'INACTIVE';
+
 /** The four data-scope dimensions (BE DataScopeType). */
 export type DataScopeType = 'WAREHOUSE' | 'ZONE' | 'OWNER' | 'CUSTOMER';
 
@@ -26,9 +29,8 @@ export const DATA_SCOPE_LABELS: Record<DataScopeType, string> = {
 };
 
 /** Single source for role-status labels — shared between `RoleStatusBadge` (display) and
- * `RolesMasterPage`'s sort key, so displayed text and sort order can never drift apart
- * (Review Finding, RA-06). Not a union type: `Role.status` is a bare `string` (BE-owned). */
-export const ROLE_STATUS_LABELS: Record<string, string> = {
+ * `RolesMasterPage`'s sort key, so displayed text and sort order can never drift apart. */
+export const ROLE_STATUS_LABELS: Record<RoleStatus, string> = {
   ACTIVE: 'Đang hoạt động',
   INACTIVE: 'Ngừng hoạt động',
 };
