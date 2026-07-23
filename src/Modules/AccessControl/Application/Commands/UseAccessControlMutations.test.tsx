@@ -5,7 +5,14 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
-import type { EffectivePermissions, Role } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import type { Role } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
+import type {
+  ApplyIntentResult,
+  AssignmentIntentSnapshot,
+  IntentOperation,
+  RegisterIntentResult,
+} from '@modules/AccessControl/Domain/Types/AssignmentIntentTypes';
 import {
   accessControlQueryKeys,
   type ReservedRolesState,
@@ -23,7 +30,6 @@ import { useAccessControlMutations } from '@modules/AccessControl/Application/Co
 import {
   useAllRoles,
   useReservedRoleCodes,
-  useUserEffectivePermissions,
 } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 
 const existingRole: Role = {
@@ -47,6 +53,52 @@ const newRole: Role = {
   permissionsVersion: 0,
   updatedAt: '2026-07-22T06:00:00.000Z',
 };
+
+// RH-04 (RH-ASG-01 / D3): assignRole/removeRole no longer call `repository.assignRole`; each drives
+// register→apply, and the committed local entry is a `ReservationEntry` object (never `true`),
+// released only by a NON-MANUAL recovery snapshot reaching `pendingEffectiveVersion`. These fakes
+// model the two-call flow at a fixed effective version so the reservation-lifecycle tests below
+// assert real D3 behaviour rather than the superseded RA-05 single-call flow.
+function intentFakes(effectiveVersion = '5'): Partial<IAccessControlRepository> {
+  return {
+    registerAssignmentIntent: vi.fn(
+      (_userId: string, _roleCode: RoleCode, input: { operation: IntentOperation; runId: string }) =>
+        Promise.resolve<RegisterIntentResult>({
+          runId: input.runId,
+          operation: input.operation,
+          status: 'Registered',
+          intentVersion: '1',
+          effectiveVersion,
+          isCurrent: true,
+        }),
+    ),
+    applyAssignIntent: vi.fn(
+      (_userId: string, input: { roleCode: RoleCode; runId: string; intentVersion: string }) =>
+        Promise.resolve<ApplyIntentResult>({
+          status: 'Applied',
+          runId: input.runId,
+          intentVersion: input.intentVersion,
+          effectiveVersion,
+          roleCode: input.roleCode,
+          assigned: true,
+        }),
+    ),
+  };
+}
+
+function assignedSnapshot(effectiveVersion = '5'): AssignmentIntentSnapshot {
+  return {
+    userId: 'A',
+    roleCode: 'QC',
+    runId: 'recovered-run',
+    operation: 'assign',
+    status: 'Applied',
+    intentVersion: '1',
+    effectiveVersion,
+    assignedRoleCodes: ['QC'],
+    isOwnedByCurrentActor: true,
+  };
+}
 
 describe('useAccessControlMutations', () => {
   it('does not promote an unconfirmed catalog when a permission-only mutation succeeds', async () => {
@@ -379,21 +431,8 @@ describe('useAccessControlMutations', () => {
     expect(result.current.rolesQuery.data).toEqual([existingRole, newRole]);
   });
 
-  it('keeps an assignment reservation scoped to the user it was submitted for, never leaking into a different user shown on the SAME hook instance (Review Finding, round 13)', async () => {
-    let resolveAssign: (() => void) | undefined;
-    const fake: Partial<IAccessControlRepository> = {
-      assignRole: vi.fn(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveAssign = resolve;
-          }),
-      ),
-      getUserEffectivePermissions: vi.fn(() =>
-        Promise.resolve({ userId: 'A', roles: [], permissions: [] }),
-      ),
-      listUserDataScopes: vi.fn(() => Promise.resolve([])),
-    };
-    repo.current = fake as IAccessControlRepository;
+  it('keeps an assignment reservation scoped to the user it was submitted for, never leaking into a different user shown on the SAME hook instance (Review Finding, round 13; RH-04 D3)', async () => {
+    repo.current = intentFakes() as IAccessControlRepository;
 
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -403,38 +442,25 @@ describe('useAccessControlMutations', () => {
     }
 
     // `useAccessControlMutations()` is a single hook instance not scoped to any one user (it
-    // doesn't remount on a route userId change) -- assign QC for user A and keep it pending,
-    // exactly like it would still be in flight if the admin navigated to a different user B
-    // before it settled.
+    // doesn't remount on a route userId change) -- a settled reservation must land under the
+    // userId the mutation was submitted for, never a different user the admin later navigates to.
     const { result } = renderHook(() => useAccessControlMutations(), { wrapper });
-    act(() => {
-      result.current.assignRole.mutate({ userId: 'A', input: { roleCode: 'QC' } });
+    await act(async () => {
+      await result.current.assignRole.mutateAsync({ userId: 'A', input: { roleCode: 'QC' } });
     });
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledTimes(1));
-
-    act(() => {
-      resolveAssign?.();
-    });
-    await waitFor(() => expect(result.current.assignRole.isSuccess).toBe(true));
 
     // A's own reservation exists...
     const reservations = client.getQueryData<ReservedRolesState>(accessControlQueryKeys.reservedRoles());
     const reservedA = reservations?.A;
     expect(Object.keys(reservedA ?? {})).toEqual(['QC']);
-    expect(reservedA?.QC).toBe(true);
-    // ...but B's bucket was never touched, no matter that this settled after a hypothetical
-    // navigation to B.
+    expect(reservedA?.QC.state).toBe('reserved');
+    expect(reservedA?.QC.operation).toBe('assign');
+    // ...but B's bucket was never touched.
     expect(reservations?.B).toBeUndefined();
   });
 
-  it('keeps a reservation alive across a full unmount + remount of the consuming hook, since it lives on the query client, not component state (Review Finding, round 13)', async () => {
-    const fake: Partial<IAccessControlRepository> = {
-      assignRole: vi.fn(() => Promise.resolve()),
-      getUserEffectivePermissions: vi.fn(() =>
-        Promise.resolve({ userId: 'A', roles: [], permissions: [] }),
-      ),
-    };
-    repo.current = fake as IAccessControlRepository;
+  it('keeps a reservation alive across a full unmount + remount of the consuming hook, since it lives on the query client, not component state (Review Finding, round 13; RH-04 D3)', async () => {
+    repo.current = intentFakes() as IAccessControlRepository;
 
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -448,23 +474,20 @@ describe('useAccessControlMutations', () => {
       await first.result.current.assignRole.mutateAsync({ userId: 'A', input: { roleCode: 'QC' } });
     });
     // Simulates leaving the page entirely (not just a userId route-param change) before the
-    // effective-permissions refetch this triggered has necessarily resolved.
+    // recovery snapshot this triggered has necessarily resolved.
     first.unmount();
 
     renderHook(() => useAccessControlMutations(), { wrapper });
 
     const reservedA = client.getQueryData<ReservedRolesState>(accessControlQueryKeys.reservedRoles())?.A;
     expect(Object.keys(reservedA ?? {})).toEqual(['QC']);
-    expect(reservedA?.QC).toBe(true);
+    expect(reservedA?.QC.state).toBe('reserved');
   });
 
-  it('keeps a reservation durable past the default 5-minute query GC window after the consuming page unmounts (Review Finding, round 13, adversarial follow-up)', async () => {
+  it('keeps a reservation durable past the default 5-minute query GC window after the consuming page unmounts (Review Finding, round 13, adversarial follow-up; RH-04 D3)', async () => {
     vi.useFakeTimers();
     try {
-      const fake: Partial<IAccessControlRepository> = {
-        assignRole: vi.fn(() => Promise.resolve()),
-      };
-      repo.current = fake as IAccessControlRepository;
+      repo.current = intentFakes() as IAccessControlRepository;
 
       const client = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -503,20 +526,11 @@ describe('useAccessControlMutations', () => {
     }
   });
 
-  it('clears a reservation only for an authoritative effective-permissions fetch success, not a manual cache write (Review Finding, round 15)', async () => {
-    let effectiveCallCount = 0;
-    let resolveEffective: (() => void) | undefined;
+  it('releases a reservation only for a non-manual authoritative recovery snapshot at/after its pending version, not a manual cache write (Review Finding, round 15; RH-04 D3)', async () => {
+    const snapshot = assignedSnapshot('5');
     const fake: Partial<IAccessControlRepository> = {
-      assignRole: vi.fn(() => Promise.resolve()),
-      getUserEffectivePermissions: vi.fn((userId: string): Promise<EffectivePermissions> => {
-        effectiveCallCount += 1;
-        if (effectiveCallCount === 1) {
-          return Promise.resolve({ userId, roles: [], permissions: [] });
-        }
-        return new Promise((resolve) => {
-          resolveEffective = () => resolve({ userId, roles: [], permissions: [] });
-        });
-      }),
+      ...intentFakes('5'),
+      recoverAssignmentIntent: vi.fn(() => Promise.resolve(snapshot)),
     };
     repo.current = fake as IAccessControlRepository;
 
@@ -528,53 +542,45 @@ describe('useAccessControlMutations', () => {
     }
 
     const { result } = renderHook(
-      () => ({
-        mutations: useAccessControlMutations(),
-        effective: useUserEffectivePermissions('A'),
-        reserved: useReservedRoleCodes('A'),
-      }),
+      () => ({ mutations: useAccessControlMutations(), reserved: useReservedRoleCodes('A') }),
       { wrapper },
     );
-    await waitFor(() => expect(result.current.effective.data).toBeDefined());
     await act(async () => {
       await result.current.mutations.assignRole.mutateAsync({ userId: 'A', input: { roleCode: 'QC' } });
     });
-    await waitFor(() => expect(effectiveCallCount).toBe(2));
-    await waitFor(() => expect(result.current.reserved.data?.QC).toBe(true));
+    await waitFor(() => expect(result.current.reserved.data?.QC?.state).toBe('reserved'));
 
-    // A manual cache patch is not proof that the repository was read after assignment.
+    // A manual cache patch -- even one carrying an at-threshold snapshot -- is NOT proof the
+    // server was read; the reconciler ignores `manual` success events, so the entry stays.
     act(() => {
-      client.setQueryData(
-        accessControlQueryKeys.userEffective('A'),
-        client.getQueryData(accessControlQueryKeys.userEffective('A')),
-      );
+      client.setQueryData(accessControlQueryKeys.assignmentIntent('A', 'QC'), snapshot);
     });
-    expect(result.current.reserved.data?.QC).toBe(true);
+    expect(result.current.reserved.data?.QC?.state).toBe('reserved');
 
-    // Only the actual pending repository read is allowed to release the reservation.
-    act(() => resolveEffective?.());
+    // Only an actual (non-manual) recovery fetch reaching the pending version releases it.
+    await act(async () => {
+      await client.fetchQuery({
+        queryKey: accessControlQueryKeys.assignmentIntent('A', 'QC'),
+        queryFn: () => repo.current.recoverAssignmentIntent('A', 'QC'),
+      });
+    });
     await waitFor(() => expect(result.current.reserved.data).toEqual({}));
   });
 
-  it('does not let an effective-permissions request started before assignment release the new reservation (Review Finding, round 15)', async () => {
-    let effectiveCallCount = 0;
-    let resolvePreAssignment: (() => void) | undefined;
-    let resolvePostAssignment: (() => void) | undefined;
+  it('does not let a recovery fetch started before the assignment release the new reservation — the mutation cancels it first (Review Finding, round 15; RH-04 D3)', async () => {
+    const snapshot = assignedSnapshot('5');
+    let recoverCalls = 0;
+    let resolvePre: (() => void) | undefined;
     const fake: Partial<IAccessControlRepository> = {
-      assignRole: vi.fn(() => Promise.resolve()),
-      getUserEffectivePermissions: vi.fn((userId: string): Promise<EffectivePermissions> => {
-        effectiveCallCount += 1;
-        if (effectiveCallCount === 1) {
-          return Promise.resolve({ userId, roles: [], permissions: [] });
-        }
-        if (effectiveCallCount === 2) {
+      ...intentFakes('5'),
+      recoverAssignmentIntent: vi.fn((): Promise<AssignmentIntentSnapshot> => {
+        recoverCalls += 1;
+        if (recoverCalls === 1) {
           return new Promise((resolve) => {
-            resolvePreAssignment = () => resolve({ userId, roles: [], permissions: [] });
+            resolvePre = () => resolve(snapshot);
           });
         }
-        return new Promise((resolve) => {
-          resolvePostAssignment = () => resolve({ userId, roles: [], permissions: [] });
-        });
+        return Promise.resolve(snapshot);
       }),
     };
     repo.current = fake as IAccessControlRepository;
@@ -587,36 +593,46 @@ describe('useAccessControlMutations', () => {
     }
 
     const { result } = renderHook(
-      () => ({
-        mutations: useAccessControlMutations(),
-        effective: useUserEffectivePermissions('A'),
-        reserved: useReservedRoleCodes('A'),
-      }),
+      () => ({ mutations: useAccessControlMutations(), reserved: useReservedRoleCodes('A') }),
       { wrapper },
     );
-    await waitFor(() => expect(result.current.effective.data).toBeDefined());
 
-    // Start a background read before the assignment succeeds. The mutation must cancel this
-    // request before installing the reservation, even if the request's promise resolves later.
-    void client.refetchQueries({ queryKey: accessControlQueryKeys.userEffective('A'), exact: true });
-    await waitFor(() => expect(effectiveCallCount).toBe(2));
+    // A recovery read is already in flight (started before the assignment settles). The mutation
+    // must cancel it before installing the reservation, even if its promise resolves later.
+    void client
+      .fetchQuery({
+        queryKey: accessControlQueryKeys.assignmentIntent('A', 'QC'),
+        queryFn: () => repo.current.recoverAssignmentIntent('A', 'QC'),
+      })
+      .catch(() => {});
+    await waitFor(() => expect(recoverCalls).toBe(1));
+
     await act(async () => {
       await result.current.mutations.assignRole.mutateAsync({ userId: 'A', input: { roleCode: 'QC' } });
     });
-    await waitFor(() => expect(effectiveCallCount).toBe(3));
-    expect(result.current.reserved.data?.QC).toBe(true);
+    await waitFor(() => expect(result.current.reserved.data?.QC?.state).toBe('reserved'));
 
-    // The canceled pre-assignment response is not authoritative for this reservation.
-    act(() => resolvePreAssignment?.());
-    expect(result.current.reserved.data?.QC).toBe(true);
+    // The canceled pre-assignment snapshot resolves late — it is discarded, never releasing the
+    // fresh reservation.
+    act(() => resolvePre?.());
+    await waitFor(() => expect(result.current.reserved.data?.QC?.state).toBe('reserved'));
 
-    act(() => resolvePostAssignment?.());
+    // A post-assignment recovery fetch reaching the pending version does release it.
+    await act(async () => {
+      await client.fetchQuery({
+        queryKey: accessControlQueryKeys.assignmentIntent('A', 'QC'),
+        queryFn: () => repo.current.recoverAssignmentIntent('A', 'QC'),
+      });
+    });
     await waitFor(() => expect(result.current.reserved.data).toEqual({}));
   });
 
-  it('keeps local reservation data intact when a broad invalidation runs (Review Finding, round 14)', async () => {
+  it('keeps local reservation data intact when a broad invalidation runs (Review Finding, round 14; RH-04 D3)', async () => {
+    // A below-threshold recovery snapshot: even if a broad invalidation somehow triggered a
+    // refetch, it must not release the reservation (pending version 5 > snapshot version 4).
     const fake: Partial<IAccessControlRepository> = {
-      assignRole: vi.fn(() => Promise.resolve()),
+      ...intentFakes('5'),
+      recoverAssignmentIntent: vi.fn(() => Promise.resolve(assignedSnapshot('4'))),
     };
     repo.current = fake as IAccessControlRepository;
 

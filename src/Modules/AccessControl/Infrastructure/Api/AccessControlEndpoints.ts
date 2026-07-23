@@ -13,6 +13,9 @@ export const ACCESS_CONTROL_ENDPOINTS = {
   USER_EFFECTIVE: (userId: string) => `/access-control/users/${userId}/effective-permissions`,
   USER_ROLES: (userId: string) => `/access-control/users/${userId}/roles`,
   USER_ROLE: (userId: string, roleCode: string) => `/access-control/users/${userId}/roles/${roleCode}`,
+  // RH-04 (RH-ASG-01 / D3): register a server-fenced intent ticket (POST) / recover its snapshot (GET).
+  USER_ROLE_INTENT: (userId: string, canonicalRoleCode: string) =>
+    `/access-control/users/${userId}/roles/${canonicalRoleCode}/intent`,
   USER_DATA_SCOPES: (userId: string) => `/access-control/users/${userId}/data-scopes`,
   USER_DATA_SCOPE: (userId: string, scopeId: string) =>
     `/access-control/users/${userId}/data-scopes/${scopeId}`,

@@ -4,6 +4,7 @@ import { skipToken, useQueries, useQuery, useQueryClient } from '@tanstack/react
 import type { PaginatedResponse } from '@shared/Types/Api';
 import {
   accessControlQueryKeys,
+  type ReservationEntry,
   type ReservedRolesState,
 } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
 import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
@@ -122,7 +123,7 @@ export function useUserDataScopes(userId: string | null) {
  * durable cache entry, while `select` exposes only the requested user's bucket. `skipToken`
  * makes it non-fetching, so a broad invalidation cannot replace local writes with an empty
  * query result (Review Finding, round 14). */
-const EMPTY_RESERVED_ROLES: Record<string, true> = {};
+const EMPTY_RESERVED_ROLES: Record<string, ReservationEntry> = {};
 const EMPTY_RESERVED_ROLES_STATE: ReservedRolesState = {};
 
 export function useReservedRoleCodes(userId: string | null) {
@@ -133,5 +134,18 @@ export function useReservedRoleCodes(userId: string | null) {
     select: (reservations) => (userId ? (reservations[userId] ?? EMPTY_RESERVED_ROLES) : EMPTY_RESERVED_ROLES),
     staleTime: Infinity,
     gcTime: Infinity,
+  });
+}
+
+/** RH-04 (RH-ASG-01 / D3): observe the authoritative recovery snapshot for each displayed
+ * (user, role) item. Being observed is what lets a post-mutation `invalidate` refetch actually run,
+ * which drives the reservation reconciler; the snapshot's raw `assignedRoleCodes` + `effectiveVersion`
+ * are the assignment truth (never `EffectivePermissions.roles`, whose Status changes don't bump). */
+export function useAssignmentIntents(userId: string | null, canonicalRoleCodes: RoleCode[]) {
+  return useQueries({
+    queries: (userId ? canonicalRoleCodes : []).map((roleCode) => ({
+      queryKey: accessControlQueryKeys.assignmentIntent(userId as string, roleCode),
+      queryFn: () => accessControlRepository.recoverAssignmentIntent(userId as string, roleCode),
+    })),
   });
 }

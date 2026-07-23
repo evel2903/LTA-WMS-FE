@@ -11,8 +11,10 @@ import {
 } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
 import {
   accessControlQueryKeys,
+  type ReservationEntry,
   type ReservedRolesState,
 } from '@modules/AccessControl/Application/Queries/AccessControlQueryKeys';
+import type { AssignmentIntentSnapshot } from '@modules/AccessControl/Domain/Types/AssignmentIntentTypes';
 import type { Role, RoleDetail } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type {
@@ -163,45 +165,101 @@ function roleCatalogIdentityMayChange(queryClient: QueryClient, roleCode: RoleCo
   return nameChanged || statusChanged;
 }
 
+/** A canonical unsigned decimal version token (matches the BE `AssignmentVersion` regex). */
+const CANONICAL_VERSION = /^(0|[1-9][0-9]*)$/;
+
+/** Parse a version token to bigint, or null for undefined/non-canonical/legacy-shaped values. Used
+ * so a malformed token (e.g. a legacy-shaped response missing `effectiveVersion`) can never throw a
+ * `TypeError` out of the global QueryCache subscriber (or a render path) and wedge the client. `BigInt`
+ * is also lenient (`BigInt('')===0n`, `BigInt('01')===1n`), so the strict regex guards mis-compares
+ * too (Review Finding, rounds 1-2). Exported so every version-token comparison routes through it. */
+export function canonicalBigInt(token: unknown): bigint | null {
+  return typeof token === 'string' && CANONICAL_VERSION.test(token) ? BigInt(token) : null;
+}
+
+/** A lowercase UUID v4 run id. `crypto.randomUUID()` exists only in a secure context (HTTPS or
+ * localhost); over plain HTTP to a LAN IP it is undefined, but `crypto.getRandomValues` is always
+ * available — fall back to it so assign/remove never hard-crash off-secure (Review Finding, round 1). */
+function newRunId(): string {
+  const c = globalThis.crypto;
+  if (typeof c?.randomUUID === 'function') return c.randomUUID();
+  const b = new Uint8Array(16);
+  c.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40; // version 4
+  b[8] = (b[8] & 0x3f) | 0x80; // variant 1
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0'));
+  return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h[10]}${h[11]}${h[12]}${h[13]}${h[14]}${h[15]}`;
+}
+
 // QueryClient owns the cache subscription for its whole lifetime. The WeakSet prevents one
 // listener per hook instance without retaining QueryClients after their providers are discarded.
 const reservationReconcilers = new WeakSet<QueryClient>();
 
-/** Clear a user's local assignment reservations only after a real effective-permissions fetch
- * succeeds. This deliberately ignores manual `setQueryData` writes and does not rely on Query
- * instance counters/timestamps, so it survives unmount, GC, and a fresh Query reconstruction. */
+/** RH-04 (RH-ASG-01 / D3): release a committed local reservation/tombstone only after a NON-MANUAL
+ * authoritative recovery snapshot for the same (user, role) reaches `EffectiveVersion >=
+ * pendingEffectiveVersion` (BigInt compare, never JS number). At/after the threshold the raw server
+ * snapshot is authoritative — a matching role set is confirmation, a contradicting one is external
+ * supersession; both adopt server truth, so both release the entry. Manual `setQueryData` writes,
+ * fetch errors, and below-threshold snapshots never release. Survives unmount/GC/Query rebuild
+ * because the subscription lives on the QueryClient, not a component. */
 function ensureAssignmentReservationReconciler(queryClient: QueryClient) {
   if (reservationReconcilers.has(queryClient)) return;
   reservationReconcilers.add(queryClient);
 
+  const intentKey = accessControlQueryKeys.assignmentIntent('', '');
   queryClient.getQueryCache().subscribe((event) => {
-    if (
-      event.type !== 'updated' ||
-      event.action.type !== 'success' ||
-      event.action.manual
-    ) {
-      return;
-    }
+    if (event.type !== 'updated' || event.action.type !== 'success' || event.action.manual) return;
 
-    const effectiveKey = accessControlQueryKeys.userEffective('');
     const queryKey = event.query.queryKey as unknown as readonly unknown[];
     const userId = queryKey[2];
+    const roleCode = queryKey[3];
     if (
-      queryKey.length !== effectiveKey.length ||
-      queryKey[0] !== effectiveKey[0] ||
-      queryKey[1] !== effectiveKey[1] ||
+      queryKey.length !== intentKey.length ||
+      queryKey[0] !== intentKey[0] ||
+      queryKey[1] !== intentKey[1] ||
       typeof userId !== 'string' ||
-      userId.length === 0
+      userId.length === 0 ||
+      typeof roleCode !== 'string'
     ) {
       return;
     }
+    const snapshot = event.query.state.data as AssignmentIntentSnapshot | undefined;
+    if (!snapshot) return;
 
     queryClient.setQueryData<ReservedRolesState>(accessControlQueryKeys.reservedRoles(), (prev) => {
-      if (!prev?.[userId]) return prev;
+      const entry = prev?.[userId]?.[roleCode];
+      if (!entry) return prev;
+      // Below the mutation's threshold: this snapshot predates the write — keep the entry. An
+      // unparseable token (undefined/legacy-shaped) is treated as "cannot confirm" → keep, never throw.
+      const snapshotVersion = canonicalBigInt(snapshot.effectiveVersion);
+      const pending = canonicalBigInt(entry.pendingEffectiveVersion);
+      if (snapshotVersion === null || pending === null || snapshotVersion < pending) return prev;
+      const nextUser = { ...prev[userId] };
+      delete nextUser[roleCode];
       const next = { ...prev };
-      delete next[userId];
+      if (Object.keys(nextUser).length === 0) delete next[userId];
+      else next[userId] = nextUser;
       return next;
     });
+  });
+}
+
+/** Write a committed reservation/tombstone with last-registered-intent-wins: a newer server ordinal
+ * (higher intentVersion) always replaces an older one; a stale late result never overwrites it. */
+function writeReservation(
+  queryClient: QueryClient,
+  userId: string,
+  roleCode: RoleCode,
+  entry: ReservationEntry,
+) {
+  queryClient.setQueryData<ReservedRolesState>(accessControlQueryKeys.reservedRoles(), (prev) => {
+    const existing = prev?.[userId]?.[roleCode];
+    const existingVersion = existing ? canonicalBigInt(existing.intentVersion) : null;
+    const incomingVersion = canonicalBigInt(entry.intentVersion);
+    // A newer registered ordinal wins; an unparseable existing/incoming token falls through to the
+    // write (the fresh entry is the caller's current intent) rather than throwing.
+    if (existingVersion !== null && incomingVersion !== null && existingVersion > incomingVersion) return prev;
+    return { ...prev, [userId]: { ...prev?.[userId], [roleCode]: entry } };
   });
 }
 
@@ -342,59 +400,72 @@ export function useAccessControlMutations() {
         }
       },
     }),
-    // No cache patch here (unlike `createRole`) — patching `EffectivePermissions.roles` alone
-    // once looked like a fix for double-submission (round 6), but it left `.permissions`
-    // (and therefore the panel's permission count/list) stale — possibly indefinitely, if the
-    // `invalidateUser` refetch below is paused/fails — showing the new role badge next to the
-    // WRONG permission list (Review Finding, round 9). Duplicate-submission prevention comes
-    // from the global `reservedRoles()` query-cache bucket below — nested under the mutation's
-    // OWN `variables.userId`, never under "whichever user this hook instance currently displays"
-    // (Review Finding, round 13; supersedes the unkeyed component-`useState` Set from rounds
-    // 9-12, which could leak a stale write into a DIFFERENT user's view after navigation, and
-    // didn't survive a full page unmount).
+    // RH-04 (RH-ASG-01 / D3): each assign/remove is one logical intent — register a server ordinal
+    // (RunId + IntentVersion), then apply it. The committed local reservation/tombstone is keyed by
+    // the mutation's OWN userId+roleCode and carries the ownerRunId + intentVersion + the
+    // pendingEffectiveVersion returned by apply, so a stale late result can't overwrite a newer
+    // registered intent (writeReservation's last-registered-wins), and the reconciler only releases
+    // it once an authoritative recovery snapshot reaches that version. Duplicate assign (409) /
+    // absent remove (200 no-op) are handled by the BE ticket and surface inline, not as a badge.
     assignRole: useMutation({
-      mutationFn: ({ userId, input }: { userId: string; input: AssignRoleInput }) =>
-        accessControlRepository.assignRole(userId, input),
-      onSuccess: (_void, variables) => {
-        // Establish a causal boundary before reserving: an older effective-permissions request
-        // may still be in flight after this page unmounts, and inactive invalidation alone does
-        // not cancel it. TanStack cancellation prevents that pre-assignment result from
-        // dispatching a success that could release the new reservation.
+      mutationFn: async ({ userId, input }: { userId: string; input: AssignRoleInput }) => {
+        const runId = newRunId();
+        const registered = await accessControlRepository.registerAssignmentIntent(userId, input.roleCode, {
+          operation: 'assign',
+          runId,
+        });
+        const applied = await accessControlRepository.applyAssignIntent(userId, {
+          roleCode: input.roleCode,
+          runId,
+          intentVersion: registered.intentVersion,
+        });
+        return { roleCode: input.roleCode, runId, intentVersion: applied.intentVersion, pendingEffectiveVersion: applied.effectiveVersion };
+      },
+      onSuccess: (result, variables) => {
+        // A recovery fetch already in flight from before this apply must not release the fresh
+        // reservation; cancel it so only a post-write snapshot can reach the reconciler.
         void queryClient.cancelQueries({
-          queryKey: accessControlQueryKeys.userEffective(variables.userId),
+          queryKey: accessControlQueryKeys.assignmentIntent(variables.userId, result.roleCode),
           exact: true,
         });
-        queryClient.setQueryData<ReservedRolesState>(
-          accessControlQueryKeys.reservedRoles(),
-          (prev) => ({
-            ...prev,
-            [variables.userId]: {
-              ...prev?.[variables.userId],
-              [variables.input.roleCode]: true,
-            },
-          }),
-        );
+        writeReservation(queryClient, variables.userId, result.roleCode, {
+          state: 'reserved',
+          pendingEffectiveVersion: result.pendingEffectiveVersion,
+          ownerRunId: result.runId,
+          operation: 'assign',
+          intentVersion: result.intentVersion,
+        });
+        void invalidate(accessControlQueryKeys.assignmentIntent(variables.userId, result.roleCode));
         invalidateUser(variables.userId);
       },
       onError: notifyHandled,
     }),
     removeRole: useMutation({
-      mutationFn: ({ userId, roleCode }: { userId: string; roleCode: RoleCode }) =>
-        accessControlRepository.removeRole(userId, roleCode),
-      onSuccess: (_void, variables) => {
-        queryClient.setQueryData<ReservedRolesState>(
-          accessControlQueryKeys.reservedRoles(),
-          (prev) => {
-            const userReservations = prev?.[variables.userId];
-            if (!userReservations || !(variables.roleCode in userReservations)) return prev;
-            const nextUserReservations = { ...userReservations };
-            delete nextUserReservations[variables.roleCode];
-            const next = { ...prev };
-            if (Object.keys(nextUserReservations).length === 0) delete next[variables.userId];
-            else next[variables.userId] = nextUserReservations;
-            return next;
-          },
-        );
+      mutationFn: async ({ userId, roleCode }: { userId: string; roleCode: RoleCode }) => {
+        const runId = newRunId();
+        const registered = await accessControlRepository.registerAssignmentIntent(userId, roleCode, {
+          operation: 'remove',
+          runId,
+        });
+        const applied = await accessControlRepository.applyRemoveIntent(userId, roleCode, {
+          runId,
+          intentVersion: registered.intentVersion,
+        });
+        return { roleCode, runId, intentVersion: applied.intentVersion, pendingEffectiveVersion: applied.effectiveVersion };
+      },
+      onSuccess: (result, variables) => {
+        void queryClient.cancelQueries({
+          queryKey: accessControlQueryKeys.assignmentIntent(variables.userId, result.roleCode),
+          exact: true,
+        });
+        writeReservation(queryClient, variables.userId, result.roleCode, {
+          state: 'tombstoned',
+          pendingEffectiveVersion: result.pendingEffectiveVersion,
+          ownerRunId: result.runId,
+          operation: 'remove',
+          intentVersion: result.intentVersion,
+        });
+        void invalidate(accessControlQueryKeys.assignmentIntent(variables.userId, result.roleCode));
         invalidateUser(variables.userId);
       },
       onError: notifyHandled,
