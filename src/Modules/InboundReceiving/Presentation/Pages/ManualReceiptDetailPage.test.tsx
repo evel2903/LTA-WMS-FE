@@ -76,6 +76,15 @@ vi.mock('@modules/ReasonCode/Application/Queries/UseReasonCodeOptions', () => ({
 
 import { ManualReceiptDetailPage } from '@modules/InboundReceiving/Presentation/Pages/ManualReceiptDetailPage';
 
+async function selectCombobox(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  optionName: string,
+) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
+
 const operationalState: ReceiptOperationalState = {
   receiptId: 'receipt-manual-1',
   inboundPlanId: null,
@@ -205,8 +214,8 @@ describe('ManualReceiptDetailPage', () => {
     const varianceOption = screen.getByRole('option', { name: 'Chênh lệch số lượng' });
     expect(varianceOption).toHaveProperty('disabled', true);
 
-    await user.selectOptions(screen.getByLabelText('SKU'), 'sku-1');
-    await user.selectOptions(screen.getByLabelText('Đơn vị tính'), 'uom-1');
+    await selectCombobox(user, 'SKU', 'SKU-A - Sản phẩm A');
+    await selectCombobox(user, 'Đơn vị tính', 'EA - Cái');
     await user.type(screen.getByLabelText('Số lượng thực nhận'), '3');
     await user.type(screen.getByLabelText('Dữ liệu quét thô (không bắt buộc)'), 'scan-manual-1');
     await user.click(screen.getByRole('button', { name: 'Xác nhận dòng thực nhận' }));

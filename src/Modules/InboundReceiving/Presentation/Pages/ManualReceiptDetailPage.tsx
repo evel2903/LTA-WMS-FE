@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import {
   Table,
   TableBody,
@@ -564,7 +564,7 @@ export function ManualReceiptDetailPage() {
           </CardHeader>
           <CardContent>
             <form className="grid gap-3 lg:grid-cols-4" onSubmit={submitLine}>
-              <SearchableLookupSelect
+              <ComboboxSelect
                 id="manual-line-sku"
                 name="skuId"
                 label="SKU"
@@ -580,7 +580,7 @@ export function ManualReceiptDetailPage() {
                 onSearchChange={lookups.setSkuSearch}
                 onChange={setSkuId}
               />
-              <SearchableLookupSelect
+              <ComboboxSelect
                 id="manual-line-uom"
                 name="uomId"
                 label="Đơn vị tính"

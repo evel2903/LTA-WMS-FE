@@ -6,7 +6,7 @@ import { ROUTES } from '@app/Config/Routes';
 import { Button } from '@shared/Components/Ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { SearchableLookupSelect } from '@shared/Components/Ui/SearchableLookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useInboundReceivingMutations } from '@modules/InboundReceiving/Application/Commands/UseInboundReceivingMutations';
 import { useManualReceiptLookups } from '@modules/InboundReceiving/Presentation/Components/UseManualReceiptLookups';
 
@@ -104,7 +104,7 @@ export function ManualReceiptCreatePage() {
             <CardTitle>Đối tượng và kho</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <SearchableLookupSelect
+            <ComboboxSelect
               id="manual-supplier-id"
               name="supplierId"
               label="Nhà cung cấp"
@@ -120,7 +120,7 @@ export function ManualReceiptCreatePage() {
               onSearchChange={lookups.setSupplierSearch}
               onChange={setSupplierId}
             />
-            <SearchableLookupSelect
+            <ComboboxSelect
               id="manual-owner-id"
               name="ownerId"
               label="Chủ hàng"
@@ -136,7 +136,7 @@ export function ManualReceiptCreatePage() {
               onSearchChange={lookups.setOwnerSearch}
               onChange={setOwnerId}
             />
-            <SearchableLookupSelect
+            <ComboboxSelect
               id="manual-warehouse-id"
               name="warehouseId"
               label="Kho"
@@ -152,7 +152,7 @@ export function ManualReceiptCreatePage() {
               onSearchChange={lookups.setWarehouseSearch}
               onChange={setWarehouseId}
             />
-            <SearchableLookupSelect
+            <ComboboxSelect
               id="manual-warehouse-profile-id"
               name="warehouseProfileId"
               label="Hồ sơ kho"

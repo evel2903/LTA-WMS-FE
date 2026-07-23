@@ -66,7 +66,7 @@ describe('ReasonCodeSelect', () => {
     expect(screen.getByText('Chưa có mã lý do phù hợp.')).toBeTruthy();
   });
 
-  it('uses Vietnamese helper copy for error states', () => {
+  it('uses Vietnamese helper copy and keeps error states focusable but non-interactive', async () => {
     h.useReasonCodeOptions.mockReturnValue({ options: [], isLoading: false, isError: true });
 
     render(
@@ -82,7 +82,11 @@ describe('ReasonCodeSelect', () => {
     );
 
     expect(screen.getByText('Không tải được danh sách mã lý do.')).toBeTruthy();
-    expect(screen.getByLabelText('Mã lý do').matches(':disabled')).toBe(true);
+    const trigger = screen.getByLabelText<HTMLButtonElement>('Mã lý do');
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.getAttribute('aria-disabled')).toBe('true');
+    await userEvent.click(trigger);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('preserves a legacy selected value that is missing from fetched options', async () => {

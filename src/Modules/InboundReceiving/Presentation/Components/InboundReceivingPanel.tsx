@@ -4,7 +4,7 @@ import { PlayCircle, ScanLine } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import type { InboundPlanLine } from '@modules/InboundPlan/Domain/Types/InboundPlan';
@@ -375,7 +375,7 @@ export function InboundReceivingPanel({
               />
               Xác nhận thủ công
             </label>
-            <LookupSelect
+            <ComboboxSelect
               id="inbound-receipt-reason-code"
               name="receiptReasonCode"
               label="Mã lý do tiếp nhận"
