@@ -111,6 +111,15 @@ vi.setConfig({ testTimeout: 15_000 });
 
 const DEFAULT_RAW_SCAN = '01012345678901281726010110LOT-A';
 
+async function selectCombobox(
+  actor: ReturnType<typeof userEvent.setup>,
+  label: string,
+  optionName: string,
+) {
+  await actor.click(screen.getByRole('combobox', { name: label }));
+  await actor.click(screen.getByRole('option', { name: optionName }));
+}
+
 // Default: no control flags on, so pre-existing receiving-flow tests (which don't
 // fill Lot/Expiry/Serial) keep passing. IDC-03 tests override per-flag.
 function skuFixture(overrides: Partial<Sku> = {}): Sku {
@@ -748,9 +757,11 @@ describe('InboundReceivingDetailPage', () => {
     renderReceivingPage('/inbound-receiving/inbound-plan-1');
 
     expect(await screen.findByTestId('inbound-workflow-step-receiving')).toBeTruthy();
-    expect(
-      within(screen.getByTestId('inbound-workflow-step-receiving')).getByText('Cần phê duyệt'),
-    ).toBeTruthy();
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('inbound-workflow-step-receiving')).getByText('Cần phê duyệt'),
+      ).toBeTruthy(),
+    );
     expect(
       within(screen.getByTestId('inbound-workflow-step-receiving')).queryByText('Bị chặn'),
     ).toBeNull();
@@ -829,7 +840,7 @@ describe('InboundReceivingDetailPage', () => {
     renderReceivingPage('/inbound-receiving/inbound-plan-1/receiving');
 
     await screen.findByTestId('inbound-receiving-back-to-plan');
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await selectCombobox(actor, 'Mã lý do sẵn sàng', 'RC-V1-HANDOFF — Bàn giao');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
 
     expect(
@@ -961,8 +972,10 @@ describe('InboundReceivingDetailPage', () => {
     const readinessPanel = screen.getByTestId('inbound-readiness-panel');
 
     expect(within(receivingStep).getByText('Bị chặn')).toBeTruthy();
-    expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
-      'Cần ghi nhận vào cổng',
+    await waitFor(() =>
+      expect(screen.getByTestId('inbound-readiness-status').textContent).toContain(
+        'Cần ghi nhận vào cổng',
+      ),
     );
     expect(screen.getByTestId('inbound-readiness-helper').textContent).toContain(
       'Vào cổng chưa được ghi nhận',
@@ -982,7 +995,7 @@ describe('InboundReceivingDetailPage', () => {
 
     const receivingStep = await screen.findByTestId('inbound-workflow-step-receiving');
 
-    expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy();
+    await waitFor(() => expect(within(receivingStep).getByText('Đang xử lý')).toBeTruthy());
     await expectReadinessAllowed();
     expect(screen.getByTestId('inbound-receiving-panel')).toBeTruthy();
     expect(screen.getByTestId('inbound-receipt-technical-details').hasAttribute('open')).toBe(
@@ -1178,7 +1191,7 @@ describe('InboundReceivingDetailPage', () => {
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     const dialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
 
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -1237,7 +1250,7 @@ describe('InboundReceivingDetailPage', () => {
     // technical-details disclosure that wraps the idempotency-key input — the
     // key already has a non-empty default, so this is the realistic "operator
     // never bothered to expand it" path.
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/collapsed');
     const submitButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     const closeButton = within(dialog).getByRole('button', { name: 'Đóng báo sai lệch' });
@@ -1409,12 +1422,17 @@ describe('InboundReceivingDetailPage', () => {
       'Cần quét mã hàng',
     );
     expect(confirmButton).toHaveProperty('disabled', true);
+    const receiptReasonCode = screen.getByRole<HTMLButtonElement>('combobox', {
+      name: 'Mã lý do tiếp nhận',
+    });
+    expect(receiptReasonCode.disabled).toBe(true);
 
     await actor.click(screen.getByLabelText('Xác nhận thủ công'));
     expect(screen.getByTestId('inbound-receipt-line-helper').textContent).toContain(
       'Xác nhận thủ công cần mã lý do',
     );
-    await actor.selectOptions(screen.getByLabelText('Mã lý do tiếp nhận'), 'RC-V1-MANUAL-SCAN');
+    expect(receiptReasonCode.disabled).toBe(false);
+    await selectCombobox(actor, 'Mã lý do tiếp nhận', 'RC-V1-MANUAL-SCAN — Nhập tay');
     await waitFor(() => expect(confirmButton).toHaveProperty('disabled', false));
   });
 
@@ -1429,7 +1447,7 @@ describe('InboundReceivingDetailPage', () => {
       true,
     );
 
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await selectCombobox(actor, 'Mã lý do sẵn sàng', 'RC-V1-HANDOFF — Bàn giao');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
 
     await waitFor(() =>
@@ -1828,7 +1846,7 @@ describe('InboundReceivingDetailPage', () => {
     expect(screen.getByTestId('location-probe').textContent).toBe(
       '/inbound-receiving/inbound-plan-1/discrepancy/line-1',
     );
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -1908,7 +1926,18 @@ describe('InboundReceivingDetailPage', () => {
     // No file picker anywhere in the discrepancy surface.
     expect(dialog.querySelector('input[type="file"]')).toBeNull();
     // First input (reason code) is focused on open.
-    expect(within(dialog).getByLabelText('Mã lý do sai lệch')).toBe(document.activeElement);
+    const reasonCodeTrigger = within(dialog).getByLabelText('Mã lý do sai lệch');
+    expect(reasonCodeTrigger).toBe(document.activeElement);
+
+    await actor.click(reasonCodeTrigger);
+    await actor.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
+    await waitFor(() => expect(reasonCodeTrigger).toBe(document.activeElement));
+
+    await actor.click(reasonCodeTrigger);
+    await actor.keyboard('{Tab}');
+    expect(screen.getByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
+    await waitFor(() => expect(reasonCodeTrigger).toBe(document.activeElement));
   }, 15_000);
 
   it('surfaces the AC5 discrepancy-routing cue on the focused line before capture', async () => {
@@ -2243,6 +2272,10 @@ describe('InboundReceivingDetailPage', () => {
     );
 
     expect(await screen.findByTestId('inbound-qc-panel')).toBeTruthy();
+    const qcResultReasonCode = screen.getByRole<HTMLButtonElement>('combobox', {
+      name: 'Mã lý do kết quả QC',
+    });
+    expect(qcResultReasonCode.disabled).toBe(true);
     await actor.click(screen.getByLabelText('Bắt buộc QC'));
     await openTechnicalDetails(actor, 'inbound-qc-task-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency tác vụ QC'));
@@ -2257,6 +2290,7 @@ describe('InboundReceivingDetailPage', () => {
     expect(screen.getByLabelText('Số lượng đã kiểm')).toHaveProperty('value', '12');
     expect(screen.getByLabelText('Số lượng đạt')).toHaveProperty('value', '12');
     expect(screen.getByLabelText('Số lượng loại')).toHaveProperty('value', '0');
+    expect(qcResultReasonCode.disabled).toBe(false);
     // Two distinct steps remain — no collapsed single QC button.
     expect(screen.getByRole('button', { name: 'Đánh giá QC' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Ghi nhận kết quả QC' })).toBeTruthy();
@@ -2271,9 +2305,7 @@ describe('InboundReceivingDetailPage', () => {
     const recordButton = screen.getByRole('button', { name: 'Ghi nhận kết quả QC' });
     expect(recordButton).toHaveProperty('disabled', true);
 
-    fireEvent.change(screen.getByLabelText('Mã lý do kết quả QC'), {
-      target: { value: 'RC-V1-DISCREPANCY' },
-    });
+    await selectCombobox(actor, 'Mã lý do kết quả QC', 'RC-V1-DISCREPANCY — Sai lệch');
     fireEvent.change(screen.getByLabelText('Số lượng loại'), { target: { value: '4' } });
     await openTechnicalDetails(actor, 'inbound-qc-result-technical-details');
     fireEvent.change(screen.getByLabelText('Khóa idempotency kết quả QC'), {
@@ -2332,7 +2364,7 @@ describe('InboundReceivingDetailPage', () => {
     const discrepancyDialog = await screen.findByRole('dialog', { name: 'Báo sai lệch' });
     const routeButton = screen.getByRole('button', { name: 'Chuyển xử lý sai lệch' });
     expect(routeButton).toHaveProperty('disabled', true);
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), ',,');
     expect(
       within(discrepancyDialog).getByTestId('inbound-discrepancy-helper').textContent,
@@ -2483,7 +2515,7 @@ describe('InboundReceivingDetailPage', () => {
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -2587,7 +2619,7 @@ describe('InboundReceivingDetailPage', () => {
     expect(await screen.findByText(/Dòng 1 Sai lệch - Chênh lệch số lượng/i)).toBeTruthy();
     await actor.click(screen.getByRole('button', { name: 'Báo sai lệch dòng này' }));
     expect(await screen.findByRole('dialog', { name: 'Báo sai lệch' })).toBeTruthy();
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sai lệch'), 'RC-V1-DISCREPANCY');
+    await selectCombobox(actor, 'Mã lý do sai lệch', 'RC-V1-DISCREPANCY — Sai lệch');
     await actor.type(screen.getByLabelText('Mã tham chiếu bằng chứng'), 'photo://dock/over-qty-1');
     await openTechnicalDetails(actor, 'inbound-discrepancy-technical-details');
     await actor.clear(screen.getByLabelText('Khóa idempotency sai lệch'));
@@ -2606,7 +2638,7 @@ describe('InboundReceivingDetailPage', () => {
     renderReceivingPage('/inbound-receiving/inbound-plan-1/receiving');
 
     await screen.findByTestId('inbound-receiving-back-to-plan');
-    await actor.selectOptions(screen.getByLabelText('Mã lý do sẵn sàng'), 'RC-V1-HANDOFF');
+    await selectCombobox(actor, 'Mã lý do sẵn sàng', 'RC-V1-HANDOFF — Bàn giao');
     await actor.click(screen.getByRole('button', { name: 'Ghi đè kiểm tra sẵn sàng' }));
     expect(await screen.findByTestId('inbound-receiving-panel')).toBeTruthy();
     // A receiving-side action (readiness override) never reaches into the separate

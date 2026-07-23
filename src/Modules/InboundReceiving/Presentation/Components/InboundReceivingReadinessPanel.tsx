@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type { ReceivingReadiness } from '@modules/InboundReceiving/Domain/Types/Receipt';
 
@@ -109,7 +109,7 @@ export function InboundReceivingReadinessPanel({
               statusText
             )}
           </p>
-          <LookupSelect
+          <ComboboxSelect
             id="inbound-readiness-reason-code"
             name="readinessReasonCode"
             label="Mã lý do sẵn sàng"

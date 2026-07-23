@@ -4,7 +4,7 @@ import { PackageCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import type {
   InboundLpn,
@@ -297,7 +297,7 @@ export function InboundReleasePutawayPanel({
               />
               Ghi đè nhãn
             </label>
-            <LookupSelect
+            <ComboboxSelect
               id="inbound-release-reason-code"
               name="releaseReasonCode"
               label="Mã lý do phát hành"

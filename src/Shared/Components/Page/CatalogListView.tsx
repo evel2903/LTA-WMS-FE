@@ -46,6 +46,10 @@ interface CatalogListViewProps<TRow> {
   rowKey: (row: TRow) => string;
   page: number;
   totalPages: number;
+  /** Optional server-reported total count shown beside page metadata. */
+  totalItems?: number;
+  /** Vietnamese entity label for `totalItems` (for example `phiếu`). */
+  itemLabel?: string;
   onPageChange: (page: number) => void;
   /** Rows-per-page selector — omit to keep pagination as-is (no selector shown). */
   pageSize?: number;
@@ -76,6 +80,8 @@ export function CatalogListView<TRow>({
   rowKey,
   page,
   totalPages,
+  totalItems,
+  itemLabel,
   onPageChange,
   pageSize,
   onPageSizeChange,
@@ -105,6 +111,8 @@ export function CatalogListView<TRow>({
         <CatalogPagination
           page={page}
           totalPages={totalPages}
+          totalItems={totalItems}
+          itemLabel={itemLabel}
           onPageChange={onPageChange}
           pageSize={pageSize}
           onPageSizeChange={onPageSizeChange}
@@ -157,20 +165,35 @@ function ResponsiveCatalogRows<TRow>({
                 const sortKey = column.id ?? column.header;
                 const isSortable = column.sortable && onSortChange != null;
                 const isActive = sort?.column === sortKey;
-                const SortIcon = isActive ? (sort?.direction === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                const SortIcon = isActive
+                  ? sort?.direction === 'asc'
+                    ? ArrowUp
+                    : ArrowDown
+                  : ArrowUpDown;
                 return (
                   <TableHead
                     key={column.header}
                     className={cn('bg-card sticky top-0 z-10', column.className)}
+                    aria-sort={
+                      isSortable
+                        ? isActive
+                          ? sort?.direction === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                        : undefined
+                    }
                   >
                     {isSortable ? (
                       <button
                         type="button"
-                        className="hover:text-foreground inline-flex items-center gap-1"
+                        className="hover:text-foreground inline-flex min-h-10 items-center gap-1 py-2"
                         onClick={() => onSortChange?.(sortKey)}
                       >
                         {column.header}
-                        <SortIcon className={cn('size-3.5', isActive ? 'opacity-100' : 'opacity-40')} />
+                        <SortIcon
+                          className={cn('size-3.5', isActive ? 'opacity-100' : 'opacity-40')}
+                        />
                       </button>
                     ) : (
                       column.header
@@ -225,6 +248,8 @@ function ResponsiveCatalogRows<TRow>({
 function CatalogPagination({
   page,
   totalPages,
+  totalItems,
+  itemLabel,
   onPageChange,
   pageSize,
   onPageSizeChange,
@@ -232,6 +257,8 @@ function CatalogPagination({
 }: {
   page: number;
   totalPages: number;
+  totalItems?: number;
+  itemLabel?: string;
   onPageChange: (page: number) => void;
   pageSize?: number;
   onPageSizeChange?: (pageSize: number) => void;
@@ -241,6 +268,8 @@ function CatalogPagination({
   const normalizedPage = Number.isFinite(page) ? Math.trunc(page) : 1;
   const safeTotalPages = Math.max(normalizedTotalPages, 1);
   const safePage = Math.min(Math.max(normalizedPage, 1), safeTotalPages);
+  const safeTotalItems =
+    totalItems != null && Number.isFinite(totalItems) ? Math.max(Math.trunc(totalItems), 0) : null;
   const showPageSize = pageSize != null && onPageSizeChange != null;
   const sizeOptions = pageSizeOptions ?? [10, 20, 50, 100];
 
@@ -255,12 +284,13 @@ function CatalogPagination({
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground text-sm">
           Trang {safePage} / {safeTotalPages}
+          {safeTotalItems != null ? ` · ${safeTotalItems} ${itemLabel ?? 'bản ghi'}` : ''}
         </span>
         {showPageSize ? (
           <label className="text-muted-foreground flex items-center gap-2 text-sm">
             Số dòng/trang
             <select
-              className="h-8 rounded-md border bg-background px-2 text-sm"
+              className="h-10 rounded-md border bg-background px-2 text-sm"
               value={pageSize}
               onChange={(event) => onPageSizeChange?.(Number(event.target.value))}
             >

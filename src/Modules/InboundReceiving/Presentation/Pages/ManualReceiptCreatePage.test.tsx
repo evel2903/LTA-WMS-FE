@@ -26,7 +26,9 @@ vi.mock('@modules/InboundReceiving/Presentation/Components/UseManualReceiptLooku
     warehouseQuery: { isLoading: false, isError: false },
     warehouseSearch: '',
     setWarehouseSearch: vi.fn(),
-    warehouseProfileOptions: [],
+    warehouseProfileOptions: [
+      { value: 'profile-1', label: 'PROFILE-1 - Hồ sơ kho 1' },
+    ],
     warehouseProfileQuery: { isLoading: false, isError: false },
     warehouseProfileSearch: '',
     setWarehouseProfileSearch: vi.fn(),
@@ -34,6 +36,15 @@ vi.mock('@modules/InboundReceiving/Presentation/Components/UseManualReceiptLooku
 }));
 
 import { ManualReceiptCreatePage } from '@modules/InboundReceiving/Presentation/Pages/ManualReceiptCreatePage';
+
+async function selectCombobox(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  optionName: string,
+) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(screen.getByRole('option', { name: optionName }));
+}
 
 function renderPage() {
   const client = new QueryClient({
@@ -74,9 +85,10 @@ describe('ManualReceiptCreatePage', () => {
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     await user.type(screen.getByLabelText('Số phiếu'), 'RCPT-001');
     await user.type(screen.getByLabelText('Tham chiếu nghiệp vụ'), 'MANUAL:001');
-    await user.selectOptions(screen.getByLabelText('Nhà cung cấp'), 'supplier-1');
-    await user.selectOptions(screen.getByLabelText('Chủ hàng'), 'owner-1');
-    await user.selectOptions(screen.getByLabelText('Kho'), 'warehouse-1');
+    await selectCombobox(user, 'Nhà cung cấp', 'SUP-1 - Nhà cung cấp 1');
+    await selectCombobox(user, 'Chủ hàng', 'OWN-1 - Chủ hàng 1');
+    await selectCombobox(user, 'Kho', 'WH-1 - Kho 1');
+    await selectCombobox(user, 'Hồ sơ kho', 'PROFILE-1 - Hồ sơ kho 1');
     expect((submit as HTMLButtonElement).disabled).toBe(false);
     await user.click(submit);
 
@@ -88,7 +100,7 @@ describe('ManualReceiptCreatePage', () => {
         supplierId: 'supplier-1',
         receiptNumber: 'RCPT-001',
         businessReference: 'MANUAL:001',
-        warehouseProfileId: null,
+        warehouseProfileId: 'profile-1',
       }),
     );
     expect(await screen.findByText('receipt-destination')).toBeTruthy();

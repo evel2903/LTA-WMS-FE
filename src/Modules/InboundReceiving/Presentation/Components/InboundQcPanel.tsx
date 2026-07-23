@@ -4,7 +4,7 @@ import { ClipboardCheck } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@shared/Components/Ui/Card';
 import { Input } from '@shared/Components/Ui/Input';
-import { LookupSelect } from '@shared/Components/Ui/LookupSelect';
+import { ComboboxSelect } from '@shared/Components/Ui/ComboboxSelect';
 import { useReasonCodeOptions } from '@modules/ReasonCode/Application/Queries/UseReasonCodeOptions';
 import { vietnameseOperationalLabel } from '@shared/Presentation/VietnameseOperationalLabels';
 import {
@@ -235,7 +235,7 @@ export function InboundQcPanel({
             Bắt buộc QC
           </label>
           <TechnicalDetails testId="inbound-qc-task-technical-details">
-            <LookupSelect
+            <ComboboxSelect
               id="inbound-qc-task-reason-code"
               name="qcTaskReasonCode"
               label="Mã lý do kích hoạt QC"
@@ -396,7 +396,7 @@ export function InboundQcPanel({
             {/* Reason code + its note pair into 2 columns only at 2xl (single column
                 below); adjacent in the original order so the flow is preserved. */}
             <div className="grid gap-x-4 gap-y-3 2xl:grid-cols-2">
-              <LookupSelect
+              <ComboboxSelect
                 id="inbound-qc-result-reason-code"
                 name="qcResultReasonCode"
                 label="Mã lý do kết quả QC"
