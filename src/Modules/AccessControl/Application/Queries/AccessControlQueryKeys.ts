@@ -6,10 +6,25 @@ import type {
   UserListFilter,
 } from '@modules/AccessControl/Domain/Types/AccessControlTypes';
 
-/** Local-only assignment reservations, grouped by user id and then role code. A reservation
- * exists until the QueryClient-level reconciler observes a later authoritative
- * `userEffective(userId)` fetch success. */
-export type ReservedRolesState = Record<string, Record<string, true>>;
+/** RH-04 (RH-ASG-01 / D3) version token: a canonical decimal string (PostgreSQL BIGINT). Compared
+ * with `BigInt(...)`, never a JS `number` (which loses precision past 2^53). */
+export type VersionToken = string;
+
+/** RH-04 committed local intent for one (user, role) item. A reservation/tombstone is released only
+ * when a non-manual authoritative recovery snapshot for the same user reaches
+ * `EffectiveVersion >= pendingEffectiveVersion` (raw role set matches => confirmation; contradicts
+ * => external supersession). last-registered-intent-wins replaces both `state` and the thresholds. */
+export type ReservationEntry = {
+  state: 'reserved' | 'tombstoned';
+  pendingEffectiveVersion: VersionToken;
+  ownerRunId: string;
+  operation: 'assign' | 'remove';
+  intentVersion: VersionToken;
+};
+
+/** One shared durable QueryClient entry, bucketed by user id then canonical role code. No immortal
+ * per-user query. */
+export type ReservedRolesState = Record<string, Record<string, ReservationEntry>>;
 
 export const accessControlQueryKeys = {
   all: [QUERY_NAMESPACES.ACCESS_CONTROL] as const,
@@ -28,5 +43,8 @@ export const accessControlQueryKeys = {
     [...accessControlQueryKeys.all, 'permissions', filter ?? {}] as const,
   users: (filter?: UserListFilter) => [...accessControlQueryKeys.all, 'users', filter ?? {}] as const,
   userEffective: (userId: string) => [...accessControlQueryKeys.all, 'effective', userId] as const,
+  /** RH-04 authoritative recovery snapshot for one (user, role) assignment intent. */
+  assignmentIntent: (userId: string, canonicalRoleCode: RoleCode) =>
+    [...accessControlQueryKeys.all, 'assignmentIntent', userId, canonicalRoleCode] as const,
   userDataScopes: (userId: string) => [...accessControlQueryKeys.all, 'dataScopes', userId] as const,
 };

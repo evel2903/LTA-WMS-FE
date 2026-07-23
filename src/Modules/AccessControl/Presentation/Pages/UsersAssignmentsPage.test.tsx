@@ -102,6 +102,70 @@ class FakeRepository implements Partial<IAccessControlRepository> {
     return Promise.resolve(scope);
   });
   removeDataScope = vi.fn(() => Promise.resolve());
+
+  // RH-04 (RH-ASG-01 / D3) intent protocol fakes modeling BE semantics over `this.roles`.
+  effectiveVersion = 0;
+  headVersion: Record<string, number> = {};
+  private itemKey(userId: string, roleCode: string) {
+    return `${userId}:${roleCode}`;
+  }
+  registerAssignmentIntent = vi.fn(
+    (userId: string, roleCode: RoleCode, input: { operation: 'assign' | 'remove'; runId: string }) => {
+      const key = this.itemKey(userId, roleCode);
+      this.headVersion[key] = (this.headVersion[key] ?? 0) + 1;
+      return Promise.resolve({
+        runId: input.runId,
+        operation: input.operation,
+        status: 'Registered' as const,
+        intentVersion: String(this.headVersion[key]),
+        effectiveVersion: String(this.effectiveVersion),
+        isCurrent: true,
+      });
+    },
+  );
+  applyAssignIntent = vi.fn((_userId: string, input: { roleCode: RoleCode; runId: string; intentVersion: string }) => {
+    if (this.roles.includes(input.roleCode)) {
+      return Promise.reject(new ApiError({ status: 409, code: 'CONFLICT', message: 'User already has this role' }));
+    }
+    this.roles.push(input.roleCode);
+    this.effectiveVersion += 1;
+    return Promise.resolve({
+      status: 'Applied' as const,
+      runId: input.runId,
+      intentVersion: input.intentVersion,
+      effectiveVersion: String(this.effectiveVersion),
+      roleCode: input.roleCode,
+      assigned: true,
+    });
+  });
+  applyRemoveIntent = vi.fn((_userId: string, roleCode: RoleCode, input: { runId: string; intentVersion: string }) => {
+    const had = this.roles.includes(roleCode);
+    if (had) {
+      this.roles = this.roles.filter((role) => role !== roleCode);
+      this.effectiveVersion += 1;
+    }
+    return Promise.resolve({
+      status: had ? ('Applied' as const) : ('SatisfiedNoChange' as const),
+      runId: input.runId,
+      intentVersion: input.intentVersion,
+      effectiveVersion: String(this.effectiveVersion),
+      roleCode,
+      removed: had,
+    });
+  });
+  recoverAssignmentIntent = vi.fn((userId: string, roleCode: RoleCode) =>
+    Promise.resolve({
+      userId,
+      roleCode,
+      runId: null,
+      operation: null as 'assign' | 'remove' | null,
+      status: 'Idle' as const,
+      intentVersion: String(this.headVersion[this.itemKey(userId, roleCode)] ?? 0),
+      effectiveVersion: String(this.effectiveVersion),
+      assignedRoleCodes: [...this.roles],
+      isOwnedByCurrentActor: true,
+    }),
+  );
 }
 
 function JumpButton({ label, to }: { label: string; to: string }) {
@@ -179,7 +243,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     // The default selection is the first available core role (WMS Admin). After the
     // mutation invalidates the effective query, the panel re-reads and shows it.
     expect(await screen.findByText('WMS Admin')).toBeTruthy();
-    expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'WMS_ADMIN' });
+    expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'WMS_ADMIN' }));
   });
 
   it("assigns a CUSTOM (non-core) role to a user, showing its real name (not the code or 'undefined') and the exact permission its own grant unlocks (RA-05 AC1/AC2)", async () => {
@@ -215,7 +279,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     await actor.selectOptions(await screen.findByLabelText('Vai trò'), 'INVENTORY_LEAD');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
 
-    expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'INVENTORY_LEAD' });
+    expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'INVENTORY_LEAD' }));
     // Badge shows the custom role's real name -- not its code, and not "undefined" (the
     // pre-fix bug for any role outside the hardcoded ROLE_LABELS map) -- and its remove
     // control's accessible name carries the same real name, not the raw code.
@@ -416,7 +480,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' });
+    expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' }));
 
     // The effective-permissions refetch this assignment triggered is still pending -- without
     // the fix, `assignedRoles` (and therefore the dropdown) wouldn't reflect the new
@@ -430,7 +494,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     await waitFor(() => expect(screen.getByText('QC')).toBeTruthy());
   });
 
-  it('never shows a newly assigned role badge next to a stale permission count while the effective-permissions refetch is paused (Review Finding, round 9)', async () => {
+  it('optimistically marks an assigned role and blocks its duplicate submission while the permission-count refetch is still pending (Review Finding, round 9; RH-04 D3 decouples assignment from permissions)', async () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     fake.grantsByRole.QC = [{ permissionCode: 'SKU.Read', action: 'Read', objectType: 'SKU' }];
@@ -459,23 +523,21 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' });
+    expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' }));
 
-    // The invalidated effective-permissions refetch is still pending -- must show a CONSISTENT
-    // (if momentarily stale) old state, never the new role badge next to the old permission
-    // count (the round-6 bug: patching only `.roles` left `.permissions` behind).
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getByText('Chưa gán vai trò nào.')).toBeTruthy();
-    expect(screen.getByText('Quyền hiệu lực (0)')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Gỡ vai trò QC' })).toBeNull();
-    // Not re-selectable either -- the same duplicate-submission window round 6 closed, now via
-    // useMutationState instead of a cache patch.
+    // RH-04 (D3): the committed reservation optimistically marks QC assigned AND excludes it from
+    // the dropdown so it cannot be submitted twice. The permission COUNT comes from the separate
+    // effective-permissions query — assignment version and permission content are decoupled, so the
+    // badge appearing before the (still-pending) count settles is by design, not the round-6 bug.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Gỡ vai trò QC' })).toBeTruthy());
     const select = await selectByLabel('Vai trò');
     expect(Array.from(select.options).some((option) => option.value === 'QC')).toBe(false);
+    expect(screen.getByText('Quyền hiệu lực (0)')).toBeTruthy(); // count still lagging until effective resolves
 
     resolveEffective?.();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Gỡ vai trò QC' })).toBeTruthy());
+    // Once the effective-permissions refetch lands, the permission count catches up.
     expect(await screen.findByText('Quyền hiệu lực (1)')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gỡ vai trò QC' })).toBeTruthy();
   });
 
   it('allows reassigning a role after it was removed, instead of leaving it permanently reserved (Review Finding, round 10)', async () => {
@@ -502,7 +564,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     const actor = userEvent.setup();
     const fake = new FakeRepository();
     let rejectAssign: ((error: Error) => void) | undefined;
-    fake.assignRole = vi.fn(
+    fake.applyAssignIntent = vi.fn(
       () =>
         new Promise((_resolve, reject) => {
           rejectAssign = reject;
@@ -513,7 +575,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledTimes(1));
 
     // Still pending -- the submit button being disabled already prevents a duplicate
     // request, so the dropdown must NOT also remove QC and silently switch the selection.
@@ -586,7 +648,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     // Assign QC -- its own effective-permissions refetch is held pending.
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' }));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' })));
 
     // Assign a DIFFERENT role (OPERATOR) on the SAME page/hook while QC's refetch is still
     // pending -- this must not expire QC's own protection (a mutation-cache-GC-based
@@ -594,7 +656,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     // observer the moment OPERATOR's `.mutate()` call reassigns it).
     await actor.selectOptions(await selectByLabel('Vai trò'), 'OPERATOR');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'OPERATOR' }));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'OPERATOR' })));
 
     // QC must still be excluded from the dropdown -- resubmitting it now would be a duplicate.
     const select = await selectByLabel('Vai trò');
@@ -629,7 +691,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' }));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' })));
 
     // Toggle to Detail and back to Edit for the SAME user -- the effective-permissions
     // refetch the assign triggered is still pending throughout.
@@ -654,10 +716,11 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Gỡ vai trò QC' })).toBeTruthy());
 
-    // QC is removed by a DIFFERENT actor -- not through this page's own `removeRole`
-    // mutation, which is the only thing that currently clears a reservation directly.
+    // QC is removed by a DIFFERENT actor. RH-04 (D3): the FE observes this by re-reading the
+    // authoritative recovery snapshot (raw assignedRoleCodes), NOT the effective-permissions query
+    // whose roles are not assignment proof.
     fake.roles = fake.roles.filter((role) => role !== 'QC');
-    await client.invalidateQueries({ queryKey: accessControlQueryKeys.userEffective('u1') });
+    await client.invalidateQueries({ queryKey: accessControlQueryKeys.assignmentIntent('u1', 'QC') });
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Gỡ vai trò QC' })).toBeNull());
 
     // QC must be selectable again -- not stuck excluded by a reservation this hook instance
@@ -690,18 +753,17 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
       });
     });
     repo.current = fake as unknown as IAccessControlRepository;
-    renderPage(ROUTES.FOUNDATION.ACCESS.USER_EDIT('u1'));
+    const { client } = renderPage(ROUTES.FOUNDATION.ACCESS.USER_EDIT('u1'));
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' }));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' })));
 
-    // QC is removed by a different actor WHILE the post-assign effective-permissions refetch is
-    // still pending -- when that refetch finally resolves, it legitimately never shows QC as
-    // assigned at all (unlike the round-12 test above, where the removal happens AFTER the
-    // refetch already confirmed the assignment).
+    // QC is removed by a different actor. RH-04 (D3): a fresh authoritative recovery snapshot,
+    // read after the reservation, is what closes the gap — its raw assignedRoleCodes never shows QC.
     fake.roles = fake.roles.filter((role) => role !== 'QC');
     resolveEffective?.();
+    await client.invalidateQueries({ queryKey: accessControlQueryKeys.assignmentIntent('u1', 'QC') });
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Gỡ vai trò QC' })).toBeNull());
 
     // QC must be selectable again -- a content-based reconcile (round 12) can never clear this,
@@ -741,7 +803,7 @@ describe('UsersAssignmentsPage (C10 AC5 / AC3)', () => {
 
     await actor.selectOptions(await selectByLabel('Vai trò'), 'QC');
     await actor.click(screen.getByRole('button', { name: 'Gán vai trò' }));
-    await waitFor(() => expect(fake.assignRole).toHaveBeenCalledWith('u1', { roleCode: 'QC' }));
+    await waitFor(() => expect(fake.applyAssignIntent).toHaveBeenCalledWith('u1', expect.objectContaining({ roleCode: 'QC' })));
     await waitFor(() => expect(effectiveCallCount).toBe(2));
 
     // Leave the detail route first so userEffective('u1') has no observer, then settle the

@@ -8,15 +8,20 @@ import { ActionPanel } from '@shared/Components/Page/ActionPanel';
 import { DetailPageShell } from '@shared/Components/Page/DetailPageShell';
 import type { PageBoundaryState } from '@shared/Components/Page/PageStateBoundary';
 import { conflictMessage } from '@modules/AccessControl/Application/Commands/AccessControlMutationError';
-import { useAccessControlMutations } from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
+import {
+  canonicalBigInt,
+  useAccessControlMutations,
+} from '@modules/AccessControl/Application/Commands/UseAccessControlMutations';
 import {
   useAllRoles,
+  useAssignmentIntents,
   useReservedRoleCodes,
   useUserDataScopes,
   useUserEffectivePermissions,
   useUsers,
 } from '@modules/AccessControl/Application/Queries/UseAccessControlQueries';
 import type { UserSummary } from '@modules/AccessControl/Domain/Entities/AccessControl';
+import type { AssignmentIntentSnapshot } from '@modules/AccessControl/Domain/Types/AssignmentIntentTypes';
 import { UserAssignmentPanel } from '@modules/AccessControl/Presentation/Components/UserAssignmentPanel';
 
 type UserAssignmentDetailMode = 'detail' | 'edit';
@@ -61,8 +66,55 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
   const effectiveQuery = useUserEffectivePermissions(userId || null);
   const dataScopesQuery = useUserDataScopes(userId || null);
   const reservedQuery = useReservedRoleCodes(userId || null);
-  const reservedRoleCodes = Object.keys(reservedQuery.data ?? {});
+  // RH-04 (RH-ASG-01 / D3): split committed local intents — `reserved` shows optimistically
+  // assigned (pending confirm), `tombstoned` shows optimistically removed (pending confirm).
+  const reservations = reservedQuery.data ?? {};
+  const reservedRoleCodes = Object.entries(reservations)
+    .filter(([, entry]) => entry.state === 'reserved')
+    .map(([roleCode]) => roleCode);
+  const tombstonedRoleCodes = new Set(
+    Object.entries(reservations)
+      .filter(([, entry]) => entry.state === 'tombstoned')
+      .map(([roleCode]) => roleCode),
+  );
   const mutations = useAccessControlMutations();
+
+  const effectiveRoles = effectiveQuery.data?.roles ?? [];
+  // Observe the authoritative recovery snapshot for every catalog + pending item. Observing the
+  // whole catalog (a small, stable set) keeps the authoritative assigned set available even after
+  // a reservation is released — a shrinking observed set would drop the snapshot and fall back to
+  // the lagging effective roles — and lets each item's own recovery drive its reservation release.
+  const catalogRoleCodes = (rolesQuery.data ?? []).map((role) => role.roleCode);
+  const intentQueries = useAssignmentIntents(
+    userId || null,
+    Array.from(new Set([...catalogRoleCodes, ...effectiveRoles, ...Object.keys(reservations)])),
+  );
+  // Assignment truth is the freshest recovery snapshot's raw `assignedRoleCodes` (any snapshot
+  // carries the user's full assigned set), NOT `EffectivePermissions.roles` — a Role.Status change
+  // does not bump the assignment version, so effective roles are not assignment proof (RH-ASG-01).
+  const freshestSnapshot = intentQueries
+    .map((query) => query.data)
+    .filter((data): data is AssignmentIntentSnapshot => Boolean(data))
+    .reduce<AssignmentIntentSnapshot | undefined>((best, data) => {
+      // Route through canonicalBigInt so a non-canonical/legacy-shaped `effectiveVersion` is ignored
+      // rather than throwing `BigInt(undefined)` during render (Review Finding, round 2). `best` is
+      // only ever a snapshot that already passed this guard, so its token is safe to compare.
+      const version = canonicalBigInt(data.effectiveVersion);
+      if (version === null) return best;
+      return !best || version > BigInt(best.effectiveVersion) ? data : best;
+    }, undefined);
+  const authoritativeAssigned = freshestSnapshot ? freshestSnapshot.assignedRoleCodes : effectiveRoles;
+  // Optimistic assigned set: authoritative minus tombstoned (pending-remove) plus reserved
+  // (pending-assign). The reconciler releases each entry once its recovery snapshot catches up.
+  const optimisticAssigned = Array.from(
+    new Set([
+      ...authoritativeAssigned.filter((roleCode) => !tombstonedRoleCodes.has(roleCode)),
+      ...reservedRoleCodes,
+    ]),
+  );
+  const optimisticEffective = effectiveQuery.data
+    ? { ...effectiveQuery.data, roles: optimisticAssigned }
+    : effectiveQuery.data;
 
   const user = usersQuery.data?.items.find((item) => item.id === userId) ?? fallbackUser(userId);
   // Full catalog (not Active-filtered) so an assigned role that later becomes inactive keeps
@@ -135,7 +187,7 @@ export function UserAssignmentDetailPage({ mode }: UserAssignmentDetailPageProps
           user={user}
           roles={roleCatalog}
           rolesStatus={rolesStatus}
-          effective={effectiveQuery.data}
+          effective={optimisticEffective}
           reservedRoleCodes={reservedRoleCodes}
           dataScopes={dataScopesQuery.data ?? []}
           canManage={canMutate}

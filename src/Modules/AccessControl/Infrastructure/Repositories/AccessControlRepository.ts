@@ -24,6 +24,41 @@ import type {
 import type { IAccessControlRepository } from '@modules/AccessControl/Application/Interfaces/IAccessControlRepository';
 import { ACCESS_CONTROL_ENDPOINTS } from '@modules/AccessControl/Infrastructure/Api/AccessControlEndpoints';
 import type {
+  ApplyIntentResult,
+  AssignmentIntentSnapshot,
+  IntentOperation,
+  RegisterIntentResult,
+} from '@modules/AccessControl/Domain/Types/AssignmentIntentTypes';
+
+interface RegisterIntentDto {
+  RunId: string;
+  Operation: IntentOperation;
+  Status: RegisterIntentResult['status'];
+  IntentVersion: string;
+  EffectiveVersion: string;
+  IsCurrent: boolean;
+}
+interface ApplyIntentDto {
+  Status: ApplyIntentResult['status'];
+  RunId: string;
+  IntentVersion: string;
+  EffectiveVersion: string;
+  RoleCode: RoleCode;
+  Assigned?: boolean;
+  Removed?: boolean;
+}
+interface AssignmentIntentSnapshotDto {
+  UserId: string;
+  RoleCode: RoleCode;
+  RunId: string | null;
+  Operation: IntentOperation | null;
+  Status: AssignmentIntentSnapshot['status'];
+  IntentVersion: string;
+  EffectiveVersion: string;
+  AssignedRoleCodes: RoleCode[];
+  IsOwnedByCurrentActor: boolean;
+}
+import type {
   CompleteRoleCatalogDto,
   DataScopeDto,
   EffectivePermissionsDto,
@@ -326,6 +361,79 @@ export class AccessControlRepository implements IAccessControlRepository {
 
   async removeRole(userId: string, roleCode: RoleCode): Promise<void> {
     await this.http.delete<void>(ACCESS_CONTROL_ENDPOINTS.USER_ROLE(userId, roleCode));
+  }
+
+  // RH-04 (RH-ASG-01 / D3) intent protocol.
+  async registerAssignmentIntent(
+    userId: string,
+    canonicalRoleCode: RoleCode,
+    input: { operation: IntentOperation; runId: string },
+  ): Promise<RegisterIntentResult> {
+    const dto = await this.http.post<RegisterIntentDto>(
+      ACCESS_CONTROL_ENDPOINTS.USER_ROLE_INTENT(userId, canonicalRoleCode),
+      { Operation: input.operation, RunId: input.runId },
+    );
+    return {
+      runId: dto.RunId,
+      operation: dto.Operation,
+      status: dto.Status,
+      intentVersion: dto.IntentVersion,
+      effectiveVersion: dto.EffectiveVersion,
+      isCurrent: dto.IsCurrent,
+    };
+  }
+
+  async applyAssignIntent(
+    userId: string,
+    input: { roleCode: RoleCode; runId: string; intentVersion: string },
+  ): Promise<ApplyIntentResult> {
+    const dto = await this.http.post<ApplyIntentDto>(ACCESS_CONTROL_ENDPOINTS.USER_ROLES(userId), {
+      RoleCode: input.roleCode,
+      RunId: input.runId,
+      IntentVersion: input.intentVersion,
+    });
+    return AccessControlRepository.toApply(dto);
+  }
+
+  async applyRemoveIntent(
+    userId: string,
+    canonicalRoleCode: RoleCode,
+    input: { runId: string; intentVersion: string },
+  ): Promise<ApplyIntentResult> {
+    const dto = await this.http.delete<ApplyIntentDto>(
+      ACCESS_CONTROL_ENDPOINTS.USER_ROLE(userId, canonicalRoleCode),
+      { data: { RunId: input.runId, IntentVersion: input.intentVersion } },
+    );
+    return AccessControlRepository.toApply(dto);
+  }
+
+  async recoverAssignmentIntent(userId: string, canonicalRoleCode: RoleCode): Promise<AssignmentIntentSnapshot> {
+    const dto = await this.http.get<AssignmentIntentSnapshotDto>(
+      ACCESS_CONTROL_ENDPOINTS.USER_ROLE_INTENT(userId, canonicalRoleCode),
+    );
+    return {
+      userId: dto.UserId,
+      roleCode: dto.RoleCode,
+      runId: dto.RunId,
+      operation: dto.Operation,
+      status: dto.Status,
+      intentVersion: dto.IntentVersion,
+      effectiveVersion: dto.EffectiveVersion,
+      assignedRoleCodes: dto.AssignedRoleCodes,
+      isOwnedByCurrentActor: dto.IsOwnedByCurrentActor,
+    };
+  }
+
+  private static toApply(dto: ApplyIntentDto): ApplyIntentResult {
+    return {
+      status: dto.Status,
+      runId: dto.RunId,
+      intentVersion: dto.IntentVersion,
+      effectiveVersion: dto.EffectiveVersion,
+      roleCode: dto.RoleCode,
+      assigned: dto.Assigned,
+      removed: dto.Removed,
+    };
   }
 
   async assignDataScope(userId: string, input: AssignDataScopeInput): Promise<UserDataScope> {

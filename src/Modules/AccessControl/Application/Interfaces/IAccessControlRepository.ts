@@ -9,6 +9,12 @@ import type {
 } from '@modules/AccessControl/Domain/Entities/AccessControl';
 import type { RoleCode } from '@modules/AccessControl/Domain/Enums/AccessControlEnums';
 import type {
+  ApplyIntentResult,
+  AssignmentIntentSnapshot,
+  IntentOperation,
+  RegisterIntentResult,
+} from '@modules/AccessControl/Domain/Types/AssignmentIntentTypes';
+import type {
   AssignDataScopeInput,
   AssignRoleInput,
   CreateRoleInput,
@@ -48,6 +54,23 @@ export interface IAccessControlRepository {
   listUsers(filter?: UserListFilter): Promise<PaginatedResponse<UserSummary>>;
   getUserEffectivePermissions(userId: string): Promise<EffectivePermissions>;
   listUserDataScopes(userId: string): Promise<UserDataScope[]>;
+
+  // RH-04 (RH-ASG-01 / D3) server-fenced intent protocol.
+  registerAssignmentIntent(
+    userId: string,
+    canonicalRoleCode: RoleCode,
+    input: { operation: IntentOperation; runId: string },
+  ): Promise<RegisterIntentResult>;
+  applyAssignIntent(
+    userId: string,
+    input: { roleCode: RoleCode; runId: string; intentVersion: string },
+  ): Promise<ApplyIntentResult>;
+  applyRemoveIntent(
+    userId: string,
+    canonicalRoleCode: RoleCode,
+    input: { runId: string; intentVersion: string },
+  ): Promise<ApplyIntentResult>;
+  recoverAssignmentIntent(userId: string, canonicalRoleCode: RoleCode): Promise<AssignmentIntentSnapshot>;
 
   // Mutations (WMS_ADMIN only — backend enforces; 403 otherwise)
   assignRole(userId: string, input: AssignRoleInput): Promise<void>;
